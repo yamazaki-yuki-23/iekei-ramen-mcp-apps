@@ -5,5 +5,12 @@
   "quoteStyle": "double",
   "semicolons": "always",
   "trailingComma": "all",
-  "ignorePatterns": ["dist/**", "src/generated/**", "data/**", "node_modules/**", "e2e-host/**"]
+  "ignorePatterns": [
+    "dist/**",
+    "src/generated/**",
+    "data/**",
+    "node_modules/**",
+    "e2e-host/**",
+    ".slides/**"
+  ]
 }

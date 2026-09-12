@@ -5,7 +5,8 @@
     "src/mcp-app.tsx",
     "scripts/*.mjs",
     "tests/**/*.test.ts",
-    "e2e/**/*.spec.ts"
+    "e2e/**/*.spec.ts",
+    "pw-shoot.config.ts"
   ],
   "project": ["**/*.{ts,tsx,mjs}"],
   "ignoreBinaries": ["ffmpeg"]

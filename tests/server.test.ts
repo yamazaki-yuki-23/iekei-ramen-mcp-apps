@@ -20,9 +20,13 @@ afterAll(async () => {
   await client.close();
 });
 
-/** structuredContent を AppPayload として取り出す。 */
-async function callApp(name: string, args: Record<string, unknown> = {}) {
-  const result = await client.callTool({ name, arguments: args });
+/** structuredContent を AppPayload として取り出す。`meta` はホストが添える _meta。 */
+async function callApp(
+  name: string,
+  args: Record<string, unknown> = {},
+  meta?: Record<string, unknown>,
+) {
+  const result = await client.callTool({ name, arguments: args, ...(meta ? { _meta: meta } : {}) });
   return {
     payload: result.structuredContent as unknown as AppPayload,
     text: (result.content as Array<{ type: string; text: string }>)
@@ -177,6 +181,75 @@ describe("find-nearby-iekei-ramen", () => {
     const { payload } = await callApp("find-nearby-iekei-ramen", { lat: 24.28, lon: 153.98 });
     expect(payload.shops).toHaveLength(5);
     expect(payload.shops[0].distanceKm).toBeGreaterThan(1000);
+  });
+
+  it("座標を省略するとホストが渡す現在地を使う", async () => {
+    // ChatGPT はアプリの iframe に geolocation を許可しないので、
+    // ホストが _meta で渡してくる大まかな位置が唯一の手がかりになる。
+    const { payload, text } = await callApp(
+      "find-nearby-iekei-ramen",
+      { limit: 5 },
+      {
+        "openai/userLocation": {
+          latitude: 35.4658,
+          longitude: 139.6222,
+          city: "横浜市",
+          region: "神奈川県",
+          country: "JP",
+          timezone: "Asia/Tokyo",
+        },
+      },
+    );
+
+    expect(payload.query.origin).toMatchObject({
+      lat: 35.4658,
+      lon: 139.6222,
+      label: "横浜市 神奈川県",
+      source: "host",
+    });
+    expect(payload.shops).toHaveLength(5);
+    expect(text).toContain("だいたいの位置");
+  });
+
+  it("座標もホストの現在地も無ければ空で返し、地名入力を促す", async () => {
+    const { payload, text, isError } = await callApp("find-nearby-iekei-ramen", { limit: 5 });
+
+    expect(isError).toBeFalsy();
+    expect(payload.query.origin).toBeUndefined();
+    expect(payload.shops).toHaveLength(0);
+    expect(text).toContain("地名を指定してください");
+  });
+
+  it("ホストの現在地に緯度経度が無ければ使わない", async () => {
+    // city だけ来ることがある。座標が無いものは基準地点にできない。
+    const { payload } = await callApp(
+      "find-nearby-iekei-ramen",
+      { limit: 5 },
+      { "openai/userLocation": { city: "横浜市", timezone: "Asia/Tokyo" } },
+    );
+
+    expect(payload.query.origin).toBeUndefined();
+    expect(payload.shops).toHaveLength(0);
+  });
+
+  it("引数の座標はホストの現在地より優先される", async () => {
+    const { payload } = await callApp(
+      "find-nearby-iekei-ramen",
+      { lat: 35.4658, lon: 139.6222, limit: 3 },
+      { "openai/userLocation": { latitude: 43.06, longitude: 141.35, city: "札幌市" } },
+    );
+
+    expect(payload.query.origin).toMatchObject({ lat: 35.4658, source: "precise" });
+  });
+
+  it("地名から解決した座標は source=place として記録される", async () => {
+    const { payload } = await callApp("find-nearby-iekei-ramen", {
+      ...origin,
+      label: "横浜駅",
+      source: "place",
+    });
+
+    expect(payload.query.origin).toMatchObject({ label: "横浜駅", source: "place" });
   });
 
   it("緯度経度が範囲外なら拒否する", async () => {

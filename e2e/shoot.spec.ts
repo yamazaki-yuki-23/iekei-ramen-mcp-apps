@@ -11,5 +11,5 @@ test("全スライドを撮る", async ({ page }) => {
     await page.waitForTimeout(400);
     await slides.nth(i).screenshot({ path: `shots/slide-${String(i + 1).padStart(2, "0")}.png` });
   }
-  expect(n).toBe(23);
+  expect(n).toBe(22);
 });

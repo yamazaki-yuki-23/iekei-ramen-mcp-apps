@@ -1,40 +1,68 @@
 import { useState } from "react";
+import type { Origin, OriginSource } from "../lib/types";
+import { ORIGIN_NOTES } from "../lib/types";
 import styles from "../mcp-app.module.css";
 
 interface Props {
-  /** 現在地の表示名。未取得なら undefined。 */
-  originLabel?: string;
-  /** 緯度経度が決まったら呼ぶ。 */
-  onLocate: (lat: number, lon: number, label?: string) => void;
+  /** 現在の基準地点。未取得なら undefined。 */
+  origin?: Origin;
+  /** 座標が決まったときに呼ぶ。 */
+  onLocate: (lat: number, lon: number, label: string | undefined, source: OriginSource) => void;
+  /**
+   * 座標を渡さずにサーバーへ問い合わせる。
+   * ホストが持っている大まかな現在地が使われる。
+   * 位置情報が得られたかどうかを返す。
+   */
+  onLocateByHost: () => Promise<boolean>;
   /** 地名を緯度経度に解決する（サーバーの geocode-place を呼ぶ）。 */
   onGeocode: (query: string) => Promise<{ lat: number; lon: number; label: string } | null>;
+  /** 親が保持する案内メッセージ。再マウントしても消えない。 */
+  notice: string | null;
   busy: boolean;
 }
 
+/** ブラウザの位置情報を一度だけ試す。取れなければ null。 */
+function requestBrowserPosition(): Promise<GeolocationPosition | null> {
+  if (!navigator.geolocation) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(pos),
+      // 権限ポリシーによる遮断・ユーザー拒否・タイムアウトをまとめて「取れなかった」扱いにする
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10_000 },
+    );
+  });
+}
+
 /**
- * 現在地の指定 UI。ブラウザの位置情報が使えない環境（iframe の権限が無い等）
- * でも地名入力で代替できるようにしてある。
+ * 現在地の指定 UI。
+ *
+ * 位置情報の取り方はホストによって違うので、3 段階で降りていく。
+ *   1. ブラウザの位置情報（数十 m）
+ *   2. ホストが渡す大まかな位置（市区町村レベル）
+ *   3. 地名の手入力
+ * ChatGPT はアプリの iframe に geolocation を許可しないため 1 は必ず失敗する。
+ * それでもボタンを押せば 2 で結果が出るようにしてある。
  */
-export function NearbyPanel({ originLabel, onLocate, onGeocode, busy }: Props) {
+export function NearbyPanel({ origin, onLocate, onLocateByHost, onGeocode, notice, busy }: Props) {
   const [place, setPlace] = useState("");
   const [status, setStatus] = useState<string | null>(null);
 
-  const useCurrentPosition = () => {
-    if (!navigator.geolocation) {
-      setStatus("この環境では位置情報を取得できません。地名を入力してください。");
+  const useCurrentPosition = async () => {
+    setStatus("現在地を取得中…");
+
+    const pos = await requestBrowserPosition();
+    if (pos) {
+      setStatus(null);
+      onLocate(pos.coords.latitude, pos.coords.longitude, "現在地", "precise");
       return;
     }
-    setStatus("現在地を取得中…");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setStatus(null);
-        onLocate(pos.coords.latitude, pos.coords.longitude, "現在地");
-      },
-      (err) => {
-        setStatus(`現在地を取得できませんでした（${err.message}）。地名を入力してください。`);
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
+
+    // ブラウザから取れないホストでは、ホスト自身が持つ位置に頼る。
+    // 結果の案内は親（再マウントされない側）が出すので、ここでは状態を畳むだけ。
+    setStatus("おおよその現在地で検索中…");
+    await onLocateByHost();
+    setStatus(null);
   };
 
   const searchPlace = async () => {
@@ -47,7 +75,7 @@ export function NearbyPanel({ originLabel, onLocate, onGeocode, busy }: Props) {
       return;
     }
     setStatus(null);
-    onLocate(hit.lat, hit.lon, hit.label);
+    onLocate(hit.lat, hit.lon, hit.label, "place");
   };
 
   return (
@@ -56,13 +84,17 @@ export function NearbyPanel({ originLabel, onLocate, onGeocode, busy }: Props) {
         <button
           type="button"
           className={styles.button}
-          onClick={useCurrentPosition}
+          onClick={() => void useCurrentPosition()}
           disabled={busy}
         >
           現在地から探す
         </button>
         <span className={styles.meta}>
-          {originLabel ? `基準: ${originLabel}` : "位置情報を許可するか、地名を入力してください"}
+          {origin
+            ? `基準: ${origin.label ?? "現在地"}${
+                origin.source === "precise" ? "" : `（${ORIGIN_NOTES[origin.source]}）`
+              }`
+            : "ボタンを押すか、地名を入力してください"}
         </span>
       </div>
 
@@ -94,7 +126,7 @@ export function NearbyPanel({ originLabel, onLocate, onGeocode, busy }: Props) {
         </button>
       </div>
 
-      {status && <p className={styles.meta}>{status}</p>}
+      {(status ?? notice) && <p className={styles.meta}>{status ?? notice}</p>}
     </div>
   );
 }

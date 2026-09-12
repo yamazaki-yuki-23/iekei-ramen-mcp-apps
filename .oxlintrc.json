@@ -32,7 +32,14 @@
       }
     ]
   },
-  "ignorePatterns": ["dist/**", "src/generated/**", "node_modules/**", "data/**", "e2e-host/**"],
+  "ignorePatterns": [
+    "dist/**",
+    "src/generated/**",
+    "node_modules/**",
+    "data/**",
+    "e2e-host/**",
+    ".slides/**"
+  ],
   "overrides": [
     {
       "files": ["src/components/MapView.tsx"],

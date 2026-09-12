@@ -18,7 +18,7 @@ import { MapView } from "./components/MapView";
 import { NearbyPanel } from "./components/NearbyPanel";
 import { SearchForm, type FormValues } from "./components/SearchForm";
 import { ShopList } from "./components/ShopList";
-import type { AppPayload, SearchMode, Shop } from "./lib/types";
+import type { AppPayload, OriginSource, SearchMode, Shop } from "./lib/types";
 import styles from "./mcp-app.module.css";
 
 const MODES: Array<{ key: SearchMode; label: string }> = [
@@ -52,6 +52,12 @@ function IekeiApp() {
   // payload が差し替わるたびに増える。Inner の key にして状態を初期化する。
   const [payloadVersion, setPayloadVersion] = useState(0);
   const [hostContextPatch, setHostContextPatch] = useState<McpUiHostContext | undefined>();
+  /**
+   * 位置情報が取れなかったときの案内。
+   * Inner は payload ごとに key で作り直されるため、内部 state に置くと
+   * 検索結果の反映と同時に消えてしまう。ここで保持する。
+   */
+  const [notice, setNotice] = useState<string | null>(null);
 
   const applyPayload = useCallback((next: AppPayload) => {
     setPayload(next);
@@ -85,6 +91,8 @@ function IekeiApp() {
       app={app}
       payload={payload ?? EMPTY_PAYLOAD}
       onPayload={applyPayload}
+      notice={notice}
+      onNotice={setNotice}
       // 初期値はホストから直接読み、以降の変更分を上書きする。
       hostContext={{ ...app.getHostContext(), ...hostContextPatch }}
     />
@@ -95,6 +103,9 @@ interface InnerProps {
   app: App;
   payload: AppPayload;
   onPayload: (payload: AppPayload) => void;
+  /** 再マウントをまたいで残る案内メッセージ。 */
+  notice: string | null;
+  onNotice: (notice: string | null) => void;
   hostContext?: McpUiHostContext;
 }
 
@@ -102,7 +113,7 @@ interface InnerProps {
  * payload ごとに key で作り直されるので、状態は props からそのまま初期化できる。
  * tool 結果が届くたびにモード・フォーム・選択状態が新しい payload に揃う。
  */
-function IekeiAppInner({ app, payload, onPayload, hostContext }: InnerProps) {
+function IekeiAppInner({ app, payload, onPayload, notice, onNotice, hostContext }: InnerProps) {
   const [mode, setMode] = useState<SearchMode>(payload.mode);
   const [busy, setBusy] = useState(false);
   const [selectedId, setSelectedId] = useState<string | undefined>();
@@ -152,11 +163,23 @@ function IekeiAppInner({ app, payload, onPayload, hostContext }: InnerProps) {
   );
 
   const runNearby = useCallback(
-    (lat: number, lon: number, label?: string) => {
-      void call("find-nearby-iekei-ramen", { lat, lon, limit: 5, label });
+    (lat: number, lon: number, label: string | undefined, source: OriginSource) => {
+      onNotice(null);
+      void call("find-nearby-iekei-ramen", { lat, lon, limit: 5, label, source });
     },
-    [call],
+    [call, onNotice],
   );
+
+  /**
+   * 座標を渡さずに呼び、ホストが持つ大まかな現在地に任せる。
+   * ChatGPT のように iframe の geolocation が塞がれたホスト向けの経路。
+   */
+  const runNearbyByHost = useCallback(async () => {
+    const result = await call("find-nearby-iekei-ramen", { limit: 5 });
+    const located = Boolean((result && readPayload(result))?.query.origin);
+    onNotice(located ? null : "現在地を取得できませんでした。下の欄に地名を入力してください。");
+    return located;
+  }, [call, onNotice]);
 
   const geocode = useCallback(
     async (query: string) => {
@@ -254,9 +277,11 @@ function IekeiAppInner({ app, payload, onPayload, hostContext }: InnerProps) {
 
       {mode === "nearby" && (
         <NearbyPanel
-          originLabel={payload.query.origin?.label}
+          origin={payload.query.origin}
           onLocate={runNearby}
+          onLocateByHost={runNearbyByHost}
           onGeocode={geocode}
+          notice={notice}
           busy={busy}
         />
       )}

@@ -22,7 +22,15 @@ import shopsData from "./data/shops.json" with { type: "json" };
 import { APP_HTML } from "./src/generated/app-html.js";
 import { distanceKm, formatDistance } from "./src/lib/geo.js";
 import { PayloadSchema } from "./src/lib/schema.js";
-import { TASTES, type AppPayload, type Shop, type TasteKey } from "./src/lib/types.js";
+import {
+  ORIGIN_NOTES,
+  TASTES,
+  type AppPayload,
+  type Origin,
+  type OriginSource,
+  type Shop,
+  type TasteKey,
+} from "./src/lib/types.js";
 
 const SHOPS = shopsData as Shop[];
 
@@ -123,6 +131,35 @@ function filterShops(opts: { prefecture?: string; taste?: TasteKey; keyword?: st
   });
 }
 
+/**
+ * ホストが tool 呼び出しに添えてくる大まかな現在地。
+ *
+ * ChatGPT はアプリの iframe に geolocation を許可しないため、UI 側の
+ * navigator.geolocation は必ず失敗する。代わりにホストが _meta で
+ * 市区町村レベルの座標を渡してくるので、それを基準地点に使う。
+ * あくまでヒントなので、欠けていても動くようにしておくこと。
+ */
+interface HostUserLocation {
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+  region?: string;
+  country?: string;
+  timezone?: string;
+}
+
+/** `_meta` からホスト由来の現在地を取り出す。無ければ undefined。 */
+function readHostLocation(meta: Record<string, unknown> | undefined): Origin | undefined {
+  const raw = meta?.["openai/userLocation"] as HostUserLocation | undefined;
+  if (typeof raw?.latitude !== "number" || typeof raw?.longitude !== "number") return undefined;
+  return {
+    lat: raw.latitude,
+    lon: raw.longitude,
+    label: [raw.city, raw.region].filter(Boolean).join(" ") || undefined,
+    source: "host",
+  };
+}
+
 /** UI へ渡す structuredContent。都道府県リストは毎回添える。 */
 function structured(payload: Omit<AppPayload, "prefectures">) {
   return { ...payload, prefectures: PREFECTURES_WITH_SHOPS };
@@ -192,20 +229,58 @@ export function createServer(): McpServer {
     {
       title: "近くの家系ラーメンを探す",
       description:
-        "指定した緯度経度から近い順に家系ラーメン店を提案する（既定 5 件）。緯度経度が分からない場合は先に geocode-place を使う。UI 側でも現在地の取得と地名入力ができる。",
+        "現在地から近い順に家系ラーメン店を提案する（既定 5 件）。緯度経度を省略すると、ホストが渡す大まかな現在地を使う。特定の地名から探したい場合は先に geocode-place で座標を調べる。",
       inputSchema: z.object({
-        lat: z.number().min(-90).max(90).describe("現在地の緯度"),
-        lon: z.number().min(-180).max(180).describe("現在地の経度"),
+        lat: z
+          .number()
+          .min(-90)
+          .max(90)
+          .optional()
+          .describe("基準地点の緯度。省略するとホストの現在地を使う"),
+        lon: z
+          .number()
+          .min(-180)
+          .max(180)
+          .optional()
+          .describe("基準地点の経度。省略するとホストの現在地を使う"),
         limit: z.number().int().min(1).max(20).default(5).describe("提案する店舗数"),
-        label: z.string().optional().describe("現在地の表示名（例: 横浜駅）"),
+        label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
+        source: z
+          .enum(["precise", "place"])
+          .optional()
+          .describe("緯度経度の出どころ: precise=端末の位置情報 / place=地名から解決"),
       }),
       outputSchema: PayloadSchema,
       _meta: { ui: { resourceUri } },
     },
-    async ({ lat, lon, limit, label }): Promise<CallToolResult> => {
+    async ({ lat, lon, limit, label, source }, ctx): Promise<CallToolResult> => {
+      // 引数の座標があればそれを使い、無ければホストの大まかな現在地に頼る。
+      const origin: Origin | undefined =
+        lat !== undefined && lon !== undefined
+          ? { lat, lon, label, source: (source ?? "precise") as OriginSource }
+          : readHostLocation(ctx.mcpReq._meta);
+
+      if (!origin) {
+        // ホストが位置情報を渡さない環境。UI は地名入力へ誘導する。
+        return {
+          content: [
+            {
+              type: "text",
+              text: "現在地を特定できませんでした。地名を指定してください（例: 横浜駅）。",
+            },
+          ],
+          structuredContent: structured({
+            mode: "nearby",
+            shops: [],
+            total: 0,
+            query: {},
+          }),
+        };
+      }
+
       const ranked = SHOPS.map((s) => ({
         ...s,
-        distanceKm: Number(distanceKm(lat, lon, s.lat, s.lon).toFixed(3)),
+        distanceKm: Number(distanceKm(origin.lat, origin.lon, s.lat, s.lon).toFixed(3)),
       }))
         .toSorted((a, b) => a.distanceKm - b.distanceKm)
         .slice(0, limit);
@@ -213,15 +288,17 @@ export function createServer(): McpServer {
         mode: "nearby",
         shops: ranked,
         total: ranked.length,
-        query: { origin: { lat, lon, label } },
+        query: { origin },
       };
+      const where = origin.label ?? `${origin.lat.toFixed(4)}, ${origin.lon.toFixed(4)}`;
+      const note = origin.source === "host" ? `（${ORIGIN_NOTES.host}）` : "";
       return {
         content: [
           {
             type: "text",
             text: summarize(
               ranked,
-              `${label ?? `${lat.toFixed(4)}, ${lon.toFixed(4)}`} から近い家系ラーメン ${ranked.length} 件`,
+              `${where}${note} から近い家系ラーメン ${ranked.length} 件`,
               true,
             ),
           },

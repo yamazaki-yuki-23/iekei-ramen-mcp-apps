@@ -93,6 +93,40 @@ test.describe("現在地から探す", () => {
     await expect(shopCards(app).first()).toContainText(/\d+(\.\d+)?(m|km)/);
   });
 
+  test("ブラウザの位置情報が使えるホストでは現在地ボタンで検索できる", async ({
+    page,
+    context,
+  }) => {
+    // basic-host はリソースの permissions.geolocation を読んで iframe に allow を付ける
+    await context.grantPermissions(["geolocation"]);
+    await context.setGeolocation({ latitude: 35.4658, longitude: 139.6222 });
+
+    const app = await callTool(page, "search-iekei-ramen");
+    await waitForApp(app);
+    await app.getByRole("tab", { name: "現在地から探す" }).click();
+    await app.getByRole("button", { name: "現在地から探す", exact: true }).click();
+
+    await expect(shopCards(app)).toHaveCount(5);
+    await expect(app.getByText("基準: 現在地")).toBeVisible();
+  });
+
+  test("位置情報が塞がれたホストでは地名入力を促す", async ({ page, context }) => {
+    // ChatGPT のように iframe の geolocation が使えない状況を再現する。
+    // basic-host はホスト側の現在地も渡さないので、地名入力に落ちるのが正しい。
+    await context.clearPermissions();
+
+    const app = await callTool(page, "search-iekei-ramen");
+    await waitForApp(app);
+    await app.getByRole("tab", { name: "現在地から探す" }).click();
+    await app.getByRole("button", { name: "現在地から探す", exact: true }).click();
+
+    await expect(
+      app.getByText("現在地を取得できませんでした。下の欄に地名を入力してください。"),
+    ).toBeVisible();
+    // ボタンは押せる状態のまま残す
+    await expect(app.getByRole("button", { name: "現在地から探す", exact: true })).toBeEnabled();
+  });
+
   test("距離が近い順に並ぶ", async ({ page }) => {
     const app = await callTool(page, "find-nearby-iekei-ramen", {
       lat: 35.4658,

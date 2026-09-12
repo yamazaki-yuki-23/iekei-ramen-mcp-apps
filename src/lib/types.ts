@@ -34,6 +34,30 @@ export type TasteKey = keyof typeof TASTES;
 
 export type SearchMode = "form" | "nearby" | "map";
 
+/**
+ * 「近くを探す」の基準地点。どこから得た座標かを source で持つ。
+ * ホストによって取れる精度が違うので、UI 側で断り書きを出し分けるために必要。
+ */
+export interface Origin {
+  lat: number;
+  lon: number;
+  label?: string;
+  /**
+   * precise … ブラウザの位置情報（数十 m）
+   * host    … ホストが渡してくる大まかな位置（市区町村レベル）
+   * place   … 地名入力をジオコーディングした結果
+   */
+  source: OriginSource;
+}
+
+export type OriginSource = "precise" | "host" | "place";
+
+export const ORIGIN_NOTES: Record<OriginSource, string> = {
+  precise: "現在地",
+  host: "だいたいの位置（市区町村レベル）",
+  place: "指定した地名",
+};
+
 /** UI が tool 結果として受け取る構造化データ。 */
 export interface AppPayload {
   mode: SearchMode;
@@ -45,7 +69,7 @@ export interface AppPayload {
     prefecture?: string;
     taste?: TasteKey;
     keyword?: string;
-    origin?: { lat: number; lon: number; label?: string };
+    origin?: Origin;
   };
   /** 選択可能な都道府県（データに実在するものだけ）。 */
   prefectures: string[];
