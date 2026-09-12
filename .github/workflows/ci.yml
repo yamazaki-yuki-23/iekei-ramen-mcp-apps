@@ -37,6 +37,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: knip (未使用コード・依存の検出)
+        run: npm run knip
+
       - name: Unit tests
         run: npm test
 

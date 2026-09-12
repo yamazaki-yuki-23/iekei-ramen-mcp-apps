@@ -1,9 +1,9 @@
 /** tool の outputSchema。UI にはこの形で structuredContent が届く。 */
 import { z } from "zod";
 
-export const TasteSchema = z.enum(["rich", "creamy", "chain", "unknown"]);
+const TasteSchema = z.enum(["rich", "creamy", "chain", "unknown"]);
 
-export const ShopSchema = z.object({
+const ShopSchema = z.object({
   id: z.string(),
   name: z.string(),
   nameEn: z.string().optional(),

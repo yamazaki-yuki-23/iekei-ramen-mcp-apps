@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "mcp-app.html",
+    "src/mcp-app.tsx",
+    "scripts/*.mjs",
+    "tests/**/*.test.ts",
+    "e2e/**/*.spec.ts"
+  ],
+  "project": ["**/*.{ts,tsx,mjs}"]
+}

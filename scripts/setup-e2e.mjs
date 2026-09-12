@@ -12,7 +12,7 @@ import path from "node:path";
 // 拒否するため、e2e-host/ という通常のディレクトリ名にしている。
 const REPO_DIR = path.join(import.meta.dirname, "..", "e2e-host", "ext-apps");
 
-export const HOST_DIR = path.join(REPO_DIR, "examples", "basic-host");
+const HOST_DIR = path.join(REPO_DIR, "examples", "basic-host");
 const run = (cmd, args, cwd) => execFileSync(cmd, args, { cwd, stdio: "inherit" });
 
 if (!fs.existsSync(REPO_DIR)) {
