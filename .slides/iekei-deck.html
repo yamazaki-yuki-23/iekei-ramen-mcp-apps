@@ -797,49 +797,19 @@ area[<span class="c-st">"admin_level"</span>=<span class="c-st">"4"</span>][<spa
     <div class="box flat"><span class="t">コードに同梱</span><span class="s">店舗 JSON と画面 HTML</span></div>
   </div>
   <p class="lead">Workers にはファイルシステムが無いので、データも画面もビルド時にコードへ埋め込みます。読み取り専用なので、そもそも保存先が要りません。</p>
-  <p class="note">配信サイズは 407 KB。無料枠に余裕で収まりました。</p>
+  <p class="note">配信サイズは 407 KB。無料枠の上限 3 MB に対して 13% でした。</p>
   <p class="pageno"></p>
 </section>
 
-<!-- 21 ハマった ───────────────────────────────── -->
+<!-- 21 まとめ ───────────────────────────────── -->
 <section class="slide">
-  <div class="slide-head"><h2>ハマったところ</h2></div>
-  <div class="numlist">
-    <div class="numrow warm">
-      <span class="dot">1</span>
-      <span class="body">
-        <span class="t">ディレクトリ名を <code>.e2e</code> にしたら 404 になった</span>
-        <span class="d">Express の sendFile が、ドット始まりを隠しファイル扱いして拒否していた。<code>e2e-host</code> に改名して解決。原因に気づくまで 30 分溶かしました。</span>
-      </span>
-    </div>
-    <div class="numrow warm">
-      <span class="dot">2</span>
-      <span class="body">
-        <span class="t">画面から呼んだ結果が、画面に反映されない</span>
-        <span class="d">AI 発の呼び出しには通知が来るが、画面発の呼び出しには来ない。戻り値を自分で反映する必要があった。仕様を読み直して気づきました。</span>
-      </span>
-    </div>
-    <div class="numrow warm">
-      <span class="dot">3</span>
-      <span class="body">
-        <span class="t">地図のマーカーが表示されない</span>
-        <span class="d">Leaflet の既定アイコンは PNG を外部から読む。HTML 1 ファイルに固める構成では読めないので、SVG の円に置き換えた。</span>
-      </span>
-    </div>
-  </div>
-  <p class="note">どれも MCP Apps 固有ではなく、「1 つの HTML に全部詰める」構成に起因するものでした。</p>
+  <div class="slide-head"><h2>まとめ</h2></div>
+  <p class="lead wide">MCP Apps は<span class="b">公式が Skill を配っている</span>ので、実装で困ることはありませんでした。<br />今回はコードを触っていません。<br />時間のほとんどは、どんなアプリを作りたいかを書く、<span class="b">作る前のプロンプト</span>に使いました。</p>
+  <p class="lead wide">作るところは AI に任せきりでした。<br />そのぶん効いてきたのが、<strong>データ集めと、家系かどうかの判定</strong>です。<br />技術と関係ないところをどこまで網羅できるかが、そのまま出来を決めると感じました。</p>
   <p class="pageno"></p>
 </section>
 
-<!-- 22 まとめ ───────────────────────────────── -->
-<section class="slide">
-  <div class="slide-head"><h2>作ってみて思ったこと</h2></div>
-  <p class="lead">MCP Apps 自体は、身構えていたほど難しくありませんでした。<span class="b">tool と resource を 2 つ登録するだけ</span>です。時間を食ったのは、データ集めと家系かどうかの判定という、技術と関係ないところでした。</p>
-  <p class="lead">あと、<strong>作ったものを実際に使っています。</strong>Claude を毎日開いているからだと思います。置き場所が合っていると、道具は生き残るようです。</p>
-  <p class="pageno"></p>
-</section>
-
-<!-- 23 参考 ───────────────────────────────── -->
+<!-- 22 参考 ───────────────────────────────── -->
 <section class="slide">
   <div class="slide-head"><h2>参考資料</h2></div>
   <div class="refs">

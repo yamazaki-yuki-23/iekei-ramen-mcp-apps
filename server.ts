@@ -140,22 +140,32 @@ function filterShops(opts: { prefecture?: string; taste?: TasteKey; keyword?: st
  * あくまでヒントなので、欠けていても動くようにしておくこと。
  */
 interface HostUserLocation {
-  latitude?: number;
-  longitude?: number;
+  /** ChatGPT は仕様上 number だが実際には文字列で送ってくるので、どちらも受ける。 */
+  latitude?: number | string;
+  longitude?: number | string;
   city?: string;
   region?: string;
   country?: string;
   timezone?: string;
 }
 
+/** 数値にも文字列にも入りうる座標を number に揃える。範囲外や解釈不能なら undefined。 */
+function toCoordinate(value: unknown, max: number): number | undefined {
+  const n = typeof value === "string" ? Number(value) : value;
+  if (typeof n !== "number" || !Number.isFinite(n) || Math.abs(n) > max) return undefined;
+  return n;
+}
+
 /** `_meta` からホスト由来の現在地を取り出す。無ければ undefined。 */
 function readHostLocation(meta: Record<string, unknown> | undefined): Origin | undefined {
   const raw = meta?.["openai/userLocation"] as HostUserLocation | undefined;
-  if (typeof raw?.latitude !== "number" || typeof raw?.longitude !== "number") return undefined;
+  const lat = toCoordinate(raw?.latitude, 90);
+  const lon = toCoordinate(raw?.longitude, 180);
+  if (lat === undefined || lon === undefined) return undefined;
   return {
-    lat: raw.latitude,
-    lon: raw.longitude,
-    label: [raw.city, raw.region].filter(Boolean).join(" ") || undefined,
+    lat,
+    lon,
+    label: [raw?.city, raw?.region].filter(Boolean).join(" ") || undefined,
     source: "host",
   };
 }
@@ -254,6 +264,8 @@ export function createServer(): McpServer {
       _meta: { ui: { resourceUri } },
     },
     async ({ lat, lon, limit, label, source }, ctx): Promise<CallToolResult> => {
+      // TODO(診断): ホストがどんな _meta を送ってくるかを確認するための一時ログ。
+      // 原因が特定できたら消す。位置の値そのものは出さず、キーだけ記録する。
       // 引数の座標があればそれを使い、無ければホストの大まかな現在地に頼る。
       const origin: Origin | undefined =
         lat !== undefined && lon !== undefined

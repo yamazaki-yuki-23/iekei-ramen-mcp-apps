@@ -220,6 +220,45 @@ describe("find-nearby-iekei-ramen", () => {
     expect(text).toContain("地名を指定してください");
   });
 
+  it("ホストが座標を文字列で送ってきても使える", async () => {
+    // ChatGPT は仕様上 number とされている latitude/longitude を文字列で送ってくる。
+    const { payload } = await callApp(
+      "find-nearby-iekei-ramen",
+      { limit: 3 },
+      {
+        "openai/userLocation": {
+          latitude: "35.4658",
+          longitude: "139.6222",
+          city: "横浜市",
+          region: "神奈川県",
+        },
+      },
+    );
+
+    expect(payload.query.origin).toMatchObject({ lat: 35.4658, lon: 139.6222, source: "host" });
+    expect(payload.shops).toHaveLength(3);
+  });
+
+  it("ホストの座標が数値として解釈できなければ使わない", async () => {
+    const { payload } = await callApp(
+      "find-nearby-iekei-ramen",
+      { limit: 3 },
+      { "openai/userLocation": { latitude: "unknown", longitude: "", city: "横浜市" } },
+    );
+
+    expect(payload.query.origin).toBeUndefined();
+  });
+
+  it("ホストの座標が範囲外なら使わない", async () => {
+    const { payload } = await callApp(
+      "find-nearby-iekei-ramen",
+      { limit: 3 },
+      { "openai/userLocation": { latitude: "999", longitude: "139.6222" } },
+    );
+
+    expect(payload.query.origin).toBeUndefined();
+  });
+
   it("ホストの現在地に緯度経度が無ければ使わない", async () => {
     // city だけ来ることがある。座標が無いものは基準地点にできない。
     const { payload } = await callApp(
