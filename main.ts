@@ -5,7 +5,6 @@
  * Cloudflare にデプロイするときは worker.ts が使われる。
  */
 import { createServer as createHttpServer } from "node:http";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { createServer } from "./server.js";
 import worker from "./worker.js";

@@ -31,9 +31,7 @@ export const PayloadSchema = z.object({
     prefecture: z.string().optional(),
     taste: TasteSchema.optional(),
     keyword: z.string().optional(),
-    origin: z
-      .object({ lat: z.number(), lon: z.number(), label: z.string().optional() })
-      .optional(),
+    origin: z.object({ lat: z.number(), lon: z.number(), label: z.string().optional() }).optional(),
   }),
   /** 選択肢を UI に渡す（都道府県リストはデータ由来なのでサーバーが持つ）。 */
   prefectures: z.array(z.string()),

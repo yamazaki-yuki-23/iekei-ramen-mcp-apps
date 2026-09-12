@@ -41,7 +41,14 @@ for (const pref of TARGETS) {
     const lat = el.lat ?? el.center?.lat;
     const lon = el.lon ?? el.center?.lon;
     if (lat == null || lon == null) continue;
-    existing.push({ osmType: el.type, osmId: el.id, lat, lon, prefecture: pref, tags: el.tags ?? {} });
+    existing.push({
+      osmType: el.type,
+      osmId: el.id,
+      lat,
+      lon,
+      prefecture: pref,
+      tags: el.tags ?? {},
+    });
   }
   console.error(`${pref}: ${elements.length} (total ${before} -> ${existing.length})`);
 }

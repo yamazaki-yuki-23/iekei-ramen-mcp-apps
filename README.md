@@ -5,24 +5,24 @@
 
 ## 構成
 
-| ファイル | 役割 |
-|---|---|
-| `server.ts` | MCP サーバー本体。3 つの UI 付き tool と補助 tool を登録 |
-| `worker.ts` | Cloudflare Workers エントリ（`/mcp` で Streamable HTTP を受ける） |
-| `main.ts` | ローカル実行エントリ（HTTP / stdio） |
-| `src/mcp-app.tsx` | UI のシェル。モード切り替えと tool 呼び出し |
-| `src/components/` | 検索フォーム / 一覧 / 現在地パネル / 地図 |
-| `scripts/fetch-shops.mjs` | OpenStreetMap から店舗データを取得 |
-| `scripts/build-dataset.mjs` | 取得データを家系判定して `data/shops.json` を生成 |
+| ファイル                    | 役割                                                              |
+| --------------------------- | ----------------------------------------------------------------- |
+| `server.ts`                 | MCP サーバー本体。3 つの UI 付き tool と補助 tool を登録          |
+| `worker.ts`                 | Cloudflare Workers エントリ（`/mcp` で Streamable HTTP を受ける） |
+| `main.ts`                   | ローカル実行エントリ（HTTP / stdio）                              |
+| `src/mcp-app.tsx`           | UI のシェル。モード切り替えと tool 呼び出し                       |
+| `src/components/`           | 検索フォーム / 一覧 / 現在地パネル / 地図                         |
+| `scripts/fetch-shops.mjs`   | OpenStreetMap から店舗データを取得                                |
+| `scripts/build-dataset.mjs` | 取得データを家系判定して `data/shops.json` を生成                 |
 
 ## tool 一覧
 
-| tool | 内容 |
-|---|---|
-| `search-iekei-ramen` | 都道府県 / 味の傾向 / キーワードで絞り込み |
-| `find-nearby-iekei-ramen` | 緯度経度から近い順に 5 件（既定） |
-| `show-iekei-ramen-map` | 日本地図にプロット |
-| `geocode-place` | 地名 → 緯度経度（UI が内部で使う。UI なし） |
+| tool                      | 内容                                        |
+| ------------------------- | ------------------------------------------- |
+| `search-iekei-ramen`      | 都道府県 / 味の傾向 / キーワードで絞り込み  |
+| `find-nearby-iekei-ramen` | 緯度経度から近い順に 5 件（既定）           |
+| `show-iekei-ramen-map`    | 日本地図にプロット                          |
+| `geocode-place`           | 地名 → 緯度経度（UI が内部で使う。UI なし） |
 
 ## セットアップ
 
@@ -74,7 +74,6 @@ Claude の Connectors 設定で、デプロイ先の `/mcp` URL をカスタム�
 ## データについて
 
 現在のデータ: **646 店舗 / 39 都道府県**（うち「家系確定」409 件、「家系の可能性」237 件）
-
 
 - 出典は [OpenStreetMap](https://www.openstreetmap.org/copyright) の contributors（ODbL）です。
 - 家系判定はヒューリスティックです。

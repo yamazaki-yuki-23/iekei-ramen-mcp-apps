@@ -12,7 +12,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/client";
 import type { App, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import { useApp } from "@modelcontextprotocol/ext-apps/react";
-import { StrictMode, useCallback, useEffect, useMemo, useState } from "react";
+import { StrictMode, useCallback, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { MapView } from "./components/MapView";
 import { NearbyPanel } from "./components/NearbyPanel";
@@ -49,25 +49,29 @@ function readPayload(result: CallToolResult): AppPayload | null {
 
 function IekeiApp() {
   const [payload, setPayload] = useState<AppPayload | null>(null);
-  const [hostContext, setHostContext] = useState<McpUiHostContext | undefined>();
+  // payload が差し替わるたびに増える。Inner の key にして状態を初期化する。
+  const [payloadVersion, setPayloadVersion] = useState(0);
+  const [hostContextPatch, setHostContextPatch] = useState<McpUiHostContext | undefined>();
+
+  const applyPayload = useCallback((next: AppPayload) => {
+    setPayload(next);
+    setPayloadVersion((v) => v + 1);
+  }, []);
 
   const { app, error } = useApp({
     appInfo: { name: "Iekei Ramen Finder", version: "0.1.0" },
     capabilities: {},
-    onAppCreated: (app) => {
-      app.ontoolresult = async (result) => {
+    onAppCreated: (instance) => {
+      instance.ontoolresult = async (result) => {
         const next = readPayload(result);
-        if (next) setPayload(next);
+        if (next) applyPayload(next);
       };
-      app.onhostcontextchanged = (params) => setHostContext((prev) => ({ ...prev, ...params }));
-      app.onerror = console.error;
-      app.onteardown = async () => ({});
+      instance.onhostcontextchanged = (params) =>
+        setHostContextPatch((prev) => ({ ...prev, ...params }));
+      instance.onerror = console.error;
+      instance.onteardown = async () => ({});
     },
   });
-
-  useEffect(() => {
-    if (app) setHostContext(app.getHostContext());
-  }, [app]);
 
   if (error) {
     return <p className={styles.error}>接続エラー: {error.message}</p>;
@@ -77,10 +81,12 @@ function IekeiApp() {
   }
   return (
     <IekeiAppInner
+      key={payloadVersion}
       app={app}
       payload={payload ?? EMPTY_PAYLOAD}
-      onPayload={setPayload}
-      hostContext={hostContext}
+      onPayload={applyPayload}
+      // 初期値はホストから直接読み、以降の変更分を上書きする。
+      hostContext={{ ...app.getHostContext(), ...hostContextPatch }}
     />
   );
 }
@@ -92,6 +98,10 @@ interface InnerProps {
   hostContext?: McpUiHostContext;
 }
 
+/**
+ * payload ごとに key で作り直されるので、状態は props からそのまま初期化できる。
+ * tool 結果が届くたびにモード・フォーム・選択状態が新しい payload に揃う。
+ */
 function IekeiAppInner({ app, payload, onPayload, hostContext }: InnerProps) {
   const [mode, setMode] = useState<SearchMode>(payload.mode);
   const [busy, setBusy] = useState(false);
@@ -102,17 +112,6 @@ function IekeiAppInner({ app, payload, onPayload, hostContext }: InnerProps) {
     taste: payload.query.taste && payload.query.taste !== "unknown" ? payload.query.taste : "",
     keyword: payload.query.keyword ?? "",
   });
-
-  // tool 結果が届いたらモードとフォームを追従させる。
-  useEffect(() => {
-    setMode(payload.mode);
-    setSelectedId(undefined);
-    setForm({
-      prefecture: payload.query.prefecture ?? "",
-      taste: payload.query.taste && payload.query.taste !== "unknown" ? payload.query.taste : "",
-      keyword: payload.query.keyword ?? "",
-    });
-  }, [payload]);
 
   /**
    * tool を呼ぶ。App 発の呼び出しでは ontoolresult が来ないので、
@@ -162,8 +161,11 @@ function IekeiAppInner({ app, payload, onPayload, hostContext }: InnerProps) {
   const geocode = useCallback(
     async (query: string) => {
       const result = await call("geocode-place", { query });
-      const hits = (result?.structuredContent as { results?: Array<{ label: string; lat: number; lon: number }> })
-        ?.results;
+      const hits = (
+        result?.structuredContent as {
+          results?: Array<{ label: string; lat: number; lon: number }>;
+        }
+      )?.results;
       if (!hits || hits.length === 0) return null;
       const [first] = hits;
       return { lat: first.lat, lon: first.lon, label: first.label.split(",")[0].trim() };

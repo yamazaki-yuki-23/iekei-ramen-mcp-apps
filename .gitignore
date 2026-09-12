@@ -5,3 +5,6 @@ data/osm-raw.json
 src/generated/
 .dev.vars
 .claude/
+e2e-host/
+test-results/
+playwright-report/

@@ -8,7 +8,8 @@ import { createServer } from "./server.js";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Accept, Authorization, Mcp-Session-Id, MCP-Protocol-Version",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Accept, Authorization, Mcp-Session-Id, MCP-Protocol-Version",
   "Access-Control-Expose-Headers": "Mcp-Session-Id",
 };
 
@@ -25,7 +26,10 @@ export default {
     }
 
     if (url.pathname !== "/mcp") {
-      return new Response("Not Found. MCP endpoint is /mcp", { status: 404, headers: CORS_HEADERS });
+      return new Response("Not Found. MCP endpoint is /mcp", {
+        status: 404,
+        headers: CORS_HEADERS,
+      });
     }
 
     // ステートレスなので、リクエストごとにサーバーとトランスポートを作る。
@@ -43,7 +47,11 @@ export default {
     } catch (error) {
       console.error("MCP error:", error);
       return new Response(
-        JSON.stringify({ jsonrpc: "2.0", error: { code: -32603, message: "Internal server error" }, id: null }),
+        JSON.stringify({
+          jsonrpc: "2.0",
+          error: { code: -32603, message: "Internal server error" },
+          id: null,
+        }),
         { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       );
     }

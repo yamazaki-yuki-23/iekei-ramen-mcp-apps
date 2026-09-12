@@ -29,7 +29,9 @@ export function SearchForm({ prefectures, values, onChange, onSubmit, busy, hide
       }}
     >
       <div className={styles.row}>
-        <label className={styles.label} htmlFor="pref">都道府県</label>
+        <label className={styles.label} htmlFor="pref">
+          都道府県
+        </label>
         <select
           id="pref"
           className={styles.select}
@@ -38,7 +40,9 @@ export function SearchForm({ prefectures, values, onChange, onSubmit, busy, hide
         >
           <option value="">すべて</option>
           {prefectures.map((p) => (
-            <option key={p} value={p}>{p}</option>
+            <option key={p} value={p}>
+              {p}
+            </option>
           ))}
         </select>
       </div>
@@ -69,7 +73,9 @@ export function SearchForm({ prefectures, values, onChange, onSubmit, busy, hide
 
       {!hideKeyword && (
         <div className={styles.row}>
-          <label className={styles.label} htmlFor="kw">キーワード</label>
+          <label className={styles.label} htmlFor="kw">
+            キーワード
+          </label>
           <input
             id="kw"
             className={styles.input}

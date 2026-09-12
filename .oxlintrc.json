@@ -1,0 +1,57 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "react", "import"],
+  "env": {
+    "browser": true,
+    "es2024": true,
+    "node": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "warn",
+    "pedantic": "off"
+  },
+  "rules": {
+    "no-console": [
+      "error",
+      {
+        "allow": ["warn", "error", "info"]
+      }
+    ],
+    "typescript/no-explicit-any": "error",
+    "eqeqeq": ["error", "smart"],
+    "no-var": "error",
+    "prefer-const": "error",
+    "react/react-in-jsx-scope": "off",
+    "unicorn/prefer-add-event-listener": "off",
+    "no-underscore-dangle": [
+      "error",
+      {
+        "allow": ["_meta"]
+      }
+    ]
+  },
+  "ignorePatterns": ["dist/**", "src/generated/**", "node_modules/**", "data/**", "e2e-host/**"],
+  "overrides": [
+    {
+      "files": ["src/components/MapView.tsx"],
+      "rules": {
+        "import/no-unassigned-import": "off"
+      }
+    },
+    {
+      "files": ["scripts/**/*.mjs"],
+      "rules": {
+        "no-console": "off",
+        "no-await-in-loop": "off"
+      }
+    },
+    {
+      "files": ["tests/**", "e2e/**"],
+      "rules": {
+        "typescript/no-non-null-assertion": "off"
+      }
+    }
+  ]
+}

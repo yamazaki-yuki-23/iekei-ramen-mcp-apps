@@ -13,7 +13,9 @@ interface Props {
 
 export function ShopList({ shops, ranked, selectedId, onSelect, emptyMessage }: Props) {
   if (shops.length === 0) {
-    return <p className={styles.empty}>{emptyMessage ?? "条件に合う店舗が見つかりませんでした。"}</p>;
+    return (
+      <p className={styles.empty}>{emptyMessage ?? "条件に合う店舗が見つかりませんでした。"}</p>
+    );
   }
 
   return (

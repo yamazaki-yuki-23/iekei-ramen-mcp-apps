@@ -2,9 +2,13 @@
   "name": "iekei-ramen-mcp",
   "version": "0.1.0",
   "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run",
     "data:fetch": "node scripts/fetch-shops.mjs",
     "data:build": "node scripts/build-dataset.mjs",
     "build:ui": "cross-env NODE_ENV=production vite build && node scripts/embed-html.mjs",
@@ -13,12 +17,15 @@
     "dev:worker": "npm run build:ui && wrangler dev",
     "deploy": "npm run build:ui && wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "dev:stdio": "tsx main.ts --stdio"
+    "dev:stdio": "tsx main.ts --stdio",
+    "test:watch": "vitest",
+    "e2e:setup": "node scripts/setup-e2e.mjs",
+    "e2e": "node scripts/setup-e2e.mjs && playwright test",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
   "dependencies": {
     "@modelcontextprotocol/client": "^2.0.0",
     "@modelcontextprotocol/ext-apps": "^2.0.0",
@@ -30,6 +37,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260911.1",
+    "@playwright/test": "^1.63.0",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^22.20.2",
     "@types/react": "^19.3.0",
@@ -37,10 +45,13 @@
     "@vitejs/plugin-react": "^6.1.1",
     "concurrently": "^10.0.5",
     "cross-env": "^10.1.0",
+    "oxfmt": "^0.67.0",
+    "oxlint": "^1.82.0",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",
     "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^4.1.11",
     "wrangler": "^4.131.1"
   }
 }

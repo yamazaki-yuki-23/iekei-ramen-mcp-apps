@@ -53,7 +53,12 @@ export function NearbyPanel({ originLabel, onLocate, onGeocode, busy }: Props) {
   return (
     <div className={styles.form}>
       <div className={styles.row}>
-        <button type="button" className={styles.button} onClick={useCurrentPosition} disabled={busy}>
+        <button
+          type="button"
+          className={styles.button}
+          onClick={useCurrentPosition}
+          disabled={busy}
+        >
           現在地から探す
         </button>
         <span className={styles.meta}>
@@ -62,7 +67,9 @@ export function NearbyPanel({ originLabel, onLocate, onGeocode, busy }: Props) {
       </div>
 
       <div className={styles.row}>
-        <label className={styles.label} htmlFor="place">地名で指定</label>
+        <label className={styles.label} htmlFor="place">
+          地名で指定
+        </label>
         <input
           id="place"
           className={styles.input}

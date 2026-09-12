@@ -28,9 +28,12 @@ export function MapView({ shops, selectedId, onSelect, focus }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
   const markersRef = useRef<Map<string, L.CircleMarker>>(new Map());
-  // 再生成のたびに関数参照が変わるので、最新版を ref 経由で参照する。
+  // マーカーのクリックハンドラは 1 度だけ登録するので、最新の onSelect を
+  // ref 経由で参照する。ref の更新は render 中ではなく effect で行う。
   const onSelectRef = useRef(onSelect);
-  onSelectRef.current = onSelect;
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
 
   // 地図の生成は 1 度だけ。以降はレイヤーだけ差し替える。
   useEffect(() => {
@@ -38,7 +41,8 @@ export function MapView({ shops, selectedId, onSelect, focus }: Props) {
     const map = L.map(containerRef.current, { attributionControl: true }).fitBounds(JAPAN_BOUNDS);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
@@ -104,5 +108,12 @@ export function MapView({ shops, selectedId, onSelect, focus }: Props) {
     };
   }, [selectedId]);
 
-  return <div className={styles.map} ref={containerRef} role="application" aria-label="家系ラーメン店の地図" />;
+  return (
+    <div
+      className={styles.map}
+      ref={containerRef}
+      role="application"
+      aria-label="家系ラーメン店の地図"
+    />
+  );
 }

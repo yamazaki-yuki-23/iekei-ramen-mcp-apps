@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint / Format / Types / Unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # server.ts はビルド済み HTML を import するので、型チェックの前に生成しておく
+      - name: Build UI
+        run: npm run build:ui
+
+      - name: oxlint
+        run: npm run lint
+
+      - name: oxfmt (差分が出たら失敗)
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Worker をバンドルできるか確認
+        run: npx wrangler deploy --dry-run --outdir /tmp/worker-dist
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # 検証ホスト（MCP Apps SDK の basic-host）を取得・ビルドする
+      - name: Cache E2E host
+        id: cache-e2e-host
+        uses: actions/cache@v4
+        with:
+          path: e2e-host
+          key: e2e-host-${{ hashFiles('scripts/setup-e2e.mjs') }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Set up E2E host
+        run: npm run e2e:setup
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: npx playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

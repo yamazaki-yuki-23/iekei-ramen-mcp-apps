@@ -28,19 +28,57 @@ const SHOPS = shopsData as Shop[];
 
 /** tool の入力スキーマ用。データに 0 件の県でも選べるよう全 47 都道府県を固定で持つ。 */
 const ALL_PREFECTURES = [
-  "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
-  "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
-  "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県",
-  "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県",
-  "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県",
-  "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県",
-  "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
+  "北海道",
+  "青森県",
+  "岩手県",
+  "宮城県",
+  "秋田県",
+  "山形県",
+  "福島県",
+  "茨城県",
+  "栃木県",
+  "群馬県",
+  "埼玉県",
+  "千葉県",
+  "東京都",
+  "神奈川県",
+  "新潟県",
+  "富山県",
+  "石川県",
+  "福井県",
+  "山梨県",
+  "長野県",
+  "岐阜県",
+  "静岡県",
+  "愛知県",
+  "三重県",
+  "滋賀県",
+  "京都府",
+  "大阪府",
+  "兵庫県",
+  "奈良県",
+  "和歌山県",
+  "鳥取県",
+  "島根県",
+  "岡山県",
+  "広島県",
+  "山口県",
+  "徳島県",
+  "香川県",
+  "愛媛県",
+  "高知県",
+  "福岡県",
+  "佐賀県",
+  "長崎県",
+  "熊本県",
+  "大分県",
+  "宮崎県",
+  "鹿児島県",
+  "沖縄県",
 ] as const;
 
 /** UI のプルダウン用。実際に店舗が 1 件以上ある県だけ。 */
-const PREFECTURES_WITH_SHOPS = ALL_PREFECTURES.filter((p) =>
-  SHOPS.some((s) => s.prefecture === p),
-);
+const PREFECTURES_WITH_SHOPS = ALL_PREFECTURES.filter((p) => SHOPS.some((s) => s.prefecture === p));
 
 const resourceUri = "ui://iekei-ramen/mcp-app.html";
 
@@ -53,10 +91,7 @@ const uiResourceMeta = {
   ui: {
     csp: {
       connectDomains: ["https://*.openstreetmap.org"],
-      resourceDomains: [
-        "https://*.openstreetmap.org",
-        "https://*.tile.openstreetmap.org",
-      ],
+      resourceDomains: ["https://*.openstreetmap.org", "https://*.tile.openstreetmap.org"],
     },
     permissions: { geolocation: {} },
     prefersBorder: true,
@@ -67,20 +102,15 @@ const uiResourceMeta = {
 function summarize(shops: Shop[], heading: string, withDistance = false): string {
   if (shops.length === 0) return `${heading}\n該当する店舗は見つかりませんでした。`;
   const lines = shops.map((s, i) => {
-    const dist = withDistance && s.distanceKm !== undefined
-      ? ` / ${formatDistance(s.distanceKm)}`
-      : "";
+    const dist =
+      withDistance && s.distanceKm !== undefined ? ` / ${formatDistance(s.distanceKm)}` : "";
     const where = [s.prefecture, s.city, s.address].filter(Boolean).join(" ");
     return `${i + 1}. ${s.name} (${TASTES[s.taste].label}${dist})\n   ${where}${s.openingHours ? `\n   営業: ${s.openingHours}` : ""}`;
   });
   return `${heading}\n\n${lines.join("\n")}`;
 }
 
-function filterShops(opts: {
-  prefecture?: string;
-  taste?: TasteKey;
-  keyword?: string;
-}): Shop[] {
+function filterShops(opts: { prefecture?: string; taste?: TasteKey; keyword?: string }): Shop[] {
   const kw = opts.keyword?.trim().toLowerCase();
   return SHOPS.filter((s) => {
     if (opts.prefecture && s.prefecture !== opts.prefecture) return false;
@@ -122,10 +152,7 @@ export function createServer(): McpServer {
       description:
         "都道府県・味の傾向・キーワードで全国の家系ラーメン店を絞り込み、検索フォーム付きの一覧 UI を表示する。条件を指定しなければ全国の一覧を返す。",
       inputSchema: z.object({
-        prefecture: z
-          .enum(ALL_PREFECTURES)
-          .optional()
-          .describe("都道府県名（例: 神奈川県）"),
+        prefecture: z.enum(ALL_PREFECTURES).optional().describe("都道府県名（例: 神奈川県）"),
         taste: z
           .enum(["rich", "creamy", "chain"])
           .optional()
@@ -138,9 +165,8 @@ export function createServer(): McpServer {
     async ({ prefecture, taste, keyword }): Promise<CallToolResult> => {
       const all = filterShops({ prefecture, taste, keyword });
       const shops = all.slice(0, 200);
-      const cond = [prefecture, taste && TASTES[taste].label, keyword]
-        .filter(Boolean)
-        .join(" / ") || "全国";
+      const cond =
+        [prefecture, taste && TASTES[taste].label, keyword].filter(Boolean).join(" / ") || "全国";
       const payload: Omit<AppPayload, "prefectures"> = {
         mode: "form",
         shops,
@@ -149,7 +175,10 @@ export function createServer(): McpServer {
       };
       return {
         content: [
-          { type: "text", text: summarize(shops.slice(0, 10), `【${cond}】${all.length} 件ヒット（上位 10 件）`) },
+          {
+            type: "text",
+            text: summarize(shops.slice(0, 10), `【${cond}】${all.length} 件ヒット（上位 10 件）`),
+          },
         ],
         structuredContent: structured(payload),
       };
@@ -178,7 +207,7 @@ export function createServer(): McpServer {
         ...s,
         distanceKm: Number(distanceKm(lat, lon, s.lat, s.lon).toFixed(3)),
       }))
-        .sort((a, b) => a.distanceKm - b.distanceKm)
+        .toSorted((a, b) => a.distanceKm - b.distanceKm)
         .slice(0, limit);
       const payload: Omit<AppPayload, "prefectures"> = {
         mode: "nearby",
@@ -188,7 +217,14 @@ export function createServer(): McpServer {
       };
       return {
         content: [
-          { type: "text", text: summarize(ranked, `${label ?? `${lat.toFixed(4)}, ${lon.toFixed(4)}`} から近い家系ラーメン ${ranked.length} 件`, true) },
+          {
+            type: "text",
+            text: summarize(
+              ranked,
+              `${label ?? `${lat.toFixed(4)}, ${lon.toFixed(4)}`} から近い家系ラーメン ${ranked.length} 件`,
+              true,
+            ),
+          },
         ],
         structuredContent: structured(payload),
       };
@@ -204,10 +240,7 @@ export function createServer(): McpServer {
       description:
         "全国の家系ラーメン店を日本地図上にプロットして表示する。都道府県や味で絞り込んだ状態で開くこともできる。",
       inputSchema: z.object({
-        prefecture: z
-          .enum(ALL_PREFECTURES)
-          .optional()
-          .describe("この都道府県にズームして表示する"),
+        prefecture: z.enum(ALL_PREFECTURES).optional().describe("この都道府県にズームして表示する"),
         taste: z.enum(["rich", "creamy", "chain"]).optional().describe("味の傾向で絞り込む"),
       }),
       outputSchema: PayloadSchema,
@@ -243,7 +276,12 @@ export function createServer(): McpServer {
       inputSchema: z.object({ query: z.string().describe("地名・駅名・住所") }),
     },
     async ({ query }): Promise<CallToolResult> => {
-      const params = new URLSearchParams({ q: query, format: "json", limit: "3", "accept-language": "ja" });
+      const params = new URLSearchParams({
+        q: query,
+        format: "json",
+        limit: "3",
+        "accept-language": "ja",
+      });
       const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
         headers: { "User-Agent": "iekei-ramen-mcp-app/0.1" },
       });
@@ -253,7 +291,11 @@ export function createServer(): McpServer {
           isError: true,
         };
       }
-      const results = (await res.json()) as Array<{ display_name: string; lat: string; lon: string }>;
+      const results = (await res.json()) as Array<{
+        display_name: string;
+        lat: string;
+        lon: string;
+      }>;
       if (results.length === 0) {
         return { content: [{ type: "text", text: `「${query}」は見つかりませんでした。` }] };
       }
