@@ -24,7 +24,8 @@
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "knip": "knip"
+    "knip": "knip",
+    "capture": "node scripts/setup-e2e.mjs && playwright test e2e/capture.spec.ts && node scripts/make-demo-gif.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/client": "^2.0.0",

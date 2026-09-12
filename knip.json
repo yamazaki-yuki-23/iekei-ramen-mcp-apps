@@ -7,5 +7,10 @@
     "tests/**/*.test.ts",
     "e2e/**/*.spec.ts"
   ],
-  "project": ["**/*.{ts,tsx,mjs}"]
+  "project": [
+    "**/*.{ts,tsx,mjs}"
+  ],
+  "ignoreBinaries": [
+    "ffmpeg"
+  ]
 }

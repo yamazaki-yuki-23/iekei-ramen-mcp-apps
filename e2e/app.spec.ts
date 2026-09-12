@@ -1,5 +1,5 @@
 /**
- * MCP App の E2E。
+ * MCP Apps の E2E。
  * 実ブラウザ・実ホスト・実 MCP サーバーを通して 3 モードを操作する。
  */
 import { expect, test } from "@playwright/test";

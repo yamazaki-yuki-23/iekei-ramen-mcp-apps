@@ -1,7 +1,24 @@
-# 家系ラーメンを探す MCP App
+# 家系ラーメンを探す MCP Apps
+
+[![CI](https://github.com/yamazaki-yuki-23/iekei-ramen-mcp-apps/actions/workflows/ci.yml/badge.svg)](https://github.com/yamazaki-yuki-23/iekei-ramen-mcp-apps/actions/workflows/ci.yml)
 
 家系ラーメン店を「検索フォーム」「現在地から探す」「地図から探す」の 3 モードで
-探せる MCP App です。Claude などの MCP Apps 対応ホストの中で UI が動きます。
+探せる MCP Apps です。Claude などの MCP Apps 対応ホストの中で UI が動きます。
+
+![3 モードを切り替えて家系ラーメンを探すデモ](docs/demo.gif)
+
+| 検索フォーム                                                 | 現在地から探す                                    | 地図から探す                                       |
+| ------------------------------------------------------------ | ------------------------------------------------- | -------------------------------------------------- |
+| ![都道府県と味の傾向で絞り込む検索フォーム](docs/search.png) | ![横浜駅から近い順に 5 件の一覧](docs/nearby.png) | ![全国 646 店舗を日本地図にプロット](docs/map.png) |
+
+|                    |                                                      |
+| ------------------ | ---------------------------------------------------- |
+| **検索フォーム**   | 都道府県・味の傾向・キーワードで全国から絞り込む     |
+| **現在地から探す** | 位置情報または地名から、近い順に 5 店舗を提案する    |
+| **地図から探す**   | 全国の店舗を日本地図にプロットし、ピンから詳細を開く |
+
+スクリーンショットと GIF は `npm run capture` で自動生成しています
+（[e2e/capture.spec.ts](e2e/capture.spec.ts)）。
 
 ## 構成
 
@@ -56,6 +73,20 @@ Cloudflare のローカルランタイム（workerd）で確認する場合:
 ```bash
 npm run dev:worker
 ```
+
+## テスト・静的解析
+
+```bash
+npm test            # vitest（54 件）距離計算・家系判定・MCP サーバーの結合テスト
+npm run e2e         # playwright（17 件）実ブラウザで 3 モードを操作する E2E
+npm run lint        # oxlint
+npm run format      # oxfmt（CI では format:check）
+npm run knip        # 未使用のコード・依存の検出
+```
+
+E2E は MCP Apps SDK の basic-host を `e2e-host/` に取得して使います
+（`npm run e2e:setup` が自動で行います）。
+すべて [GitHub Actions](.github/workflows/ci.yml) で実行しています。
 
 ## Cloudflare にデプロイ
 

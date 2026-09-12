@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-家系ラーメンを探す MCP App。Cloudflare Workers にデプロイし、Claude などの
+家系ラーメンを探す MCP Apps。Cloudflare Workers にデプロイし、Claude などの
 MCP Apps 対応ホストの中で UI が動く。
 
 ## コマンド
@@ -13,15 +13,21 @@ npm run dev:worker  # workerd ランタイムで起動（Cloudflare 本番に近
 npm run deploy      # ビルドして wrangler deploy
 npm run data:fetch  # OSM から再取得（20〜30 分。通常は実行不要）
 npm run data:build  # osm-raw.json → shops.json の生成
+
+npm test            # vitest（距離計算・家系判定・MCP サーバーの結合テスト）
+npm run e2e         # playwright（basic-host 経由の実ブラウザテスト）
+npm run lint        # oxlint
+npm run format      # oxfmt（--check は format:check）
+npm run knip        # 未使用のコード・依存の検出
 ```
 
 ポートは 3031。3001 はこの環境で別プロセスが使っている。
 
 ## アーキテクチャ
 
-### MCP App の 2 部構成
+### MCP Apps の 2 部構成
 
-tool と resource を `_meta.ui.resourceUri` で結び付けるのが MCP App の基本形。
+tool と resource を `_meta.ui.resourceUri` で結び付けるのが MCP Apps の基本形。
 UI 付き tool を足すときは、必ず既存の `resourceUri` を指すこと（UI は 1 つで
 モードを切り替える設計なので、リソースを増やす必要はない）。
 
@@ -87,17 +93,35 @@ DB もストレージも使わない。実行時の書き込みは無い。
 外部参照するため、単一 HTML に固められない。アイコンを使いたくなったら
 data URI にすること。
 
+## テスト
+
+| 種類            | 場所     | 対象                                                         |
+| --------------- | -------- | ------------------------------------------------------------ |
+| ユニット / 結合 | `tests/` | 距離計算、家系判定、MCP サーバー（InMemoryTransport で直結） |
+| E2E             | `e2e/`   | 実ブラウザ + basic-host + 実サーバーで 3 モードを操作        |
+
+`npm run e2e` は `e2e-host/` に MCP Apps SDK の basic-host を取得して使う。
+
+- **ドット始まりのディレクトリに置かないこと。** express の `sendFile` が dotfile 扱いで
+  404 を返すため、`.e2e/` ではなく `e2e-host/` にしている。
+- basic-host の `npm run start` は bun を要求するので、Playwright からは
+  ビルド済みの `serve.ts` を tsx で直接起動している。
+- サンドボックスの origin が `http://localhost:8081` にハードコードされているため、
+  ホスト側のポートは 8080 / 8081 から変えられない。
+
+アプリはサンドボックス iframe の中の iframe で動くので、E2E のロケータは
+`page.frameLocator("iframe").first().frameLocator("iframe").first()` になる。
+この出入りは `e2e/helpers.ts` に隔離してある。
+
 ## 動作確認
 
 ```bash
 npm run dev
 # 別ターミナル
-cd /tmp/mcp-ext-apps/examples/basic-host && SERVERS='["http://localhost:3031/mcp"]' npm run start
+npm run e2e:setup
+SERVERS='["http://localhost:3031/mcp"]' npx tsx e2e-host/ext-apps/examples/basic-host/serve.ts
 # → http://localhost:8080
 ```
-
-basic-host が無ければ
-`git clone --depth 1 https://github.com/modelcontextprotocol/ext-apps.git /tmp/mcp-ext-apps`。
 
 Cloudflare 側の確認は `npm run dev:worker`。バンドルサイズは gzip で 3 MiB が無料枠の上限、
 現状 407 KiB。

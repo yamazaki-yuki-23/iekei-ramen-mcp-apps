@@ -1,5 +1,5 @@
 /**
- * 家系ラーメンを探す MCP App サーバー。
+ * 家系ラーメンを探す MCP Apps サーバー。
  *
  * 3 つのモードをそれぞれ tool として公開し、すべて同じ UI リソースを描画する:
  *   search-iekei-ramen       検索フォーム（都道府県・味・キーワード）
@@ -283,7 +283,7 @@ export function createServer(): McpServer {
         "accept-language": "ja",
       });
       const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-        headers: { "User-Agent": "iekei-ramen-mcp-app/0.1" },
+        headers: { "User-Agent": "iekei-ramen-mcp-apps/0.1" },
       });
       if (!res.ok) {
         return {

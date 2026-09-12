@@ -23,7 +23,7 @@ for (const pref of TARGETS) {
     method: "POST",
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
-      "User-Agent": "iekei-ramen-mcp-app/0.1 (data build script)",
+      "User-Agent": "iekei-ramen-mcp-apps/0.1 (data build script)",
     },
     body: query(pref),
   });
