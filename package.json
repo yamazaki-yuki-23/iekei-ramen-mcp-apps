@@ -25,7 +25,7 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "knip": "knip",
-    "capture": "node scripts/setup-e2e.mjs && playwright test e2e/capture.spec.ts && node scripts/make-demo-gif.mjs"
+    "capture": "node scripts/setup-e2e.mjs && playwright test --config=pw-capture.config.ts && node scripts/make-demo-gif.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/client": "^2.0.0",

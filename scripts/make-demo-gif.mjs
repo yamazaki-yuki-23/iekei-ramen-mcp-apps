@@ -30,13 +30,19 @@ function findDemoVideo(dir) {
 const video = findDemoVideo(resultsDir);
 if (!video) throw new Error("デモ動画が見つかりません。先に npm run capture を実行してください。");
 
+// 冒頭はホストの読み込み中が映るので飛ばす。GIF の 1 コマ目が
+// そのまま静止画として見えるため、アプリが出た状態から始める。
+// -ss での seek は webm のキーフレーム間隔に引きずられて効かないので、
+// フィルタの trim で確実に落とす。
+const SKIP_HEAD_SEC = 3.5;
+
 const palette = path.join(root, "test-results", "palette.png");
 // README で読み込ませるので、見やすさを保ちつつ数 MB に収まる設定にする。
-const filters = "fps=6,scale=640:-1:flags=lanczos";
+const filters = `trim=start=${SKIP_HEAD_SEC},setpts=PTS-STARTPTS,fps=5,scale=820:-1:flags=lanczos`;
 
 execFileSync(
   "ffmpeg",
-  ["-y", "-i", video, "-vf", `${filters},palettegen=stats_mode=diff`, palette],
+  ["-y", "-i", video, "-vf", `${filters},palettegen=stats_mode=full`, palette],
   { stdio: "inherit" },
 );
 
@@ -49,7 +55,7 @@ execFileSync(
     "-i",
     palette,
     "-lavfi",
-    `${filters}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3`,
+    `${filters}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle`,
     out,
   ],
   { stdio: "inherit" },

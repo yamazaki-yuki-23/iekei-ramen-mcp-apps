@@ -8,3 +8,5 @@ src/generated/
 e2e-host/
 test-results/
 playwright-report/
+test-results-shoot/
+shots/
