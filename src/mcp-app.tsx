@@ -1,0 +1,314 @@
+/**
+ * 家系ラーメンを探す MCP App。
+ *
+ * 3 モードを 1 つの UI にまとめている:
+ *   form    検索フォームで絞り込む
+ *   nearby  現在地（または地名）から近い順に 5 件
+ *   map     日本地図にプロット
+ *
+ * 絞り込みは UI 内で完結させず、毎回サーバーの tool を呼び直す。
+ * そうするとモデル側にも結果が渡り、会話を続けられる。
+ */
+import type { CallToolResult } from "@modelcontextprotocol/client";
+import type { App, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
+import { useApp } from "@modelcontextprotocol/ext-apps/react";
+import { StrictMode, useCallback, useEffect, useMemo, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { MapView } from "./components/MapView";
+import { NearbyPanel } from "./components/NearbyPanel";
+import { SearchForm, type FormValues } from "./components/SearchForm";
+import { ShopList } from "./components/ShopList";
+import type { AppPayload, SearchMode, Shop } from "./lib/types";
+import styles from "./mcp-app.module.css";
+
+const MODES: Array<{ key: SearchMode; label: string }> = [
+  { key: "form", label: "検索フォーム" },
+  { key: "nearby", label: "現在地から探す" },
+  { key: "map", label: "地図から探す" },
+];
+
+const TOOL_BY_MODE: Record<SearchMode, string> = {
+  form: "search-iekei-ramen",
+  nearby: "find-nearby-iekei-ramen",
+  map: "show-iekei-ramen-map",
+};
+
+const EMPTY_PAYLOAD: AppPayload = {
+  mode: "form",
+  shops: [],
+  total: 0,
+  query: {},
+  prefectures: [],
+};
+
+function readPayload(result: CallToolResult): AppPayload | null {
+  const sc = result.structuredContent as unknown;
+  if (!sc || typeof sc !== "object" || !("shops" in sc)) return null;
+  return sc as AppPayload;
+}
+
+function IekeiApp() {
+  const [payload, setPayload] = useState<AppPayload | null>(null);
+  const [hostContext, setHostContext] = useState<McpUiHostContext | undefined>();
+
+  const { app, error } = useApp({
+    appInfo: { name: "Iekei Ramen Finder", version: "0.1.0" },
+    capabilities: {},
+    onAppCreated: (app) => {
+      app.ontoolresult = async (result) => {
+        const next = readPayload(result);
+        if (next) setPayload(next);
+      };
+      app.onhostcontextchanged = (params) => setHostContext((prev) => ({ ...prev, ...params }));
+      app.onerror = console.error;
+      app.onteardown = async () => ({});
+    },
+  });
+
+  useEffect(() => {
+    if (app) setHostContext(app.getHostContext());
+  }, [app]);
+
+  if (error) {
+    return <p className={styles.error}>接続エラー: {error.message}</p>;
+  }
+  if (!app) {
+    return <p className={styles.status}>読み込み中…</p>;
+  }
+  return (
+    <IekeiAppInner
+      app={app}
+      payload={payload ?? EMPTY_PAYLOAD}
+      onPayload={setPayload}
+      hostContext={hostContext}
+    />
+  );
+}
+
+interface InnerProps {
+  app: App;
+  payload: AppPayload;
+  onPayload: (payload: AppPayload) => void;
+  hostContext?: McpUiHostContext;
+}
+
+function IekeiAppInner({ app, payload, onPayload, hostContext }: InnerProps) {
+  const [mode, setMode] = useState<SearchMode>(payload.mode);
+  const [busy, setBusy] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | undefined>();
+  const [failure, setFailure] = useState<string | null>(null);
+  const [form, setForm] = useState<FormValues>({
+    prefecture: payload.query.prefecture ?? "",
+    taste: payload.query.taste && payload.query.taste !== "unknown" ? payload.query.taste : "",
+    keyword: payload.query.keyword ?? "",
+  });
+
+  // tool 結果が届いたらモードとフォームを追従させる。
+  useEffect(() => {
+    setMode(payload.mode);
+    setSelectedId(undefined);
+    setForm({
+      prefecture: payload.query.prefecture ?? "",
+      taste: payload.query.taste && payload.query.taste !== "unknown" ? payload.query.taste : "",
+      keyword: payload.query.keyword ?? "",
+    });
+  }, [payload]);
+
+  /**
+   * tool を呼ぶ。App 発の呼び出しでは ontoolresult が来ないので、
+   * 戻り値に payload が入っていればここで反映する。
+   */
+  const call = useCallback(
+    async (name: string, args: Record<string, unknown>) => {
+      setBusy(true);
+      setFailure(null);
+      try {
+        const result = await app.callServerTool({ name, arguments: args });
+        if (result.isError) {
+          setFailure("検索に失敗しました。もう一度お試しください。");
+          return result;
+        }
+        const next = readPayload(result);
+        if (next) onPayload(next);
+        return result;
+      } catch (e) {
+        setFailure(e instanceof Error ? e.message : String(e));
+        return null;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [app, onPayload],
+  );
+
+  const runSearch = useCallback(
+    (next: FormValues, targetMode: "form" | "map") => {
+      void call(TOOL_BY_MODE[targetMode], {
+        prefecture: next.prefecture || undefined,
+        taste: next.taste || undefined,
+        ...(targetMode === "form" ? { keyword: next.keyword || undefined } : {}),
+      });
+    },
+    [call],
+  );
+
+  const runNearby = useCallback(
+    (lat: number, lon: number, label?: string) => {
+      void call("find-nearby-iekei-ramen", { lat, lon, limit: 5, label });
+    },
+    [call],
+  );
+
+  const geocode = useCallback(
+    async (query: string) => {
+      const result = await call("geocode-place", { query });
+      const hits = (result?.structuredContent as { results?: Array<{ label: string; lat: number; lon: number }> })
+        ?.results;
+      if (!hits || hits.length === 0) return null;
+      const [first] = hits;
+      return { lat: first.lat, lon: first.lon, label: first.label.split(",")[0].trim() };
+    },
+    [call],
+  );
+
+  const switchMode = useCallback(
+    (next: SearchMode) => {
+      setMode(next);
+      setSelectedId(undefined);
+      if (next === "form" || next === "map") runSearch(form, next);
+    },
+    [form, runSearch],
+  );
+
+  const openInMaps = useCallback(
+    (shop: Shop) => {
+      void app.openLink({
+        url: `https://www.openstreetmap.org/?mlat=${shop.lat}&mlon=${shop.lon}#map=18/${shop.lat}/${shop.lon}`,
+      });
+    },
+    [app],
+  );
+
+  // 現在地モードは基準地点が決まるまで結果を出さない
+  // （直前のモードの payload が順位付きで残ってしまうため）。
+  const awaitingOrigin = mode === "nearby" && payload.query.origin === undefined;
+
+  const heading = useMemo(() => {
+    if (mode === "nearby") {
+      return payload.query.origin
+        ? `${payload.query.origin.label ?? "現在地"}の近くの家系ラーメン`
+        : "現在地から家系ラーメンを探す";
+    }
+    return `${payload.query.prefecture ?? "全国"}の家系ラーメン`;
+  }, [mode, payload.query]);
+
+  const shops = awaitingOrigin ? [] : payload.shops;
+  const hasMore = !awaitingOrigin && payload.total > shops.length;
+
+  return (
+    <main
+      className={styles.main}
+      style={{
+        paddingTop: hostContext?.safeAreaInsets?.top,
+        paddingRight: hostContext?.safeAreaInsets?.right,
+        paddingBottom: hostContext?.safeAreaInsets?.bottom,
+        paddingLeft: hostContext?.safeAreaInsets?.left,
+      }}
+    >
+      <div className={styles.header}>
+        <h1 className={styles.title}>🍜 {heading}</h1>
+        {!awaitingOrigin && (
+          <span className={styles.count}>
+            {payload.total} 件{hasMore ? `（${shops.length} 件表示）` : ""}
+          </span>
+        )}
+      </div>
+
+      <div className={styles.tabs} role="tablist">
+        {MODES.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={mode === key}
+            className={`${styles.tab} ${mode === key ? styles.tabActive : ""}`}
+            onClick={() => switchMode(key)}
+            disabled={busy}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {mode === "form" && (
+        <SearchForm
+          prefectures={payload.prefectures}
+          values={form}
+          onChange={setForm}
+          onSubmit={() => runSearch(form, "form")}
+          busy={busy}
+        />
+      )}
+
+      {mode === "nearby" && (
+        <NearbyPanel
+          originLabel={payload.query.origin?.label}
+          onLocate={runNearby}
+          onGeocode={geocode}
+          busy={busy}
+        />
+      )}
+
+      {mode === "map" && (
+        <SearchForm
+          prefectures={payload.prefectures}
+          values={{ ...form, keyword: "" }}
+          onChange={(v) => {
+            setForm(v);
+            runSearch(v, "map");
+          }}
+          onSubmit={() => runSearch(form, "map")}
+          busy={busy}
+          hideKeyword
+        />
+      )}
+
+      {failure && <p className={styles.error}>{failure}</p>}
+
+      {mode === "map" ? (
+        <div className={styles.mapLayout}>
+          <MapView shops={shops} selectedId={selectedId} onSelect={(s) => setSelectedId(s.id)} />
+          <ShopList
+            shops={selectedId ? shops.filter((s) => s.id === selectedId) : shops.slice(0, 20)}
+            selectedId={selectedId}
+            onSelect={openInMaps}
+            emptyMessage="この条件では地図に表示できる店舗がありません。"
+          />
+        </div>
+      ) : (
+        <ShopList
+          shops={shops}
+          ranked={mode === "nearby"}
+          selectedId={selectedId}
+          onSelect={openInMaps}
+          emptyMessage={
+            mode === "nearby"
+              ? "現在地を指定すると近い順に 5 件表示します。"
+              : "条件に合う店舗が見つかりませんでした。"
+          }
+        />
+      )}
+
+      <p className={styles.footnote}>
+        店舗データは OpenStreetMap（ODbL）由来。「家系の可能性」は店名から推定したもので、
+        味の傾向は既知のブランドから割り当てた参考値です。営業時間は変わることがあるため訪問前にご確認ください。
+      </p>
+    </main>
+  );
+}
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <IekeiApp />
+  </StrictMode>,
+);

@@ -1,0 +1,282 @@
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-background-primary);
+  min-height: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-heading-lg-size);
+  line-height: var(--font-heading-lg-line-height);
+  font-weight: var(--font-weight-bold);
+}
+
+.count {
+  color: var(--color-text-muted);
+  font-size: var(--font-heading-sm-size);
+}
+
+/* --- モード切り替えタブ --- */
+.tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  background: var(--color-surface-muted);
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-xs);
+}
+
+.tab {
+  flex: 1;
+  padding: var(--spacing-sm);
+  border: none;
+  border-radius: calc(var(--border-radius-md) - 2px);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-heading-sm-size);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab:hover:not(.tabActive) {
+  background: var(--color-accent-soft);
+}
+
+.tabActive {
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+/* --- フォーム --- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.row {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.label {
+  font-size: var(--font-heading-sm-size);
+  color: var(--color-text-muted);
+  min-width: 5.5em;
+}
+
+.select,
+.input {
+  flex: 1;
+  min-width: 10rem;
+  padding: var(--spacing-sm);
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+.select:focus-visible,
+.input:focus-visible,
+.tab:focus-visible,
+.button:focus-visible,
+.chip:focus-visible {
+  outline: 2px solid var(--color-ring-primary);
+  outline-offset: 1px;
+}
+
+.chips {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-heading-sm-size);
+  cursor: pointer;
+}
+
+.chipActive {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-text-on-accent);
+}
+
+.button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  border-radius: var(--border-radius-md);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.buttonSecondary {
+  composes: button;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: var(--border-width-regular) solid var(--color-border);
+  font-weight: var(--font-weight-normal);
+}
+
+/* --- 店舗リスト --- */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 26rem;
+  overflow-y: auto;
+}
+
+.card {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.card:hover {
+  border-color: var(--color-accent);
+}
+
+.cardSelected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.rank {
+  font-size: var(--font-heading-lg-size);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent);
+  min-width: 1.6em;
+  text-align: center;
+}
+
+.cardBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shopName {
+  font-weight: var(--font-weight-bold);
+}
+
+.meta {
+  font-size: var(--font-heading-sm-size);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.badges {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border: var(--border-width-regular) solid var(--color-accent);
+}
+
+.badgeMuted {
+  composes: badge;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.distance {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+
+/* --- 地図 --- */
+.map {
+  height: 24rem;
+  width: 100%;
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  background: var(--color-surface-muted);
+}
+
+.mapLayout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* --- 状態表示 --- */
+.empty,
+.status {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--border-radius-md);
+}
+
+.error {
+  composes: status;
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  border-style: solid;
+}
+
+.footnote {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.footnote a {
+  color: inherit;
+}
