@@ -14,8 +14,9 @@ const HOST_PORT = 8080;
 
 export default defineConfig({
   testDir: "./e2e",
-  // スクリーンショット撮影は CI では回さない（npm run capture から実行する）
-  testIgnore: ["**/capture.spec.ts"],
+  // 撮影系は検証ではないので通常実行から外す。
+  // capture 系は npm run capture、shoot は pw-shoot.config.ts から動かす。
+  testIgnore: ["**/capture*.spec.ts", "**/shoot.spec.ts"],
   timeout: 60_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
