@@ -36,7 +36,7 @@ export const PayloadSchema = z.object({
         lat: z.number(),
         lon: z.number(),
         label: z.string().optional(),
-        source: z.enum(["precise", "host", "place"]),
+        source: z.enum(["precise", "host", "edge", "place"]),
       })
       .optional(),
   }),

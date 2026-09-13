@@ -45,16 +45,18 @@ export interface Origin {
   /**
    * precise … ブラウザの位置情報（数十 m）
    * host    … ホストが渡してくる大まかな位置（市区町村レベル）
+   * edge    … 接続元 IP からの推定（市区町村レベル、ホストが中継すると外れる）
    * place   … 地名入力をジオコーディングした結果
    */
   source: OriginSource;
 }
 
-export type OriginSource = "precise" | "host" | "place";
+export type OriginSource = "precise" | "host" | "edge" | "place";
 
 export const ORIGIN_NOTES: Record<OriginSource, string> = {
   precise: "現在地",
   host: "だいたいの位置（市区町村レベル）",
+  edge: "接続元からの推定（市区町村レベル）",
   place: "指定した地名",
 };
 

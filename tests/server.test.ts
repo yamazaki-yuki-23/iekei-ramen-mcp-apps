@@ -211,13 +211,20 @@ describe("find-nearby-iekei-ramen", () => {
     expect(text).toContain("だいたいの位置");
   });
 
+  it("接続元からの位置照会は環境変数で止められる", () => {
+    // 外部通信を伴うので、テストでは vitest.config.ts で空にしている。
+    // この前提が崩れると「位置が無い」ケースのテストが実ネットワークを叩く。
+    expect(process.env.IEKEI_LOCATION_ENDPOINT).toBe("");
+  });
+
   it("座標もホストの現在地も無ければ空で返し、地名入力を促す", async () => {
     const { payload, text, isError } = await callApp("find-nearby-iekei-ramen", { limit: 5 });
 
     expect(isError).toBeFalsy();
     expect(payload.query.origin).toBeUndefined();
     expect(payload.shops).toHaveLength(0);
-    expect(text).toContain("地名を指定してください");
+    expect(text).toContain("現在地を特定できませんでした");
+    expect(text).toContain("geocode-place");
   });
 
   it("ホストが座標を文字列で送ってきても使える", async () => {

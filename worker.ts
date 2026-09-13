@@ -25,6 +25,22 @@ export default {
       return new Response("ok", { headers: CORS_HEADERS });
     }
 
+    // 接続元のおおよその位置を返す。
+    // stdio で動くローカルサーバーには HTTP リクエストが無く、Cloudflare が付ける
+    // 位置情報を読めないため、ここへ問い合わせて代わりに取得する。
+    if (url.pathname === "/whereami") {
+      const cf = (request as { cf?: Record<string, unknown> }).cf;
+      return new Response(
+        JSON.stringify({
+          latitude: cf?.latitude ?? null,
+          longitude: cf?.longitude ?? null,
+          city: cf?.city ?? null,
+          region: cf?.region ?? null,
+        }),
+        { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+      );
+    }
+
     if (url.pathname !== "/mcp") {
       return new Response("Not Found. MCP endpoint is /mcp", {
         status: 404,

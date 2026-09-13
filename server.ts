@@ -156,6 +156,64 @@ function toCoordinate(value: unknown, max: number): number | undefined {
   return n;
 }
 
+/**
+ * Cloudflare が付けてくる接続元の位置情報。
+ *
+ * ホストが位置を渡してこない場合（Claude など）の最後の手段。
+ * 値は `request.cf` に入り、緯度経度は文字列で来る。
+ * ホストがサーバー側から中継していると、その中継元の位置になってしまうので
+ * あくまで最後に試す。
+ */
+/**
+ * stdio 実行時に接続元の位置を引くためのエンドポイント。
+ * HTTP で動いていれば request.cf を直接読めるので、そちらでは使わない。
+ * 空文字を設定すると問い合わせ自体を行わない（テストはこれで外部通信を止める）。
+ */
+const LOCATION_ENDPOINT =
+  globalThis.process?.env?.IEKEI_LOCATION_ENDPOINT ??
+  "https://iekei-ramen-mcp.yamazaki-dev.workers.dev/whereami";
+
+/** プロセスが生きている間は使い回す（同じ場所から何度も引く意味がない）。 */
+let edgeLocationCache: Origin | null | undefined;
+
+/** 位置照会エンドポイントに問い合わせる。失敗したら null を覚えて以後は諦める。 */
+async function fetchEdgeLocation(): Promise<Origin | undefined> {
+  if (!LOCATION_ENDPOINT) return undefined;
+  if (edgeLocationCache !== undefined) return edgeLocationCache ?? undefined;
+  try {
+    const res = await fetch(LOCATION_ENDPOINT, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) throw new Error(String(res.status));
+    const cf = (await res.json()) as Record<string, unknown>;
+    const lat = toCoordinate(cf.latitude, 90);
+    const lon = toCoordinate(cf.longitude, 180);
+    edgeLocationCache =
+      lat === undefined || lon === undefined
+        ? null
+        : {
+            lat,
+            lon,
+            label: [cf.city, cf.region].filter((v) => typeof v === "string").join(" ") || undefined,
+            source: "edge",
+          };
+  } catch {
+    edgeLocationCache = null;
+  }
+  return edgeLocationCache ?? undefined;
+}
+
+function readEdgeLocation(request: Request | undefined): Origin | undefined {
+  const cf = (request as { cf?: Record<string, unknown> } | undefined)?.cf;
+  const lat = toCoordinate(cf?.latitude, 90);
+  const lon = toCoordinate(cf?.longitude, 180);
+  if (lat === undefined || lon === undefined) return undefined;
+  return {
+    lat,
+    lon,
+    label: [cf?.city, cf?.region].filter((v) => typeof v === "string").join(" ") || undefined,
+    source: "edge",
+  };
+}
+
 /** `_meta` からホスト由来の現在地を取り出す。無ければ undefined。 */
 function readHostLocation(meta: Record<string, unknown> | undefined): Origin | undefined {
   const raw = meta?.["openai/userLocation"] as HostUserLocation | undefined;
@@ -266,11 +324,14 @@ export function createServer(): McpServer {
     async ({ lat, lon, limit, label, source }, ctx): Promise<CallToolResult> => {
       // TODO(診断): ホストがどんな _meta を送ってくるかを確認するための一時ログ。
       // 原因が特定できたら消す。位置の値そのものは出さず、キーだけ記録する。
-      // 引数の座標があればそれを使い、無ければホストの大まかな現在地に頼る。
+      // 精度の高い順に降りていく。引数 → ホストが渡す位置 → 接続元からの推定。
+      // 最後のものは HTTP なら request.cf から、stdio なら照会エンドポイントから取る。
       const origin: Origin | undefined =
         lat !== undefined && lon !== undefined
           ? { lat, lon, label, source: (source ?? "precise") as OriginSource }
-          : readHostLocation(ctx.mcpReq._meta);
+          : (readHostLocation(ctx.mcpReq._meta) ??
+            readEdgeLocation(ctx.http?.req) ??
+            (await fetchEdgeLocation()));
 
       if (!origin) {
         // ホストが位置情報を渡さない環境。UI は地名入力へ誘導する。
@@ -278,7 +339,10 @@ export function createServer(): McpServer {
           content: [
             {
               type: "text",
-              text: "現在地を特定できませんでした。地名を指定してください（例: 横浜駅）。",
+              text:
+                "現在地を特定できませんでした。" +
+                "ユーザーに地名や駅名を尋ね、geocode-place で座標に変換してから" +
+                "lat / lon を指定して呼び直してください。",
             },
           ],
           structuredContent: structured({
@@ -303,7 +367,7 @@ export function createServer(): McpServer {
         query: { origin },
       };
       const where = origin.label ?? `${origin.lat.toFixed(4)}, ${origin.lon.toFixed(4)}`;
-      const note = origin.source === "host" ? `（${ORIGIN_NOTES.host}）` : "";
+      const note = origin.source === "precise" ? "" : `（${ORIGIN_NOTES[origin.source]}）`;
       return {
         content: [
           {
