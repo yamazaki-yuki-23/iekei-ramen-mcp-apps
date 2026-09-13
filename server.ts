@@ -19,9 +19,9 @@ import {
 } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import shopsData from "./data/shops.json" with { type: "json" };
-import { APP_HTML } from "./src/generated/app-html.js";
-import { distanceKm, formatDistance } from "./src/lib/geo.js";
-import { PayloadSchema } from "./src/lib/schema.js";
+import { APP_HTML } from "./src/generated/app-html.ts";
+import { distanceKm, formatDistance } from "./src/lib/geo.ts";
+import { PayloadSchema } from "./src/lib/schema.ts";
 import {
   ORIGIN_NOTES,
   TASTES,
@@ -30,7 +30,7 @@ import {
   type OriginSource,
   type Shop,
   type TasteKey,
-} from "./src/lib/types.js";
+} from "./src/lib/types.ts";
 
 const SHOPS = shopsData as Shop[];
 

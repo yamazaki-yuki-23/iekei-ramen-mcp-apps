@@ -32,7 +32,13 @@ export default defineConfig({
   webServer: [
     {
       // 先に UI をビルドしてからサーバーを起動する（server.ts は埋め込み済み HTML を読む）
-      command: `npm run build:ui && PORT=${MCP_PORT} npx tsx main.ts`,
+      command: `npm run build:ui && npx tsx main.ts`,
+      env: {
+        PORT: String(MCP_PORT),
+        // 接続元からの位置推定は実行環境によって結果が変わるので E2E では止める。
+        // 「位置情報が取れないホスト」の挙動を決定的に検証したいため。
+        IEKEI_LOCATION_ENDPOINT: "",
+      },
       url: `http://localhost:${MCP_PORT}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

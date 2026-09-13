@@ -36,10 +36,10 @@ test.describe("検索フォーム", () => {
 
     // 絞り込み後はすべてのカードに「直系・濃厚」バッジが付く
     const cards = shopCards(app);
+    // first() は自動待機するので、一覧が描き終わるまでここで待つ
     await expect(cards.first()).toContainText("直系・濃厚");
-    const count = await cards.count();
-    for (let i = 0; i < count; i++) {
-      await expect(cards.nth(i)).toContainText("直系・濃厚");
+    for (const text of await cards.allTextContents()) {
+      expect(text).toContain("直系・濃厚");
     }
   });
 

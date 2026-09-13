@@ -1,3 +1,8 @@
+/*
+ * 1 枚ずつスクロールしてから撮るため、撮影は逐次実行でなければならない。
+ * 並列にするとスクロール位置が競合して別のスライドが写る。
+ */
+/* oxlint-disable no-await-in-loop */
 import { expect, test } from "@playwright/test";
 test("全スライドを撮る", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });

@@ -1,13 +1,13 @@
 /**
  * ローカル実行用エントリポイント（Node.js）。
- *  node --experimental-strip-types main.ts          → http://localhost:3001/mcp
- *  node --experimental-strip-types main.ts --stdio  → stdio トランスポート
+ *  npx tsx main.ts          → http://localhost:3031/mcp（PORT で変更可）
+ *  npx tsx main.ts --stdio  → stdio トランスポート
  * Cloudflare にデプロイするときは worker.ts が使われる。
  */
 import { createServer as createHttpServer } from "node:http";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
-import { createServer } from "./server.js";
-import worker from "./worker.js";
+import { createServer } from "./server.ts";
+import worker from "./worker.ts";
 
 const PORT = Number(process.env.PORT ?? 3031);
 

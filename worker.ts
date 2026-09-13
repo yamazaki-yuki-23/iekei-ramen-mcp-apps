@@ -3,7 +3,7 @@
  * MCP の Streamable HTTP を /mcp で受ける（ステートレス構成）。
  */
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/server";
-import { createServer } from "./server.js";
+import { createServer } from "./server.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
