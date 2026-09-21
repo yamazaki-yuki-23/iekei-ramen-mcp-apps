@@ -238,6 +238,36 @@
   white-space: nowrap;
 }
 
+/* --- 選択中の店 --- */
+.selected {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: var(--border-width-regular) solid var(--color-accent);
+  border-radius: var(--border-radius-md);
+  background: var(--color-accent-soft);
+}
+
+.selectedHead {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+}
+
+.selectedActions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.selectedNote {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
 /* --- 地図 --- */
 .map {
   height: 24rem;
