@@ -11,8 +11,11 @@ npm run typecheck   # 型チェックのみ
 npm run dev         # ローカル起動（http://localhost:3031/mcp）
 npm run dev:worker  # workerd ランタイムで起動（Cloudflare 本番に近い）
 npm run deploy      # ビルドして wrangler deploy
-npm run data:fetch  # OSM から再取得（20〜30 分。通常は実行不要）
-npm run data:build  # osm-raw.json → shops.json の生成
+npm run data:fetch   # OSM から再取得（20〜30 分。通常は実行不要）
+npm run data:judge   # 家系判定（要 TYPESAFE_API_KEY）→ judged.json
+npm run data:dedupe  # 重複判定（要 TYPESAFE_API_KEY）→ duplicates.json
+npm run data:rescore # 閾値だけ変えたとき（API 不要）
+npm run data:build   # judged.json + osm-raw.json → shops.json（API 不要）
 
 npm test            # vitest（距離計算・家系判定・MCP サーバーの結合テスト）
 npm run e2e         # playwright（basic-host 経由の実ブラウザテスト）
@@ -64,22 +67,43 @@ Workers にはファイルシステムが無いので、HTML もデータもコ�
 
 ### データ
 
-店舗データは OpenStreetMap 由来の静的 JSON（646 店舗 / 39 都道府県）。
+店舗データは OpenStreetMap 由来の静的 JSON（558 店舗 / 37 都道府県）。
 DB もストレージも使わない。実行時の書き込みは無い。
 
 - [scripts/fetch-shops.mjs](scripts/fetch-shops.mjs) — Overpass API を都道府県ごとに並列 3 で叩く。
   1 県あたり 25〜80 秒かかり、たまに失敗する。失敗した県は
   `node scripts/fetch-missing.mjs 京都府 宮城県` で個別に再取得してマージする。
-- [scripts/build-dataset.mjs](scripts/build-dataset.mjs) — 家系判定と正規化。
+- [scripts/judgments.mjs](scripts/judgments.mjs) — TypeSafe に投げる質問と閾値。
+  **判定を変えるならこのファイルだけ見ればいい。** 他所に判定ルールを散らさないこと。
+- [scripts/judge-all.mjs](scripts/judge-all.mjs) — 家系判定を実行して `judged.json` に保存。
+  確率も保存するので、閾値だけ変えたときは `data:rescore` が API 無しで作り直す。
+- [scripts/find-duplicates.mjs](scripts/find-duplicates.mjs) — 200m 以内のペアが同一店舗かを判定。
+- [scripts/build-dataset.mjs](scripts/build-dataset.mjs) — 判定結果の整形と重複除去。判定は持たない。
 
 ## 気をつけること
 
-**家系判定はヒューリスティック。** `confirmed`（店名に「家系」/ 既知ブランド）と
-`likely`（cuisine=ramen かつ店名が「家」で終わる）の 2 段階で、UI ではバッジで区別する。
-判定を変えるときは `KNOWN_BRANDS` / `EXCLUDE` / `OTHER_GENRES` を触る。
+**家系判定は推定。** OSM のタグを TypeSafe に渡してジャンルを判断させ、既知ブランドの
+対応表と突き合わせている。3 段階あり、UI ではバッジで区別する。
+
+|             | 意味                                                   |
+| ----------- | ------------------------------------------------------ |
+| `confirmed` | 店名が家系を名乗っている、または既知の家系ブランド     |
+| `likely`    | 名乗ってはいないが、店名からジャンルを家系と推定できる |
+| `candidate` | ラーメン店で屋号が「〜家」だが、店名からは判断できない |
+
+**「家系ではない」と「判断できない」を混ぜないこと。** 前者は一覧に載せず、後者が
+`candidate`。この区別のために段階を 3 つにしてある。
+
+判定を変えるときは [scripts/judgments.mjs](scripts/judgments.mjs) の質問文か閾値を触る。
+`KNOWN_BRANDS` と `EXCLUDE`（[scripts/classify.mjs](scripts/classify.mjs)）は事実の
+対応表なのでコードに残してあり、モデルの判断より優先する。ジャンル語のリストは
+質問の選択肢に移したので無い。**判定できない件数が多いときは、閾値ではなく
+選択肢の不足を疑うこと**（中華料理店の選択肢が無くて `unclear` に溜まっていた例がある）。
 
 **味の傾向は参考値。** OSM に味のデータは無く、既知ブランドから割り当てているだけ。
-646 件中 237 件は `unknown`。これを事実として断定する文言を UI に書かないこと。
+558 件中 372 件は `unknown`。これを事実として断定する文言を UI に書かないこと。
+モデルに味を推測させたことがあるが、家系を名乗る店へ一律 `rich` を返してきたので
+質問ごと外した。味は対応表からだけ取る。
 
 **都道府県の enum は固定の 47 件**（`ALL_PREFECTURES`）。データ由来にすると
 店舗 0 件の県が消えてスキーマが不安定になる。UI のプルダウンだけ

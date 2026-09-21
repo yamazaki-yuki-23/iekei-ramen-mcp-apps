@@ -1,0 +1,518 @@
+[
+  {
+    "bucket": "pinned",
+    "id": "way/986936264",
+    "name": "魂心家",
+    "prefecture": "北海道",
+    "current": "confirmed",
+    "label": "confirmed",
+    "note": "",
+    "tags": {
+      "addr:block_number": "2",
+      "addr:city": "苫小牧市",
+      "addr:housenumber": "7",
+      "addr:neighbourhood": "日吉町一丁目",
+      "addr:postcode": "053-0816",
+      "addr:province": "北海道",
+      "amenity": "restaurant",
+      "branch": "苫小牧魂心家",
+      "building": "yes",
+      "cuisine": "ramen",
+      "name": "魂心家",
+      "name:ja": "魂心家",
+      "name:ja-Hira": "こんしんや",
+      "name:ja-Latn": "Konshinya",
+      "opening_hours": "Mo-Su, PH 11:00-22:00; Dec 31- Jan 1 off",
+      "phone": "+81-144-73-3337",
+      "source": "Japan GSI seamlessphoto Imagery",
+      "url": "http://www.konshinya.com/shop/tomakomai.html",
+      "website": "http://www.konshinya.com/",
+      "website:menu": "http://www.konshinya.com/menu.html"
+    }
+  },
+  {
+    "bucket": "pinned",
+    "id": "node/9392016352",
+    "name": "横浜家糸ラーメン",
+    "prefecture": "千葉県",
+    "current": "confirmed",
+    "label": "confirmed",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "横浜家糸ラーメン"
+    }
+  },
+  {
+    "bucket": "pinned",
+    "id": "node/5248843021",
+    "name": "横浜ラーメン 田上家",
+    "prefecture": "神奈川県",
+    "current": "confirmed",
+    "label": "confirmed",
+    "note": "",
+    "tags": {
+      "addr:housenumber": "3-48",
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "横浜ラーメン 田上家",
+      "name:en": "Tagamiya",
+      "opening_hours": "We-Mo 11:00-14:30, 17:00-23:00",
+      "phone": "+81 457119766"
+    }
+  },
+  {
+    "bucket": "pinned",
+    "id": "node/8573263226",
+    "name": "塩らーめん嵐家",
+    "prefecture": "岡山県",
+    "current": null,
+    "label": null,
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "塩らーめん嵐家"
+    }
+  },
+  {
+    "bucket": "pinned",
+    "id": "node/12543223534",
+    "name": "博多ラーメン琥家",
+    "prefecture": "岡山県",
+    "current": null,
+    "label": null,
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "branch": "倉敷店",
+      "cuisine": "ramen",
+      "name": "博多ラーメン琥家",
+      "website": "http://prospa-grp.jp/koya.html"
+    }
+  },
+  {
+    "bucket": "pinned",
+    "id": "node/5385130321",
+    "name": "中華飯店菜家",
+    "prefecture": "宮城県",
+    "current": null,
+    "label": null,
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "中華飯店菜家"
+    }
+  },
+  {
+    "bucket": "confirmed",
+    "id": "node/2478511090",
+    "name": "横浜家系ラーメン南郷魂心家",
+    "prefecture": "北海道",
+    "current": "confirmed",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "name": "横浜家系ラーメン南郷魂心家",
+      "opening_hours": "Mo-Su,PH 11:00-23:00"
+    }
+  },
+  {
+    "bucket": "confirmed",
+    "id": "node/5432434621",
+    "name": "横浜家系ラーメン 家系家",
+    "prefecture": "青森県",
+    "current": "confirmed",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "name": "横浜家系ラーメン 家系家"
+    }
+  },
+  {
+    "bucket": "confirmed",
+    "id": "node/12189817592",
+    "name": "町田商店",
+    "prefecture": "山形県",
+    "current": "confirmed",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "brand": "町田商店",
+      "brand:en": "Machida Shouten",
+      "brand:ja": "町田商店",
+      "brand:wikidata": "Q88318612",
+      "cuisine": "noodle",
+      "name": "町田商店",
+      "name:en": "Machida Shouten",
+      "name:ja": "町田商店"
+    }
+  },
+  {
+    "bucket": "confirmed",
+    "id": "node/13586034185",
+    "name": "横浜家系ラーメン 創心家",
+    "prefecture": "福島県",
+    "current": "confirmed",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "横浜家系ラーメン 創心家"
+    }
+  },
+  {
+    "bucket": "confirmed",
+    "id": "node/5291091425",
+    "name": "横浜家系ラーメン 俺ん家",
+    "prefecture": "秋田県",
+    "current": "confirmed",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "name": "横浜家系ラーメン 俺ん家"
+    }
+  },
+  {
+    "bucket": "likely",
+    "id": "node/4041812172",
+    "name": "ラーメン 奥津家",
+    "prefecture": "東京都",
+    "current": "likely",
+    "note": "",
+    "tags": {
+      "addr:block_number": "1",
+      "addr:city": "町田市",
+      "addr:housenumber": "21",
+      "addr:neighbourhood": "1丁目",
+      "addr:postcode": "194-0037",
+      "addr:province": "東京都",
+      "addr:quarter": "木曽西",
+      "amenity": "fast_food",
+      "capacity": "12",
+      "cuisine": "ramen;iekei",
+      "drive_through": "no",
+      "name": "ラーメン 奥津家",
+      "name:en": "Ramen Okutsuya",
+      "name:ja-Hira": "らーめんおくつや",
+      "opening_hours": "12:00-15:00,18:00-21:30",
+      "source": "survey",
+      "start_date": "2004-02-04",
+      "twitter": "https://twitter.com/okutsuya",
+      "website": "https://twitter.com/okutsuya"
+    }
+  },
+  {
+    "bucket": "likely",
+    "id": "node/7962056485",
+    "name": "ラーメン 千葉家",
+    "prefecture": "千葉県",
+    "current": "likely",
+    "note": "",
+    "tags": {
+      "addr:block_number": "17",
+      "addr:city": "千葉市",
+      "addr:housenumber": "22",
+      "addr:neighbourhood": "4丁目",
+      "addr:postcode": "264-0032",
+      "addr:province": "千葉県",
+      "addr:quarter": "みつわ台",
+      "addr:suburb": "若葉区",
+      "amenity": "fast_food",
+      "capacity": "12",
+      "cuisine": "ramen;iekei",
+      "name": "ラーメン 千葉家",
+      "name:en": "Ramen Chibaya",
+      "opening_hours": "11:00-20:00,Mo off",
+      "website": "https://tabelog.com/chiba/A1201/A120105/12000245/"
+    }
+  },
+  {
+    "bucket": "likely",
+    "id": "node/1154508957",
+    "name": "横濱家",
+    "prefecture": "神奈川県",
+    "current": "likely",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "横濱家"
+    }
+  },
+  {
+    "bucket": "candidate",
+    "id": "node/4652695193",
+    "name": "家家家",
+    "prefecture": "北海道",
+    "current": "candidate",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "家家家"
+    }
+  },
+  {
+    "bucket": "candidate",
+    "id": "node/6430866732",
+    "name": "青森野呂家",
+    "prefecture": "青森県",
+    "current": "candidate",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "branch": "弘前店",
+      "cuisine": "noodle;ramen",
+      "cuisine:ja": "ラーメン",
+      "name": "青森野呂家",
+      "note": "2023年11月で弘前大勝軒閉店、24年1月から青森野呂家弘前店としてオープン",
+      "outdoor_seating": "no",
+      "start_date": "2024-01-15"
+    }
+  },
+  {
+    "bucket": "candidate",
+    "id": "node/13705336514",
+    "name": "前田家",
+    "prefecture": "山形県",
+    "current": "candidate",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "前田家"
+    }
+  },
+  {
+    "bucket": "candidate",
+    "id": "node/2522787872",
+    "name": "らーめん 粋家",
+    "prefecture": "福島県",
+    "current": "candidate",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "branch": "らーめん粋家エスパル福島店",
+      "cuisine": "ramen",
+      "levels": "1",
+      "name": "らーめん 粋家",
+      "name:en": "Ramen Suika",
+      "name:ja": "らーめん 粋家",
+      "phone": "024-573-0431"
+    }
+  },
+  {
+    "bucket": "candidate",
+    "id": "node/5572331652",
+    "name": "佐々木家 秋田本店",
+    "prefecture": "秋田県",
+    "current": "candidate",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "佐々木家 秋田本店"
+    }
+  },
+  {
+    "bucket": "candidate",
+    "id": "node/11475661201",
+    "name": "辻田家",
+    "prefecture": "栃木県",
+    "current": "candidate",
+    "note": "",
+    "tags": {
+      "addr:block_number": "20",
+      "addr:city": "真岡市",
+      "addr:neighbourhood": "7丁目",
+      "addr:postcode": "321-4333",
+      "addr:province": "栃木県",
+      "addr:quarter": "大谷本町",
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "辻田家"
+    }
+  },
+  {
+    "bucket": "candidate",
+    "id": "node/4943455724",
+    "name": "ラーメン創房舌笑家",
+    "prefecture": "群馬県",
+    "current": "candidate",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "ラーメン創房舌笑家"
+    }
+  },
+  {
+    "bucket": "candidate",
+    "id": "node/7802246796",
+    "name": "らーめん 歩家",
+    "prefecture": "埼玉県",
+    "current": "candidate",
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "らーめん 歩家"
+    }
+  },
+  {
+    "bucket": "dropped-ramen",
+    "id": "node/343379817",
+    "name": "ラーメン山岡家",
+    "prefecture": "北海道",
+    "current": null,
+    "note": "",
+    "tags": {
+      "addr:block_number": "4",
+      "addr:city": "札幌市",
+      "addr:housenumber": "32",
+      "addr:neighbourhood": "1丁目",
+      "addr:postcode": "007-0827",
+      "addr:province": "北海道",
+      "addr:quarter": "東雁来7条",
+      "addr:suburb": "東区",
+      "amenity": "restaurant",
+      "branch": "東雁来店",
+      "brand": "ラーメン山岡家",
+      "brand:en": "Ramen Yamaokaya",
+      "brand:ja": "ラーメン山岡家",
+      "brand:wikidata": "Q115113303",
+      "capacity": "36",
+      "cuisine": "ramen",
+      "name": "ラーメン山岡家",
+      "name:en": "Ramen Yamaokaya",
+      "name:ja": "ラーメン山岡家",
+      "name:ja_rm": "Rāmen Yamaokaya",
+      "opening_hours": "24/7",
+      "url": "https://www.yamaokaya.com/shops/1111.html",
+      "website": "https://www.yamaokaya.com/"
+    }
+  },
+  {
+    "bucket": "dropped-ramen",
+    "id": "node/11999018387",
+    "name": "自家製麺 Ken",
+    "prefecture": "山形県",
+    "current": null,
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "自家製麺 Ken"
+    }
+  },
+  {
+    "bucket": "dropped-ramen",
+    "id": "way/173220227",
+    "name": "ラーメン 山岡家",
+    "prefecture": "秋田県",
+    "current": null,
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "building": "yes",
+      "cuisine": "noodle;ramen",
+      "name": "ラーメン 山岡家",
+      "source": "image;Bing,2011-07-20"
+    }
+  },
+  {
+    "bucket": "dropped-ramen",
+    "id": "node/5580305121",
+    "name": "自家製麺 名無し",
+    "prefecture": "茨城県",
+    "current": null,
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "自家製麺 名無し",
+      "name:en": "Nanashi"
+    }
+  },
+  {
+    "bucket": "dropped-ramen",
+    "id": "node/1316303076",
+    "name": "無敵家",
+    "prefecture": "東京都",
+    "current": null,
+    "note": "",
+    "tags": {
+      "addr:block_number": "17",
+      "addr:city": "豊島区",
+      "addr:floor": "1",
+      "addr:housenumber": "1",
+      "addr:neighbourhood": "南池袋一丁目",
+      "addr:postcode": "171-0022",
+      "addr:province": "東京都",
+      "alt_name:ja": "麺創房 無敵家",
+      "amenity": "restaurant",
+      "check_date": "2026-03-31",
+      "check_date:diet:vegetarian": "2026-03-31",
+      "contact:facebook": "mutekiya.jp",
+      "contact:instagram": "mutekiya",
+      "contact:twitter": "_mutekiya_",
+      "cuisine": "ramen",
+      "diet:vegetarian": "no",
+      "drink:beer": "yes",
+      "drink:soft_drink": "yes",
+      "indoor_seating": "yes",
+      "int_name": "Mutekiya",
+      "name": "無敵家",
+      "name:en": "Muteki-ya",
+      "name:ja": "無敵家",
+      "name:ko": "무테키야",
+      "name:zh": "無敵家",
+      "opening_hours": "Mo-Su 10:30-04:00",
+      "outdoor_seating": "no",
+      "payment:cash": "yes",
+      "payment:credit_cards": "no",
+      "phone": "+81 3 3982 7656",
+      "reservation": "no",
+      "takeaway": "no",
+      "website": "https://www.mutekiya.com/",
+      "wheelchair": "no"
+    }
+  },
+  {
+    "bucket": "dropped-ramen",
+    "id": "node/9291779483",
+    "name": "山岡家　新潟新和店",
+    "prefecture": "新潟県",
+    "current": null,
+    "note": "",
+    "tags": {
+      "addr:city": "新潟市",
+      "addr:neighbourhood": "1-5-37",
+      "addr:postcode": "950-0972",
+      "addr:province": "新潟県",
+      "addr:quarter": "親和",
+      "addr:suburb": "中央区",
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "山岡家　新潟新和店",
+      "opening_hours": "24/7",
+      "phone": "025-290-7903"
+    }
+  },
+  {
+    "bucket": "dropped-ramen",
+    "id": "node/1535260084",
+    "name": "大黒家製麺",
+    "prefecture": "神奈川県",
+    "current": null,
+    "note": "",
+    "tags": {
+      "amenity": "restaurant",
+      "cuisine": "ramen",
+      "name": "大黒家製麺"
+    }
+  }
+]

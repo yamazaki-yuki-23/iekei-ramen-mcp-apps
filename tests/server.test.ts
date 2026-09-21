@@ -130,6 +130,20 @@ describe("search-iekei-ramen", () => {
     expect(text).toContain("見つかりませんでした");
   });
 
+  it("家系と確定していない店には段階と断り書きを添える", async () => {
+    // モデルがこのテキストだけを読む場合があるので、断定させない文言が要る。
+    // 鹿児島県は candidate だけなので、必ず一覧に載る。
+    const { payload, text } = await callApp("search-iekei-ramen", { prefecture: "鹿児島県" });
+    expect(payload.shops.every((s) => s.confidence === "candidate")).toBe(true);
+    expect(text).toContain("家系か未判定");
+    expect(text).toContain("断定しないでください");
+  });
+
+  it("確定した店だけなら断り書きを付けない", async () => {
+    const { text } = await callApp("search-iekei-ramen", { keyword: "町田商店" });
+    expect(text).not.toContain("断定しないでください");
+  });
+
   it("店舗が 0 件の県も指定できる", async () => {
     const { payload, isError } = await callApp("search-iekei-ramen", { prefecture: "奈良県" });
     expect(isError).toBeFalsy();
@@ -322,6 +336,26 @@ describe("show-iekei-ramen-map", () => {
     expect(payload.shops.every((s) => s.prefecture === "東京都")).toBe(true);
   });
 
+  it("一覧を出さないので、テキストに内訳と断り書きを添える", async () => {
+    // 地図モードは店舗を列挙しないため、件数だけだと未判定の店まで
+    // 家系だと断定して伝わってしまう
+    const { text } = await callApp("show-iekei-ramen-map");
+    expect(text).toContain("内訳");
+    expect(text).toContain("家系か未判定");
+    expect(text).toContain("断定しないでください");
+  });
+
+  it("確定した店だけなら断り書きを付けない", async () => {
+    const { payload, text } = await callApp("show-iekei-ramen-map", { taste: "rich" });
+    expect(payload.shops.every((s) => s.confidence === "confirmed")).toBe(true);
+    expect(text).not.toContain("断定しないでください");
+  });
+
+  it("該当が無ければ 0 件とわかるテキストを返す", async () => {
+    const { text } = await callApp("show-iekei-ramen-map", { prefecture: "奈良県" });
+    expect(text).toContain("該当する店舗はありませんでした");
+  });
+
   it("すべての店舗が地図に描ける座標を持つ", async () => {
     const { payload } = await callApp("show-iekei-ramen-map");
     for (const shop of payload.shops) {
@@ -345,7 +379,7 @@ describe("データの整合性", () => {
     for (const shop of payload.shops) {
       expect(shop.name).toBeTruthy();
       expect(shop.prefecture).toBeTruthy();
-      expect(["confirmed", "likely"]).toContain(shop.confidence);
+      expect(["confirmed", "likely", "candidate"]).toContain(shop.confidence);
       expect(["rich", "creamy", "chain", "unknown"]).toContain(shop.taste);
     }
   });

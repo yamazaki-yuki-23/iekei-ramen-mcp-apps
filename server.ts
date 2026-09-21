@@ -23,6 +23,7 @@ import { APP_HTML } from "./src/generated/app-html.ts";
 import { distanceKm, formatDistance } from "./src/lib/geo.ts";
 import { PayloadSchema } from "./src/lib/schema.ts";
 import {
+  CONFIDENCE,
   ORIGIN_NOTES,
   TASTES,
   type AppPayload,
@@ -113,9 +114,36 @@ function summarize(shops: Shop[], heading: string, withDistance = false): string
     const dist =
       withDistance && s.distanceKm !== undefined ? ` / ${formatDistance(s.distanceKm)}` : "";
     const where = [s.prefecture, s.city, s.address].filter(Boolean).join(" ");
-    return `${i + 1}. ${s.name} (${TASTES[s.taste].label}${dist})\n   ${where}${s.openingHours ? `\n   営業: ${s.openingHours}` : ""}`;
+    // 家系と確定していない店をモデルが断定しないよう、段階を必ず添える。
+    const conf = s.confidence === "confirmed" ? "" : ` / ${CONFIDENCE[s.confidence].label}`;
+    return `${i + 1}. ${s.name} (${TASTES[s.taste].label}${conf}${dist})\n   ${where}${s.openingHours ? `\n   営業: ${s.openingHours}` : ""}`;
   });
-  return `${heading}\n\n${lines.join("\n")}`;
+  const caveat = shops.some((s) => s.confidence !== "confirmed")
+    ? "\n\n※「家系の可能性」「家系か未判定」は店名からの推定です。断定しないでください。"
+    : "";
+  return `${heading}\n\n${lines.join("\n")}${caveat}`;
+}
+
+/**
+ * 地図モードのテキスト。件数だけ返すと、未判定の店まで家系だと断定して
+ * 伝わってしまう。一覧を出さないぶん、内訳と断り書きをここで添える。
+ */
+function mapSummary(shops: Shop[], prefecture?: string): string {
+  const where = prefecture ?? "全国";
+  if (shops.length === 0) return `${where}に該当する店舗はありませんでした。`;
+
+  const counts = shops.reduce<Partial<Record<Shop["confidence"], number>>>((acc, s) => {
+    acc[s.confidence] = (acc[s.confidence] ?? 0) + 1;
+    return acc;
+  }, {});
+  const breakdown = (["confirmed", "likely", "candidate"] as const)
+    .filter((k) => counts[k])
+    .map((k) => `${CONFIDENCE[k].label} ${counts[k]} 件`)
+    .join(" / ");
+  const caveat = shops.some((s) => s.confidence !== "confirmed")
+    ? "\n「家系の可能性」「家系か未判定」は店名からの推定です。断定しないでください。"
+    : "";
+  return `${where}の家系ラーメン ${shops.length} 件を地図に表示しました。\n内訳: ${breakdown}${caveat}`;
 }
 
 function filterShops(opts: { prefecture?: string; taste?: TasteKey; keyword?: string }): Shop[] {
@@ -411,7 +439,7 @@ export function createServer(): McpServer {
         content: [
           {
             type: "text",
-            text: `${prefecture ?? "全国"}の家系ラーメン ${shops.length} 件を地図に表示しました。`,
+            text: mapSummary(shops, prefecture),
           },
         ],
         structuredContent: structured(payload),
