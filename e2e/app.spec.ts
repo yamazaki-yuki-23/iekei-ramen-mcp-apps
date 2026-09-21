@@ -3,7 +3,7 @@
  * 実ブラウザ・実ホスト・実 MCP サーバーを通して 3 モードを操作する。
  */
 import { expect, test } from "@playwright/test";
-import { appFrame, callTool, shopCards, waitForApp } from "./helpers";
+import { appFrame, callTool, shopCards, shopName, waitForApp } from "./helpers";
 
 test.describe("検索フォーム", () => {
   test("全国の店舗を一覧表示する", async ({ page }) => {
@@ -242,5 +242,81 @@ test.describe("ホスト連携", () => {
 
     await expect(app.getByText("読み込み中…")).toHaveCount(0);
     await expect(app.getByText(/接続エラー/)).toHaveCount(0);
+  });
+});
+
+test.describe("モデルへの受け渡し", () => {
+  test("店を選ぶと選択パネルが出る", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const panel = app.getByRole("region", { name: "選択中の店舗" });
+    await expect(panel).toHaveCount(0);
+
+    await shopCards(app).first().click();
+
+    await expect(panel).toBeVisible();
+    await expect(panel.getByRole("button", { name: "この店について聞く" })).toBeVisible();
+  });
+
+  test("選んだ店をホストのモデルコンテキストに渡す", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const name = await shopName(shopCards(app).first());
+    await shopCards(app).first().click();
+
+    // モデルコンテキストはホスト側のパネルに出る（アプリの iframe の外）。
+    const contextPanel = page.getByText("📋 Model Context");
+    await expect(contextPanel).toBeVisible();
+    await contextPanel.click();
+
+    const contextText = page.locator("pre").filter({ hasText: "ユーザーが UI で選択した店舗" });
+    await expect(contextText).toBeVisible();
+    await expect(contextText).toContainText(name);
+  });
+
+  test("選択を解除するとモデルコンテキストを消す", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    await shopCards(app).first().click();
+    await expect(page.getByText("📋 Model Context")).toBeVisible();
+
+    await app.getByRole("button", { name: "選択を解除" }).click();
+
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toHaveCount(0);
+    await expect(page.getByText("📋 Model Context")).toHaveCount(0);
+  });
+
+  test("「この店について聞く」でチャットにメッセージを送る", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const name = await shopName(shopCards(app).first());
+    await shopCards(app).first().click();
+    await app.getByRole("button", { name: "この店について聞く" }).click();
+
+    const messages = page.getByText(/💬 Messages/);
+    await expect(messages).toBeVisible();
+    await messages.click();
+
+    const sent = page.locator("pre").filter({ hasText: "[user]" });
+    await expect(sent).toContainText(name);
+    await expect(sent).toContainText("について教えて");
+  });
+
+  test("検索し直すと選択が外れる", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    await shopCards(app).first().click();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
+
+    await app.locator("#pref").selectOption("東京都");
+    await app.getByRole("button", { name: "検索" }).click();
+
+    await expect(app.getByRole("heading", { name: /東京都の家系ラーメン/ })).toBeVisible();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toHaveCount(0);
   });
 });

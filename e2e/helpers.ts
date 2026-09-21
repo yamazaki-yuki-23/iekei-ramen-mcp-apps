@@ -4,7 +4,7 @@
  * アプリはサンドボックス iframe の中で動くので、操作対象は
  * ネストした frameLocator になる。ここでその出入りを吸収する。
  */
-import { expect, type FrameLocator, type Page } from "@playwright/test";
+import { expect, type FrameLocator, type Locator, type Page } from "@playwright/test";
 
 /** ホストの tool 呼び出しフォームから tool を実行し、アプリの frame を返す。 */
 export async function callTool(
@@ -32,4 +32,12 @@ export async function waitForApp(app: FrameLocator) {
 /** 店舗カードのロケータ。 */
 export function shopCards(app: FrameLocator) {
   return app.locator("ul > li > button");
+}
+
+/**
+ * カードから店名だけを取り出す。
+ * カード直下の span は住所やバッジも含むまとまりなので、入れ子の span を見る。
+ */
+export function shopName(card: Locator): Promise<string> {
+  return card.locator("span span").first().innerText();
 }

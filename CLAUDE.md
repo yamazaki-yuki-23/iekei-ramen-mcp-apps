@@ -51,6 +51,19 @@ tool は 4 つ。UI 付き 3 つ（`search-iekei-ramen` / `find-nearby-iekei-ram
 戻り値から自分で `setPayload` する必要がある（[src/mcp-app.tsx](src/mcp-app.tsx) の `call`）。
 `ontoolresult` はホスト（モデル）発の呼び出しにだけ来る。
 
+### UI の選択をモデルに返す
+
+UI で選んだ 1 軒は `app.updateModelContext()` でモデルに渡す。これが無いと、
+地図で店を選んだ直後に「この店は？」と聞かれてもモデルは何も知らない。
+
+- 文面は [src/lib/shop-brief.ts](src/lib/shop-brief.ts) に集約する。判定も味も推定なので、
+  **但し書きごとモデルに渡す。** ここを削るとモデルが推定を事実として話す。
+- 選択状態は外側の `IekeiApp` が持つ。`IekeiAppInner` は payload ごとに key で
+  作り直されるので、内部に置くと検索のたびに消える。
+- 選択を外すときは `{ content: [] }` を送る。空の content が「消す」の意味になる。
+- `sendMessage` は即座にモデルを動かし、`updateModelContext` は次の発話まで待つ。
+  詳細は context 側に置き、`sendMessage` には短い一文だけ流す。
+
 ### ビルドチェーン
 
 ```
