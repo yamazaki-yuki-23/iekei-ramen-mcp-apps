@@ -1,4 +1,4 @@
-import { TASTES, type Shop } from "../lib/types";
+import { CONFIDENCE, TASTES, type Shop } from "../lib/types";
 import { formatDistance } from "../lib/geo";
 import styles from "../mcp-app.module.css";
 
@@ -39,8 +39,13 @@ export function ShopList({ shops, ranked, selectedId, onSelect, emptyMessage }: 
                 <span className={shop.taste === "unknown" ? styles.badgeMuted : styles.badge}>
                   {TASTES[shop.taste].label}
                 </span>
-                {shop.confidence === "likely" && (
-                  <span className={styles.badgeMuted}>家系の可能性</span>
+                {shop.confidence !== "confirmed" && (
+                  <span
+                    className={styles.badgeMuted}
+                    title={CONFIDENCE[shop.confidence].description}
+                  >
+                    {CONFIDENCE[shop.confidence].label}
+                  </span>
                 )}
                 {shop.brand && <span className={styles.badgeMuted}>{shop.brand}</span>}
               </span>

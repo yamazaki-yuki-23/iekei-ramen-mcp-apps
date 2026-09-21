@@ -10,3 +10,8 @@ test-results/
 playwright-report/
 test-results-shoot/
 shots/
+# 質問文を詰めるための実験結果。毎回作り直すので残さない。
+data/eval-result.json
+
+# 記事化用の作業メモ。リポジトリには入れない。
+WORKLOG-typesafe.md

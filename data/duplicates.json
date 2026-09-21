@@ -1,0 +1,634 @@
+{
+ "pairs": [
+  {
+   "a": "node/12194007751",
+   "b": "way/257754889",
+   "fingerprint": "61747aeb847b",
+   "aName": "横浜家系ラーメン 独覚家",
+   "bName": "横浜家系ラーメン 独覚家",
+   "distanceM": 10,
+   "score": 1.98,
+   "confidence": 0.96
+  },
+  {
+   "a": "node/7543111509",
+   "b": "node/13812807693",
+   "fingerprint": "bd95f97966b1",
+   "aName": "濃厚タンメン無双家　加古川店",
+   "bName": "濃厚タンメン無双家",
+   "distanceM": 167,
+   "score": 1.95,
+   "confidence": 0.93
+  },
+  {
+   "a": "node/3658713228",
+   "b": "node/12591763066",
+   "fingerprint": "7b753aff3587",
+   "aName": "ラーメン山岡家",
+   "bName": "味噌ラーメン山岡家",
+   "distanceM": 129,
+   "score": 1.86,
+   "confidence": 0.79
+  },
+  {
+   "a": "node/3123310498",
+   "b": "node/10708874165",
+   "fingerprint": "7b06e3163173",
+   "aName": "町田商店",
+   "bName": "町田家",
+   "distanceM": 191,
+   "score": 1.22,
+   "confidence": 0.3
+  },
+  {
+   "a": "node/604269583",
+   "b": "node/3366536953",
+   "fingerprint": "9b750d98ee76",
+   "aName": "魂心家",
+   "bName": "實家",
+   "distanceM": 159,
+   "score": 0.57,
+   "confidence": 0.15
+  },
+  {
+   "a": "node/11336218469",
+   "b": "node/13444744258",
+   "fingerprint": "c93adeed36b5",
+   "aName": "家系 武の極み",
+   "bName": "せい家",
+   "distanceM": 105,
+   "score": 0.55,
+   "confidence": 0.25
+  },
+  {
+   "a": "node/2790187237",
+   "b": "node/5010586690",
+   "fingerprint": "9a735ee68c60",
+   "aName": "本郷家",
+   "bName": "家家家",
+   "distanceM": 164,
+   "score": 0.5,
+   "confidence": 0.26
+  },
+  {
+   "a": "node/10870917087",
+   "b": "node/14112137616",
+   "fingerprint": "2cdd5a5ccedd",
+   "aName": "横浜家系ラーメン",
+   "bName": "壱角家",
+   "distanceM": 84,
+   "score": 0.49,
+   "confidence": 0.27
+  },
+  {
+   "a": "node/4963029094",
+   "b": "node/11886037304",
+   "fingerprint": "4ce3f09dabb9",
+   "aName": "らーめん横浜家系",
+   "bName": "せい家",
+   "distanceM": 70,
+   "score": 0.46,
+   "confidence": 0.31
+  },
+  {
+   "a": "node/4439954082",
+   "b": "node/6339744890",
+   "fingerprint": "5019731c8fd3",
+   "aName": "たかさご家",
+   "bName": "寿々喜家 曙町店",
+   "distanceM": 179,
+   "score": 0.45,
+   "confidence": 0.32
+  },
+  {
+   "a": "node/4943498977",
+   "b": "node/6326704889",
+   "fingerprint": "675dc5ea6598",
+   "aName": "武蔵家",
+   "bName": "せい家",
+   "distanceM": 173,
+   "score": 0.44,
+   "confidence": 0.34
+  },
+  {
+   "a": "node/11050280550",
+   "b": "way/157360253",
+   "fingerprint": "b9ec32fb3f72",
+   "aName": "壱角家",
+   "bName": "家家家",
+   "distanceM": 125,
+   "score": 0.44,
+   "confidence": 0.34
+  },
+  {
+   "a": "node/3366536953",
+   "b": "node/7735742255",
+   "fingerprint": "ca61612e9996",
+   "aName": "實家",
+   "bName": "松壱家",
+   "distanceM": 171,
+   "score": 0.42,
+   "confidence": 0.37
+  },
+  {
+   "a": "node/2144864644",
+   "b": "way/1112636957",
+   "fingerprint": "59547a05df69",
+   "aName": "横浜家系ラーメン おか家",
+   "bName": "横浜家系ラーメン 小作 大和家",
+   "distanceM": 190,
+   "score": 0.41,
+   "confidence": 0.39
+  },
+  {
+   "a": "node/12207254269",
+   "b": "node/12207254270",
+   "fingerprint": "64be9ab8ff73",
+   "aName": "横浜家系ラーメン 武",
+   "bName": "ラーメン環2家",
+   "distanceM": 11,
+   "score": 0.38,
+   "confidence": 0.43
+  },
+  {
+   "a": "node/4971693982",
+   "b": "node/5036877301",
+   "fingerprint": "d43c0ed65364",
+   "aName": "武道家",
+   "bName": "希家",
+   "distanceM": 49,
+   "score": 0.35,
+   "confidence": 0.48
+  },
+  {
+   "a": "node/2217964556",
+   "b": "node/2217965619",
+   "fingerprint": "4c5f5c01c106",
+   "aName": "家系 あってりラーメン",
+   "bName": "千家本店",
+   "distanceM": 90,
+   "score": 0.34,
+   "confidence": 0.49
+  },
+  {
+   "a": "node/9730188899",
+   "b": "node/9735345472",
+   "fingerprint": "a469cd26fb65",
+   "aName": "陳麻家",
+   "bName": "魂心家",
+   "distanceM": 167,
+   "score": 0.33,
+   "confidence": 0.5
+  },
+  {
+   "a": "node/4608983797",
+   "b": "node/4608995836",
+   "fingerprint": "2a90c7854816",
+   "aName": "らーめん 鹿島家",
+   "bName": "らーめん 晴れる家",
+   "distanceM": 89,
+   "score": 0.32,
+   "confidence": 0.52
+  },
+  {
+   "a": "node/4439954082",
+   "b": "node/4803539657",
+   "fingerprint": "ef89e8f81f0d",
+   "aName": "たかさご家",
+   "bName": "大館家",
+   "distanceM": 95,
+   "score": 0.25,
+   "confidence": 0.63
+  },
+  {
+   "a": "node/4964053556",
+   "b": "node/13690059999",
+   "fingerprint": "ec380e3e4166",
+   "aName": "大砲家",
+   "bName": "素家",
+   "distanceM": 185,
+   "score": 0.24,
+   "confidence": 0.65
+  },
+  {
+   "a": "node/11610146237",
+   "b": "node/13271377783",
+   "fingerprint": "674241d2ae88",
+   "aName": "町田商店",
+   "bName": "武蔵家",
+   "distanceM": 70,
+   "score": 0.24,
+   "confidence": 0.63
+  },
+  {
+   "a": "node/11005700945",
+   "b": "node/11005700964",
+   "fingerprint": "39aeb50ff1d7",
+   "aName": "横浜家系ラーメン 八家",
+   "bName": "どんとこい家",
+   "distanceM": 129,
+   "score": 0.24,
+   "confidence": 0.65
+  },
+  {
+   "a": "node/12770096282",
+   "b": "node/12877186398",
+   "fingerprint": "131376a13727",
+   "aName": "横浜家系ラーメン 大原家",
+   "bName": "今野家",
+   "distanceM": 185,
+   "score": 0.23,
+   "confidence": 0.66
+  },
+  {
+   "a": "node/6627348565",
+   "b": "way/219082678",
+   "fingerprint": "a1f6e091ba01",
+   "aName": "阿波家",
+   "bName": "東和田魂心家",
+   "distanceM": 152,
+   "score": 0.23,
+   "confidence": 0.66
+  },
+  {
+   "a": "node/11423591195",
+   "b": "node/13830665599",
+   "fingerprint": "37c39a9e1ece",
+   "aName": "横浜家系らーめん 武源家",
+   "bName": "大総家",
+   "distanceM": 185,
+   "score": 0.22,
+   "confidence": 0.68
+  },
+  {
+   "a": "node/4439954082",
+   "b": "node/4803578585",
+   "fingerprint": "17bf4579cf52",
+   "aName": "たかさご家",
+   "bName": "伊勢佐木家",
+   "distanceM": 183,
+   "score": 0.22,
+   "confidence": 0.67
+  },
+  {
+   "a": "node/10980397066",
+   "b": "node/10980397070",
+   "fingerprint": "8b287e03a2b2",
+   "aName": "南大沢ラーメン家",
+   "bName": "大岡家",
+   "distanceM": 169,
+   "score": 0.21,
+   "confidence": 0.68
+  },
+  {
+   "a": "node/3163955594",
+   "b": "node/3436597848",
+   "fingerprint": "a19f5d01657e",
+   "aName": "壱八家",
+   "bName": "萩原家",
+   "distanceM": 141,
+   "score": 0.2,
+   "confidence": 0.7
+  },
+  {
+   "a": "node/10315780022",
+   "b": "node/12470726837",
+   "fingerprint": "404d9f3d4fd6",
+   "aName": "ろくの家",
+   "bName": "稲和家ラーメン",
+   "distanceM": 5,
+   "score": 0.2,
+   "confidence": 0.69
+  },
+  {
+   "a": "node/4270925147",
+   "b": "node/8712752327",
+   "fingerprint": "433de0de74f7",
+   "aName": "壱角家",
+   "bName": "らーめん武蔵家",
+   "distanceM": 119,
+   "score": 0.19,
+   "confidence": 0.71
+  },
+  {
+   "a": "node/11111260112",
+   "b": "node/11451698856",
+   "fingerprint": "9453348c8a3f",
+   "aName": "幸道家",
+   "bName": "赤家",
+   "distanceM": 179,
+   "score": 0.19,
+   "confidence": 0.72
+  },
+  {
+   "a": "node/2716475818",
+   "b": "node/10919421855",
+   "fingerprint": "74725c83f4b0",
+   "aName": "武蔵家　菊名店",
+   "bName": "松壱家",
+   "distanceM": 107,
+   "score": 0.19,
+   "confidence": 0.72
+  },
+  {
+   "a": "node/12817440181",
+   "b": "node/12877186398",
+   "fingerprint": "3b9b1544334f",
+   "aName": "ラーメン壱六家",
+   "bName": "今野家",
+   "distanceM": 74,
+   "score": 0.19,
+   "confidence": 0.72
+  },
+  {
+   "a": "node/816440081",
+   "b": "node/822443540",
+   "fingerprint": "60c1717f5df5",
+   "aName": "壱角家",
+   "bName": "らーめん武蔵家",
+   "distanceM": 154,
+   "score": 0.18,
+   "confidence": 0.73
+  },
+  {
+   "a": "node/3256602263",
+   "b": "node/10870917087",
+   "fingerprint": "61839e0d8d5e",
+   "aName": "洞くつ家",
+   "bName": "横浜家系ラーメン",
+   "distanceM": 141,
+   "score": 0.16,
+   "confidence": 0.75
+  },
+  {
+   "a": "node/4803539657",
+   "b": "node/4803578585",
+   "fingerprint": "7222c3aa5eaf",
+   "aName": "大館家",
+   "bName": "伊勢佐木家",
+   "distanceM": 137,
+   "score": 0.16,
+   "confidence": 0.76
+  },
+  {
+   "a": "node/10270952413",
+   "b": "node/10270952414",
+   "fingerprint": "6422e88a4bef",
+   "aName": "横浜家系ラーメン武骨家",
+   "bName": "横浜家系ラーメン吉角屋",
+   "distanceM": 38,
+   "score": 0.16,
+   "confidence": 0.77
+  },
+  {
+   "a": "node/4889973066",
+   "b": "node/6261444409",
+   "fingerprint": "1728a9aece3c",
+   "aName": "横濱ラーメン あさが家",
+   "bName": "横浜家系ラーメン 壱角家 阿佐ヶ谷駅前店",
+   "distanceM": 153,
+   "score": 0.15,
+   "confidence": 0.77
+  },
+  {
+   "a": "node/9103711351",
+   "b": "node/11782064311",
+   "fingerprint": "5123b105be70",
+   "aName": "家系らーめん 武将家",
+   "bName": "壱角家",
+   "distanceM": 156,
+   "score": 0.15,
+   "confidence": 0.77
+  },
+  {
+   "a": "node/9730189028",
+   "b": "node/9735345472",
+   "fingerprint": "583392e53e1e",
+   "aName": "横浜家系ラーメン 麺家 黒",
+   "bName": "魂心家",
+   "distanceM": 168,
+   "score": 0.15,
+   "confidence": 0.78
+  },
+  {
+   "a": "node/5408866065",
+   "b": "node/12019346566",
+   "fingerprint": "ec696334933f",
+   "aName": "町田商店",
+   "bName": "ひじり家",
+   "distanceM": 35,
+   "score": 0.14,
+   "confidence": 0.78
+  },
+  {
+   "a": "node/7476217109",
+   "b": "node/9723486891",
+   "fingerprint": "728a20bd1161",
+   "aName": "横濱家系ラーメン野中家十一代目",
+   "bName": "横浜家系ラーメン極味家",
+   "distanceM": 34,
+   "score": 0.13,
+   "confidence": 0.81
+  },
+  {
+   "a": "node/9730188899",
+   "b": "node/9730189028",
+   "fingerprint": "9b6c534c7ded",
+   "aName": "陳麻家",
+   "bName": "横浜家系ラーメン 麺家 黒",
+   "distanceM": 31,
+   "score": 0.13,
+   "confidence": 0.8
+  },
+  {
+   "a": "node/11475924660",
+   "b": "node/13395313475",
+   "fingerprint": "62f92b185ec4",
+   "aName": "麺スタイル谷本家",
+   "bName": "ラーメン町田商店",
+   "distanceM": 158,
+   "score": 0.13,
+   "confidence": 0.81
+  },
+  {
+   "a": "node/3256602263",
+   "b": "node/11369686077",
+   "fingerprint": "26ff92144a2d",
+   "aName": "洞くつ家",
+   "bName": "武道家",
+   "distanceM": 189,
+   "score": 0.1,
+   "confidence": 0.85
+  },
+  {
+   "a": "node/10870917087",
+   "b": "node/11369686077",
+   "fingerprint": "0adf8c52e283",
+   "aName": "横浜家系ラーメン",
+   "bName": "武道家",
+   "distanceM": 64,
+   "score": 0.1,
+   "confidence": 0.85
+  },
+  {
+   "a": "node/11369686077",
+   "b": "node/14112137616",
+   "fingerprint": "729800a6f25d",
+   "aName": "武道家",
+   "bName": "壱角家",
+   "distanceM": 108,
+   "score": 0.1,
+   "confidence": 0.85
+  },
+  {
+   "a": "node/6406819849",
+   "b": "node/13306386648",
+   "fingerprint": "dbedbd43d161",
+   "aName": "横浜家系麺家 昴",
+   "bName": "天来家",
+   "distanceM": 170,
+   "score": 0.09,
+   "confidence": 0.87
+  },
+  {
+   "a": "node/1354428840",
+   "b": "node/13830665599",
+   "fingerprint": "b9668ed578e0",
+   "aName": "横浜家系壱角家ラーメン",
+   "bName": "大総家",
+   "distanceM": 143,
+   "score": 0.08,
+   "confidence": 0.88
+  },
+  {
+   "a": "node/6656908185",
+   "b": "node/9219283278",
+   "fingerprint": "c85651f8b53a",
+   "aName": "町田商店",
+   "bName": "横浜家系ラーメン 角蔵家",
+   "distanceM": 111,
+   "score": 0.08,
+   "confidence": 0.88
+  },
+  {
+   "a": "way/727626073",
+   "b": "way/1513260732",
+   "fingerprint": "2585afb2e42c",
+   "aName": "町田商店",
+   "bName": "満天家 小山店",
+   "distanceM": 78,
+   "score": 0.07,
+   "confidence": 0.89
+  },
+  {
+   "a": "node/12770096282",
+   "b": "node/12817440181",
+   "fingerprint": "6f35cf498009",
+   "aName": "横浜家系ラーメン 大原家",
+   "bName": "ラーメン壱六家",
+   "distanceM": 120,
+   "score": 0.06,
+   "confidence": 0.91
+  },
+  {
+   "a": "way/257754889",
+   "b": "way/258099746",
+   "fingerprint": "0f3289d1c6ff",
+   "aName": "横浜家系ラーメン 独覚家",
+   "bName": "ふく流らーめん轍 総本家",
+   "distanceM": 62,
+   "score": 0.06,
+   "confidence": 0.91
+  },
+  {
+   "a": "node/6101687659",
+   "b": "node/6499080569",
+   "fingerprint": "8860418d647d",
+   "aName": "自家製麺 らーめん 焔",
+   "bName": "横浜ラーメン 味濱家",
+   "distanceM": 85,
+   "score": 0.06,
+   "confidence": 0.91
+  },
+  {
+   "a": "node/12194007751",
+   "b": "way/258099746",
+   "fingerprint": "b19dd5fea22e",
+   "aName": "横浜家系ラーメン 独覚家",
+   "bName": "ふく流らーめん轍 総本家",
+   "distanceM": 55,
+   "score": 0.06,
+   "confidence": 0.91
+  },
+  {
+   "a": "node/4889738301",
+   "b": "node/6261444409",
+   "fingerprint": "40090183f655",
+   "aName": "我楽酒家 丸長",
+   "bName": "横浜家系ラーメン 壱角家 阿佐ヶ谷駅前店",
+   "distanceM": 14,
+   "score": 0.05,
+   "confidence": 0.93
+  },
+  {
+   "a": "way/383388465",
+   "b": "way/1070833719",
+   "fingerprint": "ff75532ee0c1",
+   "aName": "横浜家系ラーメン 壱角家 野田山崎店",
+   "bName": "神道家",
+   "distanceM": 130,
+   "score": 0.05,
+   "confidence": 0.93
+  },
+  {
+   "a": "node/4889738301",
+   "b": "node/4889973066",
+   "fingerprint": "673903718f1b",
+   "aName": "我楽酒家 丸長",
+   "bName": "横濱ラーメン あさが家",
+   "distanceM": 164,
+   "score": 0.04,
+   "confidence": 0.95
+  },
+  {
+   "a": "node/11403074388",
+   "b": "node/11403074389",
+   "fingerprint": "55a27f2ca878",
+   "aName": "武虎家 暁",
+   "bName": "横浜家系ラーメン 龍神家",
+   "distanceM": 115,
+   "score": 0.03,
+   "confidence": 0.95
+  },
+  {
+   "a": "node/4974588921",
+   "b": "node/12052479320",
+   "fingerprint": "a9cf6758d54d",
+   "aName": "横浜家系ラーメン　大久保家",
+   "bName": "麺家 西陣",
+   "distanceM": 170,
+   "score": 0.03,
+   "confidence": 0.96
+  },
+  {
+   "a": "node/4225292298",
+   "b": "node/4225315493",
+   "fingerprint": "bd64f70f5fb7",
+   "aName": "ふくの家",
+   "bName": "ぶらっくぴっぐ麺家",
+   "distanceM": 197,
+   "score": 0.02,
+   "confidence": 0.96
+  },
+  {
+   "a": "node/4987989850",
+   "b": "node/12737834068",
+   "fingerprint": "a7599147e9e4",
+   "aName": "横浜家系ラーメン みどり",
+   "bName": "町田商店",
+   "distanceM": 93,
+   "score": 0.01,
+   "confidence": 0.99
+  }
+ ]
+}

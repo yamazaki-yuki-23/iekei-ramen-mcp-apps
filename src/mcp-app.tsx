@@ -327,8 +327,10 @@ function IekeiAppInner({ app, payload, onPayload, notice, onNotice, hostContext 
       )}
 
       <p className={styles.footnote}>
-        店舗データは OpenStreetMap（ODbL）由来。「家系の可能性」は店名から推定したもので、
-        味の傾向は既知のブランドから割り当てた参考値です。営業時間は変わることがあるため訪問前にご確認ください。
+        店舗データは OpenStreetMap（ODbL）由来。「家系の可能性」は店名から家系と推定したもの、
+        「家系か未判定」は店名だけでは判断できなかったものです。味の傾向は既知のブランドから
+        割り当てた参考値で、多くの店舗は「情報なし」になります。
+        営業時間は変わることがあるため訪問前にご確認ください。
       </p>
     </main>
   );

@@ -8,8 +8,8 @@ export interface Shop {
   brand?: string;
   /** 味の傾向。ブランドから判定できたものだけ入り、それ以外は "unknown"。 */
   taste: TasteKey;
-  /** "confirmed" = 店名/ブランドに「家系」を含む、または既知の家系ブランド。 */
-  confidence: "confirmed" | "likely";
+  /** 家系だと言い切れる度合い。詳しくは CONFIDENCE を見ること。 */
+  confidence: ConfidenceKey;
   prefecture: string;
   city?: string;
   address?: string;
@@ -31,6 +31,24 @@ export const TASTES = {
 } as const;
 
 export type TasteKey = keyof typeof TASTES;
+
+/**
+ * 家系判定の段階。
+ *
+ * 「家系ではない」と「家系かどうか分からない」は別物なので分けている。
+ * 前者はそもそも一覧に載せず、後者が candidate。店名しか手がかりが無い店は
+ * 実際に多く、likely に混ぜると「たぶん家系」と読めてしまう。
+ */
+export const CONFIDENCE = {
+  confirmed: { label: "家系", description: "店名が家系を名乗っている、または既知の家系ブランド" },
+  likely: { label: "家系の可能性", description: "店名から家系と推定できる" },
+  candidate: {
+    label: "家系か未判定",
+    description: "ラーメン店で屋号が「〜家」だが、家系かどうかは店名から判断できない",
+  },
+} as const;
+
+type ConfidenceKey = keyof typeof CONFIDENCE;
 
 export type SearchMode = "form" | "nearby" | "map";
 
