@@ -6,7 +6,8 @@
     "scripts/*.mjs",
     "tests/**/*.test.ts",
     "e2e/**/*.spec.ts",
-    "pw-shoot.config.ts"
+    "pw-shoot.config.ts",
+    "doctor.config.ts"
   ],
   "project": ["**/*.{ts,tsx,mjs}"],
   "ignoreBinaries": ["ffmpeg"],

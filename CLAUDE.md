@@ -17,6 +17,7 @@ npm run data:dedupe  # 重複判定（要 TYPESAFE_API_KEY）→ duplicates.json
 npm run data:rescore # 閾値だけ変えたとき（API 不要）
 npm run data:build   # judged.json + osm-raw.json → shops.json（API 不要）
 
+npm run doctor      # react-doctor（React 固有の壊れ方を見る）
 npm test            # vitest（距離計算・家系判定・MCP サーバーの結合テスト）
 npm run e2e         # playwright（basic-host 経由の実ブラウザテスト）
 npm run lint        # oxlint
@@ -25,6 +26,10 @@ npm run knip        # 未使用のコード・依存の検出
 ```
 
 ポートは 3031。3001 はこの環境で別プロセスが使っている。
+
+コミット時に react-doctor がステージ済みファイルを見る（`.githooks/pre-commit`）。
+`npm install` が `core.hooksPath` を張るので、clone 直後に 1 回入れれば効く。
+急ぐときは `git commit --no-verify` で飛ばせる。
 
 ## アーキテクチャ
 
