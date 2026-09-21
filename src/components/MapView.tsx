@@ -53,13 +53,19 @@ export function MapView({ shops, selectedId, onSelect, focus }: Props) {
   }, []);
 
   // 店舗が変わったらマーカーを描き直す。
+  //
+  // 後始末（clearTimeout / off / clearLayers）は下の return で書いてあるが、
+  // マーカーをループで作るため、検出器が登録と解除を対応づけられない。
+  // react-doctor-disable-next-line react-doctor/effect-needs-cleanup
   useEffect(() => {
     const layer = layerRef.current;
     const map = mapRef.current;
     if (!layer || !map) return;
+    // 後始末のときに ref を辿らずに済むよう、ここで掴んでおく。
+    const markers = markersRef.current;
 
     layer.clearLayers();
-    markersRef.current.clear();
+    markers.clear();
 
     for (const shop of shops) {
       const marker = L.circleMarker([shop.lat, shop.lon], {
@@ -72,7 +78,7 @@ export function MapView({ shops, selectedId, onSelect, focus }: Props) {
         .bindTooltip(`${shop.name}（${TASTES[shop.taste].label}）`)
         .on("click", () => onSelectRef.current(shop));
       marker.addTo(layer);
-      markersRef.current.set(shop.id, marker);
+      markers.set(shop.id, marker);
     }
 
     if (shops.length > 0) {
@@ -84,7 +90,17 @@ export function MapView({ shops, selectedId, onSelect, focus }: Props) {
       map.fitBounds(JAPAN_BOUNDS);
     }
     // 親の高さが後から確定する場合に備えて再計測する。
-    setTimeout(() => map.invalidateSize(), 0);
+    const resize = setTimeout(() => map.invalidateSize(), 0);
+
+    return () => {
+      // 同じ tick で外れたときに、消えた地図を触りに行かないようにする。
+      clearTimeout(resize);
+      // 付けたハンドラは自分で外す。clearLayers だけでも参照は切れるが、
+      // 「付けた側が外す」を形にしておかないと、あとで読む人に分からない。
+      for (const marker of markers.values()) marker.off("click");
+      layer.clearLayers();
+      markers.clear();
+    };
   }, [shops]);
 
   // 外から指定されたフォーカス位置へ移動する。

@@ -13,45 +13,20 @@
  * これが無いと、地図で店を選んだ直後に「この店は？」と聞かれてもモデルは
  * 何も知らず、UI と会話が別々のものに見える。
  */
-import type { CallToolResult } from "@modelcontextprotocol/client";
 import type { App, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import { useApp } from "@modelcontextprotocol/ext-apps/react";
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { MapView } from "./components/MapView";
+import { ModeTabs } from "./components/ModeTabs";
 import { NearbyPanel } from "./components/NearbyPanel";
 import { SearchForm, type FormValues } from "./components/SearchForm";
+import { ResultView } from "./components/ResultView";
 import { SelectedShop } from "./components/SelectedShop";
-import { ShopList } from "./components/ShopList";
-import { askMessageText, describeShop } from "./lib/shop-brief";
-import type { AppPayload, OriginSource, SearchMode, Shop } from "./lib/types";
+import { useServerTools } from "./hooks/use-server-tools";
+import { EMPTY_PAYLOAD, readPayload } from "./lib/payload";
+import { describeShop } from "./lib/shop-brief";
+import type { AppPayload, SearchMode, Shop } from "./lib/types";
 import styles from "./mcp-app.module.css";
-
-const MODES: Array<{ key: SearchMode; label: string }> = [
-  { key: "form", label: "検索フォーム" },
-  { key: "nearby", label: "現在地から探す" },
-  { key: "map", label: "地図から探す" },
-];
-
-const TOOL_BY_MODE: Record<SearchMode, string> = {
-  form: "search-iekei-ramen",
-  nearby: "find-nearby-iekei-ramen",
-  map: "show-iekei-ramen-map",
-};
-
-const EMPTY_PAYLOAD: AppPayload = {
-  mode: "form",
-  shops: [],
-  total: 0,
-  query: {},
-  prefectures: [],
-};
-
-function readPayload(result: CallToolResult): AppPayload | null {
-  const sc = result.structuredContent as unknown;
-  if (!sc || typeof sc !== "object" || !("shops" in sc)) return null;
-  return sc as AppPayload;
-}
 
 function IekeiApp() {
   const [payload, setPayload] = useState<AppPayload | null>(null);
@@ -119,7 +94,7 @@ function IekeiApp() {
    * 並行に投げると完了順が入れ替わる。古い受け渡しが遅れて失敗すると、その
    * 後始末が、先に成功していた新しい受け渡しを消してしまう。
    */
-  const contextQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const contextQueue = useRef<Promise<unknown> | null>(null);
   useEffect(() => {
     if (!app) return;
     // 渡したものも、列に並んでいるものも無いなら、消しに行く必要はない
@@ -135,7 +110,7 @@ function IekeiApp() {
       settle = resolve;
     });
 
-    contextQueue.current = contextQueue.current.then(async () => {
+    contextQueue.current = (contextQueue.current ?? Promise.resolve()).then(async () => {
       try {
         await app.updateModelContext(
           selected
@@ -202,6 +177,22 @@ function IekeiApp() {
   );
 }
 
+/** ホストが指定する画面端の余白。渡してこないホストもある。 */
+function safeAreaPadding(hostContext?: McpUiHostContext) {
+  const inset = hostContext?.safeAreaInsets;
+  return {
+    paddingTop: inset?.top,
+    paddingRight: inset?.right,
+    paddingBottom: inset?.bottom,
+    paddingLeft: inset?.left,
+  };
+}
+
+/** 「558 件（200 件表示）」。上限で切られているときだけ内訳を出す。 */
+function formatCount(total: number, shown: number): string {
+  return total > shown ? `${total} 件（${shown} 件表示）` : `${total} 件`;
+}
+
 interface InnerProps {
   app: App;
   payload: AppPayload;
@@ -232,87 +223,27 @@ function IekeiAppInner({
   awaitContext,
   hostContext,
 }: InnerProps) {
+  // payload が変わるたび key で作り直されるので、ここは「初期値を 1 度だけ写す」形。
+  // 再同期しないことが前提なので、派生 state の警告はこの 2 つに限って外している。
+  // react-doctor-disable-next-line react-doctor/no-derived-useState
   const [mode, setMode] = useState<SearchMode>(payload.mode);
-  const [busy, setBusy] = useState(false);
-  const [asking, setAsking] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
   const [form, setForm] = useState<FormValues>({
     prefecture: payload.query.prefecture ?? "",
     taste: payload.query.taste && payload.query.taste !== "unknown" ? payload.query.taste : "",
     keyword: payload.query.keyword ?? "",
   });
 
-  /**
-   * tool を呼ぶ。App 発の呼び出しでは ontoolresult が来ないので、
-   * 戻り値に payload が入っていればここで反映する。
-   */
-  const call = useCallback(
-    async (name: string, args: Record<string, unknown>) => {
-      setBusy(true);
-      setFailure(null);
-      try {
-        const result = await app.callServerTool({ name, arguments: args });
-        if (result.isError) {
-          setFailure("検索に失敗しました。もう一度お試しください。");
-          return result;
-        }
-        const next = readPayload(result);
-        if (next) onPayload(next);
-        return result;
-      } catch (e) {
-        setFailure(e instanceof Error ? e.message : String(e));
-        return null;
-      } finally {
-        setBusy(false);
-      }
-    },
-    [app, onPayload],
-  );
-
-  const runSearch = useCallback(
-    (next: FormValues, targetMode: "form" | "map") => {
-      void call(TOOL_BY_MODE[targetMode], {
-        prefecture: next.prefecture || undefined,
-        taste: next.taste || undefined,
-        ...(targetMode === "form" ? { keyword: next.keyword || undefined } : {}),
-      });
-    },
-    [call],
-  );
-
-  const runNearby = useCallback(
-    (lat: number, lon: number, label: string | undefined, source: OriginSource) => {
-      onNotice(null);
-      void call("find-nearby-iekei-ramen", { lat, lon, limit: 5, label, source });
-    },
-    [call, onNotice],
-  );
-
-  /**
-   * 座標を渡さずに呼び、ホストが持つ大まかな現在地に任せる。
-   * ChatGPT のように iframe の geolocation が塞がれたホスト向けの経路。
-   */
-  const runNearbyByHost = useCallback(async () => {
-    const result = await call("find-nearby-iekei-ramen", { limit: 5 });
-    const located = Boolean((result && readPayload(result))?.query.origin);
-    onNotice(located ? null : "現在地を取得できませんでした。下の欄に地名を入力してください。");
-    return located;
-  }, [call, onNotice]);
-
-  const geocode = useCallback(
-    async (query: string) => {
-      const result = await call("geocode-place", { query });
-      const hits = (
-        result?.structuredContent as {
-          results?: Array<{ label: string; lat: number; lon: number }>;
-        }
-      )?.results;
-      if (!hits || hits.length === 0) return null;
-      const [first] = hits;
-      return { lat: first.lat, lon: first.lon, label: first.label.split(",")[0].trim() };
-    },
-    [call],
-  );
+  const {
+    busy,
+    asking,
+    failure,
+    runSearch,
+    runNearby,
+    runNearbyByHost,
+    geocode,
+    openInMaps,
+    askAboutShop,
+  } = useServerTools({ app, onPayload, onNotice, awaitContext });
 
   const switchMode = useCallback(
     (next: SearchMode) => {
@@ -321,39 +252,6 @@ function IekeiAppInner({
       if (next === "form" || next === "map") runSearch(form, next);
     },
     [form, onSelect, runSearch],
-  );
-
-  const openInMaps = useCallback(
-    (shop: Shop) => {
-      void app.openLink({
-        url: `https://www.openstreetmap.org/?mlat=${shop.lat}&mlon=${shop.lon}#map=18/${shop.lat}/${shop.lon}`,
-      });
-    },
-    [app],
-  );
-
-  /**
-   * 選択中の店を話題にして会話に戻す。
-   *
-   * 店の詳細は外側が updateModelContext で渡してあるので、届いていれば短い一文で足りる。
-   * ホストが未対応だったり失敗したりしたときは、質問に詳細を同梱する。
-   * 店名だけを送ると、モデルが但し書き無しに自分の知識で答えてしまうため。
-   */
-  const askAboutShop = useCallback(
-    async (shop: Shop) => {
-      setAsking(true);
-      setFailure(null);
-      try {
-        const text = askMessageText(shop, await awaitContext(shop));
-        const result = await app.sendMessage({ role: "user", content: [{ type: "text", text }] });
-        if (result.isError) setFailure("ホストがメッセージの送信を受け付けませんでした。");
-      } catch (e) {
-        setFailure(e instanceof Error ? e.message : String(e));
-      } finally {
-        setAsking(false);
-      }
-    },
-    [app, awaitContext],
   );
 
   // 現在地モードは基準地点が決まるまで結果を出さない
@@ -370,42 +268,16 @@ function IekeiAppInner({
   }, [mode, payload.query]);
 
   const shops = awaitingOrigin ? [] : payload.shops;
-  const hasMore = !awaitingOrigin && payload.total > shops.length;
+  const count = awaitingOrigin ? null : formatCount(payload.total, shops.length);
 
   return (
-    <main
-      className={styles.main}
-      style={{
-        paddingTop: hostContext?.safeAreaInsets?.top,
-        paddingRight: hostContext?.safeAreaInsets?.right,
-        paddingBottom: hostContext?.safeAreaInsets?.bottom,
-        paddingLeft: hostContext?.safeAreaInsets?.left,
-      }}
-    >
+    <main className={styles.main} style={safeAreaPadding(hostContext)}>
       <div className={styles.header}>
         <h1 className={styles.title}>🍜 {heading}</h1>
-        {!awaitingOrigin && (
-          <span className={styles.count}>
-            {payload.total} 件{hasMore ? `（${shops.length} 件表示）` : ""}
-          </span>
-        )}
+        {count ? <span className={styles.count}>{count}</span> : null}
       </div>
 
-      <div className={styles.tabs} role="tablist">
-        {MODES.map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={mode === key}
-            className={`${styles.tab} ${mode === key ? styles.tabActive : ""}`}
-            onClick={() => switchMode(key)}
-            disabled={busy}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <ModeTabs mode={mode} onChange={switchMode} busy={busy} />
 
       {mode === "form" && (
         <SearchForm
@@ -454,30 +326,7 @@ function IekeiAppInner({
         />
       )}
 
-      {mode === "map" ? (
-        <div className={styles.mapLayout}>
-          <MapView shops={shops} selectedId={selected?.id} onSelect={onSelect} />
-          {/* 選んだ店は上のパネルに出るので、一覧は絞り込まずそのまま残す。 */}
-          <ShopList
-            shops={shops.slice(0, 20)}
-            selectedId={selected?.id}
-            onSelect={onSelect}
-            emptyMessage="この条件では地図に表示できる店舗がありません。"
-          />
-        </div>
-      ) : (
-        <ShopList
-          shops={shops}
-          ranked={mode === "nearby"}
-          selectedId={selected?.id}
-          onSelect={onSelect}
-          emptyMessage={
-            mode === "nearby"
-              ? "現在地を指定すると近い順に 5 件表示します。"
-              : "条件に合う店舗が見つかりませんでした。"
-          }
-        />
-      )}
+      <ResultView mode={mode} shops={shops} selectedId={selected?.id} onSelect={onSelect} />
 
       <p className={styles.footnote}>
         店舗データは OpenStreetMap（ODbL）由来。「家系の可能性」は店名から家系と推定したもの、

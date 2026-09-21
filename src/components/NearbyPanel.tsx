@@ -48,7 +48,8 @@ export function NearbyPanel({ origin, onLocate, onLocateByHost, onGeocode, notic
   const [place, setPlace] = useState("");
   const [status, setStatus] = useState<string | null>(null);
 
-  const useCurrentPosition = async () => {
+  // use 始まりにするとフックと見分けが付かない。これはクリックで走るただの関数。
+  const startFromCurrentPosition = async () => {
     setStatus("現在地を取得中…");
 
     const pos = await requestBrowserPosition();
@@ -84,7 +85,7 @@ export function NearbyPanel({ origin, onLocate, onLocateByHost, onGeocode, notic
         <button
           type="button"
           className={styles.button}
-          onClick={() => void useCurrentPosition()}
+          onClick={() => void startFromCurrentPosition()}
           disabled={busy}
         >
           現在地から探す
