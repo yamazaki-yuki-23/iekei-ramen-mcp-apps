@@ -107,15 +107,17 @@ export function nearbyPairs(raw, radiusM) {
   return out;
 }
 
+/** 指紋に使う、片側 1 件ぶんの文字列。 */
+const fingerprintSide = (el) =>
+  `${el.osmType}/${el.osmId}@${el.lat.toFixed(6)},${el.lon.toFixed(6)}#${tagsFingerprint(el.tags ?? {})}`;
+
 /**
  * ペアの判定に使った入力の指紋。
  * 距離も判断材料なので、タグだけでなく座標も含める。
  */
 export function pairFingerprint(a, b) {
-  const side = (el) =>
-    `${el.osmType}/${el.osmId}@${el.lat.toFixed(6)},${el.lon.toFixed(6)}#${tagsFingerprint(el.tags ?? {})}`;
   return createHash("sha1")
-    .update([side(a), side(b)].toSorted().join("|"))
+    .update([fingerprintSide(a), fingerprintSide(b)].toSorted().join("|"))
     .digest("hex")
     .slice(0, 12);
 }
