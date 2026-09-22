@@ -27,6 +27,11 @@ npm run knip        # 未使用のコード・依存の検出
 
 ポートは 3031。3001 はこの環境で別プロセスが使っている。
 
+**Node のバージョンは [.nvmrc](.nvmrc) が 1 箇所の正。** CI もここを読む
+（`setup-node` の `node-version-file`）。手元がずれると CI で再現しない不具合が出るので、
+`nvm use` / `mise use node` などで揃えてから作業する。`@types/node` もここに合わせる。
+型だけ先に上げると、実行環境に無い API が型として通ってしまう。
+
 コミット時に react-doctor がステージ済みファイルを見る（`.githooks/pre-commit`）。
 `npm install` が `core.hooksPath` を張るので、clone 直後に 1 回入れれば効く。
 急ぐときは `git commit --no-verify` で飛ばせる。
@@ -173,7 +178,7 @@ SERVERS='["http://localhost:3031/mcp"]' npx tsx e2e-host/ext-apps/examples/basic
 ```
 
 Cloudflare 側の確認は `npm run dev:worker`。バンドルサイズは gzip で 3 MiB が無料枠の上限、
-現状 410 KiB。
+現状 413 KiB。
 
 ## デプロイ
 
