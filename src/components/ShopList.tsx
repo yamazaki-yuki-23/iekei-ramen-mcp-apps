@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { CONFIDENCE, TASTES, type Shop } from "../lib/types";
 import { formatDistance } from "../lib/geo";
 import styles from "../mcp-app.module.css";
@@ -8,10 +9,15 @@ interface Props {
   ranked?: boolean;
   selectedId?: string;
   onSelect?: (shop: Shop) => void;
+  /**
+   * 選択中のカードの直下に差し込むもの。
+   * 一覧の上に置くと、選んだ瞬間に一覧全体が下にずれて次のカードを押せない。
+   */
+  detail?: ReactNode;
   emptyMessage?: string;
 }
 
-export function ShopList({ shops, ranked, selectedId, onSelect, emptyMessage }: Props) {
+export function ShopList({ shops, ranked, selectedId, onSelect, detail, emptyMessage }: Props) {
   if (shops.length === 0) {
     return (
       <p className={styles.empty}>{emptyMessage ?? "条件に合う店舗が見つかりませんでした。"}</p>
@@ -21,7 +27,7 @@ export function ShopList({ shops, ranked, selectedId, onSelect, emptyMessage }: 
   return (
     <ul className={styles.list}>
       {shops.map((shop, i) => (
-        <li key={shop.id}>
+        <li key={shop.id} className={selectedId === shop.id ? styles.listItemSelected : undefined}>
           <button
             type="button"
             className={`${styles.card} ${selectedId === shop.id ? styles.cardSelected : ""}`}
@@ -54,6 +60,7 @@ export function ShopList({ shops, ranked, selectedId, onSelect, emptyMessage }: 
               <span className={styles.distance}>{formatDistance(shop.distanceKm)}</span>
             )}
           </button>
+          {selectedId === shop.id && detail}
         </li>
       ))}
     </ul>

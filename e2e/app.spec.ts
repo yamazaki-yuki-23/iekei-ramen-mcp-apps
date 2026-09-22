@@ -354,3 +354,63 @@ test.describe("注文のカンペ", () => {
     await expect(app.getByText(/店ごとの決まりは持っていない/)).toBeVisible();
   });
 });
+
+test.describe("選択中の店の詳細", () => {
+  test("選んだカードの直下に出る", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const target = shopCards(app).nth(2);
+    const name = await shopName(target);
+    await target.click();
+
+    // 詳細は選んだカードと同じ li の中にある（＝直下）
+    const detail = app.locator("li", { has: app.getByRole("region", { name: "選択中の店舗" }) });
+    await expect(detail).toContainText(name);
+  });
+
+  test("選んでも、その上のカードの並びが動かない", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const first = shopCards(app).first();
+    const target = shopCards(app).nth(3);
+    const gapBefore = (await target.boundingBox())!.y - (await first.boundingBox())!.y;
+
+    await target.click();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
+
+    // 詳細は選んだカードの下に入るので、その上の並びは変わらない。
+    // 一覧の上に差し込んでいた頃は、ここが詳細の高さ（約 250px）分ずれていた。
+    // 選択枠の線 1px ぶんだけは動くので、そこは許容する。
+    const gapAfter = (await target.boundingBox())!.y - (await first.boundingBox())!.y;
+    expect(Math.abs(gapAfter - gapBefore)).toBeLessThanOrEqual(2);
+  });
+
+  test("選んだカードと詳細が同時に見える", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    // 一覧は高さを制限しているので、下の方のカードを選ぶと詳細が見切れていた
+    const target = shopCards(app).nth(6);
+    await target.click();
+
+    await expect(target).toBeInViewport();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeInViewport();
+  });
+
+  test("別の店を押すと、解除しなくても詳細が移る", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const second = shopCards(app).nth(1);
+    const secondName = await shopName(second);
+    await shopCards(app).nth(0).click();
+    await second.click();
+
+    // 詳細は 1 つだけで、2 件目のカードと同じ枠の中にある
+    const detail = app.getByRole("region", { name: "選択中の店舗" });
+    await expect(detail).toHaveCount(1);
+    await expect(app.locator("li", { has: detail })).toContainText(secondName);
+  });
+});

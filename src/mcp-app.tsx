@@ -316,17 +316,24 @@ function IekeiAppInner({
 
       {failure && <p className={styles.error}>{failure}</p>}
 
-      {selected && (
-        <SelectedShop
-          shop={selected}
-          onAsk={() => void askAboutShop(selected)}
-          onOpenMap={() => openInMaps(selected)}
-          onClear={() => onSelect(null)}
-          asking={asking}
-        />
-      )}
-
-      <ResultView mode={mode} shops={shops} selectedId={selected?.id} onSelect={onSelect} />
+      <ResultView
+        mode={mode}
+        shops={shops}
+        selectedId={selected?.id}
+        onSelect={onSelect}
+        // 詳細は選んだカードの直下に出す。一覧の上に置くと、選んだ瞬間に
+        // 一覧が下にずれて、続けて別の店を押せない。
+        detail={
+          selected && (
+            <SelectedShop
+              onAsk={() => void askAboutShop(selected)}
+              onOpenMap={() => openInMaps(selected)}
+              onClear={() => onSelect(null)}
+              asking={asking}
+            />
+          )
+        }
+      />
 
       <p className={styles.footnote}>
         店舗データは OpenStreetMap（ODbL）由来。「家系の可能性」は店名から家系と推定したもの、
