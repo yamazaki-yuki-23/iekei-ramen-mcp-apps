@@ -1,3 +1,20 @@
+/*
+ * デザイントークン。
+ *
+ * 組み立て方はデジタル庁デザインシステム（DADS）に倣って 3 段にしてある。
+ *   1. プリミティブ  色の階調そのもの。用途を持たない（--ramen-600 など）
+ *   2. セマンティック 用途に名前を付けたもの（--color-accent など）
+ *   3. コンポーネント CSS Modules 側で組み立てる
+ * 途中を飛ばしてプリミティブを直接使うと、ダークモードの差し替えが効かない。
+ *
+ * 数値の根拠は DADS の基礎（foundations）:
+ *   余白   8px グリッド
+ *   角丸   小 8px / 中 12px / 大 16px / 全 999px
+ *   字     本文 16px、最小 14px、行高 1.5 以上、小さい文字は字間 0.02em
+ *   焦点   黄（#ffd43d）＋黒の縁。背景が明でも暗でも見える組み合わせ
+ * 色だけは DADS の青ではなく家系（醤油豚骨の茶赤）を使う。
+ */
+
 :root {
   color-scheme: light dark;
 
@@ -37,21 +54,106 @@
   --font-heading-sm-size: 0.875rem;
   --font-heading-sm-line-height: 1.4;
 
-  /* Spacing derived from host typography */
-  --spacing-unit: var(--font-text-md-size);
-  --spacing-xs: calc(var(--spacing-unit) * 0.25);
-  --spacing-sm: calc(var(--spacing-unit) * 0.5);
-  --spacing-md: var(--spacing-unit);
-  --spacing-lg: calc(var(--spacing-unit) * 1.5);
+  /* --- プリミティブ: 家系（醤油豚骨の茶赤） ---------------------------- */
+  /*
+   * 600 が元からのブランド色。文字に使うと白地でコントラスト 5.4 しか出ず、
+   * 本文には足りないので、文字用に 700（7.2）を別に用意してある。
+   */
+  --ramen-50: #fdf4f1;
+  --ramen-100: #fae4dc;
+  --ramen-200: #f3c5b6;
+  --ramen-300: #e89d87;
+  --ramen-400: #da7256;
+  --ramen-500: #c85434;
+  --ramen-600: #b8442c;
+  --ramen-700: #9a3623;
+  --ramen-800: #7c2c1d;
+  --ramen-900: #5e2216;
+  --ramen-950: #33150f;
 
-  /* 家系ラーメンのイメージカラー（醤油豚骨の茶と海苔の黒） */
-  --color-accent: #b8442c;
-  --color-accent-soft: light-dark(#fdf1ec, #3a1c14);
+  /* --- プリミティブ: ニュートラル -------------------------------------- */
+  /* 家系色に合わせて僅かに暖色へ寄せた灰。純灰と混ぜると色が濁って見える。 */
+  --gray-0: #ffffff;
+  --gray-50: #f8f7f5;
+  --gray-100: #efedea;
+  --gray-200: #dedbd6;
+  --gray-300: #c4c0b9;
+  --gray-400: #a09b93;
+  --gray-500: #7d776e;
+  --gray-600: #635e57;
+  --gray-700: #4a4640;
+  --gray-800: #33302c;
+  --gray-900: #201e1b;
+  --gray-950: #141312;
+
+  /* --- セマンティック: 色 ---------------------------------------------- */
+  /* 線・アイコン・大きい文字に使う。面の上に置くだけなので明暗で振る。 */
+  --color-accent: light-dark(var(--ramen-600), var(--ramen-400));
+  /* 本文サイズの文字に使う。白地 7.2、暗地 7.6 でどちらも AAA。 */
+  --color-accent-strong: light-dark(var(--ramen-700), var(--ramen-300));
+  /*
+   * 塗り（ボタン・選択中のチップ）の色。白抜き文字を載せるので、明暗で
+   * 振らずに 600 で固定する。暗いテーマで明るい側へ振ると、白文字との
+   * コントラストが 3.2 まで落ちて読めなくなる。
+   */
+  --color-accent-fill: var(--ramen-600);
+  --color-accent-fill-hover: var(--ramen-700);
+  --color-accent-soft: light-dark(var(--ramen-50), #2a1510);
+  --color-accent-soft-strong: light-dark(var(--ramen-100), #3d1f16);
+  --color-accent-border: light-dark(var(--ramen-200), var(--ramen-800));
   --color-text-on-accent: #ffffff;
-  --color-border: light-dark(#e2e0dc, #3a3a38);
-  --color-surface: light-dark(#ffffff, #232323);
-  --color-surface-muted: light-dark(#faf8f5, #1e1e1e);
-  --color-text-muted: light-dark(#6b6560, #a5a09a);
+
+  --color-surface: light-dark(var(--gray-0), var(--gray-900));
+  --color-surface-muted: light-dark(var(--gray-50), var(--gray-950));
+  --color-border: light-dark(var(--gray-200), #3a3733);
+  --color-border-strong: light-dark(var(--gray-300), var(--gray-600));
+  --color-text-muted: light-dark(var(--gray-600), var(--gray-400));
+
+  /*
+   * 焦点リング。DADS の黄＋黒に倣う。色に意味を持たせない（成功・警告と
+   * 混ざらない）ので、明背景でも暗背景でも同じものが使える。
+   */
+  --color-focus-ring: #ffd43d;
+  --color-focus-edge: #141312;
+
+  /*
+   * 失敗の赤は家系の茶赤と別に持つ。ブランド色で失敗を出すと、
+   * 「強調」と「異常」が同じ色になって区別が付かない。
+   */
+  --color-error: light-dark(#ce0000, #ff9b9b);
+  --color-error-soft: light-dark(#fdecec, #3a1414);
+  --color-error-border: light-dark(#f0b4b4, #7a2424);
+
+  /* --- セマンティック: 余白（8px グリッド） ------------------------------ */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* --- セマンティック: 角丸 --------------------------------------------- */
+  /* 小さい図形ほど丸みが強く見えるので、部品の大きさごとに段を変える。 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* --- セマンティック: 影 ----------------------------------------------- */
+  /* 平常時は枠線だけ。影は「浮いている＝操作中」の合図に取っておく。 */
+  --elevation-1: 0 1px 2px rgb(20 19 18 / 6%), 0 2px 8px rgb(20 19 18 / 6%);
+  --elevation-2: 0 2px 4px rgb(20 19 18 / 8%), 0 8px 20px rgb(20 19 18 / 10%);
+
+  /* --- セマンティック: 文字 --------------------------------------------- */
+  /* DADS は 14px 未満を認めない。注記もここまでしか落とさない。 */
+  --font-size-note: 0.875rem;
+  /* 小さい和文は字間を空けた方が読める（DADS: 2%）。 */
+  --letter-spacing-tight: -0.01em;
+  --letter-spacing-normal: 0.02em;
+
+  --duration-fast: 120ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0.1, 1);
 }
 
 * {
@@ -65,7 +167,10 @@ body {
   font-size: var(--font-text-md-size);
   font-weight: var(--font-weight-normal);
   line-height: var(--font-text-md-line-height);
+  letter-spacing: var(--letter-spacing-normal);
   color: var(--color-text-primary);
+  /* 和文の約物が全角のまま並ぶと隙間だらけに見える。詰めて組む。 */
+  font-feature-settings: "palt" 1;
 }
 
 h1 {
@@ -93,14 +198,36 @@ h6 {
   line-height: var(--font-heading-sm-line-height);
 }
 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  /* 見出しは字を詰め、折り返しの行長を揃える。 */
+  letter-spacing: var(--letter-spacing-tight);
+  text-wrap: balance;
+}
+
 code,
 pre,
 kbd {
   font-family: var(--font-mono);
   font-size: 1em;
+  letter-spacing: normal;
 }
 
 b,
 strong {
   font-weight: var(--font-weight-bold);
+}
+
+/* 動きを減らす設定の人には、色の変化だけ残して移動と拡大を止める。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -4,13 +4,22 @@ import "leaflet/dist/leaflet.css";
 import { TASTES, type Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 
-/** 味の傾向ごとのピンの色。 */
+/**
+ * 味の傾向ごとのピンの色。
+ *
+ * Leaflet は CSS 変数を受け取らないので、ここだけ実値を持つ。
+ * global.css のパレットから取っている（rich = --ramen-600、
+ * unknown = --gray-500）ので、パレットを変えたらここも合わせる。
+ */
 const TASTE_COLORS: Record<Shop["taste"], string> = {
   rich: "#b8442c",
   creamy: "#e0a04a",
   chain: "#4a7fb8",
-  unknown: "#8a8a8a",
+  unknown: "#7d776e",
 };
+
+/** 選択中のピンの縁。地図タイルのどの色の上でも輪郭が出る濃さ。 */
+const SELECTED_STROKE = "#141312";
 
 /** 日本全体が収まる初期表示。 */
 const JAPAN_BOUNDS = L.latLngBounds([24.0, 122.5], [45.7, 146.0]);
@@ -116,7 +125,7 @@ export function MapView({ shops, selectedId, onSelect, focus }: Props) {
     if (!map || !selectedId) return;
     const marker = markersRef.current.get(selectedId);
     if (!marker) return;
-    marker.bringToFront().setStyle({ radius: 10, color: "#111111", weight: 2 });
+    marker.bringToFront().setStyle({ radius: 10, color: SELECTED_STROKE, weight: 2 });
     map.setView(marker.getLatLng(), Math.max(map.getZoom(), 14));
     marker.openTooltip();
     return () => {
