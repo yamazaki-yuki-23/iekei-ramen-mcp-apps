@@ -1,6 +1,7 @@
 import { formatDistance } from "../lib/geo";
 import { CONFIDENCE, TASTES, type Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
+import { OrderGuide } from "./OrderGuide";
 
 interface Props {
   shop: Shop;
@@ -57,6 +58,8 @@ export function SelectedShop({ shop, onAsk, onOpenMap, onClear, asking }: Props)
           選択を解除
         </button>
       </div>
+
+      <OrderGuide />
 
       <p className={styles.selectedNote}>
         選んだ店の情報はチャットに渡してあります。「この店について聞く」を押すと、この店を

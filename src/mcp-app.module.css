@@ -268,6 +268,90 @@
   line-height: 1.5;
 }
 
+/* --- 注文のカンペ --- */
+.guide {
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  background: var(--color-surface);
+}
+
+.guideSummary {
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  font-size: var(--font-heading-sm-size);
+  font-weight: var(--font-weight-bold);
+}
+
+.guideBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: 0 var(--spacing-md) var(--spacing-md);
+}
+
+.guideTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.guideTable th,
+.guideTable td {
+  padding: var(--spacing-xs) 0;
+  vertical-align: top;
+  border-bottom: var(--border-width-regular) solid var(--color-border);
+}
+
+.guideTable thead th {
+  font-size: var(--font-heading-sm-size);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-normal);
+}
+
+.guideTable tbody th {
+  width: 7em;
+  white-space: nowrap;
+}
+
+.guideTable td {
+  display: table-cell;
+}
+
+.guideOptions,
+.guideChoice {
+  display: block;
+  font-weight: var(--font-weight-bold);
+}
+
+.guideSets,
+.guideTips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guideSets li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guideTips {
+  gap: var(--spacing-xs);
+}
+
+.guideTips li {
+  padding-left: 1em;
+  text-indent: -1em;
+}
+
+.guideTips li::before {
+  content: "・";
+}
+
 /* --- 地図 --- */
 .map {
   height: 24rem;

@@ -320,3 +320,37 @@ test.describe("モデルへの受け渡し", () => {
     await expect(app.getByRole("region", { name: "選択中の店舗" })).toHaveCount(0);
   });
 });
+
+test.describe("注文のカンペ", () => {
+  test("店を選ぶとカンペが出て、開くと三つ巴が読める", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const guide = app.getByText("注文のしかた（お好み・卓上・ライス）");
+    await expect(guide).toHaveCount(0);
+
+    await shopCards(app).first().click();
+    await expect(guide).toBeVisible();
+
+    // 畳んである状態では中身を出さない
+    await expect(app.getByRole("row", { name: /麺の硬さ/ })).toBeHidden();
+
+    await guide.click();
+    await expect(app.getByRole("row", { name: /麺の硬さ/ })).toBeVisible();
+    await expect(app.getByRole("row", { name: /味の濃さ/ })).toBeVisible();
+    await expect(app.getByRole("row", { name: /脂の量/ })).toBeVisible();
+  });
+
+  test("回数別の頼み方と、断定しない断り書きを出す", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    await shopCards(app).first().click();
+    await app.getByText("注文のしかた（お好み・卓上・ライス）").click();
+
+    await expect(app.getByText("初めて")).toBeVisible();
+    await expect(app.getByText("かため / ふつう / ふつう")).toBeVisible();
+    // 店ごとの流儀は持っていないので、言い切らないこと
+    await expect(app.getByText(/店ごとの決まりは持っていない/)).toBeVisible();
+  });
+});
