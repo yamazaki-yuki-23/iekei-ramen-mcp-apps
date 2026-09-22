@@ -72,9 +72,7 @@ test.describe("現在地から探す", () => {
 
     await app.getByRole("tab", { name: "現在地から探す" }).click();
 
-    await expect(
-      app.getByRole("heading", { name: "🍜 現在地から家系ラーメンを探す" }),
-    ).toBeVisible();
+    await expect(app.getByRole("heading", { name: "現在地から家系ラーメンを探す" })).toBeVisible();
     await expect(app.getByText("現在地を指定すると近い順に 5 件表示します。")).toBeVisible();
     await expect(shopCards(app)).toHaveCount(0);
   });
@@ -153,7 +151,7 @@ test.describe("現在地から探す", () => {
     await waitForApp(app);
 
     await expect(app.getByText("基準: 横浜駅")).toBeVisible();
-    await expect(app.getByRole("heading", { name: "🍜 横浜駅の近くの家系ラーメン" })).toBeVisible();
+    await expect(app.getByRole("heading", { name: "横浜駅の近くの家系ラーメン" })).toBeVisible();
   });
 });
 
@@ -220,6 +218,21 @@ test.describe("モード切り替え", () => {
     await waitForApp(app);
 
     await expect(app.getByText(/OpenStreetMap（ODbL）由来/)).toBeVisible();
+  });
+
+  test("狭いホストでもタブが溝からはみ出さない", async ({ page }) => {
+    // 携帯の幅（375px）のホストに置かれることがある。和文ラベル 3 つは
+    // 1 行に収まりきらず、以前は溝の外へ出て横スクロールが生まれていた。
+    await page.setViewportSize({ width: 375, height: 800 });
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const overflow = await app.locator('[role="tablist"]').evaluate((el) => ({
+      track: el.scrollWidth - el.clientWidth,
+      page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }));
+    expect(overflow.track).toBe(0);
+    expect(overflow.page).toBe(0);
   });
 });
 
@@ -373,18 +386,66 @@ test.describe("選択中の店の詳細", () => {
     const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
     await waitForApp(app);
 
-    const first = shopCards(app).first();
-    const target = shopCards(app).nth(3);
-    const gapBefore = (await target.boundingBox())!.y - (await first.boundingBox())!.y;
+    /*
+     * 4 枚目と 1 枚目の間隔を、一覧の中での位置（offsetTop）で測る。
+     *
+     * 画面上の座標で測ってはいけない。選ぶと scrollIntoView が走り、一覧だけで
+     * なくページ側もスクロールする。boundingBox を 2 回に分けて取ると、その間に
+     * スクロール位置が変わって差が出る（CI で 7〜9px ぶれて落ちた）。
+     * offsetTop はスクロールで動かないので、見たいもの（並び）だけが残る。
+     */
+    const gap = () =>
+      app
+        .locator("ul")
+        .first()
+        .evaluate((ul) => {
+          const cards = [...ul.querySelectorAll(":scope > li > button")] as HTMLElement[];
+          return cards[3].offsetTop - cards[0].offsetTop;
+        });
 
-    await target.click();
+    const gapBefore = await gap();
+    await shopCards(app).nth(3).click();
     await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
 
     // 詳細は選んだカードの下に入るので、その上の並びは変わらない。
     // 一覧の上に差し込んでいた頃は、ここが詳細の高さ（約 250px）分ずれていた。
     // 選択枠の線 1px ぶんだけは動くので、そこは許容する。
-    const gapAfter = (await target.boundingBox())!.y - (await first.boundingBox())!.y;
-    expect(Math.abs(gapAfter - gapBefore)).toBeLessThanOrEqual(2);
+    expect(Math.abs((await gap()) - gapBefore)).toBeLessThanOrEqual(2);
+  });
+
+  test("キーボードで選んでも焦点リングの黒い縁が残る", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    /*
+     * Enter で選ぶと、カードは焦点を持ったまま親が選択中の見た目に変わる。
+     * 黒い縁は box-shadow で描いているので、選択中の box-shadow: none に
+     * 負けると黄だけが残り、淡い選択面の上でコントラスト 1.3 まで落ちる。
+     */
+    // :focus-visible はキーボードで移ったときだけ点く。1 枚目に焦点を置いてから
+    // Tab で 2 枚目へ移す（プログラムから focus() しただけでは点かない）。
+    // :focus-visible はキーボードで移ったときだけ点く。1 枚目に焦点を置いてから
+    // Tab で 2 枚目へ移す（プログラムから focus() しただけでは点かない）。
+    const card = shopCards(app).nth(1);
+    await shopCards(app).first().focus();
+    await page.keyboard.press("Tab");
+    await expect(card).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
+
+    // 影は 120ms かけて変わるので、落ち着くまで待つ（途中は色が薄い）。
+    const shadow = () => card.evaluate((el) => getComputedStyle(el).boxShadow);
+    // --color-focus-edge (#141312)
+    await expect.poll(shadow).toContain("rgb(20, 19, 18)");
+    // --color-focus-ring (#ffd43d)
+    await expect(card).toHaveCSS("outline-color", "rgb(255, 212, 61)");
+
+    // マウスが乗っても消えない。選択中かつ hover の指定はクラス 3 つぶんの
+    // 強さがあり、焦点の指定（クラス 2 つ）に順番だけでは勝てないため、
+    // こちらは別に守る必要がある。
+    await card.hover();
+    await expect(card).toBeFocused();
+    await expect.poll(shadow).toContain("rgb(20, 19, 18)");
   });
 
   test("選んだカードと詳細が同時に見える", async ({ page }) => {

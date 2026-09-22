@@ -2,6 +2,13 @@ import { useEffect, useRef } from "react";
 import styles from "../mcp-app.module.css";
 import { OrderGuide } from "./OrderGuide";
 
+/*
+ * JSX のテキストは改行のたびに空白 1 個へ畳まれる。和文では語の途中に
+ * 隙間が空いて見えるので、続く 1 文は 1 本の文字列にして持つ。
+ */
+const NOTE =
+  "選んだ店の情報はチャットに渡してあります。「この店について聞く」を押すと、この店を話題にした質問がチャットに送られます。";
+
 interface Props {
   /** 会話に「この店について聞く」を流す。 */
   onAsk: () => void;
@@ -46,10 +53,7 @@ export function SelectedShop({ onAsk, onOpenMap, onClear, asking }: Props) {
 
       <OrderGuide />
 
-      <p className={styles.selectedNote}>
-        選んだ店の情報はチャットに渡してあります。「この店について聞く」を押すと、この店を
-        話題にした質問がチャットに送られます。
-      </p>
+      <p className={styles.selectedNote}>{NOTE}</p>
     </section>
   );
 }

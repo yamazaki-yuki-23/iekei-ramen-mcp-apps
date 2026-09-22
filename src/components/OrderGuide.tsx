@@ -1,6 +1,10 @@
 import { ORDER_SETS, PREFERENCES, SIDE_TIPS } from "../lib/order-guide";
 import styles from "../mcp-app.module.css";
 
+/* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個になる）。 */
+const DISCLAIMER =
+  "ここに書いたのは家系で一般的とされる作法です。店ごとの決まりは持っていないので、実際の呼び方や有無はお店の掲示に従ってください。";
+
 /**
  * 注文のカンペ。
  *
@@ -52,10 +56,7 @@ export function OrderGuide() {
           ))}
         </ul>
 
-        <p className={styles.selectedNote}>
-          ここに書いたのは家系で一般的とされる作法です。店ごとの決まりは持っていないので、
-          実際の呼び方や有無はお店の掲示に従ってください。
-        </p>
+        <p className={styles.selectedNote}>{DISCLAIMER}</p>
       </div>
     </details>
   );

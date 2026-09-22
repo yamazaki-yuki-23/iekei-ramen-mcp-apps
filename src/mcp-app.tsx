@@ -28,6 +28,10 @@ import { describeShop } from "./lib/shop-brief";
 import type { AppPayload, SearchMode, Shop } from "./lib/types";
 import styles from "./mcp-app.module.css";
 
+/* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
+const FOOTNOTE =
+  "店舗データは OpenStreetMap（ODbL）由来。「家系の可能性」は店名から家系と推定したもの、「家系か未判定」は店名だけでは判断できなかったものです。味の傾向は既知のブランドから割り当てた参考値で、多くの店舗は「情報なし」になります。営業時間は変わることがあるため訪問前にご確認ください。";
+
 function IekeiApp() {
   const [payload, setPayload] = useState<AppPayload | null>(null);
   // payload が差し替わるたびに増える。Inner の key にして状態を初期化する。
@@ -273,7 +277,13 @@ function IekeiAppInner({
   return (
     <main className={styles.main} style={safeAreaPadding(hostContext)}>
       <div className={styles.header}>
-        <h1 className={styles.title}>🍜 {heading}</h1>
+        <div className={styles.headerMain}>
+          {/* 丼は飾りなので、見出しの読み上げには載せない。 */}
+          <span className={styles.brandMark} aria-hidden="true">
+            🍜
+          </span>
+          <h1 className={styles.title}>{heading}</h1>
+        </div>
         {count ? <span className={styles.count}>{count}</span> : null}
       </div>
 
@@ -335,12 +345,7 @@ function IekeiAppInner({
         }
       />
 
-      <p className={styles.footnote}>
-        店舗データは OpenStreetMap（ODbL）由来。「家系の可能性」は店名から家系と推定したもの、
-        「家系か未判定」は店名だけでは判断できなかったものです。味の傾向は既知のブランドから
-        割り当てた参考値で、多くの店舗は「情報なし」になります。
-        営業時間は変わることがあるため訪問前にご確認ください。
-      </p>
+      <p className={styles.footnote}>{FOOTNOTE}</p>
     </main>
   );
 }

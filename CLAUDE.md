@@ -183,9 +183,20 @@ Cloudflare 側の確認は `npm run dev:worker`。バンドルサイズは gzip 
 
 手元から出したいときだけ `npm run deploy`。戻すときは `npx wrangler rollback`。
 
+## デザイン
+
+**見た目の決まりは [DESIGN.md](DESIGN.md) に全部書いてある。UI を足す前に読むこと。**
+
+デジタル庁デザインシステム（DADS）の基礎に倣った 3 段構造（プリミティブ →
+セマンティック → 部品）で、色だけ家系の茶赤に置き換えている。
+値は [src/global.css](src/global.css) のトークンから取り、部品側に生の px と色を書かない。
+
+`npx react-doctor design` が UI 側の作法（見出しの絵文字など）を見る。
+
 ## コード規約
 
 - コメントは日本語。「なぜそうしたか」を書く。何をしているかはコードで表す。
-- UI の文言も日本語。
+- UI の文言も日本語。**続く 1 文は改行で分けない**（JSX の改行は空白 1 個に
+  畳まれ、和文だと語の途中に隙間が空く）。長い文は定数に出す。
 - 型は [src/lib/types.ts](src/lib/types.ts) に集約。zod スキーマは
   [src/lib/schema.ts](src/lib/schema.ts) で、両者は手で同期させている。

@@ -1,18 +1,47 @@
+/*
+ * 部品のスタイル。値は直接書かず、必ず global.css のトークンを通す。
+ * ここに生の px や色を書くと、ダークモードとホストのテーマで破綻する。
+ */
+
 .main {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md);
+  gap: var(--space-5);
+  padding: var(--space-4);
   background: var(--color-background-primary);
   min-height: 100%;
 }
 
+/* --- 見出し --- */
 .header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-sm);
+  gap: var(--space-3);
   flex-wrap: wrap;
+}
+
+/* 丼と見出しは 1 かたまり。件数だけが右へ寄る。 */
+.headerMain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/*
+ * 丼は見出しの一部ではなく標識。面と丸で囲って、文字と役割を分けて見せる。
+ */
+.brandMark {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft-strong);
+  font-size: var(--font-heading-md-size);
+  line-height: 1;
 }
 
 .title {
@@ -20,62 +49,103 @@
   font-size: var(--font-heading-lg-size);
   line-height: var(--font-heading-lg-line-height);
   font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
 }
 
+/*
+ * 件数は見出しの一部ではなく状態なので、文字色を落とすだけでなく
+ * 丸い枠に入れて別物として見せる。桁が変わっても幅が動かないよう等幅数字。
+ */
 .count {
-  color: var(--color-text-muted);
-  font-size: var(--font-heading-sm-size);
-}
-
-/* --- モード切り替えタブ --- */
-.tabs {
-  display: flex;
-  gap: var(--spacing-xs);
-  background: var(--color-surface-muted);
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-3);
   border: var(--border-width-regular) solid var(--color-border);
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-xs);
-}
-
-.tab {
-  flex: 1;
-  padding: var(--spacing-sm);
-  border: none;
-  border-radius: calc(var(--border-radius-md) - 2px);
-  background: transparent;
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: var(--font-heading-sm-size);
-  cursor: pointer;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.tab:hover:not(.tabActive) {
+/* --- モード切り替えタブ --- */
+
+/*
+ * 選択中を塗り潰すとタブが 3 つとも主張して、下の検索条件より目立ってしまう。
+ * 溝（track）の中で選択中だけを持ち上げ、下辺にアクセントの線を引く。
+ */
+/*
+ * 幅が足りないときは折り返す。ホストの iframe は 375px ということもあり、
+ * 3 つの和文ラベルは 1 行に収まらない。溝からはみ出すと、アプリごと
+ * 横スクロールが出る。
+ */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  background: var(--color-surface-muted);
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-1);
+}
+
+/*
+ * 基準幅を揃えて伸ばすので、広いときは 3 つとも同じ幅になる。flex: 1
+ * （基準 0）にすると折り返しの判断が効かず、はみ出したまま並んでしまう。
+ */
+.tab {
+  flex: 1 1 5.5rem;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-heading-sm-size);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
+}
+
+.tab:hover:not(.tabActive):not(:disabled) {
   background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+.tab:disabled {
+  cursor: default;
 }
 
 .tabActive {
-  background: var(--color-accent);
-  color: var(--color-text-on-accent);
-  font-weight: var(--font-weight-bold);
+  background: var(--color-surface);
+  color: var(--color-accent-strong);
+  box-shadow:
+    var(--elevation-1),
+    inset 0 -2px 0 var(--color-accent);
 }
 
 /* --- フォーム --- */
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-3);
 }
 
 .row {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   flex-wrap: wrap;
   align-items: center;
 }
 
 .label {
   font-size: var(--font-heading-sm-size);
+  font-weight: var(--font-weight-bold);
   color: var(--color-text-muted);
   min-width: 5.5em;
 }
@@ -84,59 +154,92 @@
 .input {
   flex: 1;
   min-width: 10rem;
-  padding: var(--spacing-sm);
-  border: var(--border-width-regular) solid var(--color-border);
-  border-radius: var(--border-radius-md);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width-regular) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text-primary);
   font: inherit;
+  transition: border-color var(--duration-fast) var(--easing-standard);
 }
 
-.select:focus-visible,
-.input:focus-visible,
-.tab:focus-visible,
-.button:focus-visible,
-.chip:focus-visible {
-  outline: 2px solid var(--color-ring-primary);
-  outline-offset: 1px;
+.select:hover,
+.input:hover {
+  border-color: var(--color-accent);
 }
 
 .chips {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .chip {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: var(--border-width-regular) solid var(--color-border);
-  border-radius: 999px;
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width-regular) solid var(--color-border-strong);
+  border-radius: var(--radius-full);
   background: var(--color-surface);
   color: var(--color-text-primary);
   font: inherit;
   font-size: var(--font-heading-sm-size);
+  letter-spacing: var(--letter-spacing-normal);
   cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
+}
+
+.chip:hover:not(.chipActive) {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
 }
 
 .chipActive {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
+  background: var(--color-accent-fill);
+  border-color: var(--color-accent-fill);
   color: var(--color-text-on-accent);
+  font-weight: var(--font-weight-bold);
 }
 
+/* --- ボタン --- */
+
+/* 高さ 44px は指で押せる下限。詰めると隣を押してしまう。 */
 .button {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border: none;
-  border-radius: var(--border-radius-md);
-  background: var(--color-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-5);
+  border: var(--border-width-regular) solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-fill);
   color: var(--color-text-on-accent);
   font: inherit;
+  font-size: var(--font-heading-sm-size);
   font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+  white-space: nowrap;
   cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--color-accent-fill-hover);
+  box-shadow: var(--elevation-1);
+}
+
+.button:active:not(:disabled) {
+  box-shadow: none;
 }
 
 .button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
 }
 
@@ -144,20 +247,27 @@
   composes: button;
   background: var(--color-surface);
   color: var(--color-text-primary);
-  border: var(--border-width-regular) solid var(--color-border);
+  border-color: var(--color-border-strong);
   font-weight: var(--font-weight-normal);
+}
+
+.buttonSecondary:hover:not(:disabled) {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 /* --- 店舗リスト --- */
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-  margin: 0;
-  padding: 0;
+  gap: var(--space-2);
   list-style: none;
   max-height: 26rem;
   overflow-y: auto;
+  /* 選択中の影と焦点リングが両端で切れないよう、内側に逃がす。 */
+  padding: var(--space-1);
+  margin: calc(var(--space-1) * -1);
 }
 
 /*
@@ -170,33 +280,44 @@
 
 .card {
   display: flex;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border: var(--border-width-regular) solid var(--color-border);
-  border-radius: var(--border-radius-md);
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   cursor: pointer;
   text-align: left;
   width: 100%;
   font: inherit;
   color: inherit;
+  transition:
+    border-color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard),
+    transform var(--duration-fast) var(--easing-standard);
 }
 
 .card:hover {
   border-color: var(--color-accent);
+  box-shadow: var(--elevation-1);
+  transform: translateY(-1px);
 }
 
-.cardSelected {
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft);
+.card:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .rank {
-  font-size: var(--font-heading-lg-size);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-accent);
-  min-width: 1.6em;
+  flex-shrink: 0;
+  min-width: 1.75rem;
   text-align: center;
+  font-size: var(--font-heading-lg-size);
+  line-height: var(--font-heading-lg-line-height);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-accent);
 }
 
 .cardBody {
@@ -204,33 +325,44 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .shopName {
   font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
 }
 
 .meta {
-  font-size: var(--font-heading-sm-size);
+  font-size: var(--font-size-note);
+  line-height: 1.5;
   color: var(--color-text-muted);
   overflow-wrap: anywhere;
 }
 
 .badges {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: var(--space-1);
   flex-wrap: wrap;
-  margin-top: 2px;
+  margin-top: var(--space-1);
 }
 
+/*
+ * バッジは塗りだけで表す。枠と塗りを両方付けると、カード 1 枚に
+ * 線が何本も走って落ち着かない。高さを揃えるため枠は透明で確保する。
+ */
 .badge {
-  font-size: 0.75rem;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  border: var(--border-width-regular) solid var(--color-accent);
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--space-2);
+  border: var(--border-width-regular) solid transparent;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-soft-strong);
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+  white-space: nowrap;
 }
 
 .badgeMuted {
@@ -238,11 +370,18 @@
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
   border-color: var(--color-border);
+  font-weight: var(--font-weight-normal);
 }
 
+/* 店名と同じ行に置く。縦中央に寄せると、どの店の距離か目で追えない。 */
 .distance {
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding-top: 2px;
+  font-size: var(--font-heading-sm-size);
   font-weight: var(--font-weight-bold);
-  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-strong);
   white-space: nowrap;
 }
 
@@ -251,57 +390,80 @@
 /*
  * 選択中はカードと操作を 1 つの枠として見せる。別々に枠を持たせると、
  * 同じ店の情報が 2 つ並んでいるように見えてしまう。
+ * 左の太い辺が「いま開いているのはここ」の目印。overflow は使わない
+ * （flex 項目の最小高さが効かなくなり、潰れて隣と重なる）。
  */
 .listItemSelected {
-  border: var(--border-width-regular) solid var(--color-accent);
-  border-radius: var(--border-radius-md);
+  border: var(--border-width-regular) solid var(--color-accent-border);
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-md);
   background: var(--color-accent-soft);
+  box-shadow: var(--elevation-1);
 }
 
-.listItemSelected .card {
+.listItemSelected .card,
+.listItemSelected .card:hover {
   border-color: transparent;
   background: transparent;
+  transform: none;
+}
+
+/*
+ * 影を消すのは、焦点が当たっていないときだけ。焦点リングの黒い縁も box-shadow
+ * なので、一緒に消すと淡い選択面の上に黄だけが残る（コントラスト 1.3）。
+ * キーボードで選ぶと、カードは焦点を持ったまま親が選択中になるので必ず通る。
+ */
+.listItemSelected .card:not(:focus-visible),
+.listItemSelected .card:hover:not(:focus-visible) {
+  box-shadow: none;
 }
 
 .selected {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-  padding: 0 var(--spacing-md) var(--spacing-md);
+  gap: var(--space-3);
+  padding: 0 var(--space-4) var(--space-4);
 }
 
 .selectedActions {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .selectedNote {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--font-size-note);
   color: var(--color-text-muted);
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 /* --- 注文のカンペ --- */
 .guide {
   border: var(--border-width-regular) solid var(--color-border);
-  border-radius: var(--border-radius-md);
+  border-radius: var(--radius-md);
   background: var(--color-surface);
 }
 
 .guideSummary {
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-size: var(--font-heading-sm-size);
   font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+  transition: color var(--duration-fast) var(--easing-standard);
+}
+
+.guideSummary:hover {
+  color: var(--color-accent-strong);
 }
 
 .guideBody {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  padding: 0 var(--spacing-md) var(--spacing-md);
+  gap: var(--space-4);
+  padding: 0 var(--space-4) var(--space-4);
 }
 
 .guideTable {
@@ -312,13 +474,13 @@
 
 .guideTable th,
 .guideTable td {
-  padding: var(--spacing-xs) 0;
+  padding: var(--space-2) 0;
   vertical-align: top;
   border-bottom: var(--border-width-regular) solid var(--color-border);
 }
 
 .guideTable thead th {
-  font-size: var(--font-heading-sm-size);
+  font-size: var(--font-size-note);
   color: var(--color-text-muted);
   font-weight: var(--font-weight-normal);
 }
@@ -342,7 +504,7 @@
 .guideTips {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -351,11 +513,12 @@
 .guideSets li {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: flex-start;
+  gap: var(--space-1);
 }
 
 .guideTips {
-  gap: var(--spacing-xs);
+  gap: var(--space-2);
 }
 
 .guideTips li {
@@ -372,7 +535,7 @@
   height: 24rem;
   width: 100%;
   border: var(--border-width-regular) solid var(--color-border);
-  border-radius: var(--border-radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--color-surface-muted);
 }
@@ -380,32 +543,63 @@
 .mapLayout {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-3);
 }
 
 /* --- 状態表示 --- */
+
+/* 破線の枠は「まだ置かれていない場所」に見える。面の色で静かに示す。 */
 .empty,
 .status {
-  padding: var(--spacing-lg);
+  margin: 0;
+  padding: var(--space-8) var(--space-4);
   text-align: center;
   color: var(--color-text-muted);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--border-radius-md);
+  background: var(--color-surface-muted);
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--radius-lg);
 }
 
 .error {
   composes: status;
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  border-style: solid;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  color: var(--color-error);
+  background: var(--color-error-soft);
+  border-color: var(--color-error-border);
+  font-weight: var(--font-weight-bold);
 }
 
 .footnote {
-  font-size: 0.75rem;
+  margin: 0;
+  font-size: var(--font-size-note);
   color: var(--color-text-muted);
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .footnote a {
   color: inherit;
+}
+
+/* --- 焦点（フォーカス） --- */
+
+/*
+ * 焦点は DADS に倣って黄＋黒の二重リング。片方だけだと、明るい面では黄が、
+ * 暗い面では黒が消える。box-shadow の方を 1px 外へ出して黄を縁取る。
+ *
+ * **この節はファイルの末尾に置くこと。** 黒い縁は box-shadow で描いており、
+ * hover や選択中の box-shadow と同じ強さ（クラス 2 つ）で競合する。前に置くと
+ * 後ろの状態指定に負けて黒が消え、淡い面の上に黄だけが残る（コントラスト 1.3）。
+ * 焦点はどの状態よりも後で勝たなければならない。
+ */
+.select:focus-visible,
+.input:focus-visible,
+.tab:focus-visible,
+.button:focus-visible,
+.chip:focus-visible,
+.card:focus-visible,
+.guideSummary:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--color-focus-edge);
 }
