@@ -82,6 +82,8 @@ Workers にはファイルシステムが無いので、HTML もデータもコ�
 
 **UI を変更したら `npm run build:ui` を実行しないとサーバーに反映されない。**
 `server.ts` は `src/generated/app-html.ts` を読むので、vite ビルドだけでは足りない。
+**さらに、起動中の `npm run dev` は再起動しないと古い HTML を返し続ける**
+（起動時に import した文字列を持っているため）。動作確認を頼む前に入れ替えること。
 
 ### データ
 
@@ -150,6 +152,11 @@ data URI にすること。
   ビルド済みの `serve.ts` を tsx で直接起動している。
 - サンドボックスの origin が `http://localhost:8081` にハードコードされているため、
   ホスト側のポートは 8080 / 8081 から変えられない。
+
+**E2E を流す前に、動作確認用に立てた basic-host（8080）を止めること。**
+`reuseExistingServer` が効くので、動かしたままだと Playwright がそれを再利用する。
+そのホストは 3031 の開発サーバーを指しているため、**古いビルドのアプリを検証してしまい、
+新しく足した UI が「見つからない」で落ちる。**
 
 アプリはサンドボックス iframe の中の iframe で動くので、E2E のロケータは
 `page.frameLocator("iframe").first().frameLocator("iframe").first()` になる。

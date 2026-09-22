@@ -160,6 +160,14 @@
   overflow-y: auto;
 }
 
+/*
+ * 高さが足りないときに項目を潰させない。一覧は flex なので、既定では
+ * 縮んで中身が隣のカードに重なる（選択中の項目が 2px まで潰れた）。
+ */
+.list > li {
+  flex-shrink: 0;
+}
+
 .card {
   display: flex;
   gap: var(--spacing-sm);
@@ -239,20 +247,27 @@
 }
 
 /* --- 選択中の店 --- */
-.selected {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+
+/*
+ * 選択中はカードと操作を 1 つの枠として見せる。別々に枠を持たせると、
+ * 同じ店の情報が 2 つ並んでいるように見えてしまう。
+ */
+.listItemSelected {
   border: var(--border-width-regular) solid var(--color-accent);
   border-radius: var(--border-radius-md);
   background: var(--color-accent-soft);
 }
 
-.selectedHead {
+.listItemSelected .card {
+  border-color: transparent;
+  background: transparent;
+}
+
+.selected {
   display: flex;
+  flex-direction: column;
   gap: var(--spacing-sm);
-  align-items: flex-start;
+  padding: 0 var(--spacing-md) var(--spacing-md);
 }
 
 .selectedActions {
