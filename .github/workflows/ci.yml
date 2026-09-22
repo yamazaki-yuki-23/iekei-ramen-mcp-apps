@@ -6,9 +6,15 @@ on:
   pull_request:
   workflow_dispatch:
 
+# PR は新しい push で古い実行を捨てる。main は捨てない——ここで打ち切ると、
+# 走っている deploy ごと殺してしまい、後続の実行が落ちれば本番は古いままになる。
+#
+# グループにイベント種別を入れているのは、待機中の実行が別種のイベントに
+# 置き換えられるのを防ぐため。GitHub は cancel-in-progress: false でも、
+# 同じグループに後から入った実行で待機中のものを差し替える。
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   check:
@@ -82,3 +88,71 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  deploy:
+    name: Deploy (production)
+    # テストを通っていないものを本番に出さない。PR では走らせない。
+    # main での手動実行も通す。rollback したあとに出し直すなど、
+    # 新しいコミットを作らずに本番を揃えたい場面があるため。
+    needs: [check, e2e]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    # 連続でマージしたときに、古い方が後から上書きしないようにする。
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Workers にはファイルシステムが無いので、HTML を埋め込んでからデプロイする
+      - name: Build UI
+        run: npm run build:ui
+
+      - name: wrangler deploy
+        id: deploy
+        run: |
+          # 手動実行は古いリビジョンのまま走っていることがある。その間に新しい
+          # push が出ていたら、ここで出すと本番を巻き戻してしまう。直前に
+          # main の先頭と突き合わせて、違っていれば出さずに終える。
+          #
+          # push のときは見ない。main の push は concurrency で直列化されて
+          # いるので追い越しが起きず、逆にここで飛ばすと「次の push が落ちたら
+          # どちらも出ない」という穴になる。
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            head=$(git rev-parse HEAD)
+            remote=$(git ls-remote origin refs/heads/main | cut -f1)
+            if [ "$head" != "$remote" ]; then
+              echo "::notice::main の先頭は $remote。このリビジョン $head は出さない"
+              echo "skipped=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          npx wrangler deploy
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: 本番が応答するか確認
+        if: steps.deploy.outputs.skipped != 'true'
+        run: |
+          for i in $(seq 1 10); do
+            # 接続や DNS で転んだときも curl は非ゼロで終わる。set -e で
+            # 1 回目に打ち切られないよう、失敗は 000 として扱って次を試す。
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+              https://iekei-ramen-mcp.yamazaki-dev.workers.dev/health || true)
+            [ "$code" = "200" ] && echo "health: 200" && exit 0
+            echo "まだ 200 ではない（$code）。$i 回目、3 秒後に再試行" >&2
+            sleep 3
+          done
+          echo "デプロイ後に /health が 200 を返さない（最後は $code）" >&2
+          exit 1

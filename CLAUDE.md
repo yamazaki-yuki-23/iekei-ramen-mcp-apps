@@ -10,7 +10,7 @@ npm run build       # UI ビルド → HTML 埋め込み → 型チェック
 npm run typecheck   # 型チェックのみ
 npm run dev         # ローカル起動（http://localhost:3031/mcp）
 npm run dev:worker  # workerd ランタイムで起動（Cloudflare 本番に近い）
-npm run deploy      # ビルドして wrangler deploy
+npm run deploy      # ビルドして wrangler deploy（通常は不要。main へのマージで自動デプロイ）
 npm run data:fetch   # OSM から再取得（20〜30 分。通常は実行不要）
 npm run data:judge   # 家系判定（要 TYPESAFE_API_KEY）→ judged.json
 npm run data:dedupe  # 重複判定（要 TYPESAFE_API_KEY）→ duplicates.json
@@ -173,7 +173,15 @@ SERVERS='["http://localhost:3031/mcp"]' npx tsx e2e-host/ext-apps/examples/basic
 ```
 
 Cloudflare 側の確認は `npm run dev:worker`。バンドルサイズは gzip で 3 MiB が無料枠の上限、
-現状 407 KiB。
+現状 410 KiB。
+
+## デプロイ
+
+**main にマージすると本番へ自動で出る。** CI の `deploy` ジョブが、テストが通ってから
+`wrangler deploy` を実行し、`/health` が 200 を返すまで確認する。
+認証はリポジトリのシークレット（`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`）。
+
+手元から出したいときだけ `npm run deploy`。戻すときは `npx wrangler rollback`。
 
 ## コード規約
 
