@@ -916,3 +916,240 @@ test.describe("選択中の店の詳細", () => {
     await expect(app.locator("li", { has: detail })).toContainText(secondName);
   });
 });
+
+test.describe("まわる店（順路）", () => {
+  test("積んでいないうちは、空の枠を出さない", async ({ page }) => {
+    // 空の枠は「まだ置かれていない場所」に見えて、操作できる何かだと誤解される。
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    await expect(app.getByRole("region", { name: "まわる店" })).toHaveCount(0);
+  });
+
+  test("選んだ店を足すと、回る順番と距離が出る", async ({ page }) => {
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+      source: "place",
+      limit: 5,
+    });
+    await waitForApp(app);
+
+    // 遠い方から先に足して、並べ替えが効くことを見る。
+    await shopCards(app).nth(2).click();
+    const third = await shopName(shopCards(app).nth(2));
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+
+    await shopCards(app).nth(0).click();
+    const first = await shopName(shopCards(app).nth(0));
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+
+    const route = app.getByRole("region", { name: "まわる店" });
+    await expect(route).toBeVisible();
+    await expect(route.getByRole("heading", { name: "まわる店（2 / 3 軒）" })).toBeVisible();
+
+    // 足した順ではなく、近い順に並べ替わっている。
+    const items = route.locator("ol > li");
+    await expect(items).toHaveCount(2);
+    await expect(items.nth(0)).toContainText(first);
+    await expect(items.nth(1)).toContainText(third);
+    // 1 軒目は基準地点から測る。
+    await expect(items.nth(0)).toContainText("横浜駅から");
+    await expect(items.nth(1)).toContainText("1 軒目から");
+    await expect(route.getByText(/合計 .*（出発点からの直線距離）/)).toBeVisible();
+
+    /*
+     * 渡せる先は Google だけ。Apple の URL には経由地が無く、1 軒目までしか
+     * 渡せないので「まわる店」の用を成さない（ボタンごと外した）。
+     */
+    await expect(route.getByRole("button", { name: "Google マップで開く" })).toBeVisible();
+    await expect(route.getByRole("button", { name: /Apple/ })).toHaveCount(0);
+  });
+
+  test("検索し直しても、順路の出発点を落とさない", async ({ page }) => {
+    /*
+     * 入れた店は検索をまたいで残るのに、出発点だけ今の payload から取っていると、
+     * 基準地点を持たないモード（検索フォーム・地図）へ移った瞬間に出発点が消える。
+     * 順路が並べ替わり、1 軒目の距離が消え、地図アプリにも現在地から引かせる
+     * ことになる——ユーザーは何も操作していないのに。
+     */
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+      source: "place",
+      limit: 5,
+    });
+    await waitForApp(app);
+    for (const i of [2, 0]) {
+      await shopCards(app).nth(i).click();
+      await app.getByRole("button", { name: "まわる店に追加" }).click();
+    }
+
+    const route = app.getByRole("region", { name: "まわる店" });
+    const order = await route.locator("ol > li").allInnerTexts();
+    const total = await route.getByText(/合計/).innerText();
+    expect(total).toContain("出発点からの直線距離");
+
+    // 基準地点を持たないモードへ移る。
+    await app.getByRole("tab", { name: "検索フォーム" }).click();
+    await expect(app.getByRole("heading", { name: "全国の家系ラーメン" })).toBeVisible();
+
+    await expect(route.locator("ol > li")).toHaveCount(2);
+    expect(await route.locator("ol > li").allInnerTexts()).toEqual(order);
+    await expect(route.getByText(/横浜駅から/)).toBeVisible();
+    expect(await route.getByText(/合計/).innerText()).toBe(total);
+  });
+
+  test("あとから足した店の検索条件で、組んだ旅程を書き換えない", async ({ page }) => {
+    /*
+     * 出発点の無い旅程に、別の場所で探した店を足したとき。そこで基準地点を
+     * 拾ってしまうと、1 軒目が押し出されて順番も距離も変わる。出発点は
+     * 「空から 1 軒目」の瞬間にだけ決める。
+     */
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    await shopCards(app).nth(0).click();
+    const first = await shopName(shopCards(app).nth(0));
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+
+    const route = app.getByRole("region", { name: "まわる店" });
+    await expect(route.getByText("ここから出発")).toBeVisible();
+
+    // 基準地点のあるモードへ移り、そこで見つけた店を足す。
+    await app.getByRole("tab", { name: "現在地から探す" }).click();
+    await app.locator("#place").fill("横浜駅");
+    await app.getByRole("button", { name: "この場所で探す" }).click();
+    await expect(app.getByText("基準: 横浜駅")).toBeVisible();
+    await shopCards(app).nth(0).click();
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+
+    await expect(route.locator("ol > li")).toHaveCount(2);
+    // 1 軒目は動かず、出発点も後付けされない。
+    await expect(route.locator("ol > li").nth(0)).toContainText(first);
+    await expect(route.getByText("ここから出発")).toBeVisible();
+    await expect(route.getByText(/横浜駅から/)).toHaveCount(0);
+  });
+
+  test("1 軒だけなら、もう 1 軒足すよう促す", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    await shopCards(app).nth(0).click();
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+
+    const route = app.getByRole("region", { name: "まわる店" });
+    await expect(route.getByText("もう 1 軒足すと、回る順番と距離が出ます。")).toBeVisible();
+    // 合計距離は出さない。1 軒では測るものが無い。
+    await expect(route.getByText(/合計/)).toHaveCount(0);
+  });
+
+  test("上限に達したら、足せない理由を画面に出す", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    for (const i of [0, 1, 2]) {
+      await shopCards(app).nth(i).click();
+      await app.getByRole("button", { name: "まわる店に追加" }).click();
+    }
+
+    await shopCards(app).nth(3).click();
+    await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeDisabled();
+    // title だけだとタッチ端末で読めないので、本文にも出す。
+    await expect(
+      app.getByText("「まわる店」は 3 軒までです。外してから追加してください。"),
+    ).toBeVisible();
+  });
+
+  test("検索し直しても、積んだ店は残る", async ({ page }) => {
+    /*
+     * 別の条件で見つけた店を足していくものなので、検索のたびに空にすると
+     * 組み立てられない。選択（1 軒）とは寿命が違う。
+     */
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    await shopCards(app).nth(0).click();
+    const kept = await shopName(shopCards(app).nth(0));
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+
+    await app.locator("#pref").selectOption("東京都");
+    await app.getByRole("button", { name: "検索" }).click();
+    await expect(app.getByRole("heading", { name: "東京都の家系ラーメン" })).toBeVisible();
+
+    const route = app.getByRole("region", { name: "まわる店" });
+    await expect(route).toBeVisible();
+    await expect(route.locator("ol > li").nth(0)).toContainText(kept);
+  });
+
+  test("外すと消え、すべて外すと枠ごと消える", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    for (const i of [0, 1]) {
+      await shopCards(app).nth(i).click();
+      await app.getByRole("button", { name: "まわる店に追加" }).click();
+    }
+
+    const route = app.getByRole("region", { name: "まわる店" });
+    await expect(route.locator("ol > li")).toHaveCount(2);
+
+    await route
+      .locator("ol > li")
+      .nth(0)
+      .getByRole("button", { name: /をまわる店から外す/ })
+      .click();
+    await expect(route.locator("ol > li")).toHaveCount(1);
+
+    await route.getByRole("button", { name: "すべて外す" }).click();
+    await expect(app.getByRole("region", { name: "まわる店" })).toHaveCount(0);
+  });
+
+  test("入れた店のボタンは「外す」に変わる", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    await shopCards(app).nth(0).click();
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+    // 選び直しても、入っていることが分かる。
+    // 順路側の「◯◯をまわる店から外す」と紛れるので、完全一致で取る。
+    await expect(app.getByRole("button", { name: "まわる店から外す", exact: true })).toBeVisible();
+  });
+
+  test("地図モードでは順路の線と番号を描く", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    for (const i of [0, 1]) {
+      await shopCards(app).nth(i).click();
+      await app.getByRole("button", { name: "まわる店に追加" }).click();
+    }
+
+    // 破線は「道のりではない」ことを見た目でも示すためのもの。
+    const line = app.locator("svg path[stroke-dasharray]");
+    await expect(line).toHaveCount(1);
+    await expect(line).toHaveAttribute("stroke-dasharray", "6 6");
+    // 番号のピンは順路の軒数だけ出る。
+    const pins = app.locator(".leaflet-marker-icon");
+    await expect(pins).toHaveCount(2);
+    /*
+     * 直前に選んだ店へズームしたままだと、足した順路が地図の外に出て、
+     * 線を引いても見えない。順路の全体が入るところまで寄せ直す。
+     *
+     * toBeInViewport はブラウザの表示領域を測るもので、地図の枠内かは
+     * 見ていない（アプリが縦に長いと、地図ごと画面外でも通ってしまう）。
+     * 地図とピンの矩形を直接比べる。
+     */
+    // 寄せ直しはアニメーションで動くので、落ち着くまで測り直す。
+    await expect
+      .poll(async () => {
+        const box = await app.locator("div[role=application]").boundingBox();
+        const shown = await Promise.all([0, 1].map((i) => pins.nth(i).boundingBox()));
+        if (!box || shown.some((p) => p === null)) return false;
+        return shown.every(
+          (p) =>
+            p!.x >= box.x &&
+            p!.x + p!.width <= box.x + box.width &&
+            p!.y >= box.y &&
+            p!.y + p!.height <= box.y + box.height,
+        );
+      })
+      .toBe(true);
+  });
+});

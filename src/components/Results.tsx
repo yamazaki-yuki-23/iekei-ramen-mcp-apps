@@ -26,6 +26,9 @@ interface Props {
   busy: boolean;
   /** 選んだカードの直下に出すもの。 */
   detail?: ReactNode;
+  /** 「まわる店」の順路。地図モードで線を引くために通す。 */
+  route?: Shop[];
+  routeOrigin?: { lat: number; lon: number };
 }
 
 /**
@@ -48,6 +51,8 @@ export function Results({
   asking,
   busy,
   detail,
+  route,
+  routeOrigin,
 }: Props) {
   /*
    * タブを押すと mode だけ先に変わり、payload は tool の結果が届いてから
@@ -83,6 +88,8 @@ export function Results({
       selectedId={selected?.id}
       onSelect={onSelect}
       detail={detail}
+      route={route}
+      routeOrigin={routeOrigin}
     />
   );
 }

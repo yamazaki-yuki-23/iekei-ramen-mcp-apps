@@ -358,7 +358,16 @@ function structured(payload: Omit<AppPayload, "prefectures">) {
 }
 
 export function createServer(): McpServer {
-  const server = new McpServer({ name: "Iekei Ramen Finder", version: "0.1.0" });
+  /*
+   * 名乗りは環境変数で上書きできる。検証ホストはプレビューと共用しており
+   * （E2E のたびに立て直すと見ている画面が消える）、サーバーが 2 つ並ぶ。
+   * 同じ名前だと E2E がどちらを選んだか確かめられないので、E2E 用だけ
+   * 名前を変えて選び分ける。既定は本番の名前。
+   */
+  const server = new McpServer({
+    name: process.env.IEKEI_SERVER_NAME ?? "Iekei Ramen Finder",
+    version: "0.1.0",
+  });
 
   registerAppResource(
     server,

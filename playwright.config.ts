@@ -8,8 +8,20 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const MCP_PORT = 3131;
-// basic-host はサンドボックスの origin を http://localhost:8081 に固定して
-// ビルドしているため、ホスト側のポートは既定値から変えられない。
+/**
+ * E2E が使う MCP サーバーの名乗り。
+ *
+ * 検証ホスト（8080）はプレビューと共用する。サンドボックスの origin が 8081 に
+ * 焼き込まれていて basic-host は同時に 1 つしか動かせないため、E2E のたびに
+ * 立て直すとユーザーが見ている画面が数分消えるので、1 つのホストに
+ * プレビュー用（3031）と E2E 用（3131）を並べて登録し、名前で選び分ける。
+ */
+const E2E_SERVER_NAME = "Iekei Ramen Finder (E2E)";
+/*
+ * basic-host はサンドボックスの origin（http://localhost:8081）を dist に
+ * 焼き込んでいるため、同時に 1 つしか動かせない。ホスト側のポートは
+ * 変えられるが、変えてもサンドボックスが競合するので既定のままにしてある。
+ */
 const HOST_PORT = 8080;
 
 export default defineConfig({
@@ -35,6 +47,8 @@ export default defineConfig({
       command: `npm run build:ui && npx tsx main.ts`,
       env: {
         PORT: String(MCP_PORT),
+        // 手元ではプレビュー用のサーバーと並ぶので、名前で選び分ける。
+        IEKEI_SERVER_NAME: E2E_SERVER_NAME,
         // 接続元からの位置推定は実行環境によって結果が変わるので E2E では止める。
         // 「位置情報が取れないホスト」の挙動を決定的に検証したいため。
         IEKEI_LOCATION_ENDPOINT: "",

@@ -650,6 +650,117 @@
   color: inherit;
 }
 
+/* --- まわる店（順路） --- */
+
+/*
+ * 決めたあとの行き先をまとめる面。結果の下に常駐し、モードを切り替えても
+ * 残る。一覧の続きに見えると「検索結果の一部」と読まれるので、枠と面色で
+ * 別のものだと示す。注文のカンペと同じ作り。
+ */
+.route {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.routeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.routeTitle {
+  margin: 0;
+  font-size: var(--font-heading-md-size);
+  line-height: var(--font-heading-md-line-height);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.routeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  /* 番号は .routeOrder の丸で出す。地図のピンの数字と対応させるため。 */
+  list-style: none;
+}
+
+.routeItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 回る順番。地図に出る番号と同じものなので、同じ丸の形にする。 */
+.routeOrder {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.routeBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  /* 長い店名で「外す」を画面の外へ押し出さないための最小幅の解除。 */
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 合計距離。桁が変わっても幅が動かないよう等幅数字。 */
+.routeTotal {
+  margin: 0;
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.routeActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/*
+ * 地図に出す順路の番号。
+ *
+ * Leaflet の divIcon には .leaflet-div-icon（白い四角の枠）が必ず付く。
+ * クラス 1 つ同士だと読み込み順で勝ち負けが変わるので、詳細度を上げて
+ * 確実に打ち消す。縁の白は地図タイルの上で輪郭を出すためのもので、
+ * ホストのテーマでは切り替えない（タイルは常に明るい）。
+ */
+.routePin.routePin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
 /* --- 焦点（フォーカス） --- */
 
 /*
