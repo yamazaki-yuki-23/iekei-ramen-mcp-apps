@@ -191,13 +191,21 @@ export function useServerTools({
     [call],
   );
 
-  const openInMaps = useCallback(
-    (shop: Shop) => {
-      void app.openLink({
-        url: `https://www.openstreetmap.org/?mlat=${shop.lat}&mlon=${shop.lon}#map=18/${shop.lat}/${shop.lon}`,
-      });
+  /** ホスト経由で外部リンクを開く。iframe から直接 window.open はできない。 */
+  const openExternal = useCallback(
+    (url: string) => {
+      if (url) void app.openLink({ url });
     },
     [app],
+  );
+
+  const openInMaps = useCallback(
+    (shop: Shop) => {
+      openExternal(
+        `https://www.openstreetmap.org/?mlat=${shop.lat}&mlon=${shop.lon}#map=18/${shop.lat}/${shop.lon}`,
+      );
+    },
+    [openExternal],
   );
 
   /**
@@ -267,6 +275,7 @@ export function useServerTools({
     runNearbyByHost,
     geocode,
     openInMaps,
+    openExternal,
     askAboutShop,
   };
 }

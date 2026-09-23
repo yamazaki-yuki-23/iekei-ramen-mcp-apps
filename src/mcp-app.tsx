@@ -21,13 +21,15 @@ import { ModeControls } from "./components/ModeControls";
 import { ModeTabs } from "./components/ModeTabs";
 import type { FormValues } from "./components/SearchForm";
 import { Results } from "./components/Results";
+import { RoutePanel } from "./components/RoutePanel";
 import { SelectedShop } from "./components/SelectedShop";
 import { useModeSwitch } from "./hooks/use-mode-switch";
 import { useServerTools } from "./hooks/use-server-tools";
 import { originLabel } from "./lib/geo";
 import { createDeliveryQueue } from "./lib/model-context";
 import { EMPTY_PAYLOAD, readPayload } from "./lib/payload";
-import type { AppPayload, SearchMode, Shop } from "./lib/types";
+import { MAX_STOPS, planRoute } from "./lib/route";
+import type { AppPayload, Origin, SearchMode, Shop } from "./lib/types";
 import styles from "./mcp-app.module.css";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
@@ -50,11 +52,66 @@ function IekeiApp() {
    * 検索し直したら選択は解除する（結果に含まれない店が選ばれたままになるため）。
    */
   const [selected, setSelected] = useState<Shop | null>(null);
+  /**
+   * 「まわる店」に入れた店。
+   *
+   * **検索し直しても消さない。** 別の条件で見つけた店を足していくものなので、
+   * payload が変わるたびに空にすると組み立てられない。
+   * 選択（1 軒）とは寿命が違うので、別の state で持つ。
+   */
+  const [stops, setStops] = useState<Shop[]>([]);
+  /**
+   * 順路の出発点。
+   *
+   * **今の payload から取らない。** 入れた店は検索をまたいで残るのに出発点だけ
+   * payload 由来にすると、基準地点を持たないモード（検索フォーム・地図）へ
+   * 移った瞬間に消える。順路が並べ替わり、1 軒目の距離も消え、地図アプリにも
+   * 現在地から引かせることになる——ユーザーは何も操作していないのに。
+   *
+   * 最初の 1 軒を入れたときの基準地点を、空になるまで持ち続ける。
+   */
+  const [routeOrigin, setRouteOrigin] = useState<Origin | undefined>();
 
   const applyPayload = useCallback((next: AppPayload) => {
     setPayload(next);
     setPayloadVersion((v) => v + 1);
     setSelected(null);
+  }, []);
+
+  /**
+   * 店を入れる。
+   *
+   * **出発点は「空から 1 軒目」の瞬間にだけ決める。** 未設定なら拾う、という
+   * 書き方（`prev ?? origin`）にすると、出発点の無い旅程に別の場所で探した店を
+   * 足したとき、その検索の基準地点が後付けされる。1 軒目が押し出され、順番も
+   * 距離も変わる（実測: 「せい家・ここから出発」が「壱八家・横浜駅から 239m →
+   * せい家・11.5km」になった）。あとから足した店の検索条件で、すでに組んだ
+   * 旅程が書き換わってはいけない。
+   */
+  const addStop = useCallback(
+    (shop: Shop, origin?: Origin) => {
+      // ボタン側でも押せなくしてあるが、ここでも止める。上限の判断を
+      // 画面側だけに置くと、別の経路から足せてしまう。
+      if (stops.some((s) => s.id === shop.id) || stops.length >= MAX_STOPS) return;
+      if (stops.length === 0) setRouteOrigin(origin);
+      setStops([...stops, shop]);
+    },
+    [stops],
+  );
+
+  /** 店を外す。空になったら出発点も忘れる（次の旅程は別物）。 */
+  const removeStop = useCallback(
+    (shop: Shop) => {
+      const next = stops.filter((s) => s.id !== shop.id);
+      setStops(next);
+      if (next.length === 0) setRouteOrigin(undefined);
+    },
+    [stops],
+  );
+
+  const clearStops = useCallback(() => {
+    setStops([]);
+    setRouteOrigin(undefined);
   }, []);
 
   const { app, error } = useApp({
@@ -144,6 +201,11 @@ function IekeiApp() {
       onNotice={setNotice}
       selected={selected}
       onSelect={setSelected}
+      stops={stops}
+      routeOrigin={routeOrigin}
+      onAddStop={addStop}
+      onRemoveStop={removeStop}
+      onClearStops={clearStops}
       awaitContext={awaitContext}
       releaseSelection={releaseSelection}
       // 初期値はホストから直接読み、以降の変更分を上書きする。
@@ -218,6 +280,13 @@ interface InnerProps {
   /** 選択中の店。モデルに渡す都合で外側が持つ。 */
   selected: Shop | null;
   onSelect: (shop: Shop | null) => void;
+  /** 「まわる店」。検索をまたいで残るので、これも外側が持つ。 */
+  stops: Shop[];
+  /** 順路の出発点。最初に入れたときの基準地点で、検索では動かない。 */
+  routeOrigin?: Origin;
+  onAddStop: (shop: Shop, origin?: Origin) => void;
+  onRemoveStop: (shop: Shop) => void;
+  onClearStops: () => void;
   /** その店の詳細がモデルに届いたか。届いていなければ質問に詳細を同梱する。 */
   awaitContext: (shop: Shop) => Promise<boolean>;
   /** 選択を外し、モデル側から消えるまで待つ。 */
@@ -237,6 +306,11 @@ function IekeiAppInner({
   onNotice,
   selected,
   onSelect,
+  stops,
+  routeOrigin,
+  onAddStop,
+  onRemoveStop,
+  onClearStops,
   awaitContext,
   releaseSelection,
   hostContext,
@@ -259,6 +333,7 @@ function IekeiAppInner({
     runNearbyByHost,
     geocode,
     openInMaps,
+    openExternal,
     askAboutShop,
   } = useServerTools({ app, onPayload, onNotice, awaitContext, releaseSelection });
 
@@ -317,12 +392,26 @@ function IekeiAppInner({
   const shops = showResults ? payload.shops : [];
   const count = showResults ? formatCount(payload.total, shops.length) : null;
 
+  const inRoute = selected !== null && stops.some((s) => s.id === selected.id);
+
+  /*
+   * 順路は 1 度だけ組んで、パネルと地図に同じものを渡す。別々に組むと、
+   * 参照が変わるたびに地図の線を引き直すことになる（結果は同じでも描き直す）。
+   */
+  const route = useMemo(() => planRoute(stops, routeOrigin), [stops, routeOrigin]);
+  const routeShops = useMemo(() => route.legs.map((leg) => leg.shop), [route]);
+
   const detail = selected && (
     <SelectedShop
       onAsk={() => void askAboutShop(selected)}
       onOpenMap={() => openInMaps(selected)}
       onClear={() => onSelect(null)}
       asking={asking}
+      inRoute={inRoute}
+      routeFull={!inRoute && stops.length >= MAX_STOPS}
+      onToggleRoute={() =>
+        inRoute ? onRemoveStop(selected) : onAddStop(selected, payload.query.origin)
+      }
     />
   );
 
@@ -373,6 +462,17 @@ function IekeiAppInner({
         asking={asking}
         busy={busy}
         detail={detail}
+        route={routeShops}
+        routeOrigin={routeOrigin}
+      />
+
+      {/* 結果の下、注記の上。モードを切り替えても残るので、組み立てたものが消えない。 */}
+      <RoutePanel
+        route={route}
+        origin={routeOrigin}
+        onRemove={onRemoveStop}
+        onClear={onClearStops}
+        onOpenLink={openExternal}
       />
 
       <p className={styles.footnote}>{FOOTNOTE}</p>

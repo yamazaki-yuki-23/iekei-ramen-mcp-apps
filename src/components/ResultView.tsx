@@ -19,6 +19,9 @@ interface Props {
   onSelect: (shop: Shop) => void;
   /** 選択中のカードの直下に出すもの。 */
   detail?: ReactNode;
+  /** 「まわる店」の順路。地図にだけ線を引く。 */
+  route?: Shop[];
+  routeOrigin?: { lat: number; lon: number };
 }
 
 /**
@@ -36,11 +39,25 @@ function mapListShops(shops: Shop[], selectedId?: string): Shop[] {
 /**
  * 検索結果の表示。地図モードだけ地図と一覧を並べる。
  */
-export function ResultView({ mode, shops, selectedId, onSelect, detail }: Props) {
+export function ResultView({
+  mode,
+  shops,
+  selectedId,
+  onSelect,
+  detail,
+  route,
+  routeOrigin,
+}: Props) {
   if (mode === "map") {
     return (
       <div className={styles.mapLayout}>
-        <MapView shops={shops} selectedId={selectedId} onSelect={onSelect} />
+        <MapView
+          shops={shops}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          route={route}
+          routeOrigin={routeOrigin}
+        />
         <ShopList
           shops={mapListShops(shops, selectedId)}
           selectedId={selectedId}
