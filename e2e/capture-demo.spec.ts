@@ -37,10 +37,29 @@ test("デモ", async ({ page }) => {
   await expect(shopCards(app)).toHaveCount(5);
   await page.waitForTimeout(2500);
 
-  // 地図から探す
+  // 迷ったら — 3 軒に絞ってモデルに推させる
+  await app.getByRole("tab", { name: "迷ったら" }).click();
+  await expect(shopCards(app)).toHaveCount(3);
+  await page.waitForTimeout(2500);
+  await app.getByRole("button", { name: "別の候補を見る" }).click();
+  await page.waitForTimeout(2000);
+
+  // まわる店 — 2 軒を積んで順路を出す
+  await shopCards(app).nth(1).click();
+  await page.waitForTimeout(800);
+  await app.getByRole("button", { name: "まわる店に追加" }).click();
+  await page.waitForTimeout(600);
+  await shopCards(app).nth(0).click();
+  await page.waitForTimeout(600);
+  await app.getByRole("button", { name: "まわる店に追加" }).click();
+  await app.getByRole("button", { name: "選択を解除" }).click();
+  await expect(app.getByRole("region", { name: "まわる店" })).toBeVisible();
+  await page.waitForTimeout(3000);
+
+  // 地図から探す — 順路の線も出る
   await app.getByRole("tab", { name: "地図から探す" }).click();
   await expect(app.getByRole("application", { name: "家系ラーメン店の地図" })).toBeVisible();
   await page.waitForTimeout(4000);
   await app.locator("#pref").selectOption("東京都");
-  await page.waitForTimeout(4000);
+  await page.waitForTimeout(3500);
 });

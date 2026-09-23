@@ -917,6 +917,97 @@ test.describe("選択中の店の詳細", () => {
   });
 });
 
+test.describe("一覧の詰め方", () => {
+  /*
+   * ChatGPT のような広いホストで「窮屈で見づらい」と言われたのがきっかけ。
+   * 幅が 1400px あってもカード 1 枚が 108px を使い、一覧に 4 枚弱しか
+   * 収まっていなかった（横に 1000px 以上空いたまま縦に伸びていた）。
+   */
+  test("広いホストでは、カードを 1 行に収めて数を見せる", async ({ page }) => {
+    await page.setViewportSize({ width: 1200, height: 820 });
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const card = await shopCards(app).first().boundingBox();
+    expect(card).not.toBeNull();
+    // 縦積みだと 108px。1 行に並べれば半分ほどに収まる。
+    expect(card!.height).toBeLessThan(70);
+
+    // 同じ一覧の高さに倍近く並ぶ。
+    const list = await app.locator("ul").first().boundingBox();
+    expect(list!.height / card!.height).toBeGreaterThan(6);
+  });
+
+  test("横に並べ始めた直後の幅でも、長い店名を折り返さない", async ({ page }) => {
+    /*
+     * 40rem を少し超えたあたりが一番きつい。順位番号・バッジ・距離も同じ行に
+     * 並ぶので、店名に縮む指定（flex: 0 1 auto）を残していると真っ先に詰められ、
+     * 20 文字超の店名が 2 行になってカードが 55px → 78px に戻る。
+     *
+     * 広い幅（1200px）で短い店名だけ見ていても、この状態は捕まえられない。
+     */
+    await page.setViewportSize({ width: 720, height: 900 });
+    // 「横浜家系ラーメン 町田商店 柴田バイパス店」（21 文字）が 1 軒目に来る地点。
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 38.0626,
+      lon: 140.7613,
+      label: "柴田",
+      source: "place",
+      limit: 5,
+    });
+    await waitForApp(app);
+    await expect(shopCards(app).first()).toContainText("柴田バイパス店");
+
+    const heights = await shopCards(app).evaluateAll((els) =>
+      els.map((e) => Math.round(e.getBoundingClientRect().height)),
+    );
+    // 1 行に収まっていれば 55px 前後。折り返すと 78px 以上になる。
+    expect(Math.max(...heights)).toBeLessThan(70);
+  });
+
+  test("横に並べても、一覧を横へ溢れさせない", async ({ page }) => {
+    /*
+     * 店名を縮めない指定にすると、縮まない要素（順位番号・バッジ・距離）だけで
+     * 幅を超えたときに一覧が横スクロールする。縦の 1 行化と引き換えに横が
+     * 壊れては意味がない。
+     *
+     * **いまのデータでは、縮めない指定に戻しても溢れない**（最長 21 文字の
+     * 「横浜家系ラーメン 町田商店 柴田バイパス店」でも収まる）。このテストは
+     * 判別力があるというより、店舗データを取り直して長い店名が増えたときに
+     * 気付くための網。
+     */
+    await page.setViewportSize({ width: 680, height: 900 });
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 38.0626,
+      lon: 140.7613,
+      label: "柴田",
+      source: "place",
+      limit: 5,
+    });
+    await waitForApp(app);
+
+    const over = await app
+      .locator("ul")
+      .first()
+      .evaluate((ul) => ({
+        list: ul.scrollWidth - ul.clientWidth,
+        page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      }));
+    expect(over.list).toBe(0);
+    expect(over.page).toBe(0);
+  });
+
+  test("狭いホストでは、カードを縦に積む", async ({ page }) => {
+    // 横に並べる余地が無いので、店名・住所・バッジを積んだまま読ませる。
+    await page.setViewportSize({ width: 420, height: 900 });
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const card = await shopCards(app).first().boundingBox();
+    expect(card!.height).toBeGreaterThan(90);
+  });
+});
+
 test.describe("まわる店（順路）", () => {
   test("積んでいないうちは、空の枠を出さない", async ({ page }) => {
     // 空の枠は「まだ置かれていない場所」に見えて、操作できる何かだと誤解される。

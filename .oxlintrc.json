@@ -57,7 +57,8 @@
     {
       "files": ["tests/**", "e2e/**"],
       "rules": {
-        "typescript/no-non-null-assertion": "off"
+        "typescript/no-non-null-assertion": "off",
+        "no-await-in-loop": "off"
       }
     }
   ]

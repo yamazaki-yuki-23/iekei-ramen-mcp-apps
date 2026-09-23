@@ -20,7 +20,7 @@ npm run data:build   # judged.json + osm-raw.json → shops.json（API 不要）
 npm run doctor      # react-doctor（React 固有の壊れ方を見る）
 npm test            # vitest（距離計算・家系判定・MCP サーバーの結合テスト）
 npm run e2e         # playwright（basic-host 経由の実ブラウザテスト）
-npm run lint        # oxlint
+npm run lint        # oxlint（--deny-warnings。警告も落とす）
 npm run format      # oxfmt（--check は format:check）
 npm run knip        # 未使用のコード・依存の検出
 ```
@@ -31,6 +31,11 @@ npm run knip        # 未使用のコード・依存の検出
 （`setup-node` の `node-version-file`）。手元がずれると CI で再現しない不具合が出るので、
 `nvm use` / `mise use node` などで揃えてから作業する。`@types/node` もここに合わせる。
 型だけ先に上げると、実行環境に無い API が型として通ってしまう。
+
+**検証の結果は最後まで見ること。** `oxlint` は警告があっても終了コード 0 を
+返すので、出力を `error` だけで拾うと見落とす（実際に `no-await-in-loop` の
+警告 10 件を「通過」と報告してしまい、CI の注釈で気付いた）。`npm run lint` に
+`--deny-warnings` を付けてあるので、いまは警告も終了コードに出る。
 
 コミット時に react-doctor がステージ済みファイルを見る（`.githooks/pre-commit`）。
 `npm install` が `core.hooksPath` を張るので、clone 直後に 1 回入れれば効く。

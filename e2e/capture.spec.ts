@@ -36,6 +36,40 @@ test("現在地から探す", async ({ page }) => {
   await shot(page, "nearby");
 });
 
+test("迷ったら", async ({ page }) => {
+  const app = await callTool(page, "decide-iekei-ramen", {
+    lat: 35.4658,
+    lon: 139.6222,
+    label: "横浜駅",
+    source: "place",
+  });
+  await waitForApp(app);
+  await expect(shopCards(app)).toHaveCount(3);
+  await shot(page, "decide");
+});
+
+test("まわる店", async ({ page }) => {
+  // 3 軒に絞った画面から 2 軒を積む。順路まで 1 枚に収めたいので少し縦を足す。
+  await page.setViewportSize({ width: 900, height: 900 });
+  const app = await callTool(page, "decide-iekei-ramen", {
+    lat: 35.4658,
+    lon: 139.6222,
+    label: "横浜駅",
+    source: "place",
+  });
+  await waitForApp(app);
+  await expect(shopCards(app)).toHaveCount(3);
+
+  for (const i of [1, 0]) {
+    await shopCards(app).nth(i).click();
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+  }
+  // 選択中のパネルを畳んで、順路だけを見せる。
+  await app.getByRole("button", { name: "選択を解除" }).click();
+  await expect(app.getByRole("region", { name: "まわる店" })).toBeVisible();
+  await shot(page, "route");
+});
+
 test("地図から探す", async ({ page }) => {
   const app = await callTool(page, "show-iekei-ramen-map");
   await waitForApp(app);
