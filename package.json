@@ -23,7 +23,7 @@
     "test:watch": "vitest",
     "e2e:setup": "node scripts/setup-e2e.mjs",
     "e2e": "node scripts/setup-e2e.mjs && playwright test",
-    "lint": "oxlint",
+    "lint": "oxlint --deny-warnings",
     "lint:fix": "oxlint --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",

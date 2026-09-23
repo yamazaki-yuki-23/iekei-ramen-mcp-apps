@@ -34,7 +34,11 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? "github" : "list",
+  /*
+   * CI では GitHub の注釈に加えて HTML レポートも出す。落ちたときに
+   * アップロードして中身を追うためで、成功したときは使わない。
+   */
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
   use: {
     baseURL: `http://localhost:${HOST_PORT}`,
     trace: "retain-on-failure",

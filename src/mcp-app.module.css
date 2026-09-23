@@ -338,6 +338,60 @@
   gap: var(--space-1);
 }
 
+/*
+ * 広いホストでは、カードの中身を 1 行に並べる。
+ *
+ * 縦積みのままだと、幅が 1400px あってもカード 1 枚が 108px を使い、一覧に
+ * 4 枚弱しか収まらない（ChatGPT で「窮屈」と言われたのがこの状態）。横に
+ * 空いている場所へ住所とバッジを逃がすと、同じ高さで倍近く並ぶ。
+ *
+ * 1 列のまま横に並べるのは、詳細を「選んだカードの直下・同じ枠の中」に出す
+ * 決まりを保つため。カードを多列に割ると詳細の置き場所が無くなり、枠を
+ * 2 つにする作り（一度やって作り直した形）に戻ってしまう。
+ */
+@media (min-width: 40rem) {
+  .cardBody {
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--space-4);
+  }
+
+  /*
+   * **1 行を保つのは `nowrap`、溢れを防ぐのは `min-width: 0`。**
+   *
+   * 折り返しを許すと、順位番号・バッジ・距離も並ぶ行では 20 文字超の店名が
+   * 2 行になり、1 行にした意味が無くなる（55px → 78px）。逆に店名を縮めない
+   * （`0 0 auto`）と、縮まない要素だけで幅を超えたとき一覧が横へ溢れる。
+   * どちらも目的を壊すので、折り返さず・縮めて・最後に省略する。
+   *
+   * 削られる順番は `flex-basis` が決める。住所は `0` で「余った幅だけ」を
+   * 受け取るので真っ先に潰れ、店名は `auto`（中身の幅）なので、住所が
+   * 潰れてもまだ足りないときにだけ縮む。一覧で店を見分ける手がかりは店名
+   * しかないので、この順番を崩さないこと。
+   */
+  .cardBody > .shopName {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cardBody > .meta {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* バッジは右端へ寄せ、折り返さない。 */
+  .cardBody > .badges {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+}
+
 .shopName {
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing-tight);

@@ -38,11 +38,16 @@ const SKIP_HEAD_SEC = 3.5;
 
 const palette = path.join(root, "test-results", "palette.png");
 // README で読み込ませるので、見やすさを保ちつつ数 MB に収まる設定にする。
-const filters = `trim=start=${SKIP_HEAD_SEC},setpts=PTS-STARTPTS,fps=5,scale=820:-1:flags=lanczos`;
+/*
+ * README に貼るので、読み込みの軽さを優先する。操作の流れが分かれば十分なので
+ * 5fps・幅 720px に落としてある（4 モードぶんに伸ばしたとき 3.6MB まで膨らみ、
+ * GitHub 上で表示が重くなった）。
+ */
+const filters = `trim=start=${SKIP_HEAD_SEC},setpts=PTS-STARTPTS,fps=5,scale=720:-1:flags=lanczos`;
 
 execFileSync(
   "ffmpeg",
-  ["-y", "-i", video, "-vf", `${filters},palettegen=stats_mode=full`, palette],
+  ["-y", "-i", video, "-vf", `${filters},palettegen=stats_mode=full:max_colors=128`, palette],
   { stdio: "inherit" },
 );
 
