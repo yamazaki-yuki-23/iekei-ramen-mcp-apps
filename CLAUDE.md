@@ -198,6 +198,15 @@ DB もストレージも使わない。実行時の書き込みは無い。
 店舗 0 件の県が消えてスキーマが不安定になる。UI のプルダウンだけ
 `PREFECTURES_WITH_SHOPS` で絞っている。
 
+**ホストから来た寸法をインラインの style に直接書かない。** インラインは
+CSS より強いので、ホストが 0 を送ってくるだけで見た目が壊れる。実際に
+`safeAreaInsets` を `padding` に写していて、4 辺 0 を送る ChatGPT では
+`.main` の `--space-4` がまるごと消えていた（Claude は `safeAreaInsets` を
+送ってこないため React が属性を省き、こちらでは正常に見えていた）。
+寸法は CSS 変数で渡し、足し算は CSS 側で `calc` する
+（[src/lib/safe-area.ts](src/lib/safe-area.ts)）。**ホスト差は「片方で動いた」では
+確かめられない。値を送ってこないホストは、間違いを隠す。**
+
 **外部通信には CSP 宣言が必要。** 地図タイルも位置情報も `uiResourceMeta` に
 書いていないと動かない（`csp.resourceDomains` と `permissions.geolocation`）。
 新しいドメインを叩くときはここに追加する。

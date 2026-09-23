@@ -28,6 +28,7 @@ import { useServerTools } from "./hooks/use-server-tools";
 import { originLabel } from "./lib/geo";
 import { createDeliveryQueue } from "./lib/model-context";
 import { EMPTY_PAYLOAD, readPayload } from "./lib/payload";
+import { safeAreaStyle } from "./lib/safe-area";
 import { MAX_STOPS, planRoute } from "./lib/route";
 import type { AppPayload, Origin, SearchMode, Shop } from "./lib/types";
 import styles from "./mcp-app.module.css";
@@ -212,17 +213,6 @@ function IekeiApp() {
       hostContext={{ ...app.getHostContext(), ...hostContextPatch }}
     />
   );
-}
-
-/** ホストが指定する画面端の余白。渡してこないホストもある。 */
-function safeAreaPadding(hostContext?: McpUiHostContext) {
-  const inset = hostContext?.safeAreaInsets;
-  return {
-    paddingTop: inset?.top,
-    paddingRight: inset?.right,
-    paddingBottom: inset?.bottom,
-    paddingLeft: inset?.left,
-  };
 }
 
 /** 「558 件（200 件表示）」。上限で切られているときだけ内訳を出す。 */
@@ -416,7 +406,7 @@ function IekeiAppInner({
   );
 
   return (
-    <main className={styles.main} style={safeAreaPadding(hostContext)}>
+    <main className={styles.main} style={safeAreaStyle(hostContext?.safeAreaInsets)}>
       <div className={styles.header}>
         <div className={styles.headerMain}>
           {/* 丼は飾りなので、見出しの読み上げには載せない。 */}
