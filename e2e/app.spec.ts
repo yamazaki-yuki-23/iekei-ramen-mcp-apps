@@ -236,6 +236,447 @@ test.describe("モード切り替え", () => {
   });
 });
 
+/** 根拠の一文から母数（「〜 軒を」）を取り出す。 */
+function poolSize(basis: string): string | undefined {
+  return basis.match(/(\d+) 軒を/)?.[1];
+}
+
+test.describe("迷ったら（3 軒に絞る）", () => {
+  test("3 軒まで絞り、なぜこの 3 軒かを画面に出す", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+    });
+    await waitForApp(app);
+
+    await expect(shopCards(app)).toHaveCount(3);
+    // 根拠を出さないと、根拠の無い「おすすめ」を押し付けているように見える。
+    await expect(app.getByText(/横浜駅から近い順に並べ/)).toBeVisible();
+    await expect(app.getByText(/順位は「おすすめ度」ではありません/)).toBeVisible();
+  });
+
+  test("3 軒とも一度に見える（一覧の中で切れない）", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    /*
+     * 比べてから決めるので、3 軒目が切れていては意味がない。
+     * 一覧は他のモードでは高さを 26rem に制限してスクロールさせているが、
+     * 「迷ったら」では外してある。画面の位置ではなく、一覧自身がはみ出して
+     * いないことを見る。
+     *
+     * 1 軒選んでから測る。カードだけなら 26rem に収まってしまい、制限が
+     * 残っていても気付けない。詳細が開いた状態が、実際に切れていた形。
+     */
+    await shopCards(app).nth(1).click();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
+
+    const overflow = await app
+      .locator("ul")
+      .first()
+      .evaluate((ul) => ul.scrollHeight - ul.clientHeight);
+    expect(overflow).toBe(0);
+  });
+
+  test("「別の候補を見る」で中身が入れ替わる", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const before = await Promise.all([0, 1, 2].map((i) => shopName(shopCards(app).nth(i))));
+    await expect(app.getByText("1 / ")).toBeVisible();
+
+    await app.getByRole("button", { name: "別の候補を見る" }).click();
+    await expect(app.getByText("2 / ")).toBeVisible();
+
+    const after = await Promise.all([0, 1, 2].map((i) => shopName(shopCards(app).nth(i))));
+    expect(after).not.toEqual(before);
+    // 乱数ではなく次の 3 軒なので、前の 3 軒とは重ならない。
+    expect(after.filter((n) => before.includes(n))).toEqual([]);
+  });
+
+  test("「この 3 軒から選ぶ」でチャットに 3 軒を流す", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const names = await Promise.all([0, 1, 2].map((i) => shopName(shopCards(app).nth(i))));
+    await app.getByRole("button", { name: "この 3 軒から選ぶ" }).click();
+
+    // ホストの会話欄は畳まれているので、開いてから本文を見る。
+    const messages = page.getByText(/💬 Messages/);
+    await expect(messages).toBeVisible();
+    await messages.click();
+
+    const sent = page.locator("pre").filter({ hasText: "[user]" });
+    await expect(sent).toContainText("この中から 1 軒を選んで");
+    await Promise.all(names.map((name) => expect(sent).toContainText(name)));
+    // 持っていないデータを推測させない断り書きが必ず付く。
+    await expect(sent).toContainText("推測で補わず");
+    await expect(sent).toContainText("このアプリのデータには含まれていません");
+  });
+
+  test("現在地タブに戻ると、近い順を取り直す", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+    });
+    await waitForApp(app);
+    await expect(shopCards(app)).toHaveCount(3);
+
+    /*
+     * タブを戻したときに tool を呼ばないと、直前の payload（3 軒）が
+     * そのまま「近い順」として並ぶ。基準地点は引き継いでいるので取り直せる。
+     */
+    await app.getByRole("tab", { name: "現在地から探す" }).click();
+    await expect(app.getByText("基準: 横浜駅")).toBeVisible();
+    await expect(shopCards(app)).toHaveCount(5);
+  });
+
+  test("直前の検索のキーワードを、見えないまま効かせない", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", {
+      prefecture: "神奈川県",
+      keyword: "吉村家",
+    });
+    await waitForApp(app);
+    await expect(shopCards(app)).toHaveCount(1);
+
+    /*
+     * 「迷ったら」はキーワード欄を出さない。残っていた語がそのまま効くと、
+     * 候補が減っていても理由が画面に出ず、外す手立ても無い。
+     */
+    await app.getByRole("tab", { name: "迷ったら" }).click();
+    await expect(app.locator("#kw")).toHaveCount(0);
+    await expect(shopCards(app)).toHaveCount(3);
+  });
+
+  test("候補が 1 軒のときは、3 軒の言い方をしない", async ({ page }) => {
+    // 神奈川県は 79 軒 = 27 巡で、最終巡は 1 軒。
+    const app = await callTool(page, "decide-iekei-ramen", {
+      prefecture: "神奈川県",
+      round: 26,
+    });
+    await waitForApp(app);
+
+    await expect(shopCards(app)).toHaveCount(1);
+    await expect(app.getByRole("heading", { name: /迷ったらこの 1 軒/ })).toBeVisible();
+    await expect(app.getByRole("button", { name: "この 1 軒について聞く" })).toBeVisible();
+    await expect(app.getByRole("button", { name: /この 3 軒から選ぶ/ })).toHaveCount(0);
+  });
+
+  test("モデルが付けたキーワードを、巡回しても落とさない", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", { keyword: "横浜" });
+    await waitForApp(app);
+
+    /*
+     * キーワードを落とすと母数が全国に広がり、「次の候補」として無関係な店が
+     * 出る。効いている語は根拠の一文にも書いて、隠れた絞り込みにしない。
+     */
+    const pool = await app.locator("section p").first().innerText();
+    expect(pool).toContain("「横浜」に合う");
+
+    await app.getByRole("button", { name: "別の候補を見る" }).click();
+    await expect(app.getByText("2 / ")).toBeVisible();
+
+    const after = await app.locator("section p").first().innerText();
+    expect(after).toContain("「横浜」に合う");
+    // 母数（〜軒）が変わっていないこと。広がると無関係な店が混ざる。
+    expect(poolSize(after)).toBe(poolSize(pool));
+  });
+
+  test("同じタブをもう一度押しても、効いているキーワードを落とさない", async ({ page }) => {
+    /*
+     * 別のタブから入り直すときは、検索フォームに残っていた語を持ち込まない。
+     * だが「いま居るタブをもう一度押す」は入り直しではない。ここで落とすと、
+     * 押しただけで母数が全国に広がり、チップも消えて理由が残らない。
+     */
+    const app = await callTool(page, "decide-iekei-ramen", { keyword: "横浜" });
+    await waitForApp(app);
+    const before = await app.locator("section p").first().innerText();
+    expect(before).toContain("「横浜」に合う");
+
+    await app.getByRole("tab", { name: "迷ったら" }).click();
+
+    await expect(app.getByText("キーワード「横浜」")).toBeVisible();
+    const after = await app.locator("section p").first().innerText();
+    expect(after).toContain("「横浜」に合う");
+    expect(poolSize(after)).toBe(poolSize(before));
+  });
+
+  test("現在地の精度を、迷ったらを経由しても書き換えない", async ({ page }) => {
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "現在地",
+      source: "precise",
+      limit: 5,
+    });
+    await waitForApp(app);
+    await expect(app.getByText("基準: 現在地", { exact: true })).toBeVisible();
+
+    // place に固定していると「（指定した地名）」が付いて、精度が偽られる。
+    await app.getByRole("tab", { name: "迷ったら" }).click();
+    await expect(shopCards(app)).toHaveCount(3);
+    await app.getByRole("tab", { name: "現在地から探す" }).click();
+
+    await expect(app.getByText("基準: 現在地", { exact: true })).toBeVisible();
+    await expect(app.getByText("指定した地名")).toHaveCount(0);
+  });
+
+  test("label 無しの座標を引き継いでも、基準地点で「現在地」と名乗らない", async ({ page }) => {
+    /*
+     * モデルが座標だけ渡して「迷ったら」を開くことがある。そのまま現在地タブへ
+     * 持ち越すと、見出しは座標なのに基準の表示だけ「現在地（指定した地名）」に
+     * なり、端末から取った位置のように見える。
+     */
+    const app = await callTool(page, "decide-iekei-ramen", { lat: 35.4657, lon: 139.622 });
+    await waitForApp(app);
+    await expect(shopCards(app)).toHaveCount(3);
+
+    await app.getByRole("tab", { name: "現在地から探す" }).click();
+    await expect(shopCards(app)).toHaveCount(5);
+
+    await expect(app.getByText(/基準: 現在地/)).toHaveCount(0);
+    await expect(app.getByText("基準: 35.4657, 139.6220（指定した地名）")).toBeVisible();
+  });
+
+  test("ホスト由来の位置でも、迷ったらを経由して現在地に戻れる", async ({ page }) => {
+    /*
+     * ChatGPT のように iframe の位置情報が塞がれたホストでは、座標の出どころは
+     * host になる。「迷ったら」を経由するとその値がそのまま現在地モードへ渡るので、
+     * 受け側が precise / place しか認めないと検証エラーで戻れなくなる。
+     */
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "だいたいの現在地",
+      source: "host",
+      limit: 5,
+    });
+    await waitForApp(app);
+    await expect(shopCards(app)).toHaveCount(5);
+
+    await app.getByRole("tab", { name: "迷ったら" }).click();
+    await expect(shopCards(app)).toHaveCount(3);
+
+    await app.getByRole("tab", { name: "現在地から探す" }).click();
+    await expect(shopCards(app)).toHaveCount(5);
+    await expect(app.getByText(/だいたいの位置/)).toBeVisible();
+  });
+
+  test("店を開いたまま選んでもらうと、その選択を先に外す", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    await shopCards(app).nth(1).click();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
+
+    /*
+     * ホスト側のパネルに「選択した店舗」が載ったことを確かめてから送る。
+     * パネルは折りたたみで、閉じていると中身の pre がそもそも存在しない。
+     * 開かずに「消えたこと」を数えると、常に 0 になって何も見張らない。
+     */
+    await page.getByText("📋 Model Context").click();
+    const inContext = page.locator("pre").filter({ hasText: "ユーザーが UI で選択した店舗" });
+    await expect(inContext).toHaveCount(1);
+
+    /*
+     * 「この店を選んだ」という文脈を残したまま「この中から選んで」と頼むと、
+     * 相反する 2 つが同時に届き、答えが開いていた店に引きずられる。
+     * updateModelContext は次の発話まで待つので、送ってから消しても遅い。
+     */
+    await app.getByRole("button", { name: /軒から選ぶ/ }).click();
+
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toHaveCount(0);
+    await expect(inContext).toHaveCount(0);
+
+    const messages = page.getByText(/💬 Messages/);
+    await expect(messages).toBeVisible();
+    await messages.click();
+    await expect(page.locator("pre").filter({ hasText: "[user]" })).toContainText(
+      "この中から 1 軒を選んで",
+    );
+  });
+
+  test("切り替えに失敗したら、前のモードの結果を出さない", async ({ page }) => {
+    // 全国の地図（558 件）を出してから、tool 呼び出しを落とす。
+    const app = await callTool(page, "show-iekei-ramen-map", {});
+    await waitForApp(app);
+    await expect(shopCards(app)).toHaveCount(20);
+
+    await page.route("**/mcp", (route) => route.abort());
+    await app.getByRole("tab", { name: "迷ったら" }).click();
+
+    /*
+     * mode だけ先に変わり、payload は前のモードのまま残る。出してしまうと
+     * 558 件が「迷ったら」の候補として並び、「この 558 軒から選ぶ」ボタンまで
+     * 押せてしまう（実際にそうなっていた）。
+     */
+    await expect(
+      app.getByText("結果を取得できませんでした。もう一度お試しください。"),
+    ).toBeVisible();
+    await expect(shopCards(app)).toHaveCount(0);
+    await expect(app.getByRole("button", { name: /軒から選ぶ/ })).toHaveCount(0);
+    await expect(app.getByRole("button", { name: "別の候補を見る" })).toHaveCount(0);
+    // 見出しも前のモードの件数を名乗らない。
+    await expect(app.getByRole("heading", { name: "迷ったら", exact: true })).toBeVisible();
+  });
+
+  test("条件を変えて失敗したら、前の条件の候補を残さない", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    const before = await Promise.all([0, 1, 2].map((i) => shopName(shopCards(app).nth(i))));
+
+    /*
+     * モードは decide のままなので、mode と payload.mode の比較だけでは
+     * 古くなったことに気付けない。プルダウンは東京都を指しているのに候補は
+     * 神奈川県のまま残り、そのままモデルへ送れてしまっていた。
+     */
+    await page.route("**/mcp", (route) => route.abort());
+    await app.locator("#pref").selectOption("東京都");
+
+    await expect(
+      app.getByText("結果を取得できませんでした。もう一度お試しください。"),
+    ).toBeVisible();
+    await expect(app.locator("#pref")).toHaveValue("東京都");
+    await expect(shopCards(app)).toHaveCount(0);
+    await expect(app.getByRole("button", { name: /軒から選ぶ/ })).toHaveCount(0);
+    expect(before).toHaveLength(3);
+  });
+
+  test("条件を変えて失敗しても、開いていた店をモデルに残さない", async ({ page }) => {
+    /*
+     * 一覧を差し替える呼び出しが落ちると、候補も選択中パネルも画面から消える。
+     * それでもホストのモデル文脈には開いていた店が載ったままで、画面には外す
+     * 手段が無い。そのあとの会話が、消えたはずの店を指したまま進む。
+     */
+    const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    await shopCards(app).nth(1).click();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
+    // 折りたたまれたままだと pre が無く、何も見張らないテストになる。開いて見る。
+    await page.getByText("📋 Model Context").click();
+    const inContext = page.locator("pre").filter({ hasText: "ユーザーが UI で選択した店舗" });
+    await expect(inContext).toHaveCount(1);
+
+    await page.route("**/mcp", (route) => route.abort());
+    await app.locator("#pref").selectOption("東京都");
+
+    await expect(
+      app.getByText("結果を取得できませんでした。もう一度お試しください。"),
+    ).toBeVisible();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toHaveCount(0);
+    await expect(inContext).toHaveCount(0);
+  });
+
+  test("条件を続けて変えても、古い応答に巻き戻されない", async ({ page }) => {
+    /*
+     * 都道府県を続けて変えると呼び出しが 2 本走り、先に出した方が後から返る
+     * ことがある。素直に反映すると、後から選んだ条件が古い結果で上書きされ、
+     * payload から作り直されるフォームまで前の値に戻る。
+     */
+    await page.route("**/mcp", async (route) => {
+      const body = route.request().postData() ?? "";
+      // 先に出す「東京都」だけ遅らせて、後から出す「大阪府」を追い越させる。
+      if (body.includes("tools/call") && body.includes("東京都")) {
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+      await route.continue();
+    });
+
+    const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    await app.locator("#pref").selectOption("東京都");
+    await app.locator("#pref").selectOption("大阪府");
+
+    await expect(app.locator("#pref")).toHaveValue("大阪府");
+    await expect(shopCards(app)).toHaveCount(3);
+    await expect(shopCards(app).first()).toContainText("大阪府");
+    // 遅れて届く東京都の結果で巻き戻らないこと。
+    await page.waitForTimeout(3000);
+    await expect(app.locator("#pref")).toHaveValue("大阪府");
+    await expect(shopCards(app).first()).toContainText("大阪府");
+  });
+
+  test("label 無しの座標でも、見出しが「全国」にならない", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", { lat: 35.4657, lon: 139.622 });
+    await waitForApp(app);
+
+    // 距離で並べた結果なので、場所を名乗らないと何の 3 軒か分からない。
+    await expect(app.getByRole("heading", { name: /35\.4657, 139\.6220/ })).toBeVisible();
+    await expect(app.getByRole("heading", { name: /（全国）/ })).toHaveCount(0);
+    await expect(app.getByText(/35\.4657, 139\.6220から近い順/)).toBeVisible();
+  });
+
+  test("モデルが付けたキーワードは、0 件でも見えて外せる", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", { keyword: "存在しない店名ZZZ" });
+    await waitForApp(app);
+
+    /*
+     * このモードにキーワード欄は無い。出さないと、なぜ 0 件なのかも、どうすれば
+     * 外れるのかも分からない。見出しも「この 0 軒」と名乗らない。
+     */
+    await expect(shopCards(app)).toHaveCount(0);
+    await expect(app.getByText("キーワード「存在しない店名ZZZ」")).toBeVisible();
+    await expect(app.getByText(/上のキーワードを外すか/)).toBeVisible();
+    await expect(app.getByRole("heading", { name: "迷ったら", exact: true })).toBeVisible();
+
+    await app.getByRole("button", { name: "このキーワードを外す" }).click();
+
+    await expect(shopCards(app)).toHaveCount(3);
+    await expect(app.getByText("存在しない店名ZZZ")).toHaveCount(0);
+  });
+
+  test("続けて押しても、そのたび選択を外しに行く", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const first = await shopName(shopCards(app).nth(1));
+    await shopCards(app).nth(1).click();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
+    await expect(page.getByText("📋 Model Context")).toBeVisible();
+
+    const ask = app.getByRole("button", { name: /軒から選ぶ/ });
+    await ask.click();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toHaveCount(0);
+
+    /*
+     * 2 回目も送れること。解除が失敗したあとに「決着済みの失敗」を使い回すと、
+     * 誰も消しに行かないまま送ることになる。ここでは解除が成功する経路だが、
+     * 押すたびに送信まで到達することを見ておく。
+     */
+    await shopCards(app).nth(2).click();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
+    await ask.click();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toHaveCount(0);
+    await expect(
+      page.locator("pre").filter({ hasText: "ユーザーが UI で選択した店舗" }),
+    ).toHaveCount(0);
+
+    const messages = page.getByText(/💬 Messages/);
+    await messages.click();
+    // ホストは会話を 1 つの pre にまとめて出すので、中身の数で見る。
+    const sent = page.locator("pre").filter({ hasText: "[user]" });
+    await expect(sent).toContainText(first);
+    expect(((await sent.innerText()).match(/この中から 1 軒を選んで/g) ?? []).length).toBe(2);
+  });
+
+  test("1 軒選ぶと、そのカードの直下に操作が出る", async ({ page }) => {
+    const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const target = shopCards(app).nth(1);
+    const name = await shopName(target);
+    await target.click();
+
+    const detail = app.locator("li", { has: app.getByRole("region", { name: "選択中の店舗" }) });
+    await expect(detail).toContainText(name);
+    await expect(app.getByRole("button", { name: "この店について聞く" })).toBeVisible();
+  });
+});
+
 test.describe("ホスト連携", () => {
   test("tool の引数がそのまま初期表示に反映される", async ({ page }) => {
     const app = await callTool(page, "search-iekei-ramen", {

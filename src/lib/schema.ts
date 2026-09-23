@@ -24,7 +24,7 @@ const ShopSchema = z.object({
 });
 
 export const PayloadSchema = z.object({
-  mode: z.enum(["form", "nearby", "map"]),
+  mode: z.enum(["form", "nearby", "map", "decide"]),
   shops: z.array(ShopSchema),
   total: z.number(),
   query: z.object({
@@ -42,4 +42,14 @@ export const PayloadSchema = z.object({
   }),
   /** 選択肢を UI に渡す（都道府県リストはデータ由来なのでサーバーが持つ）。 */
   prefectures: z.array(z.string()),
+  /** 「迷ったら」のときだけ入る、3 軒をどう選んだかの内訳。 */
+  decide: z
+    .object({
+      round: z.number(),
+      rounds: z.number(),
+      poolTotal: z.number(),
+      basis: z.enum(["distance", "hours"]),
+      widened: z.boolean(),
+    })
+    .optional(),
 });

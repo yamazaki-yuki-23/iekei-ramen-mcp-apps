@@ -1,10 +1,11 @@
 /**
  * 家系ラーメンを探す MCP Apps サーバー。
  *
- * 3 つのモードをそれぞれ tool として公開し、すべて同じ UI リソースを描画する:
+ * 4 つのモードをそれぞれ tool として公開し、すべて同じ UI リソースを描画する:
  *   search-iekei-ramen       検索フォーム（都道府県・味・キーワード）
  *   find-nearby-iekei-ramen  現在地から近い 5 店舗
  *   show-iekei-ramen-map     日本地図
+ *   decide-iekei-ramen       3 軒まで絞って、モデルに 1 軒推させる
  * geocode-place は UI から呼ぶ補助 tool（UI を持たない）。
  */
 import {
@@ -20,8 +21,9 @@ import {
 import { z } from "zod";
 import shopsData from "./data/shops.json" with { type: "json" };
 import { APP_HTML } from "./src/generated/app-html.ts";
-import { distanceKm, formatDistance } from "./src/lib/geo.ts";
+import { distanceKm, formatDistance, originLabel } from "./src/lib/geo.ts";
 import { PayloadSchema } from "./src/lib/schema.ts";
+import { describeBasis, shortlist } from "./src/lib/shortlist.ts";
 import {
   CONFIDENCE,
   ORIGIN_NOTES,
@@ -144,6 +146,100 @@ function mapSummary(shops: Shop[], prefecture?: string): string {
     ? "\n「家系の可能性」「家系か未判定」は店名からの推定です。断定しないでください。"
     : "";
   return `${where}の家系ラーメン ${shops.length} 件を地図に表示しました。\n内訳: ${breakdown}${caveat}`;
+}
+
+/**
+ * 「迷ったら」のテキスト。
+ *
+ * **ここだけは、モデルへの依頼文を兼ねている。** 3 軒を渡して終わりにすると、
+ * モデルは一覧をなぞるだけで終わり、ユーザーは結局決められない。1 軒を選んで
+ * 理由を言い切らせるところまでを頼む。
+ *
+ * ただし、このデータには味も混雑も評判も無い。理由を自由に書かせると、
+ * モデルは知識から「濃厚で人気」などと補ってしまうので、使っていい材料を
+ * 明示して縛る。
+ */
+function decidePrompt(shops: Shop[], basis: string, cond: string): string {
+  if (shops.length === 0) {
+    return `【${cond}】条件に合う店舗が見つかりませんでした。条件を緩めて試してください。`;
+  }
+  const lines = shops.map((s, i) => {
+    const where = [s.prefecture, s.city, s.address].filter(Boolean).join(" ");
+    const dist = s.distanceKm !== undefined ? ` / ${formatDistance(s.distanceKm)}` : "";
+    const conf = s.confidence === "confirmed" ? "" : ` / ${CONFIDENCE[s.confidence].label}`;
+    const taste =
+      s.taste === "unknown"
+        ? "味の傾向は情報なし"
+        : `味の傾向 ${TASTES[s.taste].label}（既知ブランドからの参考値）`;
+    return [
+      `${i + 1}. ${s.name}（${taste}${conf}${dist}）`,
+      `   ${where}`,
+      s.openingHours
+        ? `   営業: ${s.openingHours}（OSM 由来。変わることがある）`
+        : "   営業時間: データなし",
+      s.brand ? `   ブランド: ${s.brand}` : undefined,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  });
+
+  /*
+   * 軒数は必ず実際の件数から出す。最終巡は 3 軒に満たないことがあり
+   * （母数が 3 の倍数でなければ必ず起きる）、1 軒しか無いのに
+   * 「選ばなかった 2 軒について」と頼むと、モデルは無い店を作って答える。
+   */
+  const n = shops.length;
+  const ask =
+    n === 1
+      ? ["候補はこの 1 軒だけです。どういう人に向くかを 2〜3 文で述べてください。"]
+      : [
+          `この ${n} 軒から 1 軒を選び、なぜそれを推すのかを 2〜3 文で述べてください。`,
+          `選ばなかった ${n - 1} 軒についても、どういう人ならそちらが向くかを一言ずつ添えてください。`,
+        ];
+
+  return [
+    n === 1 ? `【${cond}】候補はこの 1 軒です。` : `【${cond}】この ${n} 軒まで絞りました。`,
+    basis,
+    "",
+    lines.join("\n"),
+    "",
+    ask[0],
+    "理由に使っていいのは上に書いた情報だけです（判定の段階・味の傾向・距離・営業時間・ブランド）。",
+    "味の濃さ・混雑・行列・評判・口コミは、このアプリのデータには含まれていません。推測で補わず、",
+    "分からないことは分からないと言ってください。",
+    ...ask.slice(1),
+  ].join("\n");
+}
+
+/**
+ * 片方だけの座標は受け付けない。
+ *
+ * 黙って無視すると、呼んだ側は距離で並んだつもりなのに、実際は営業時間の
+ * 有無で並んだ別物が返る。モデルが座標を片方だけ出したときに、無関係な店を
+ * 「近くの店」として見せてしまう。
+ */
+function incompleteCoordinates(lat?: number, lon?: number): CallToolResult | undefined {
+  if ((lat === undefined) === (lon === undefined)) return undefined;
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: "緯度と経度は両方そろえて指定してください。片方だけでは位置を決められません。",
+      },
+    ],
+  };
+}
+
+/**
+ * 表示名の正規化。空白だけなら無いものとして扱う。
+ *
+ * スキーマは空文字も通す。そのまま持つと「【全国】」（条件から落ちる）や
+ * 「基準: 」（空のまま出る）のように、場所の抜けた文言があちこちに出る。
+ * 入口で無くしておけば、下流はどれも undefined の枝だけを見ればよくなる。
+ */
+function blankToUndefined(text?: string): string | undefined {
+  return text?.trim() || undefined;
 }
 
 function filterShops(opts: { prefecture?: string; taste?: TasteKey; keyword?: string }): Shop[] {
@@ -296,15 +392,16 @@ export function createServer(): McpServer {
       _meta: { ui: { resourceUri } },
     },
     async ({ prefecture, taste, keyword }): Promise<CallToolResult> => {
-      const all = filterShops({ prefecture, taste, keyword });
+      const kw = blankToUndefined(keyword);
+      const all = filterShops({ prefecture, taste, keyword: kw });
       const shops = all.slice(0, 200);
       const cond =
-        [prefecture, taste && TASTES[taste].label, keyword].filter(Boolean).join(" / ") || "全国";
+        [prefecture, taste && TASTES[taste].label, kw].filter(Boolean).join(" / ") || "全国";
       const payload: Omit<AppPayload, "prefectures"> = {
         mode: "form",
         shops,
         total: all.length,
-        query: { prefecture, taste, keyword },
+        query: { prefecture, taste, keyword: kw },
       };
       return {
         content: [
@@ -341,22 +438,38 @@ export function createServer(): McpServer {
           .describe("基準地点の経度。省略するとホストの現在地を使う"),
         limit: z.number().int().min(1).max(20).default(5).describe("提案する店舗数"),
         label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
+        /*
+         * OriginSource の 4 値すべてを受ける。2 値に絞っていた頃は、ホスト由来
+         * （host）や接続元推定（edge）の座標を持って「迷ったら」から戻ると、
+         * 検証エラーで現在地モードが開けなくなっていた。
+         */
         source: z
-          .enum(["precise", "place"])
+          .enum(["precise", "host", "edge", "place"])
           .optional()
-          .describe("緯度経度の出どころ: precise=端末の位置情報 / place=地名から解決"),
+          .describe(
+            "緯度経度の出どころ: precise=端末の位置情報 / host=ホストが渡す大まかな位置 / " +
+              "edge=接続元からの推定 / place=地名から解決。省略すると precise 扱い",
+          ),
       }),
       outputSchema: PayloadSchema,
       _meta: { ui: { resourceUri } },
     },
     async ({ lat, lon, limit, label, source }, ctx): Promise<CallToolResult> => {
+      const incomplete = incompleteCoordinates(lat, lon);
+      if (incomplete) return incomplete;
+
       // TODO(診断): ホストがどんな _meta を送ってくるかを確認するための一時ログ。
       // 原因が特定できたら消す。位置の値そのものは出さず、キーだけ記録する。
       // 精度の高い順に降りていく。引数 → ホストが渡す位置 → 接続元からの推定。
       // 最後のものは HTTP なら request.cf から、stdio なら照会エンドポイントから取る。
       const origin: Origin | undefined =
         lat !== undefined && lon !== undefined
-          ? { lat, lon, label, source: (source ?? "precise") as OriginSource }
+          ? {
+              lat,
+              lon,
+              label: blankToUndefined(label),
+              source: (source ?? "precise") as OriginSource,
+            }
           : (readHostLocation(ctx.mcpReq._meta) ??
             readEdgeLocation(ctx.http?.req) ??
             (await fetchEdgeLocation()));
@@ -394,7 +507,7 @@ export function createServer(): McpServer {
         total: ranked.length,
         query: { origin },
       };
-      const where = origin.label ?? `${origin.lat.toFixed(4)}, ${origin.lon.toFixed(4)}`;
+      const where = originLabel(origin);
       const note = origin.source === "precise" ? "" : `（${ORIGIN_NOTES[origin.source]}）`;
       return {
         content: [
@@ -440,6 +553,112 @@ export function createServer(): McpServer {
           {
             type: "text",
             text: mapSummary(shops, prefecture),
+          },
+        ],
+        structuredContent: structured(payload),
+      };
+    },
+  );
+
+  // --- 4. 迷ったら（3 軒に絞る） ---------------------------------------------------------
+  registerAppTool(
+    server,
+    "decide-iekei-ramen",
+    {
+      title: "家系ラーメンを 3 軒まで絞る",
+      description:
+        "条件に合う家系ラーメン店を 3 軒まで絞り込み、その中から 1 軒を理由つきで推すための UI を表示する。一覧を見せても決められないとき、または「どこにする？」「おすすめは？」と聞かれたときに使う。round を 1 つ増やすと次の 3 軒に入れ替わる。",
+      inputSchema: z.object({
+        prefecture: z.enum(ALL_PREFECTURES).optional().describe("都道府県名（例: 神奈川県）"),
+        taste: z
+          .enum(["rich", "creamy", "chain"])
+          .optional()
+          .describe("味の傾向: rich=直系・濃厚 / creamy=クリーミー / chain=チェーン・万人向け"),
+        keyword: z.string().optional().describe("店名・ブランド・地名の部分一致キーワード"),
+        lat: z.number().min(-90).max(90).optional().describe("基準地点の緯度。あれば近い順に絞る"),
+        lon: z.number().min(-180).max(180).optional().describe("基準地点の経度"),
+        label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
+        source: z
+          .enum(["precise", "host", "edge", "place"])
+          .optional()
+          .describe(
+            "緯度経度の出どころ。省略すると place（地名から解決）扱い。" +
+              "現在地モードから引き継ぐときは、その精度をそのまま渡すこと",
+          ),
+        round: z
+          .number()
+          .int()
+          .min(0)
+          .optional()
+          .describe("何巡目か（0 始まり）。増やすと次の 3 軒。末尾まで行くと先頭へ戻る"),
+      }),
+      outputSchema: PayloadSchema,
+      _meta: { ui: { resourceUri } },
+    },
+    async ({
+      prefecture,
+      taste,
+      keyword,
+      lat,
+      lon,
+      label,
+      source,
+      round,
+    }): Promise<CallToolResult> => {
+      const incomplete = incompleteCoordinates(lat, lon);
+      if (incomplete) return incomplete;
+
+      /*
+       * 出どころは受け取ったものをそのまま持つ。ここで place に固定すると、
+       * 端末の位置情報から来た座標まで「指定した地名」に化け、現在地モードへ
+       * 戻ったときに誤った精度が表示される。
+       */
+      const origin: Origin | undefined =
+        lat !== undefined && lon !== undefined
+          ? {
+              lat,
+              lon,
+              label: blankToUndefined(label),
+              source: (source ?? "place") as OriginSource,
+            }
+          : undefined;
+      /*
+       * 効かないキーワードを持ち回らない。filterShops は trim 後に空なら
+       * 絞り込まないのに、生の値を payload と説明文に残すと、UI には外せる
+       * チップが出て、モデルには「この語に合う 558 軒」と伝わる。
+       */
+      const kw = blankToUndefined(keyword);
+      const list = shortlist(filterShops({ prefecture, taste, keyword: kw }), { origin, round });
+      /*
+       * 基準地点があるなら必ず名乗る。label を省いて呼ばれたときに落とすと、
+       * 距離で並べた結果なのに「全国」と書くことになる。
+       */
+      const cond =
+        [prefecture, taste && TASTES[taste].label, kw, origin && originLabel(origin)]
+          .filter(Boolean)
+          .join(" / ") || "全国";
+      const payload: Omit<AppPayload, "prefectures"> = {
+        mode: "decide",
+        shops: list.picks,
+        total: list.poolTotal,
+        query: { prefecture, taste, keyword: kw, origin },
+        decide: {
+          round: list.round,
+          rounds: list.rounds,
+          poolTotal: list.poolTotal,
+          basis: list.basis,
+          widened: list.widened,
+        },
+      };
+      return {
+        content: [
+          {
+            type: "text",
+            text: decidePrompt(
+              list.picks,
+              describeBasis(list, list.picks.length, origin, kw),
+              cond,
+            ),
           },
         ],
         structuredContent: structured(payload),
