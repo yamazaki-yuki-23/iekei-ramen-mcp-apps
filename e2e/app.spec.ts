@@ -1244,3 +1244,37 @@ test.describe("まわる店（順路）", () => {
       .toBe(true);
   });
 });
+
+test.describe("画面端の余白", () => {
+  /**
+   * セーフエリアはアプリの余白に「足す」もので、置き換えではない。
+   *
+   * ChatGPT は desktop でも 4 辺 0 を送ってくるので、インラインで padding を
+   * 書くと余白がまるごと消える（Claude は safeAreaInsets ごと送ってこないため
+   * 気付けなかった）。CSS 変数で渡し、`.main` 側で calc で足している。
+   */
+  test("ホストが 0 を送っても余白は残り、ノッチぶんは足される", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen");
+    await waitForApp(app);
+    const main = app.locator("main");
+
+    const paddingOf = (side: "Left" | "Top") =>
+      main.evaluate((el, s) => getComputedStyle(el).getPropertyValue(`padding-${s}`), side);
+
+    const setInset = (value: string) =>
+      main.evaluate((el, v) => {
+        el.style.setProperty("--safe-area-left", v);
+        el.style.setProperty("--safe-area-top", v);
+      }, value);
+
+    // 4 辺 0 のホスト（ChatGPT）でも --space-4 が残る
+    await setInset("0px");
+    expect(await paddingOf("Left")).toBe("16px");
+    expect(await paddingOf("Top")).toBe("16px");
+
+    // ノッチのあるホストでは、その寸法だけ外へ広がる
+    await setInset("8px");
+    expect(await paddingOf("Left")).toBe("24px");
+    expect(await paddingOf("Top")).toBe("24px");
+  });
+});
