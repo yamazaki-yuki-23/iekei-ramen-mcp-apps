@@ -49,8 +49,8 @@ registerAppTool(..., { _meta: { ui: { resourceUri } } })
 registerAppResource(server, resourceUri, ...)  // APP_HTML を返す
 ```
 
-tool は 4 つ。UI 付き 3 つ（`search-iekei-ramen` / `find-nearby-iekei-ramen` /
-`show-iekei-ramen-map`）と、UI 無しの `geocode-place`。
+tool は 5 つ。UI 付き 4 つ（`search-iekei-ramen` / `find-nearby-iekei-ramen` /
+`show-iekei-ramen-map` / `decide-iekei-ramen`）と、UI 無しの `geocode-place`。
 
 ### UI へのデータ受け渡し
 
@@ -60,6 +60,28 @@ tool は 4 つ。UI 付き 3 つ（`search-iekei-ramen` / `find-nearby-iekei-ram
 **重要:** UI が `app.callServerTool()` で呼んだ結果には `ontoolresult` が発火しない。
 戻り値から自分で `setPayload` する必要がある（[src/mcp-app.tsx](src/mcp-app.tsx) の `call`）。
 `ontoolresult` はホスト（モデル）発の呼び出しにだけ来る。
+
+### 迷ったら（3 軒に絞ってモデルに推させる）
+
+**画面に出る名前は「迷ったら」。コード上の識別子は `decide` のまま**
+（tool 名 `decide-iekei-ramen`、`DecidePanel`、`mode: "decide"`）。
+文言だけ直したいときに、型や tool 名まで巻き込まないようにしてある。
+
+558 件の一覧は選択肢地獄で、人は理由の無い長い一覧からは決められない。
+3 軒まで落として、決める仕事はモデルに渡すのが `decide-iekei-ramen`。
+
+- 候補の選び方は [src/lib/shortlist.ts](src/lib/shortlist.ts) に隔離してある。
+  **勝手な「おすすめ順」を作らないこと。** このデータには評価も混雑も口コミも
+  無いので、質の順位は付けられない。並べていいのは実際に持っている情報だけ
+  （家系判定の段階・距離・営業時間の有無）。
+- **乱数を使わない。**「別の候補を見る」は次の 3 軒であって、シャッフルではない。
+  決定的なので、同じ条件なら毎回同じ並びになりテストできる。
+- なぜこの 3 軒なのかは `describeBasis` が 1 文にする。**UI とモデルに同じ文を見せる。**
+  別々に書くと、画面の説明と会話の説明がずれる。
+- サーバーが返す text はモデルへの依頼文を兼ねている。使っていい材料を明示して
+  縛らないと、モデルが「濃厚で人気」などと知識から補ってしまう。
+- UI から呼ぶと `ontoolresult` が来ない＝依頼文がモデルに届かない。
+  「この 3 軒から選ぶ」は `sendMessage` で候補ごと送り直す。
 
 ### UI の選択をモデルに返す
 

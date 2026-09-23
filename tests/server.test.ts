@@ -38,9 +38,10 @@ async function callApp(
 }
 
 describe("tool の登録", () => {
-  it("UI 付き 3 つと補助 1 つを公開する", async () => {
+  it("UI 付き 4 つと補助 1 つを公開する", async () => {
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).toSorted()).toEqual([
+      "decide-iekei-ramen",
       "find-nearby-iekei-ramen",
       "geocode-place",
       "search-iekei-ramen",
@@ -110,6 +111,15 @@ describe("search-iekei-ramen", () => {
   it("キーワードで店名を部分一致検索する", async () => {
     const { payload } = await callApp("search-iekei-ramen", { keyword: "吉村家" });
     expect(payload.shops.some((s) => s.name.includes("吉村家"))).toBe(true);
+  });
+
+  it("空白だけのキーワードは、検索フォームに残さない", async () => {
+    // payload から検索フォームの初期値を作るので、見えない語が欄に残ると
+    // 次の検索でそのまま効いたように見える。
+    const { payload } = await callApp("search-iekei-ramen", { keyword: "   " });
+    const { payload: plain } = await callApp("search-iekei-ramen");
+    expect(payload.query.keyword).toBeUndefined();
+    expect(payload.total).toBe(plain.total);
   });
 
   it("条件を重ねると結果が狭まる", async () => {
@@ -323,6 +333,63 @@ describe("find-nearby-iekei-ramen", () => {
   });
 });
 
+describe("基準地点の出どころ", () => {
+  /*
+   * 「迷ったら」を経由して現在地モードへ戻ると、payload に入っていた出どころが
+   * そのまま find-nearby-iekei-ramen に渡る。受け側が 2 値しか認めていないと、
+   * ホスト由来（host）や接続元推定（edge）の座標で戻れなくなる。
+   * ChatGPT のように iframe の位置情報が塞がれたホストでは host が既定の経路。
+   */
+  const sources = ["precise", "host", "edge", "place"] as const;
+  const at = { lat: 35.4657, lon: 139.622, label: "だいたいの現在地" };
+
+  it.each(sources)("%s の座標で、両方の tool を往復できる", async (source) => {
+    const decide = await callApp("decide-iekei-ramen", { ...at, source });
+    expect(decide.isError).toBeFalsy();
+    expect(decide.payload.query.origin?.source).toBe(source);
+
+    const nearby = await callApp("find-nearby-iekei-ramen", { ...at, source, limit: 5 });
+    expect(nearby.isError).toBeFalsy();
+    expect(nearby.payload.query.origin?.source).toBe(source);
+    expect(nearby.payload.shops).toHaveLength(5);
+  });
+});
+
+describe("片方だけの座標", () => {
+  /*
+   * 黙って無視すると、呼んだ側は距離で並んだつもりなのに、実際は営業時間の
+   * 有無で並んだ別物が返る。モデルが座標を片方だけ出したときに、無関係な店を
+   * 「近くの店」として見せてしまう。
+   */
+  const tools = ["decide-iekei-ramen", "find-nearby-iekei-ramen"] as const;
+
+  it.each(tools)("%s は緯度だけでは受け付けない", async (tool) => {
+    const { isError, text } = await callApp(tool, { lat: 35.4657 });
+    expect(isError).toBe(true);
+    expect(text).toContain("両方そろえて");
+  });
+
+  it.each(tools)("%s は経度だけでは受け付けない", async (tool) => {
+    const { isError } = await callApp(tool, { lon: 139.622 });
+    expect(isError).toBe(true);
+  });
+
+  it("両方そろっていれば距離で並ぶ", async () => {
+    const { payload, isError } = await callApp("decide-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+    });
+    expect(isError).toBeFalsy();
+    expect(payload.decide?.basis).toBe("distance");
+  });
+
+  it("両方とも無いのは今までどおり通す（条件だけで絞る使い方）", async () => {
+    const { payload, isError } = await callApp("decide-iekei-ramen", { prefecture: "神奈川県" });
+    expect(isError).toBeFalsy();
+    expect(payload.decide?.basis).toBe("hours");
+  });
+});
+
 describe("show-iekei-ramen-map", () => {
   it("全国の店舗を件数制限なしで返す", async () => {
     const { payload } = await callApp("show-iekei-ramen-map");
@@ -364,6 +431,191 @@ describe("show-iekei-ramen-map", () => {
       expect(shop.lon).toBeGreaterThan(122);
       expect(shop.lon).toBeLessThan(154);
     }
+  });
+});
+
+describe("decide-iekei-ramen", () => {
+  it("3 軒まで絞り、選び方を payload に入れる", async () => {
+    const { payload } = await callApp("decide-iekei-ramen", { prefecture: "神奈川県" });
+    expect(payload.mode).toBe("decide");
+    expect(payload.shops).toHaveLength(3);
+    expect(payload.decide?.round).toBe(0);
+    expect(payload.decide?.rounds).toBeGreaterThan(1);
+    expect(payload.decide?.basis).toBe("hours");
+  });
+
+  it("基準地点を渡すと近い順になり、距離が入る", async () => {
+    const { payload } = await callApp("decide-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+    });
+    expect(payload.decide?.basis).toBe("distance");
+    const distances = payload.shops.map((s) => s.distanceKm!);
+    expect(distances.every((d) => typeof d === "number")).toBe(true);
+    expect(distances).toEqual(distances.toSorted((a, b) => a - b));
+    expect(distances[0]).toBeLessThan(2);
+  });
+
+  it("round を増やすと別の 3 軒になる", async () => {
+    const args = { prefecture: "神奈川県" };
+    const first = await callApp("decide-iekei-ramen", args);
+    const second = await callApp("decide-iekei-ramen", { ...args, round: 1 });
+    expect(second.payload.decide?.round).toBe(1);
+    const ids = new Set(first.payload.shops.map((s) => s.id));
+    expect(second.payload.shops.some((s) => ids.has(s.id))).toBe(false);
+  });
+
+  it("最後まで行ったら先頭へ戻る", async () => {
+    const { payload } = await callApp("decide-iekei-ramen", { prefecture: "神奈川県" });
+    const rounds = payload.decide!.rounds;
+    const wrapped = await callApp("decide-iekei-ramen", {
+      prefecture: "神奈川県",
+      round: rounds,
+    });
+    expect(wrapped.payload.decide?.round).toBe(0);
+    expect(wrapped.payload.shops.map((s) => s.id)).toEqual(payload.shops.map((s) => s.id));
+  });
+
+  it("モデルに 1 軒を選ばせ、推測を禁じる文面を返す", async () => {
+    const { text } = await callApp("decide-iekei-ramen", { prefecture: "神奈川県" });
+    expect(text).toContain("1 軒を選び");
+    expect(text).toContain("推測で補わず");
+    // 持っていないデータを名指しで禁じる。ここを削るとモデルが評判を語り出す。
+    expect(text).toMatch(/混雑|行列|評判|口コミ/);
+  });
+
+  it("なぜこの 3 軒なのかを UI と同じ文で説明する", async () => {
+    const { text } = await callApp("decide-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+    });
+    expect(text).toContain("横浜駅から近い順");
+    expect(text).toContain("1 巡目");
+  });
+
+  it("最終巡が 1 軒なら、無い 2 軒の話をさせない", async () => {
+    /*
+     * 母数が 3 の倍数でなければ最終巡は必ず 3 軒未満になる（神奈川県は 79 軒 = 27 巡、
+     * 最後は 1 軒）。件数を決め打ちすると「選ばなかった 2 軒について」と頼むことになり、
+     * モデルは存在しない店を作って答える。
+     */
+    const first = await callApp("decide-iekei-ramen", { prefecture: "神奈川県" });
+    const last = await callApp("decide-iekei-ramen", {
+      prefecture: "神奈川県",
+      round: first.payload.decide!.rounds - 1,
+    });
+    expect(last.payload.shops).toHaveLength(1);
+    expect(last.text).toContain("候補はこの 1 軒");
+    expect(last.text).not.toContain("3 軒まで絞りました");
+    expect(last.text).not.toMatch(/選ばなかった \d+ 軒/);
+  });
+
+  it("3 軒あるときは、選ばなかった 2 軒にも触れさせる", async () => {
+    const { payload, text } = await callApp("decide-iekei-ramen", { prefecture: "神奈川県" });
+    expect(payload.shops).toHaveLength(3);
+    expect(text).toContain("この 3 軒まで絞りました");
+    expect(text).toContain("選ばなかった 2 軒");
+  });
+
+  it("基準地点の出どころを受け取ったまま返す", async () => {
+    /*
+     * place に固定していると、端末の位置情報から来た座標まで「指定した地名」に
+     * 化け、現在地モードへ戻ったときに誤った精度が表示される。
+     */
+    const { payload } = await callApp("decide-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "現在地",
+      source: "precise",
+    });
+    expect(payload.query.origin?.source).toBe("precise");
+  });
+
+  it("出どころを省略したときは place 扱いにする", async () => {
+    const { payload } = await callApp("decide-iekei-ramen", { lat: 35.4657, lon: 139.622 });
+    expect(payload.query.origin?.source).toBe("place");
+  });
+
+  it("効いているキーワードを、なぜこの 3 軒かの説明に書く", async () => {
+    // キーワード欄はこのモードに無いので、書かないと隠れた絞り込みになる。
+    const { text, payload } = await callApp("decide-iekei-ramen", { keyword: "横浜" });
+    expect(text).toContain("「横浜」に合う");
+    expect(payload.decide!.poolTotal).toBeLessThan(400);
+  });
+
+  it("キーワードが無ければ、その断りは書かない", async () => {
+    const { text } = await callApp("decide-iekei-ramen", { prefecture: "神奈川県" });
+    expect(text).not.toContain("に合う");
+  });
+
+  it("キーワード付きでも round で次の候補へ進み、母数が変わらない", async () => {
+    const args = { keyword: "横浜" };
+    const first = await callApp("decide-iekei-ramen", args);
+    const second = await callApp("decide-iekei-ramen", { ...args, round: 1 });
+    expect(second.payload.decide!.poolTotal).toBe(first.payload.decide!.poolTotal);
+    const ids = new Set(first.payload.shops.map((s) => s.id));
+    expect(second.payload.shops.some((s) => ids.has(s.id))).toBe(false);
+  });
+
+  it("label 無しの座標でも、場所を名乗る（全国と書かない）", async () => {
+    /*
+     * label は任意。落とすと、距離で並べた結果なのに「【全国】」で始まる
+     * 依頼文になり、何を基準にした 3 軒なのかモデルにも画面にも伝わらない。
+     */
+    const { text, payload } = await callApp("decide-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+    });
+    expect(payload.decide?.basis).toBe("distance");
+    expect(text).not.toContain("【全国】");
+    expect(text).toContain("35.4657, 139.6220");
+  });
+
+  it.each([
+    ["空文字", ""],
+    ["空白だけ", "   "],
+  ])("label が %s なら、無いものとして座標で名乗る", async (_tag, label) => {
+    /*
+     * スキーマは空文字も通す。そのまま持つと「【全国】」（条件から落ちる）や
+     * 「軒をから近い順に」のように、場所の抜けた文言があちこちに出る。
+     */
+    const { text, payload } = await callApp("decide-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label,
+    });
+    expect(payload.query.origin?.label).toBeUndefined();
+    expect(text).toContain("35.4657, 139.6220");
+    expect(text).not.toContain("【全国】");
+    expect(text).not.toContain("軒をから近い順");
+  });
+
+  it.each([
+    ["空文字", ""],
+    ["空白だけ", "   "],
+  ])("keyword が %s なら、絞り込みとして名乗らない", async (_tag, keyword) => {
+    /*
+     * スキーマは空文字も通す。絞り込み自体は trim 後に空なので効かないのに、
+     * 生の値を payload と説明文に持つと、効いていないキーワードが「効いている」
+     * ものとして UI のチップに出て、モデルには「この語に合う 558 軒」と伝わる。
+     */
+    const { payload, text } = await callApp("decide-iekei-ramen", { keyword });
+    const plain = await callApp("decide-iekei-ramen", {});
+
+    expect(payload.query.keyword).toBeUndefined();
+    expect(payload.total).toBe(plain.payload.total);
+    expect(text).not.toContain("に合う");
+    expect(text).toContain("【全国】");
+  });
+
+  it("該当が無ければ、その旨を返して落ちない", async () => {
+    const { payload, text } = await callApp("decide-iekei-ramen", {
+      keyword: "存在しない店名ZZZ",
+    });
+    expect(payload.shops).toEqual([]);
+    expect(text).toContain("見つかりませんでした");
   });
 });
 

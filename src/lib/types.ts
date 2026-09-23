@@ -50,7 +50,7 @@ export const CONFIDENCE = {
 
 type ConfidenceKey = keyof typeof CONFIDENCE;
 
-export type SearchMode = "form" | "nearby" | "map";
+export type SearchMode = "form" | "nearby" | "map" | "decide";
 
 /**
  * 「近くを探す」の基準地点。どこから得た座標かを source で持つ。
@@ -93,4 +93,23 @@ export interface AppPayload {
   };
   /** 選択可能な都道府県（データに実在するものだけ）。 */
   prefectures: string[];
+  /** 「迷ったら」モードのときだけ入る、3 軒をどう選んだかの内訳。 */
+  decide?: DecideInfo;
+}
+
+/**
+ * 「迷ったら」で 3 軒を選んだ経緯。
+ * なぜこの 3 軒なのかを UI とモデルの両方に見せるために持ち回す。
+ */
+export interface DecideInfo {
+  /** 何巡目か（0 始まり）。 */
+  round: number;
+  /** 全部で何巡できるか。 */
+  rounds: number;
+  /** 絞り込んだあとの母数。 */
+  poolTotal: number;
+  /** 並べ替えの根拠。distance=近い順 / hours=営業時間が分かる店から。 */
+  basis: "distance" | "hours";
+  /** 「家系か未判定」まで含めないと 3 軒に届かなかった。 */
+  widened: boolean;
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { originLabel } from "../lib/geo";
 import type { Origin, OriginSource } from "../lib/types";
 import { ORIGIN_NOTES } from "../lib/types";
 import styles from "../mcp-app.module.css";
@@ -92,7 +93,7 @@ export function NearbyPanel({ origin, onLocate, onLocateByHost, onGeocode, notic
         </button>
         <span className={styles.meta}>
           {origin
-            ? `基準: ${origin.label ?? "現在地"}${
+            ? `基準: ${originLabel(origin)}${
                 origin.source === "precise" ? "" : `（${ORIGIN_NOTES[origin.source]}）`
               }`
             : "ボタンを押すか、地名を入力してください"}

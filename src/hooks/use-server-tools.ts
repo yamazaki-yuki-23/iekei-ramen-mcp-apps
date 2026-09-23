@@ -1,13 +1,14 @@
 import type { App } from "@modelcontextprotocol/ext-apps";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { readPayload } from "../lib/payload";
-import { askMessageText } from "../lib/shop-brief";
-import type { AppPayload, OriginSource, SearchMode, Shop } from "../lib/types";
+import { askMessageText, decideMessageText } from "../lib/shop-brief";
+import type { AppPayload, Origin, OriginSource, SearchMode, Shop } from "../lib/types";
 
 const TOOL_BY_MODE: Record<SearchMode, string> = {
   form: "search-iekei-ramen",
   nearby: "find-nearby-iekei-ramen",
   map: "show-iekei-ramen-map",
+  decide: "decide-iekei-ramen",
 };
 
 /** 検索フォームの値。tool の引数に組み立て直す。 */
@@ -23,6 +24,8 @@ interface Options {
   onNotice: (notice: string | null) => void;
   /** その店の詳細がモデルに届いたか。届いていなければ質問に詳細を同梱する。 */
   awaitContext: (shop: Shop) => Promise<boolean>;
+  /** 選択を外し、モデル側から消えるまで待つ。 */
+  releaseSelection: () => Promise<boolean>;
 }
 
 /**
@@ -31,21 +34,72 @@ interface Options {
  * 画面の組み立てと混ぜると、1 つの関数に分岐が集まりすぎて読めなくなるので
  * 分けてある。通信に伴う状態（busy / asking / failure）もここが持つ。
  */
-export function useServerTools({ app, onPayload, onNotice, awaitContext }: Options) {
-  const [busy, setBusy] = useState(false);
+export function useServerTools({
+  app,
+  onPayload,
+  onNotice,
+  awaitContext,
+  releaseSelection,
+}: Options) {
+  /**
+   * 走っている呼び出しの数。busy はここから導く。
+   *
+   * 真偽値で持つと、2 本走っているときに古い方が先に終わった時点で
+   * 下りてしまう。数えていれば最後の 1 本が終わるまで立ったままになる。
+   */
+  const [inFlight, setInFlight] = useState(0);
+  const busy = inFlight > 0;
   const [asking, setAsking] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  /**
+   * 画面に出ている結果が、いまの操作より古いかどうか。
+   *
+   * 条件を変えて呼び直した瞬間に立てる。成功すれば payload が差し替わり、
+   * IekeiAppInner ごと作り直されるので、ここで戻す必要はない。失敗したときだけ
+   * 立ったまま残り、前の結果を出さない判断に使う。
+   *
+   * これが無いと、都道府県を変えて呼び出しが落ちたときに、プルダウンは新しい
+   * 県を指しているのに候補は前の県のまま残り、そのままモデルへ送れてしまう。
+   */
+  const [stale, setStale] = useState(false);
+  /** 一覧を差し替える呼び出しの通し番号。追い越しを捨てるために使う。 */
+  const resultSeq = useRef(0);
 
   /**
    * tool を呼ぶ。App 発の呼び出しでは ontoolresult が来ないので、
    * 戻り値に payload が入っていればここで反映する。
    */
   const call = useCallback(
-    async (name: string, args: Record<string, unknown>) => {
-      setBusy(true);
+    async (
+      name: string,
+      args: Record<string, unknown>,
+      /** 結果で一覧を差し替える呼び出しか。地名の解決のような下調べは false。 */
+      replacesResults = true,
+    ) => {
+      /*
+       * 一覧を差し替える呼び出しには通し番号を振り、最後のものだけを反映する。
+       * 都道府県を続けて変えると 2 本走り、先に出した方が後から返ることがある。
+       * 素直に反映すると、後から選んだ条件が古い結果で上書きされ、payload から
+       * 作り直されるフォームまで前の値に戻る（実際にそうなっていた）。
+       */
+      const seq = replacesResults ? (resultSeq.current += 1) : resultSeq.current;
+      const superseded = () => replacesResults && seq !== resultSeq.current;
+
+      setInFlight((n) => n + 1);
       setFailure(null);
+      if (replacesResults) {
+        setStale(true);
+        /*
+         * 一覧が入れ替わる時点で、開いていた店は候補ではなくなる。成功したときは
+         * payload の差し替えが選択も外すが、失敗すると stale で画面からは消えるのに
+         * ホストのモデル文脈には残り、消す手段が画面から無くなる。呼び出しの入口で
+         * 外しておけば、成否にかかわらず残らない（タブ切り替えも同じことをしている）。
+         */
+        void releaseSelection();
+      }
       try {
         const result = await app.callServerTool({ name, arguments: args });
+        if (superseded()) return result;
         if (result.isError) {
           setFailure("検索に失敗しました。もう一度お試しください。");
           return result;
@@ -54,13 +108,13 @@ export function useServerTools({ app, onPayload, onNotice, awaitContext }: Optio
         if (next) onPayload(next);
         return result;
       } catch (e) {
-        setFailure(e instanceof Error ? e.message : String(e));
+        if (!superseded()) setFailure(e instanceof Error ? e.message : String(e));
         return null;
       } finally {
-        setBusy(false);
+        setInFlight((n) => n - 1);
       }
     },
-    [app, onPayload],
+    [app, onPayload, releaseSelection],
   );
 
   const runSearch = useCallback(
@@ -69,6 +123,35 @@ export function useServerTools({ app, onPayload, onNotice, awaitContext }: Optio
         prefecture: next.prefecture || undefined,
         taste: next.taste || undefined,
         ...(targetMode === "form" ? { keyword: next.keyword || undefined } : {}),
+      });
+    },
+    [call],
+  );
+
+  /**
+   * 3 軒に絞り直す。round を増やすと次の 3 軒になる。
+   * 基準地点があれば近い順、無ければ営業時間が分かる店からになる。
+   *
+   * **キーワードは呼び出し側が明示する。** 検索フォームに残っていた語が
+   * 勝手に効くと、候補が減っていても理由が画面に出ず外せない。一方で、
+   * モデルがキーワード付きで開いた画面から巡回するときに落とすと、母数が
+   * 全国に広がって無関係な店が出る。いま効いている語（payload 側）だけを
+   * 引き継ぎ、タブに入り直したときは持ち込まない、という切り分けにしてある。
+   *
+   * 基準地点の出どころもそのまま渡す。落とすと「指定した地名」に化けて、
+   * 現在地モードへ戻ったときに誤った精度が表示される。
+   */
+  const runDecide = useCallback(
+    (next: SearchValues, origin: Origin | undefined, round: number, keyword?: string) => {
+      void call(TOOL_BY_MODE.decide, {
+        prefecture: next.prefecture || undefined,
+        taste: next.taste || undefined,
+        keyword: keyword || undefined,
+        lat: origin?.lat,
+        lon: origin?.lon,
+        label: origin?.label,
+        source: origin?.source,
+        round,
       });
     },
     [call],
@@ -95,7 +178,7 @@ export function useServerTools({ app, onPayload, onNotice, awaitContext }: Optio
 
   const geocode = useCallback(
     async (query: string) => {
-      const result = await call("geocode-place", { query });
+      const result = await call("geocode-place", { query }, false);
       const hits = (
         result?.structuredContent as {
           results?: Array<{ label: string; lat: number; lon: number }>;
@@ -141,11 +224,45 @@ export function useServerTools({ app, onPayload, onNotice, awaitContext }: Optio
     [app, awaitContext],
   );
 
+  /**
+   * 3 軒をまとめてモデルに渡し、1 軒を理由つきで推してもらう。
+   *
+   * 候補は選択（updateModelContext）とは別物なので、context には載せない。
+   * 選択は 1 軒を指すもので、そこに 3 軒を混ぜると「いまどれが選ばれて
+   * いるのか」が壊れる。3 軒はこの一通にだけ入れる。
+   */
+  const askToDecide = useCallback(
+    async (shops: Shop[], basis: string) => {
+      setAsking(true);
+      setFailure(null);
+      try {
+        /*
+         * 開いていた店があれば、先に外してモデル側から消えるまで待つ。
+         * 「この店を選んだ」という文脈を残したまま「この中から選んで」と頼むと、
+         * 相反する 2 つが同時に届き、答えが開いていた店に引きずられる。
+         * updateModelContext は次の発話まで待つので、送ってから消しても遅い。
+         */
+        const cleared = await releaseSelection();
+        const text = decideMessageText(shops, basis, cleared);
+        const result = await app.sendMessage({ role: "user", content: [{ type: "text", text }] });
+        if (result.isError) setFailure("ホストがメッセージの送信を受け付けませんでした。");
+      } catch (e) {
+        setFailure(e instanceof Error ? e.message : String(e));
+      } finally {
+        setAsking(false);
+      }
+    },
+    [app, releaseSelection],
+  );
+
   return {
     busy,
     asking,
     failure,
+    stale,
     runSearch,
+    runDecide,
+    askToDecide,
     runNearby,
     runNearbyByHost,
     geocode,

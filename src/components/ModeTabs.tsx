@@ -5,6 +5,7 @@ const MODES: Array<{ key: SearchMode; label: string }> = [
   { key: "form", label: "検索フォーム" },
   { key: "nearby", label: "現在地から探す" },
   { key: "map", label: "地図から探す" },
+  { key: "decide", label: "迷ったら" },
 ];
 
 interface Props {

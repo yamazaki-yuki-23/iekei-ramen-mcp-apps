@@ -112,6 +112,16 @@
     color var(--duration-fast) var(--easing-standard);
 }
 
+/*
+ * 狭い画面では 2 × 2 に割る。既定の基準幅のままだと 3 + 1 に折れて、
+ * 4 つ目だけが横長の 1 本になり、並びとして読めない。
+ */
+@media (max-width: 30rem) {
+  .tab {
+    flex-basis: calc(50% - var(--space-1));
+  }
+}
+
 .tab:hover:not(.tabActive):not(:disabled) {
   background: var(--color-accent-soft);
   color: var(--color-accent-strong);
@@ -436,6 +446,65 @@
   font-size: var(--font-size-note);
   color: var(--color-text-muted);
   line-height: 1.6;
+}
+
+/* --- 迷ったら（3 軒に絞る） --- */
+
+/*
+ * 3 軒に落としてから決める画面。一覧と違って「これで決める」ための面なので、
+ * 根拠の一文と操作をカードと同じ枠の中にまとめ、1 つの提案として見せる。
+ */
+.decide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/*
+ * なぜこの 3 軒なのか。ここを省くと、根拠の無い「おすすめ」を押し付けて
+ * いるように見える。目立たせすぎず、必ず目に入る位置に置く。
+ */
+.decideBasis {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-note);
+  line-height: 1.6;
+}
+
+/*
+ * 3 軒しか出さないので、一覧の高さ制限を外す。スクロールさせると 3 軒目が
+ * 切れて、比べる前に決めることになる。
+ */
+.decide .list {
+  max-height: none;
+  overflow: visible;
+}
+
+/* 効いているキーワードと、それを外す口。0 件のときも必ず出す。 */
+.decideFilter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.decideActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* 何巡目か。桁が変わっても幅が動かないよう等幅数字。 */
+.decideRound {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* --- 注文のカンペ --- */

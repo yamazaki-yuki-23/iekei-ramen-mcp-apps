@@ -8,6 +8,8 @@ const EMPTY_MESSAGE: Record<SearchMode, string> = {
   form: "条件に合う店舗が見つかりませんでした。",
   nearby: "現在地を指定すると近い順に 5 件表示します。",
   map: "この条件では地図に表示できる店舗がありません。",
+  // 「迷ったら」は専用の画面が自前で出すので、ここは使わない。
+  decide: "条件に合う店舗が見つかりませんでした。",
 };
 
 interface Props {

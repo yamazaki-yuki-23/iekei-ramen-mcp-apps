@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { askMessageText, describeShop } from "../src/lib/shop-brief";
+import { askMessageText, decideMessageText, describeShop } from "../src/lib/shop-brief";
 import type { Shop } from "../src/lib/types";
 
 const YOSHIMURAYA: Shop = {
@@ -68,5 +68,29 @@ describe("askMessageText", () => {
     expect(text).toContain("既知ブランドからの参考値");
     expect(text).toContain("このアプリのデータには無い");
     expect(text).toContain(describeShop(YOSHIMURAYA));
+  });
+});
+
+describe("decideMessageText", () => {
+  const SHOPS = [YOSHIMURAYA, { ...YOSHIMURAYA, id: "node/2", name: "王道家" }];
+  const BASIS = "家系と分かっている店にしぼって 79 軒を営業時間が分かる店から順に並べました。";
+
+  it("消せたなら、前の選択の話はしない", () => {
+    const text = decideMessageText(SHOPS, BASIS, true);
+    expect(text).toContain("この 2 軒まで絞りました");
+    expect(text).not.toContain("直前に UI で選んでいた店");
+  });
+
+  it("消せなかったら、前の選択を無視するよう明示する", () => {
+    /*
+     * updateModelContext を 2 度とも断られると、ホストには開いていた店が
+     * 残ったままになる。「この店を選んだ」と「この中から選んで」が同時に届き、
+     * 答えが開いていた店に引きずられるので、文面の側で打ち消す。
+     */
+    const text = decideMessageText(SHOPS, BASIS, false);
+    expect(text).toContain("直前に UI で選んでいた店");
+    expect(text).toContain("無視して、上の候補だけから選んでください");
+    // 依頼より先に置く。後ろに付けると、読み飛ばされて効かない。
+    expect(text.indexOf("直前に UI で選んでいた店")).toBeLessThan(text.indexOf(BASIS));
   });
 });
