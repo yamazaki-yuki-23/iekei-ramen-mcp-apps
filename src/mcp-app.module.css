@@ -690,7 +690,7 @@
 /* 地図の下に置く但し書き。円が何かを、円の近くで言う。 */
 .mapNote {
   margin: 0;
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   font-size: var(--font-size-note);
 }
 
