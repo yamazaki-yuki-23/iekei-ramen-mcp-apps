@@ -23,6 +23,7 @@ import shopsData from "./data/shops.json" with { type: "json" };
 import { APP_HTML } from "./src/generated/app-html.ts";
 import { distanceKm, formatDistance, originLabel } from "./src/lib/geo.ts";
 import { BoundsSchema, PayloadSchema } from "./src/lib/schema.ts";
+import { scopeLabel } from "./src/lib/scope.ts";
 import { describeBasis, shortlist } from "./src/lib/shortlist.ts";
 import {
   CONFIDENCE,
@@ -137,8 +138,9 @@ function mapSummary(shops: Shop[], prefecture?: string, bounds?: Bounds): string
    *
    * **どこを見ているかはモデルに分からない。** 画面に出ている範囲だと
    * 言っておかないと、モデルが「全国で 12 件しかない」と読んで話す。
+   * 語は UI の見出しと共通（[scope.ts](src/lib/scope.ts)）。
    */
-  const where = bounds ? "地図に出ている範囲" : (prefecture ?? "全国");
+  const where = scopeLabel({ prefecture, bounds });
   if (shops.length === 0) return `${where}に該当する店舗はありませんでした。`;
 
   const counts = shops.reduce<Partial<Record<Shop["confidence"], number>>>((acc, s) => {

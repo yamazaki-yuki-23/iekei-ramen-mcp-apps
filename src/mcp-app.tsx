@@ -30,6 +30,7 @@ import { originLabel } from "./lib/geo";
 import { createDeliveryQueue } from "./lib/model-context";
 import { EMPTY_PAYLOAD, readPayload } from "./lib/payload";
 import { safeAreaStyle } from "./lib/safe-area";
+import { scopeLabel } from "./lib/scope";
 import { MAX_STOPS, planRoute } from "./lib/route";
 import type { AppPayload, Origin, SearchMode, Shop } from "./lib/types";
 import styles from "./mcp-app.module.css";
@@ -267,7 +268,8 @@ function buildHeading(mode: SearchMode, payload: AppPayload, ready: boolean): st
       ? `${originLabel(payload.query.origin)}の近くの家系ラーメン`
       : HEADING_BY_MODE.nearby;
   }
-  const where = payload.query.prefecture ?? "全国";
+  // 範囲で絞ったときに「全国」と名乗らない。語はサーバーの文と共通。
+  const where = scopeLabel(payload.query);
   if (mode === "decide") {
     // 0 件のときに「この 0 軒」と名乗らない。件数はここでは意味を持たない。
     if (payload.shops.length === 0) return HEADING_BY_MODE.decide;

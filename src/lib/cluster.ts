@@ -17,6 +17,16 @@ import type { Shop } from "./types";
 /** 1 つの塊と見なす画面上の正方形の一辺（px）。 */
 const CELL_PX = 64;
 
+/**
+ * 塊の印（36px）どうしが重ならない最低の間隔。
+ *
+ * **升目の識別だけで切ると、境目を挟んだ数 px の 2 軒が別々の塊になる。**
+ * 印は重なって読めないのに、まとまってもいない——いちばん悪い形になる
+ * （実測: 全国表示 zoom 5 で 5 組が重なり、最接近は 9.9px だった）。
+ * 升目は下ごしらえで、最後に代表点どうしの距離で寄せ直す。
+ */
+const MIN_GAP_PX = 36;
+
 /** タイル 1 枚の大きさ。Web メルカトルの座標をピクセルに直すのに使う。 */
 const TILE_PX = 256;
 
@@ -61,13 +71,48 @@ export function clusterShops(shops: Shop[], zoom: number, keepId?: string): Shop
   }
 
   // Map は挿入順を保つので、入力順のまま返る。
-  const clustered = [...cells.values()].map((group) => ({
-    lat: average(group.map((s) => s.lat)),
-    lon: average(group.map((s) => s.lon)),
-    shops: group,
-  }));
+  const groups = mergeClose([...cells.values()], zoom);
+  return [...groups.map(toCluster), ...singles];
+}
 
-  return [...clustered, ...singles];
+/**
+ * 代表点が近すぎる塊どうしをまとめる。
+ *
+ * **1 組まとめるたびに測り直す。** まとめると代表点（平均）が動くので、
+ * 一度に全部の組を見て消すと、動いた先でまた重なった組を取り逃がす。
+ * 毎回いちばん先に見つかった組からまとめるので、結果は入力順で決まる。
+ */
+function mergeClose(groups: Shop[][], zoom: number): Shop[][] {
+  const merged = [...groups];
+  for (let pair = findClosePair(merged, zoom); pair; pair = findClosePair(merged, zoom)) {
+    const [i, j] = pair;
+    merged[i] = [...merged[i], ...merged[j]];
+    merged.splice(j, 1);
+  }
+  return merged;
+}
+
+/** 近すぎる塊の組。無ければ null。 */
+function findClosePair(groups: Shop[][], zoom: number): [number, number] | null {
+  const centers = groups.map((group) => {
+    const { lat, lon } = center(group);
+    return project(lat, lon, zoom);
+  });
+  for (let i = 0; i < centers.length; i++) {
+    for (let j = i + 1; j < centers.length; j++) {
+      const gap = Math.hypot(centers[i].x - centers[j].x, centers[i].y - centers[j].y);
+      if (gap < MIN_GAP_PX) return [i, j];
+    }
+  }
+  return null;
+}
+
+function center(group: Shop[]): { lat: number; lon: number } {
+  return { lat: average(group.map((s) => s.lat)), lon: average(group.map((s) => s.lon)) };
+}
+
+function toCluster(group: Shop[]): ShopCluster {
+  return { ...center(group), shops: group };
 }
 
 function average(values: number[]): number {

@@ -1352,11 +1352,19 @@ test.describe("この範囲で探す", () => {
 
     const whole = await count();
     expect(whole).toBeGreaterThan(500);
+    await expect(app.getByRole("heading", { name: "全国の家系ラーメン" })).toBeVisible();
 
     // 塊を押すと、その中身が画面いっぱいになるまで寄る。
     await app.locator(".cluster-pin").first().click();
     await search.click();
     await expect.poll(count).toBeLessThan(whole);
+    /*
+     * 見出しも範囲を名乗る。**「全国の家系ラーメン 489 件」と出ていた。**
+     * サーバーがモデルへ渡す文だけ直しても、画面に嘘が残る。
+     */
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible();
 
     /*
      * もう一度押しても件数が変わらないこと＝**寄せ直していない**こと。
