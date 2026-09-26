@@ -443,6 +443,24 @@ describe("show-iekei-ramen-map", () => {
     expect(payload.query.bounds).toEqual(bounds);
   });
 
+  it("逆さの範囲は 0 件ではなく誤りとして返す", async () => {
+    /*
+     * 1 つずつの範囲だけ見ていた頃は、南北が逆でも通っていた。成り立たない
+     * 比較になって必ず 0 件になり、**呼び出し側の間違いが「この範囲に店は
+     * ありません」という答えに化けていた**（実測: isError は付かず、
+     * 「該当する店舗はありませんでした」が返っていた）。
+     */
+    const reversedNorthSouth = await callApp("show-iekei-ramen-map", {
+      bounds: { north: 35.44, south: 35.48, east: 139.65, west: 139.6 },
+    });
+    expect(reversedNorthSouth.isError).toBe(true);
+
+    const reversedEastWest = await callApp("show-iekei-ramen-map", {
+      bounds: { north: 35.48, south: 35.44, east: 139.6, west: 139.65 },
+    });
+    expect(reversedEastWest.isError).toBe(true);
+  });
+
   it("基準地点を受け取り、そのまま返す（地図の印と同心円に使う）", async () => {
     const { payload } = await callApp("show-iekei-ramen-map", {
       lat: 35.4657,

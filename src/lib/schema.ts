@@ -9,12 +9,23 @@ const TasteSchema = z.enum(["rich", "creamy", "chain", "unknown"]);
  * **緯度経度の妥当性はここで弾く。** 地図から渡ってくる値は、引ききった
  * ときに ±180 を超えることがある（Leaflet は世界を繰り返して数える）。
  */
-export const BoundsSchema = z.object({
-  north: z.number().min(-90).max(90),
-  south: z.number().min(-90).max(90),
-  east: z.number().min(-180).max(180),
-  west: z.number().min(-180).max(180),
-});
+export const BoundsSchema = z
+  .object({
+    north: z.number().min(-90).max(90),
+    south: z.number().min(-90).max(90),
+    east: z.number().min(-180).max(180),
+    west: z.number().min(-180).max(180),
+  })
+  /*
+   * **角の順番も見る。** 1 つずつの範囲だけ見ていると、南北が逆でも通る。
+   * そのまま絞り込むと、成り立たない比較になって必ず 0 件になり、
+   * 呼び出し側の間違いが「この範囲に店はありません」という答えに化ける
+   * （実測: isError は付かず、「該当する店舗はありませんでした」が返っていた）。
+   * 日付変更線はまたがない（国内だけのデータ）ので、経度も南西 → 北東で見る。
+   */
+  .refine((b) => b.south <= b.north && b.west <= b.east, {
+    message: "範囲は南西と北東の角で渡してください（south ≤ north、west ≤ east）",
+  });
 
 const ShopSchema = z.object({
   id: z.string(),
