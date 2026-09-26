@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { FormValues } from "../components/SearchForm";
-import type { Origin, OriginSource, SearchMode, Shop } from "../lib/types";
+import type { Bounds, Origin, OriginSource, SearchMode, Shop } from "../lib/types";
 
 interface Options {
   mode: SearchMode;
@@ -12,6 +12,9 @@ interface Options {
   activeKeyword?: string;
   onSelect: (shop: Shop | null) => void;
   runSearch: (values: FormValues, mode: "form" | "map", origin?: Origin) => void;
+  /** いま効いている範囲。地図モードで「この範囲で探す」を使ったときだけ入る。 */
+  bounds?: Bounds;
+  runArea: (bounds: Bounds, values: FormValues, origin?: Origin) => void;
   runDecide: (
     values: FormValues,
     origin: Origin | undefined,
@@ -35,17 +38,33 @@ export function useModeSwitch({
   activeKeyword,
   onSelect,
   runSearch,
+  bounds,
+  runArea,
   runDecide,
   runNearby,
 }: Options) {
   /** 条件が決まったときに呼ぶもの。モードで行き先が変わる。 */
   const runConditions = useCallback(
     (values: FormValues) => {
-      if (mode === "decide") runDecide(values, origin, 0, activeKeyword);
-      else if (mode === "map") runSearch(values, "map", origin);
-      else runSearch(values, "form");
+      if (mode === "decide") {
+        runDecide(values, origin, 0, activeKeyword);
+        return;
+      }
+      if (mode !== "map") {
+        runSearch(values, "form");
+        return;
+      }
+      /*
+       * 地図では、いま効いている範囲を保つ。
+       *
+       * **味は「どこ」ではなく「何」。** 味を変えただけで範囲が落ちると、
+       * 地図に出ていた土地の結果が黙って全国に戻る（実際にそうなっていた）。
+       * 都道府県を選んだときだけは「どこ」の言い直しなので、範囲を捨てる。
+       */
+      if (bounds && !values.prefecture) runArea(bounds, values, origin);
+      else runSearch(values, "map", origin);
     },
-    [activeKeyword, mode, origin, runDecide, runSearch],
+    [activeKeyword, bounds, mode, origin, runArea, runDecide, runSearch],
   );
 
   const switchMode = useCallback(

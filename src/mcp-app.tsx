@@ -376,6 +376,8 @@ function IekeiAppInner({
     activeKeyword,
     onSelect,
     runSearch,
+    bounds: payload.query.bounds,
+    runArea,
     runDecide,
     runNearby,
   });

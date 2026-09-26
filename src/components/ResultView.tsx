@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
+import { focusLabel, mapListShops } from "../lib/map-list";
 import type { Bounds, Origin, SearchMode, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import { MapView } from "./MapView";
@@ -10,9 +11,6 @@ import { ShopList } from "./ShopList";
  * 持っていないので、黙っていると「歩いて 6 分」と読まれる）。
  */
 const RING_NOTE = "点線の円は基準地点からの直線距離 500m と 1km です。";
-
-/** 一覧に出す上限。地図モードの一覧は全件並べると長すぎる。 */
-const LIST_LIMIT = 20;
 
 const EMPTY_MESSAGE: Record<SearchMode, string> = {
   form: "条件に合う店舗が見つかりませんでした。",
@@ -41,25 +39,6 @@ interface Props {
   /** 基準地点。地図に印と同心円を出す。 */
   origin?: Origin;
   busy?: boolean;
-}
-
-/**
- * 地図モードの一覧。全件並べると長すぎるので先頭 20 件で切る。
- * ただしマーカーから選んだ店が 20 件目より後ろだと詳細の置き場所が無くなるので、
- * その店だけは先頭に持ってくる。
- */
-function mapListShops(shops: Shop[], selectedId?: string): Shop[] {
-  const head = shops.slice(0, LIST_LIMIT);
-  if (!selectedId || head.some((s) => s.id === selectedId)) return head;
-  const selected = shops.find((s) => s.id === selectedId);
-  return selected ? [selected, ...head.slice(0, LIST_LIMIT - 1)] : head;
-}
-
-/** 「この地点の 3 軒」。上限で切れているときだけ内訳を出す。 */
-function focusLabel(count: number): string {
-  return count > LIST_LIMIT
-    ? `この地点の ${count} 軒（${LIST_LIMIT} 件表示）`
-    : `この地点の ${count} 軒`;
 }
 
 /**
@@ -134,7 +113,7 @@ export function ResultView({
           </div>
         )}
         <ShopList
-          shops={mapListShops(focused ?? shops, selectedId)}
+          shops={mapListShops(focused ?? shops, selectedId, shops)}
           selectedId={selectedId}
           onSelect={onSelect}
           detail={detail}

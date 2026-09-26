@@ -1406,6 +1406,38 @@ test.describe("この範囲で探す", () => {
   });
 });
 
+test.describe("範囲と他の条件の両立", () => {
+  /**
+   * 「この範囲で探す」のあと味を変えると、範囲が落ちて全国に戻っていた。
+   * 味は「どこ」ではなく「何」なので、範囲は保たれるべき。
+   */
+  test("味を変えても範囲は保たれる", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const count = async () => {
+      const text = await app
+        .getByText(/\d+ 件/)
+        .first()
+        .textContent();
+      return Number((text ?? "").replace(/\D/g, ""));
+    };
+
+    await app.locator(".cluster-pin").first().click();
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    const area = await count();
+    expect(area).toBeLessThan(558);
+
+    // 味のチップは押した瞬間に呼び直す。
+    await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
+
+    // 見出しも件数も、範囲のまま。
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible();
+    await expect.poll(count).toBeLessThanOrEqual(area);
+  });
+});
+
 test.describe("まわる店と範囲の両立", () => {
   /**
    * 積んだ店がある状態で「この範囲で探す」を押すと、地図が作り直される。
