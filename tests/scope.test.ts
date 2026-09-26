@@ -10,8 +10,15 @@ describe("scopeLabel", () => {
     expect(scopeLabel({ bounds: BOUNDS })).toBe("地図に出ている範囲");
   });
 
-  it("範囲は都道府県より優先する。いちばん狭く、目に見えている条件だから", () => {
-    expect(scopeLabel({ prefecture: "東京都", bounds: BOUNDS })).toBe("地図に出ている範囲");
+  it("両方が効いているなら、両方を名乗る", () => {
+    /*
+     * 絞り込みは両方の重なりになる。範囲だけを名乗ると、枠が県境をまたいで
+     * いた場合に、県の外の店が黙って落ちているのに「見えている範囲の全部」と
+     * 読めてしまう。
+     */
+    expect(scopeLabel({ prefecture: "東京都", bounds: BOUNDS })).toBe(
+      "地図に出ている範囲（東京都）",
+    );
   });
 
   it("県だけなら県名、条件が無ければ全国", () => {

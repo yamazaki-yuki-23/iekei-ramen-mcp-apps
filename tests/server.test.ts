@@ -478,6 +478,20 @@ describe("show-iekei-ramen-map", () => {
     expect(zeroHeight.isError).toBe(true);
   });
 
+  it("範囲と都道府県が両方効いているなら、両方を名乗る", async () => {
+    /*
+     * 絞り込みは両方の重なりになる。範囲だけを名乗ると、枠が県境をまたいで
+     * いた場合に、県の外の店が黙って落ちているのにモデルは「見えている範囲の
+     * 全部」だと思って話す。
+     */
+    const { text } = await callApp("show-iekei-ramen-map", {
+      prefecture: "神奈川県",
+      bounds: { north: 35.52, south: 35.42, east: 139.68, west: 139.58 },
+    });
+
+    expect(text).toContain("地図に出ている範囲（神奈川県）");
+  });
+
   it("基準地点を受け取り、そのまま返す（地図の印と同心円に使う）", async () => {
     const { payload } = await callApp("show-iekei-ramen-map", {
       lat: 35.4657,
