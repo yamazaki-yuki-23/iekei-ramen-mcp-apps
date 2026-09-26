@@ -679,6 +679,14 @@
   height: 70vh;
 }
 
+/* 押した塊の中身を出しているときの見出し。解除の導線と並べる。 */
+.focusHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 /* 地図の下に置く但し書き。円が何かを、円の近くで言う。 */
 .mapNote {
   margin: 0;

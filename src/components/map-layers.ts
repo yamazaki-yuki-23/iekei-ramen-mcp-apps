@@ -95,7 +95,14 @@ export function toLatLngBounds(bounds: Bounds): L.LatLngBounds {
 export function drawShops(
   layer: L.LayerGroup,
   map: L.Map,
-  opts: { shops: Shop[]; zoom: number; selectedId?: string; onSelect: (shop: Shop) => void },
+  opts: {
+    shops: Shop[];
+    zoom: number;
+    selectedId?: string;
+    onSelect: (shop: Shop) => void;
+    /** 塊を押したときに、その中身を外へ渡す。 */
+    onCluster: (shops: Shop[]) => void;
+  },
 ): Map<string, L.CircleMarker> {
   const markers = new Map<string, L.CircleMarker>();
 
@@ -136,11 +143,21 @@ export function drawShops(
       keyboard: false,
     })
       /*
+       * 寄るだけでなく、**中身を一覧にも出す。**
+       *
+       * 寄れば解ける、とは限らない。実データには 5.2m しか離れていない 2 軒が
+       * あり（ろくの家 / 稲和家ラーメン）、地図の最大ズーム 19 でも 21.1px で、
+       * まとめる下限 36px を下回ったままになる。寄せるだけだと、その 2 軒は
+       * 地図から永久に選べない。押した塊の中身は必ず一覧に出す。
+       *
        * **アニメーションさせない。** 動いている途中に「この範囲で探す」を
        * 押されると、中途半端な画角で探してしまう。DESIGN.md の
        * 「アニメーションで情報を伝えない」にも合う。
        */
-      .on("click", () => map.fitBounds(bounds, { padding: [32, 32], maxZoom: 17, animate: false }))
+      .on("click", () => {
+        map.fitBounds(bounds, { padding: [32, 32], maxZoom: 17, animate: false });
+        opts.onCluster(cluster.shops);
+      })
       .addTo(layer);
   }
 

@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import type { Bounds, Origin, SearchMode, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import { MapView } from "./MapView";
@@ -10,6 +10,9 @@ import { ShopList } from "./ShopList";
  * 持っていないので、黙っていると「歩いて 6 分」と読まれる）。
  */
 const RING_NOTE = "点線の円は基準地点からの直線距離 500m と 1km です。";
+
+/** 一覧に出す上限。地図モードの一覧は全件並べると長すぎる。 */
+const LIST_LIMIT = 20;
 
 const EMPTY_MESSAGE: Record<SearchMode, string> = {
   form: "条件に合う店舗が見つかりませんでした。",
@@ -46,10 +49,17 @@ interface Props {
  * その店だけは先頭に持ってくる。
  */
 function mapListShops(shops: Shop[], selectedId?: string): Shop[] {
-  const head = shops.slice(0, 20);
+  const head = shops.slice(0, LIST_LIMIT);
   if (!selectedId || head.some((s) => s.id === selectedId)) return head;
   const selected = shops.find((s) => s.id === selectedId);
-  return selected ? [selected, ...head.slice(0, 19)] : head;
+  return selected ? [selected, ...head.slice(0, LIST_LIMIT - 1)] : head;
+}
+
+/** 「この地点の 3 軒」。上限で切れているときだけ内訳を出す。 */
+function focusLabel(count: number): string {
+  return count > LIST_LIMIT
+    ? `この地点の ${count} 軒（${LIST_LIMIT} 件表示）`
+    : `この地点の ${count} 軒`;
 }
 
 /**
@@ -74,6 +84,15 @@ export function ResultView({
    * 値で持つと、寄せ終わる前に押されたときに古い範囲で探してしまう。
    */
   const getBoundsRef = useRef<(() => Bounds) | null>(null);
+  /*
+   * 押した塊の中身。
+   *
+   * **寄れば解ける、とは限らない。** 5.2m しか離れていない 2 軒は、地図の
+   * 最大ズームでもまとまったままで、寄せるだけだと永久に選べない
+   * （実測: ろくの家 / 稲和家ラーメンは zoom 19 でも 21.1px）。
+   * 押した塊の中身を一覧に出せば、どの塊にも必ず行き先がある。
+   */
+  const [focused, setFocused] = useState<Shop[] | null>(null);
   if (mode === "map") {
     return (
       <div className={styles.mapLayout}>
@@ -95,14 +114,27 @@ export function ResultView({
           route={route}
           routeOrigin={routeOrigin}
           expanded={fullscreen?.expanded ?? false}
+          onClusterSelect={setFocused}
           onReady={(getBounds) => (getBoundsRef.current = getBounds)}
           initialBounds={bounds}
           refit={!bounds}
           origin={origin}
         />
         {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}
+        {focused && (
+          <div className={styles.focusHead}>
+            <span className={styles.meta}>{focusLabel(focused.length)}</span>
+            <button
+              type="button"
+              className={styles.buttonSecondary}
+              onClick={() => setFocused(null)}
+            >
+              すべて表示
+            </button>
+          </div>
+        )}
         <ShopList
-          shops={mapListShops(shops, selectedId)}
+          shops={mapListShops(focused ?? shops, selectedId)}
           selectedId={selectedId}
           onSelect={onSelect}
           detail={detail}

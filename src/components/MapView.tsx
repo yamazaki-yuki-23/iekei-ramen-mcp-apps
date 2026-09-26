@@ -26,6 +26,8 @@ interface Props {
   routeOrigin?: { lat: number; lon: number };
   /** 基準地点。あれば印と同心円を出す。 */
   origin?: MapOrigin;
+  /** 塊を押したときに、その中身を渡す。寄っても解けない塊への逃げ道。 */
+  onClusterSelect?: (shops: Shop[]) => void;
   /** 全画面のときは地図を高くする。 */
   expanded?: boolean;
   /**
@@ -67,6 +69,7 @@ export function MapView({
   route,
   routeOrigin,
   origin,
+  onClusterSelect,
   expanded = false,
   onReady,
   initialBounds,
@@ -93,6 +96,11 @@ export function MapView({
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+  // 塊の中身を渡す先も ref 経由。ハンドラは描き直しのたびに付け替えない。
+  const onClusterRef = useRef(onClusterSelect);
+  useEffect(() => {
+    onClusterRef.current = onClusterSelect;
+  }, [onClusterSelect]);
   // 読み取り口を渡す相手も ref 経由。親が描き直しても渡し直さない。
   const onReadyRef = useRef(onReady);
   useEffect(() => {
@@ -145,6 +153,7 @@ export function MapView({
       zoom,
       selectedId,
       onSelect: (shop) => onSelectRef.current(shop),
+      onCluster: (group) => onClusterRef.current?.(group),
     });
     markersRef.current = markers;
 

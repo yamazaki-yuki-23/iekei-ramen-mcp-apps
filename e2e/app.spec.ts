@@ -1333,6 +1333,35 @@ test.describe("地図の塊", () => {
   });
 });
 
+test.describe("塊の中身に行き着けること", () => {
+  /**
+   * **寄れば解ける、とは限らない。** 実データには 5.2m しか離れていない 2 軒が
+   * あり（ろくの家 / 稲和家ラーメン）、地図の最大ズーム 19 でも 21.1px しか
+   * 離れない＝まとめる下限 36px を下回ったまま。寄せるだけの逃げ道しか無いと、
+   * その 2 軒は地図から永久に選べない。
+   */
+  test("塊を押すと中身が一覧に出て、そこから選べる", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+
+    const cluster = app.locator(".cluster-pin").first();
+    const size = Number(await cluster.textContent());
+    await cluster.click();
+
+    // 押した塊の中身だけが一覧に出る（上限 20 件）。
+    await expect(app.getByText(`この地点の ${size} 軒`, { exact: false })).toBeVisible();
+    await expect.poll(() => shopCards(app).count()).toBe(Math.min(size, 20));
+
+    // そこから選べる＝地図に出ていても行き先がある。
+    await shopCards(app).first().click();
+    await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+
+    // 元の一覧にも戻せる。
+    await app.getByRole("button", { name: "すべて表示" }).click();
+    await expect.poll(() => shopCards(app).count()).toBe(20);
+  });
+});
+
 test.describe("この範囲で探す", () => {
   /**
    * 地図を別の街へ動かしても、出ている店は最初の検索結果のままだった。

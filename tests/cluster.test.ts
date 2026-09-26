@@ -126,6 +126,22 @@ describe("clusterShops", () => {
     }
   });
 
+  it("寄っても解けない塊が実在する（一覧への逃げ道が要る理由）", () => {
+    /*
+     * ろくの家と稲和家ラーメンは 5.2m しか離れていない。地図の最大ズーム 19
+     * でも 21.1px で、まとめる下限 36px を下回ったまま＝どれだけ寄せても
+     * 1 つの塊のまま。**寄せるだけの逃げ道しか無いと、この 2 軒は地図から
+     * 永久に選べない。** 押した塊の中身を一覧に出す実装は、ここが根拠。
+     */
+    const pair = ["ろくの家", "稲和家"].map((name) =>
+      ALL_SHOPS.find((s) => s.name.includes(name))!,
+    );
+
+    expect(pair.every(Boolean)).toBe(true);
+    // 19 は地図の maxZoom。それでもまとまったまま。
+    expect(clusterShops(pair, 19)).toHaveLength(1);
+  });
+
   it("まとめても店は落とさない", () => {
     // 寄せ直しで取りこぼすと、地図から店が消えたまま誰も気付けない。
     const counted = clusterShops(ALL_SHOPS, 10).reduce((n, c) => n + c.shops.length, 0);
