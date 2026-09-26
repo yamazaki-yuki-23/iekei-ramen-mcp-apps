@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { AppPayload, SearchMode, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import { DecidePanel } from "./DecidePanel";
+import type { FullscreenControl } from "./MapToolbar";
 import { ResultView } from "./ResultView";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
@@ -29,6 +30,8 @@ interface Props {
   /** 「まわる店」の順路。地図モードで線を引くために通す。 */
   route?: Shop[];
   routeOrigin?: { lat: number; lon: number };
+  /** 地図の全画面化。地図モードでしか使わないが、持ち主は画面の組み立て側。 */
+  fullscreen?: FullscreenControl;
 }
 
 /**
@@ -53,6 +56,7 @@ export function Results({
   detail,
   route,
   routeOrigin,
+  fullscreen,
 }: Props) {
   /*
    * タブを押すと mode だけ先に変わり、payload は tool の結果が届いてから
@@ -90,6 +94,7 @@ export function Results({
       detail={detail}
       route={route}
       routeOrigin={routeOrigin}
+      fullscreen={fullscreen}
     />
   );
 }

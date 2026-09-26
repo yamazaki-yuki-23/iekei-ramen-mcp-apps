@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { SearchMode, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import { MapView } from "./MapView";
+import { MapToolbar, type FullscreenControl } from "./MapToolbar";
 import { ShopList } from "./ShopList";
 
 const EMPTY_MESSAGE: Record<SearchMode, string> = {
@@ -22,6 +23,8 @@ interface Props {
   /** 「まわる店」の順路。地図にだけ線を引く。 */
   route?: Shop[];
   routeOrigin?: { lat: number; lon: number };
+  /** 地図の全画面化。ホストが対応していなければ渡ってこない。 */
+  fullscreen?: FullscreenControl;
 }
 
 /**
@@ -47,16 +50,19 @@ export function ResultView({
   detail,
   route,
   routeOrigin,
+  fullscreen,
 }: Props) {
   if (mode === "map") {
     return (
       <div className={styles.mapLayout}>
+        <MapToolbar fullscreen={fullscreen} />
         <MapView
           shops={shops}
           selectedId={selectedId}
           onSelect={onSelect}
           route={route}
           routeOrigin={routeOrigin}
+          expanded={fullscreen?.expanded ?? false}
         />
         <ShopList
           shops={mapListShops(shops, selectedId)}

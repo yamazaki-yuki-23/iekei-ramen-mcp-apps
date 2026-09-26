@@ -668,6 +668,22 @@
   background: var(--color-surface-muted);
 }
 
+/*
+ * 全画面のときの高さ。
+ *
+ * 枠の中では 24rem が精一杯だが、全画面では画面の高さに合わせて伸ばす。
+ * 一覧を完全に追い出さないよう 70vh で止めてある（地図だけになると、
+ * 押した店の詳細がどこに出たのか分からなくなる）。
+ */
+.mapExpanded {
+  height: 70vh;
+}
+
+.mapToolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .mapLayout {
   display: flex;
   flex-direction: column;

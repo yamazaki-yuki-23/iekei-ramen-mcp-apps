@@ -1278,3 +1278,28 @@ test.describe("画面端の余白", () => {
     expect(await paddingOf("Top")).toBe("24px");
   });
 });
+
+test.describe("地図を広げる", () => {
+  /**
+   * 枠の中の 24rem では、東京 162 件が重なる範囲を読めない。
+   * ホストに全画面を頼み、**返ってきたモードに合わせて**枠を伸ばす。
+   */
+  test("全画面にすると地図が高くなり、押し戻すと元に戻る", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    const map = app.locator("div[role=application]");
+
+    const heightOf = async () => (await map.boundingBox())!.height;
+    const inline = await heightOf();
+
+    await app.getByRole("button", { name: "地図を広げる" }).click();
+    const shrink = app.getByRole("button", { name: "元の大きさに戻す" });
+    await expect(shrink).toBeVisible();
+    // 伸びるのはホストの枠なので、落ち着くまで測り直す。
+    await expect.poll(heightOf).toBeGreaterThan(inline);
+
+    await shrink.click();
+    await expect(app.getByRole("button", { name: "地図を広げる" })).toBeVisible();
+    await expect.poll(heightOf).toBe(inline);
+  });
+});

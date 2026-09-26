@@ -43,9 +43,19 @@ interface Props {
   route?: Shop[];
   /** 順路の出発点。あれば線をここから引く。 */
   routeOrigin?: { lat: number; lon: number };
+  /** 全画面のときは地図を高くする。 */
+  expanded?: boolean;
 }
 
-export function MapView({ shops, selectedId, onSelect, focus, route, routeOrigin }: Props) {
+export function MapView({
+  shops,
+  selectedId,
+  onSelect,
+  focus,
+  route,
+  routeOrigin,
+  expanded = false,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -129,6 +139,24 @@ export function MapView({ shops, selectedId, onSelect, focus, route, routeOrigin
       markers.clear();
     };
   }, [shops]);
+
+  /*
+   * 枠の寸法が変わったら Leaflet に測り直させる。
+   *
+   * Leaflet は生成時に測った寸法を持ち続けるので、全画面にして枠が伸びても
+   * 内部の寸法は古いまま。タイルが途中までしか描かれず、下半分が灰色になる。
+   *
+   * **全画面の切り替えを見張るのではなく、枠そのものを見張る。** 高さが変わる
+   * のは全画面のときだけではない（ホストの窓の伸縮、セーフエリアの変化）。
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    const el = containerRef.current;
+    if (!map || !el) return;
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // 外から指定されたフォーカス位置へ移動する。
   useEffect(() => {
@@ -214,7 +242,7 @@ export function MapView({ shops, selectedId, onSelect, focus, route, routeOrigin
 
   return (
     <div
-      className={styles.map}
+      className={expanded ? `${styles.map} ${styles.mapExpanded}` : styles.map}
       ref={containerRef}
       role="application"
       aria-label="家系ラーメン店の地図"
