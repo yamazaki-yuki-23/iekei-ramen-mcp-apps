@@ -24,6 +24,26 @@ const TASTE_COLORS: Record<Shop["taste"], string> = {
 /** 選択中のピンの縁。地図タイルのどの色の上でも輪郭が出る濃さ。 */
 const SELECTED_STROKE = "#141312";
 
+/**
+ * 選択中のピンを置くペイン。
+ *
+ * **塊（divIcon）は markerPane（z-index 600）に、店のピン（circleMarker）は
+ * overlayPane（400）に載る。** 別のペインなので bringToFront では追い越せず、
+ * 選んだ店が 36px の塊に覆われて見えなくなる。実測で、選んだ 1 軒と残りの塊の
+ * 中心が 0.4〜3.3px（zoom 12〜15）＝ほぼ同じ位置に来る組があった。
+ * 選択中だけ上のペインに出して、`keepId` の約束（選んだ店は必ず見える）を守る。
+ */
+export const SELECTED_PANE = "selectedShop";
+
+/**
+ * 順路の番号を置くペイン。
+ *
+ * **選択中のピンより上。** 番号は「何軒目か」を読むためのもので、選んだ店が
+ * そのまま順路に入っていることも多い。選択のペインを上げたとき、ここを
+ * 決めておかないと番号が選択ピンの下に潜る（元は markerPane で上にあった）。
+ */
+export const ROUTE_PANE = "routeOrder";
+
 /** 店 1 軒のピン。選択中だけ大きく、縁を濃くする。 */
 const PIN = { radius: 6, color: "#ffffff", weight: 1.5 } as const;
 const PIN_SELECTED = { radius: 10, color: SELECTED_STROKE, weight: 2 } as const;
@@ -117,7 +137,7 @@ export function drawShops(
     if (cluster.shops.length === 1) {
       const shop = cluster.shops[0];
       const marker = L.circleMarker([shop.lat, shop.lon], {
-        ...(shop.id === opts.selectedId ? PIN_SELECTED : PIN),
+        ...(shop.id === opts.selectedId ? { ...PIN_SELECTED, pane: SELECTED_PANE } : PIN),
         fillColor: TASTE_COLORS[shop.taste],
         fillOpacity: 0.9,
       })
@@ -212,6 +232,7 @@ export function drawRoute(
         html: String(i + 1),
         iconSize: [24, 24],
       }),
+      pane: ROUTE_PANE,
       // 番号は順路を読むためのもの。押す先は店のピンに任せる。
       interactive: false,
       keyboard: false,

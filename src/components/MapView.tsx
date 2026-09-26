@@ -9,6 +9,8 @@ import {
   drawRoute,
   drawShops,
   JAPAN_BOUNDS,
+  ROUTE_PANE,
+  SELECTED_PANE,
   toLatLngBounds,
   viewBounds,
   type MapOrigin,
@@ -134,6 +136,18 @@ export function MapView({
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
+    /*
+     * 重なり順を明示する。**レイヤーを足す前に作ること。**
+     *
+     *   塊・店のピン（既定の pane）< 選択中 640 < 順路の番号 645 < ツールチップ 650
+     *
+     * 塊は divIcon なので markerPane（600）に載り、店のピンは circleMarker で
+     * overlayPane（400）に載る。別のペインは bringToFront では追い越せないので、
+     * 選択中だけ上に出す。番号はさらに上——選んだ店がそのまま順路に入っている
+     * ことが多く、下に潜ると何軒目か読めなくなる。
+     */
+    map.createPane(SELECTED_PANE).style.zIndex = "640";
+    map.createPane(ROUTE_PANE).style.zIndex = "645";
     // 同心円は店のピンより下。上に置くと、線が店に重なって押しにくくなる。
     originLayerRef.current = L.layerGroup().addTo(map);
     layerRef.current = L.layerGroup().addTo(map);

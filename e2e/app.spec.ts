@@ -1222,6 +1222,19 @@ test.describe("まわる店（順路）", () => {
     const pins = app.locator(".route-pin");
     await expect(pins).toHaveCount(2);
     /*
+     * **番号は選択中のピンより上。** 選んだ店はそのまま順路に入ることが多く、
+     * 下に潜ると何軒目か読めなくなる（選択中のピンを塊より上へ出したときに、
+     * 番号が巻き添えで下がった）。
+     *
+     * 番号は `interactive: false`＝`pointer-events: none` なので、
+     * **elementFromPoint では測れない**（当たり判定から外れて下の要素が返る）。
+     * 置かれているペインと、その重なり順で見る。
+     */
+    await expect(pins.first().locator("xpath=..")).toHaveClass(/leaflet-routeOrder-pane/);
+    const zIndexOf = (pane: string) =>
+      app.locator(`.leaflet-${pane}-pane`).evaluate((el) => Number(getComputedStyle(el).zIndex));
+    expect(await zIndexOf("routeOrder")).toBeGreaterThan(await zIndexOf("selectedShop"));
+    /*
      * 直前に選んだ店へズームしたままだと、足した順路が地図の外に出て、
      * 線を引いても見えない。順路の全体が入るところまで寄せ直す。
      *
@@ -1330,6 +1343,51 @@ test.describe("地図の塊", () => {
         return Math.max(0, ...counts.map(Number));
       })
       .toBeLessThan(before);
+  });
+});
+
+test.describe("選んだ店が塊に隠れないこと", () => {
+  /**
+   * 塊（divIcon）は markerPane、店のピン（circleMarker）は overlayPane に載る。
+   * 別のペインなので bringToFront では追い越せず、**選んだ店が 36px の塊に
+   * 覆われて見えなくなる**。実測で、選んだ 1 軒と残りの塊の中心が 0.4〜3.3px
+   * （zoom 12〜15）まで近づく組があった。
+   */
+  test("塊と重なっても、選択中のピンが手前に出る", async ({ page }) => {
+    // 横浜・曙町あたりの 6 軒。引くと塊になり、その中心が先頭の店に重なる。
+    const app = await callTool(page, "show-iekei-ramen-map", {
+      bounds: { north: 35.4461, south: 35.4356, east: 139.6338, west: 139.6236 },
+    });
+    await waitForApp(app);
+
+    await shopCards(app).first().click();
+    const pin = app.locator('path[stroke="#141312"]');
+    await expect(pin).toBeVisible();
+
+    /** 選択中のピンの中心が塊に覆われているか、その位置で手前に出ているか。 */
+    const inspect = () =>
+      pin.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const x = r.x + r.width / 2;
+        const y = r.y + r.height / 2;
+        const covered = [...document.querySelectorAll(".cluster-pin")].some((c) => {
+          const b = c.getBoundingClientRect();
+          return x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height;
+        });
+        return { covered, topIsPin: document.elementFromPoint(x, y) === el };
+      });
+
+    // 重なる状態になるまで引く。塊が離れていては、この検査に意味が無い。
+    let state = await inspect();
+    for (let i = 0; i < 5 && !state.covered; i++) {
+      await app.locator(".leaflet-control-zoom-out").click();
+      await page.waitForTimeout(400);
+      state = await inspect();
+    }
+
+    // 前提（重なっていること）も検査に含める。満たせないなら落とす。
+    expect(state.covered).toBe(true);
+    expect(state.topIsPin).toBe(true);
   });
 });
 
