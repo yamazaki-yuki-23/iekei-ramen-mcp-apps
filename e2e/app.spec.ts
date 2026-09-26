@@ -1406,6 +1406,43 @@ test.describe("この範囲で探す", () => {
   });
 });
 
+test.describe("まわる店と範囲の両立", () => {
+  /**
+   * 積んだ店がある状態で「この範囲で探す」を押すと、地図が作り直される。
+   * このとき順路の節が寄せ直すと、**画面の見出しと結果は範囲のものなのに、
+   * 地図だけ順路へ飛ぶ。** その状態でもう一度押すと、見当違いの場所を探す。
+   */
+  test("積んだ店があっても、範囲で探した画角が動かない", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const count = async () => {
+      const text = await app
+        .getByText(/\d+ 件/)
+        .first()
+        .textContent();
+      return Number((text ?? "").replace(/\D/g, ""));
+    };
+    const search = app.getByRole("button", { name: "この範囲で探す" });
+
+    // 1 軒積む。ここで地図は順路（その 1 軒）へ寄る。
+    await shopCards(app).first().click();
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+    await expect(app.getByRole("button", { name: "まわる店から外す" }).first()).toBeVisible();
+
+    // **順路から離れた広い画角にする。** 同じ場所のままだと、飛んでも
+    // 結果が変わらず、この不具合を捕まえられない。
+    for (let i = 0; i < 6; i++) await app.locator(".leaflet-control-zoom-out").click();
+
+    await search.click();
+    const area = await count();
+    expect(area).toBeGreaterThan(1);
+
+    // もう一度押しても同じ範囲＝地図が順路へ飛んでいない。
+    await search.click();
+    await expect.poll(count).toBe(area);
+  });
+});
+
 test.describe("基準地点の同心円", () => {
   /**
    * 「歩けるか」を決める材料が画面に無かった。基準地点があるときは印と、

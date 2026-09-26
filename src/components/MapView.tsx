@@ -85,6 +85,15 @@ export function MapView({
   const originLayerRef = useRef<L.LayerGroup | null>(null);
   const markersRef = useRef<Map<string, L.CircleMarker>>(new Map());
   /*
+   * 順路へ寄せたことがあるか。
+   *
+   * **作り直しの 1 回目は寄せない。** 範囲で探した直後は、ユーザーが決めた
+   * 画角が初期表示に入っている。そこへ順路が割り込むと、見出しと結果は範囲の
+   * ものなのに地図だけ順路へ飛び、もう一度「この範囲で探す」を押すと見当違いの
+   * 場所を探すことになる（実測: 同じ操作の 2 回目で 3 件 → 2 件）。
+   */
+  const routeFitted = useRef(false);
+  /*
    * いまのズーム。塊の大きさはこれで決まるので、state で持って描き直す。
    * ref だと変わっても再描画が起きず、寄っても塊が解けない。
    */
@@ -252,6 +261,17 @@ export function MapView({
     if (!layer || !map) return;
     if (!route || route.length === 0) return;
     const line = drawRoute(layer, route, routeOrigin);
+    const clear = () => {
+      layer.clearLayers();
+    };
+
+    /*
+     * 寄せるのは順路が変わったときだけ。作り直しの 1 回目は線を引くに留める。
+     * refit が false のときは「ユーザーが決めた画角」なので、譲る。
+     */
+    const firstRunAfterMount = !routeFitted.current;
+    routeFitted.current = true;
+    if (firstRunAfterMount && !refit) return clear;
 
     /*
      * 順路の全体が入るように寄せる。直前に選んだ店へズームしたままだと、
@@ -268,10 +288,8 @@ export function MapView({
     map.invalidateSize();
     map.fitBounds(L.latLngBounds(line), { padding: [32, 32], maxZoom: 15, animate: false });
 
-    return () => {
-      layer.clearLayers();
-    };
-  }, [route, routeOrigin]);
+    return clear;
+  }, [route, routeOrigin, refit]);
 
   return (
     <div
