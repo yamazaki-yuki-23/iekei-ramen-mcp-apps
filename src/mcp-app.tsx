@@ -368,7 +368,7 @@ function IekeiAppInner({
 
   const fullscreen = useFullscreen(hostContext, onDisplayMode);
 
-  const { runConditions, switchMode } = useModeSwitch({
+  const { runConditions, searchArea, switchMode } = useModeSwitch({
     mode,
     setMode,
     form,
@@ -487,11 +487,7 @@ function IekeiAppInner({
         route={routeShops}
         routeOrigin={routeOrigin}
         fullscreen={fullscreen}
-        /* 枠が「どこ」を言い直すので、都道府県は空にして渡す。前の県が残ると、
-           隣の県へ動かした瞬間に 0 件になり、理由が画面に出ない。 */
-        onSearchArea={(bounds) =>
-          runArea(bounds, { ...form, prefecture: "" }, payload.query.origin)
-        }
+        onSearchArea={searchArea}
       />
 
       {/* 結果の下、注記の上。モードを切り替えても残るので、組み立てたものが消えない。 */}

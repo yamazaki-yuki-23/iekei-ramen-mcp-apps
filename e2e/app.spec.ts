@@ -1599,6 +1599,33 @@ test.describe("範囲と他の条件の両立", () => {
     await expect(app.getByRole("heading", { name: "東京都の家系ラーメン" })).toBeVisible();
   });
 
+  test("範囲検索の応答を待つ間に味を変えても、範囲は失われない", async ({ page }) => {
+    /*
+     * 「この範囲で探す」の応答が返る前に味を変えると、そのときの payload には
+     * まだ範囲が入っていない。payload だけを見ていると、2 本目が全国検索に
+     * なり、**あとから返った方が勝つ**ので範囲の結果が捨てられる。
+     */
+    await page.route("**/mcp", async (route) => {
+      // 範囲つきの呼び出しだけ遅らせて、追い越しを起こす。
+      if ((route.request().postData() ?? "").includes('"bounds"')) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      await route.continue();
+    });
+
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+
+    await app.locator(".cluster-pin").first().click();
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    // 応答を待たずに味を変える。
+    await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
+
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible({ timeout: 15_000 });
+  });
+
   test("地図タブを押し直しても範囲は保たれる", async ({ page }) => {
     /*
      * いま居るタブをもう一度押すのは「入り直し」ではない（「迷ったら」で
