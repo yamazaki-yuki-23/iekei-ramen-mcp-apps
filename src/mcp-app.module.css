@@ -679,7 +679,18 @@
   height: 70vh;
 }
 
-/* 押した塊の中身を出しているときの見出し。解除の導線と並べる。 */
+/*
+ * 押した塊の中身を出しているときの見出し。
+ *
+ * キーボードで開いたときの焦点の行き先でもある（tabIndex={-1}）。押せる
+ * ものではないが、焦点がどこへ行ったかは見えている必要がある。
+ */
+.focusHeadLabel {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+}
+
+/* 解除の導線と並べる。 */
 .focusHead {
   display: flex;
   align-items: center;
@@ -893,6 +904,7 @@
 .chip:focus-visible,
 .card:focus-visible,
 .clusterPin:focus-visible,
+.focusHeadLabel:focus-visible,
 .guideSummary:focus-visible {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 1px;

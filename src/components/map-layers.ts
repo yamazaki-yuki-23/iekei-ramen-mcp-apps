@@ -161,8 +161,8 @@ export function drawShops(
     zoom: number;
     selectedId?: string;
     onSelect: (shop: Shop, viaKeyboard: boolean) => void;
-    /** 塊を押したときに、その中身を外へ渡す。 */
-    onCluster: (shops: Shop[]) => void;
+    /** 塊を押したときに、その中身を外へ渡す。キーボード由来かも伝える。 */
+    onCluster: (shops: Shop[], viaKeyboard: boolean) => void;
   },
 ): Map<string, L.CircleMarker> {
   const markers = new Map<string, L.CircleMarker>();
@@ -195,9 +195,9 @@ export function drawShops(
      * 番号（.routePin）と紛れないよう、面ではなく縁で色を持たせている。
      */
     const bounds = boundsOf(cluster.shops);
-    const expand = () => {
+    const expand = (viaKeyboard = false) => {
       map.fitBounds(bounds, { padding: [32, 32], maxZoom: 17, animate: false });
-      opts.onCluster(cluster.shops);
+      opts.onCluster(cluster.shops, viaKeyboard);
     };
     const marker = L.marker([cluster.lat, cluster.lon], {
       icon: L.divIcon({

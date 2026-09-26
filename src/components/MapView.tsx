@@ -31,7 +31,7 @@ interface Props {
   /** 基準地点。あれば印と同心円を出す。 */
   origin?: MapOrigin;
   /** 塊を押したときに、その中身を渡す。寄っても解けない塊への逃げ道。 */
-  onClusterSelect?: (shops: Shop[]) => void;
+  onClusterSelect?: (shops: Shop[], viaKeyboard: boolean) => void;
   /** 全画面のときは地図を高くする。 */
   expanded?: boolean;
   /**
@@ -196,7 +196,7 @@ export function MapView({
         if (viaKeyboard) remember(shop.id);
         onSelectRef.current(shop);
       },
-      onCluster: (group) => onClusterRef.current?.(group),
+      onCluster: (group, viaKeyboard) => onClusterRef.current?.(group, viaKeyboard),
     });
     markersRef.current = markers;
 

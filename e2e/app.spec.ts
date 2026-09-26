@@ -1509,6 +1509,22 @@ test.describe("塊の中身に行き着けること", () => {
     await page.keyboard.press("Enter");
 
     await expect(app.getByText(`この地点の ${size} 軒`, { exact: false })).toBeVisible();
+
+    /*
+     * **焦点が出したばかりの一覧へ移ること。** 開くと地図が寄って塊ごと
+     * 描き直されるので、押していた要素は消える。body に落ちると次の Tab が
+     * 画面の先頭から始まり、開いた中身へ辿り着けない。
+     */
+    await expect
+      .poll(() =>
+        app.locator("body").evaluate(() => {
+          const el = document.activeElement;
+          // **body を外すこと。** body の textContent には画面中の文字が入るので、
+          // 焦点が落ちていても「この地点の」に一致してしまう（最初それで通していた）。
+          return !el || el.tagName === "BODY" ? null : (el.textContent?.slice(0, 20) ?? null);
+        }),
+      )
+      .toContain("この地点の");
   });
 
   test("塊を押すと中身が一覧に出て、そこから選べる", async ({ page }) => {

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { focusLabel, mapListShops } from "../lib/map-list";
 import type { Bounds, Origin, SearchMode, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
@@ -72,6 +72,20 @@ export function ResultView({
    * 押した塊の中身を一覧に出せば、どの塊にも必ず行き先がある。
    */
   const [focused, setFocused] = useState<Shop[] | null>(null);
+  /*
+   * 塊をキーボードで開いたとき、焦点の行き先。
+   *
+   * **開くと地図が寄り、塊ごと描き直されるので、押していた要素は消える。**
+   * 焦点が body に落ちると、次の Tab が画面の先頭から始まる。出したばかりの
+   * 一覧の見出しへ送れば、何が起きたかも読み上げられる。
+   */
+  const focusHeadRef = useRef<HTMLSpanElement>(null);
+  const wantHeadFocus = useRef(false);
+  useEffect(() => {
+    if (!focused || !wantHeadFocus.current) return;
+    focusHeadRef.current?.focus();
+    wantHeadFocus.current = false;
+  }, [focused]);
   if (mode === "map") {
     return (
       <div className={styles.mapLayout}>
@@ -93,7 +107,10 @@ export function ResultView({
           route={route}
           routeOrigin={routeOrigin}
           expanded={fullscreen?.expanded ?? false}
-          onClusterSelect={setFocused}
+          onClusterSelect={(group, viaKeyboard) => {
+            wantHeadFocus.current = viaKeyboard;
+            setFocused(group);
+          }}
           onReady={(getBounds) => (getBoundsRef.current = getBounds)}
           initialBounds={bounds}
           refit={!bounds}
@@ -102,7 +119,9 @@ export function ResultView({
         {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}
         {focused && (
           <div className={styles.focusHead}>
-            <span className={styles.meta}>{focusLabel(focused.length)}</span>
+            <span className={styles.focusHeadLabel} ref={focusHeadRef} tabIndex={-1}>
+              {focusLabel(focused.length)}
+            </span>
             <button
               type="button"
               className={styles.buttonSecondary}
