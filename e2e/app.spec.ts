@@ -1319,6 +1319,39 @@ test.describe("地図を広げる", () => {
   });
 });
 
+test.describe("基準地点が店の邪魔をしないこと", () => {
+  /**
+   * 基準地点の印と店のピンが同じ場所に来ることはある（その店の名前で地点を
+   * 調べたときなど）。**印が上に乗って押せなくなると、その店は選べない。**
+   * レイヤーを作る順番では重なり順は決まらない（Leaflet は同じ SVG に描く）。
+   */
+  test("基準地点と重なっても、店のピンが押せる", async ({ page }) => {
+    // たかさご家の座標をそのまま基準地点にする。
+    const app = await callTool(page, "show-iekei-ramen-map", {
+      // その 1 軒だけを囲む枠。塊にならず、単独のピンとして出る。
+      bounds: { north: 35.441053, south: 35.440053, east: 139.629659, west: 139.628659 },
+      lat: 35.440553,
+      lon: 139.629159,
+      label: "たかさご家",
+      source: "place",
+    });
+    await waitForApp(app);
+
+    const pin = app.locator('path[aria-label^="たかさご家"]');
+    await expect(pin).toHaveCount(1);
+
+    /*
+     * **実際に押して確かめる。** elementFromPoint はその文書の表示域だけを
+     * 見るので、枠の外に出ているピンでは null が返り、何も測れない
+     * （それに気付かず「手前に出ている」つもりの検査を書いていた）。
+     * Playwright のクリックは、上に別の要素があれば弾かれる。
+     */
+    await pin.click();
+
+    await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+  });
+});
+
 test.describe("全画面からの戻り道", () => {
   /**
    * 畳む釦は地図モードにしか無い。全画面のまま別のタブへ移ると釦ごと消え、
@@ -1443,6 +1476,19 @@ test.describe("塊の中身に行き着けること", () => {
 
     // 選べた＝詳細と行き先が出る。
     await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+
+    /*
+     * **焦点が地図に残ること。** 選ぶと印を描き直すので、押していた要素ごと
+     * 消える。ブラウザは焦点を引き継がないため body へ落ち、次の Tab が画面の
+     * 先頭から始まる（実測: activeElement が BODY になっていた）。
+     */
+    await expect
+      .poll(() =>
+        app
+          .locator("body")
+          .evaluate(() => document.activeElement?.getAttribute("aria-label") ?? null),
+      )
+      .toBe(label);
   });
 
   test("キーボードだけでも塊を開ける", async ({ page }) => {

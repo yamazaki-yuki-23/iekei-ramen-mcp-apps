@@ -44,6 +44,16 @@ export const SELECTED_PANE = "selectedShop";
  */
 export const ROUTE_PANE = "routeOrder";
 
+/**
+ * 基準地点の印と同心円を置くペイン。
+ *
+ * **店のピンより下。** 基準地点が店と同じ場所に来ることはある（その店の名前で
+ * 地点を調べたときなど）。同じペインに置くと、あとから描いた基準地点が上に乗って
+ * 店のクリックを奪い、その店を選べなくなる。**レイヤーを作る順番では決まらない**
+ * ——Leaflet は同じペインの図形を 1 つの SVG にまとめて描くため。
+ */
+export const ORIGIN_PANE = "originArea";
+
 /** 店 1 軒のピン。選択中だけ大きく、縁を濃くする。 */
 const PIN = { radius: 6, color: "#ffffff", weight: 1.5 } as const;
 const PIN_SELECTED = { radius: 10, color: SELECTED_STROKE, weight: 2 } as const;
@@ -91,7 +101,11 @@ function textTooltip(text: string): HTMLElement {
  * 切れるので、地図が唯一の入口になる店が出る。Leaflet は円（SVG の path）に
  * tabindex も Enter も付けないので、ここで足す。
  */
-function makeActivatable(el: Element | null | undefined, label: string, activate: () => void) {
+function makeActivatable(
+  el: Element | null | undefined,
+  label: string,
+  activate: (viaKeyboard: boolean) => void,
+) {
   if (!el) return;
   el.setAttribute("role", "button");
   el.setAttribute("tabindex", "0");
@@ -101,7 +115,7 @@ function makeActivatable(el: Element | null | undefined, label: string, activate
     const key = (e as KeyboardEvent).key;
     if (key !== "Enter" && key !== " ") return;
     e.preventDefault();
-    activate();
+    activate(true);
   });
 }
 
@@ -146,7 +160,7 @@ export function drawShops(
     shops: Shop[];
     zoom: number;
     selectedId?: string;
-    onSelect: (shop: Shop) => void;
+    onSelect: (shop: Shop, viaKeyboard: boolean) => void;
     /** 塊を押したときに、その中身を外へ渡す。 */
     onCluster: (shops: Shop[]) => void;
   },
@@ -163,11 +177,13 @@ export function drawShops(
         fillOpacity: 0.9,
       })
         .bindTooltip(textTooltip(`${shop.name}（${TASTES[shop.taste].label}）`))
-        .on("click", () => opts.onSelect(shop));
+        .on("click", () => opts.onSelect(shop, false));
       marker.addTo(layer);
       markers.set(shop.id, marker);
-      makeActivatable(marker.getElement(), `${shop.name}（${TASTES[shop.taste].label}）`, () =>
-        opts.onSelect(shop),
+      makeActivatable(
+        marker.getElement(),
+        `${shop.name}（${TASTES[shop.taste].label}）`,
+        (viaKeyboard) => opts.onSelect(shop, viaKeyboard),
       );
       continue;
     }
@@ -216,7 +232,7 @@ export function drawShops(
        * 押されると、中途半端な画角で探してしまう。DESIGN.md の
        * 「アニメーションで情報を伝えない」にも合う。
        */
-      .on("click", expand)
+      .on("click", () => expand())
       .addTo(layer);
 
     /*
@@ -232,7 +248,7 @@ export function drawShops(
 /** 基準地点の印と同心円。**地図は動かさない。** */
 export function drawOrigin(layer: L.LayerGroup, origin: MapOrigin): void {
   for (const radius of RANGE_RINGS) {
-    L.circle([origin.lat, origin.lon], { ...RING, radius }).addTo(layer);
+    L.circle([origin.lat, origin.lon], { ...RING, radius, pane: ORIGIN_PANE }).addTo(layer);
   }
   L.circleMarker([origin.lat, origin.lon], {
     radius: 5,
@@ -240,6 +256,7 @@ export function drawOrigin(layer: L.LayerGroup, origin: MapOrigin): void {
     weight: 2,
     fillColor: ORIGIN_COLOR,
     fillOpacity: 1,
+    pane: ORIGIN_PANE,
   })
     .bindTooltip(textTooltip(origin.label ? `基準地点: ${origin.label}` : "基準地点"))
     .addTo(layer);

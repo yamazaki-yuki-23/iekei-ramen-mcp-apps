@@ -1,6 +1,7 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
+import { useMarkerFocus } from "../hooks/use-marker-focus";
 import type { Bounds, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import {
@@ -9,6 +10,7 @@ import {
   drawRoute,
   drawShops,
   JAPAN_BOUNDS,
+  ORIGIN_PANE,
   ROUTE_PANE,
   SELECTED_PANE,
   toLatLngBounds,
@@ -95,6 +97,7 @@ export function MapView({
    * 場所を探すことになる（実測: 同じ操作の 2 回目で 3 件 → 2 件）。
    */
   const routeFitted = useRef(false);
+  const { remember, restore } = useMarkerFocus(markersRef);
   /*
    * いまのズーム。塊の大きさはこれで決まるので、state で持って描き直す。
    * ref だと変わっても再描画が起きず、寄っても塊が解けない。
@@ -145,13 +148,14 @@ export function MapView({
     /*
      * 重なり順を明示する。**レイヤーを足す前に作ること。**
      *
-     *   塊・店のピン（既定の pane）< 選択中 640 < 順路の番号 645 < ツールチップ 650
+     *   基準地点 390 < 店のピン 400 < 塊 600 < 選択中 640 < 順路の番号 645 < ツールチップ 650
      *
      * 塊は divIcon なので markerPane（600）に載り、店のピンは circleMarker で
      * overlayPane（400）に載る。別のペインは bringToFront では追い越せないので、
      * 選択中だけ上に出す。番号はさらに上——選んだ店がそのまま順路に入っている
      * ことが多く、下に潜ると何軒目か読めなくなる。
      */
+    map.createPane(ORIGIN_PANE).style.zIndex = "390";
     map.createPane(SELECTED_PANE).style.zIndex = "640";
     map.createPane(ROUTE_PANE).style.zIndex = "645";
     // 同心円は店のピンより下。上に置くと、線が店に重なって押しにくくなる。
@@ -188,10 +192,16 @@ export function MapView({
       shops,
       zoom,
       selectedId,
-      onSelect: (shop) => onSelectRef.current(shop),
+      onSelect: (shop, viaKeyboard) => {
+        if (viaKeyboard) remember(shop.id);
+        onSelectRef.current(shop);
+      },
       onCluster: (group) => onClusterRef.current?.(group),
     });
     markersRef.current = markers;
+
+    // キーボードで選んだ直後だけ、描き直したピンへ焦点を戻す。
+    restore(selectedId);
 
     return () => {
       // 付けたハンドラは自分で外す。clearLayers だけでも参照は切れるが、
@@ -200,7 +210,7 @@ export function MapView({
       layer.clearLayers();
       markers.clear();
     };
-  }, [shops, zoom, selectedId]);
+  }, [shops, zoom, selectedId, remember, restore]);
 
   /*
    * 結果が変わったら、その全体が入るところまで寄せ直す。
@@ -260,7 +270,13 @@ export function MapView({
     if (!map || !marker) return;
     marker.bringToFront().openTooltip();
     map.setView(marker.getLatLng(), Math.max(map.getZoom(), 14));
-  }, [selectedId]);
+
+    /*
+     * ここでも戻す。**`bringToFront` は要素を DOM に付け替える**ので、
+     * 描き直しの直後に戻しただけでは外れてしまう。
+     */
+    restore(selectedId);
+  }, [selectedId, restore]);
 
   /*
    * 基準地点の印と同心円。
