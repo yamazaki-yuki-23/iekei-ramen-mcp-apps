@@ -66,6 +66,19 @@ describe("normalizeBounds", () => {
     });
   });
 
+  it("上下に振り切って高さがゼロになったら、誤りにせず世界全体", () => {
+    /*
+     * 地図は世界の外まで引きずれるので、上に振り切ると南北が同じ値に潰れる。
+     * サーバーは面積ゼロの範囲を「呼び出し側の誤り」として弾くが、これは
+     * ユーザーの操作で起きるので、誤りではなく広い範囲として返す。
+     */
+    expect(normalizeBounds({ north: 95, south: 92, east: 139.6, west: 139.5 })).toEqual({
+      north: 90,
+      south: -90,
+      ...WHOLE_WORLD,
+    });
+  });
+
   it("緯度は ±90 に丸める", () => {
     // 引ききると地図は極を越えた値を返す。経度と違って折り返しても意味が無い。
     expect(normalizeBounds({ north: 95, south: -95, east: 10, west: -10 })).toEqual({

@@ -1398,6 +1398,26 @@ test.describe("塊の中身に行き着けること", () => {
    * 離れない＝まとめる下限 36px を下回ったまま。寄せるだけの逃げ道しか無いと、
    * その 2 軒は地図から永久に選べない。
    */
+  test("キーボードだけでも塊を開ける", async ({ page }) => {
+    /*
+     * **一覧では代わりにならない。** 地図モードの一覧は 20 件で切れるので、
+     * 塊を開けないと大半の店に辿り着けない。数字だけの丸は読み上げでも
+     * 「12」としか聞こえないため、件数で名乗らせる。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const cluster = app.locator(".cluster-pin").first();
+    const size = Number(await cluster.textContent());
+
+    await expect(cluster).toHaveAttribute("aria-label", `この地点の ${size} 軒を開く`);
+    await expect(cluster).toHaveAttribute("tabindex", "0");
+
+    await cluster.focus();
+    await page.keyboard.press("Enter");
+
+    await expect(app.getByText(`この地点の ${size} 軒`, { exact: false })).toBeVisible();
+  });
+
   test("塊を押すと中身が一覧に出て、そこから選べる", async ({ page }) => {
     const app = await callTool(page, "show-iekei-ramen-map");
     await waitForApp(app);

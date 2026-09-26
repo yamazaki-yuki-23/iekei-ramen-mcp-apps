@@ -155,7 +155,11 @@ export function drawShops(
      * 番号（.routePin）と紛れないよう、面ではなく縁で色を持たせている。
      */
     const bounds = boundsOf(cluster.shops);
-    L.marker([cluster.lat, cluster.lon], {
+    const expand = () => {
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 17, animate: false });
+      opts.onCluster(cluster.shops);
+    };
+    const marker = L.marker([cluster.lat, cluster.lon], {
       icon: L.divIcon({
         /*
          * CSS モジュールのクラス名は毎ビルド変わるので、掴む先として
@@ -165,8 +169,16 @@ export function drawShops(
         html: String(cluster.shops.length),
         iconSize: [36, 36],
       }),
-      // 読み上げは一覧が担う。地図の塊はここでは名前を持たない。
-      keyboard: false,
+      /*
+       * **キーボードでも開けるようにする。** 「読み上げは一覧が担う」と
+       * していたが、一覧は 20 件で切れるので、塊を開けないと大半の店に
+       * 辿り着けない。
+       *
+       * keyboard: true が付けるのは tabindex だけで、**Enter で開く処理は
+       * Leaflet に無い**（keypress を見ているのはポップアップの都合）。
+       * 下で自分で受ける。
+       */
+      keyboard: true,
     })
       /*
        * 寄るだけでなく、**中身を一覧にも出す。**
@@ -180,11 +192,24 @@ export function drawShops(
        * 押されると、中途半端な画角で探してしまう。DESIGN.md の
        * 「アニメーションで情報を伝えない」にも合う。
        */
-      .on("click", () => {
-        map.fitBounds(bounds, { padding: [32, 32], maxZoom: 17, animate: false });
-        opts.onCluster(cluster.shops);
-      })
+      .on("click", expand)
       .addTo(layer);
+
+    /*
+     * 名前は件数で名乗る。数字だけの丸は、読み上げでは「12」としか聞こえず、
+     * 押すと何が起きるのか分からない。要素は addTo のあとでないと取れない。
+     */
+    const el = marker.getElement();
+    if (el) {
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", `この地点の ${cluster.shops.length} 軒を開く`);
+      // 釦として振る舞わせる。要素は塊ごと捨てられるので、外す先は無い。
+      el.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        expand();
+      });
+    }
   }
 
   return markers;

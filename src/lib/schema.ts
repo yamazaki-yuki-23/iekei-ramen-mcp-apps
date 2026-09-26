@@ -23,8 +23,15 @@ export const BoundsSchema = z
    * （実測: isError は付かず、「該当する店舗はありませんでした」が返っていた）。
    * 日付変更線はまたがない（国内だけのデータ）ので、経度も南西 → 北東で見る。
    */
-  .refine((b) => b.south <= b.north && b.west <= b.east, {
-    message: "範囲は南西と北東の角で渡してください（south ≤ north、west ≤ east）",
+  /*
+   * **幅も高さも要る。** 同じ値を渡されると、面積ゼロの範囲になって
+   * その点に完全一致する店しか当たらない＝事実上いつも 0 件になる。
+   * 逆さのときと同じで、呼び出し側の誤りが「この範囲に店はありません」に
+   * 化けるので、答えではなく誤りとして返す。
+   */
+  .refine((b) => b.south < b.north && b.west < b.east, {
+    message:
+      "範囲は南西と北東の角で、幅と高さのある箱を渡してください（south < north、west < east）",
   });
 
 const ShopSchema = z.object({

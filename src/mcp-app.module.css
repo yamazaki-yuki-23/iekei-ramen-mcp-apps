@@ -892,6 +892,7 @@
 .button:focus-visible,
 .chip:focus-visible,
 .card:focus-visible,
+.clusterPin:focus-visible,
 .guideSummary:focus-visible {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 1px;

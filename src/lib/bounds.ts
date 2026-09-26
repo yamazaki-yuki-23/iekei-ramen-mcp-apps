@@ -35,6 +35,13 @@ export function normalizeBounds(raw: {
 }): Bounds {
   const north = clampLat(raw.north);
   const south = clampLat(raw.south);
+  /*
+   * 丸めた結果、高さがゼロになった場合。地図は世界の外まで引きずれるので、
+   * 上や下に振り切ると南北が同じ値に潰れる。**そのまま渡すとサーバーが
+   * 誤りとして弾く**（面積ゼロの範囲は呼び出し側の間違いとして扱うため）。
+   * ユーザーの操作でそうなるのだから、誤りではなく広い範囲として返す。
+   */
+  if (north === south) return { north: 90, south: -90, ...WHOLE_WORLD };
   if (raw.east - raw.west >= 360) return { north, south, ...WHOLE_WORLD };
 
   const west = wrapLon(raw.west);

@@ -461,6 +461,23 @@ describe("show-iekei-ramen-map", () => {
     expect(reversedEastWest.isError).toBe(true);
   });
 
+  it("面積ゼロの範囲も 0 件ではなく誤りとして返す", async () => {
+    /*
+     * 同じ値を渡されると、その点に完全一致する店しか当たらない＝事実上いつも
+     * 0 件になる。逆さのときと同じで、呼び出し側の誤りが「この範囲に店は
+     * ありません」という答えに化ける。
+     */
+    const point = await callApp("show-iekei-ramen-map", {
+      bounds: { north: 35.4657, south: 35.4657, east: 139.622, west: 139.622 },
+    });
+    expect(point.isError).toBe(true);
+
+    const zeroHeight = await callApp("show-iekei-ramen-map", {
+      bounds: { north: 35.4657, south: 35.4657, east: 139.68, west: 139.58 },
+    });
+    expect(zeroHeight.isError).toBe(true);
+  });
+
   it("基準地点を受け取り、そのまま返す（地図の印と同心円に使う）", async () => {
     const { payload } = await callApp("show-iekei-ramen-map", {
       lat: 35.4657,
