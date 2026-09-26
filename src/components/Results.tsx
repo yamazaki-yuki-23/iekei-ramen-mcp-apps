@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { AppPayload, SearchMode, Shop } from "../lib/types";
+import type { AppPayload, Bounds, SearchMode, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import { DecidePanel } from "./DecidePanel";
 import type { FullscreenControl } from "./MapToolbar";
@@ -32,6 +32,8 @@ interface Props {
   routeOrigin?: { lat: number; lon: number };
   /** 地図の全画面化。地図モードでしか使わないが、持ち主は画面の組み立て側。 */
   fullscreen?: FullscreenControl;
+  /** 地図に出ている範囲で探し直す。 */
+  onSearchArea?: (bounds: Bounds) => void;
 }
 
 /**
@@ -57,6 +59,7 @@ export function Results({
   route,
   routeOrigin,
   fullscreen,
+  onSearchArea,
 }: Props) {
   /*
    * タブを押すと mode だけ先に変わり、payload は tool の結果が届いてから
@@ -95,6 +98,9 @@ export function Results({
       route={route}
       routeOrigin={routeOrigin}
       fullscreen={fullscreen}
+      onSearchArea={onSearchArea}
+      bounds={payload.query.bounds}
+      busy={busy}
     />
   );
 }

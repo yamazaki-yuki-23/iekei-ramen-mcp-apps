@@ -423,6 +423,39 @@ describe("show-iekei-ramen-map", () => {
     expect(text).toContain("該当する店舗はありませんでした");
   });
 
+  it("地図に出ている範囲で絞り込む", async () => {
+    // 横浜駅のあたりだけを囲んだ枠。
+    const bounds = { north: 35.48, south: 35.44, east: 139.65, west: 139.6 };
+    const { payload } = await callApp("show-iekei-ramen-map", { bounds });
+
+    expect(payload.shops.length).toBeGreaterThan(0);
+    expect(payload.shops.length).toBeLessThan(50);
+    expect(
+      payload.shops.every(
+        (s) =>
+          s.lat >= bounds.south &&
+          s.lat <= bounds.north &&
+          s.lon >= bounds.west &&
+          s.lon <= bounds.east,
+      ),
+    ).toBe(true);
+    // どの範囲を見ているかは UI 側でも要る（寄せ直さない判断に使う）。
+    expect(payload.query.bounds).toEqual(bounds);
+  });
+
+  it("範囲で絞ったときは「全国」と名乗らない", async () => {
+    /*
+     * どこを見ているかはモデルに分からない。範囲だと言っておかないと、
+     * 「全国で 12 件しかない」と読んで話してしまう。
+     */
+    const { text } = await callApp("show-iekei-ramen-map", {
+      bounds: { north: 35.48, south: 35.44, east: 139.65, west: 139.6 },
+    });
+
+    expect(text).toContain("地図に出ている範囲");
+    expect(text).not.toContain("全国");
+  });
+
   it("すべての店舗が地図に描ける座標を持つ", async () => {
     const { payload } = await callApp("show-iekei-ramen-map");
     for (const shop of payload.shops) {

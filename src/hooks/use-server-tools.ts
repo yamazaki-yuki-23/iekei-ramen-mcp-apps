@@ -2,7 +2,7 @@ import type { App } from "@modelcontextprotocol/ext-apps";
 import { useCallback, useRef, useState } from "react";
 import { readPayload } from "../lib/payload";
 import { askMessageText, decideMessageText } from "../lib/shop-brief";
-import type { AppPayload, Origin, OriginSource, SearchMode, Shop } from "../lib/types";
+import type { AppPayload, Bounds, Origin, OriginSource, SearchMode, Shop } from "../lib/types";
 
 const TOOL_BY_MODE: Record<SearchMode, string> = {
   form: "search-iekei-ramen",
@@ -124,6 +124,20 @@ export function useServerTools({
         taste: next.taste || undefined,
         ...(targetMode === "form" ? { keyword: next.keyword || undefined } : {}),
       });
+    },
+    [call],
+  );
+
+  /**
+   * 地図に出ている範囲で探し直す。
+   *
+   * **都道府県は落とす。** 枠が「どこ」を言い直しているので、前の県が
+   * 残っていると、隣の県へ動かしたときに 0 件になって理由が画面に出ない。
+   * 味は「どこ」ではなく「何」なので残す。
+   */
+  const runArea = useCallback(
+    (bounds: Bounds, next: SearchValues) => {
+      void call(TOOL_BY_MODE.map, { taste: next.taste || undefined, bounds });
     },
     [call],
   );
@@ -269,6 +283,7 @@ export function useServerTools({
     failure,
     stale,
     runSearch,
+    runArea,
     runDecide,
     askToDecide,
     runNearby,

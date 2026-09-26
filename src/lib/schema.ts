@@ -3,6 +3,19 @@ import { z } from "zod";
 
 const TasteSchema = z.enum(["rich", "creamy", "chain", "unknown"]);
 
+/**
+ * 地図に出ている範囲。
+ *
+ * **緯度経度の妥当性はここで弾く。** 地図から渡ってくる値は、引ききった
+ * ときに ±180 を超えることがある（Leaflet は世界を繰り返して数える）。
+ */
+export const BoundsSchema = z.object({
+  north: z.number().min(-90).max(90),
+  south: z.number().min(-90).max(90),
+  east: z.number().min(-180).max(180),
+  west: z.number().min(-180).max(180),
+});
+
 const ShopSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -39,6 +52,7 @@ export const PayloadSchema = z.object({
         source: z.enum(["precise", "host", "edge", "place"]),
       })
       .optional(),
+    bounds: BoundsSchema.optional(),
   }),
   /** 選択肢を UI に渡す（都道府県リストはデータ由来なのでサーバーが持つ）。 */
   prefectures: z.array(z.string()),

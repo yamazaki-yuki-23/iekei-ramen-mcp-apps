@@ -341,6 +341,7 @@ function IekeiAppInner({
     failure,
     stale,
     runSearch,
+    runArea,
     runDecide,
     askToDecide,
     runNearby,
@@ -481,6 +482,7 @@ function IekeiAppInner({
         route={routeShops}
         routeOrigin={routeOrigin}
         fullscreen={fullscreen}
+        onSearchArea={(bounds) => runArea(bounds, form)}
       />
 
       {/* 結果の下、注記の上。モードを切り替えても残るので、組み立てたものが消えない。 */}

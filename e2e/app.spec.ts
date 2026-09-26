@@ -1330,3 +1330,39 @@ test.describe("地図の塊", () => {
       .toBeLessThan(before);
   });
 });
+
+test.describe("この範囲で探す", () => {
+  /**
+   * 地図を別の街へ動かしても、出ている店は最初の検索結果のままだった。
+   * 見ている範囲をサーバーへ渡して、そこにある店に入れ替える。
+   */
+  test("寄せた範囲の件数に入れ替わり、もう一度押しても変わらない", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const count = async () => {
+      const text = await app
+        .getByText(/\d+ 件/)
+        .first()
+        .textContent();
+      return Number((text ?? "").replace(/\D/g, ""));
+    };
+    const search = app.getByRole("button", { name: "この範囲で探す" });
+
+    const whole = await count();
+    expect(whole).toBeGreaterThan(500);
+
+    // 塊を押すと、その中身が画面いっぱいになるまで寄る。
+    await app.locator(".cluster-pin").first().click();
+    await search.click();
+    await expect.poll(count).toBeLessThan(whole);
+
+    /*
+     * もう一度押しても件数が変わらないこと＝**寄せ直していない**こと。
+     * 結果の全体へ寄せ直すと枠が縮み、端の店が次の範囲から外れて減っていく。
+     * ユーザーが自分で決めた画角を勝手に詰めない、の実測になる。
+     */
+    const area = await count();
+    await search.click();
+    await expect.poll(count).toBe(area);
+  });
+});

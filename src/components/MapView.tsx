@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { clusterShops } from "../lib/cluster";
-import { TASTES, type Shop } from "../lib/types";
+import { TASTES, type Bounds, type Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 
 /**
@@ -35,6 +35,25 @@ const PIN_SELECTED = { radius: 10, color: SELECTED_STROKE, weight: 2 } as const;
  */
 const ROUTE_LINE = { color: SELECTED_STROKE, weight: 2, opacity: 0.55, dashArray: "6 6" };
 
+/**
+ * いま地図に出ている範囲。
+ *
+ * **±180 / ±90 に丸める。** 引ききると Leaflet は世界を繰り返して数えるので、
+ * 経度が 200 度などになる。そのままサーバーへ渡すとスキーマで弾かれる。
+ */
+const clampLat = (v: number) => Math.max(-90, Math.min(90, v));
+const clampLon = (v: number) => Math.max(-180, Math.min(180, v));
+
+function viewBounds(map: L.Map): Bounds {
+  const b = map.getBounds();
+  return {
+    north: clampLat(b.getNorth()),
+    south: clampLat(b.getSouth()),
+    east: clampLon(b.getEast()),
+    west: clampLon(b.getWest()),
+  };
+}
+
 /** 日本全体が収まる初期表示。 */
 const JAPAN_BOUNDS = L.latLngBounds([24.0, 122.5], [45.7, 146.0]);
 
@@ -50,6 +69,29 @@ interface Props {
   routeOrigin?: { lat: number; lon: number };
   /** 全画面のときは地図を高くする。 */
   expanded?: boolean;
+  /**
+   * 範囲の読み取り口を外へ渡す。
+   *
+   * **動かすたびに値を流さない。** 直近の移動を覚えておく形にすると、
+   * 寄せ終わる前に押されたときに古い範囲で探してしまう（実際に踏んだ:
+   * 塊を押した直後に「この範囲で探す」を押すと、全国 558 件のまま返った）。
+   * 押した瞬間に読む。
+   */
+  onReady?: (getBounds: () => Bounds) => void;
+  /**
+   * 最初に表示する範囲。
+   *
+   * **payload から渡す。** 結果が差し替わるとこの部品ごと作り直されるので
+   * （payload ごとに key を振ってある）、地図は毎回新品で生まれる。
+   * 覚えていたつもりの画角は残らず、「この範囲で探す」の直後に日本全体へ
+   * 戻ってしまう（実測: 範囲で 489 件に絞った直後、もう一度押すと 558 件）。
+   */
+  initialBounds?: Bounds;
+  /**
+   * 結果が変わったときに全体へ寄せ直すか。
+   * 範囲で探し直した直後は false。ユーザーが自分で決めた画角を動かさない。
+   */
+  refit?: boolean;
 }
 
 export function MapView({
@@ -60,6 +102,9 @@ export function MapView({
   route,
   routeOrigin,
   expanded = false,
+  onReady,
+  initialBounds,
+  refit = true,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -79,11 +124,23 @@ export function MapView({
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+  // 読み取り口を渡す相手も ref 経由。親が描き直しても渡し直さない。
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
 
   // 地図の生成は 1 度だけ。以降はレイヤーだけ差し替える。
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, { attributionControl: true }).fitBounds(JAPAN_BOUNDS);
+    const map = L.map(containerRef.current, { attributionControl: true }).fitBounds(
+      initialBounds
+        ? L.latLngBounds(
+            [initialBounds.south, initialBounds.west],
+            [initialBounds.north, initialBounds.east],
+          )
+        : JAPAN_BOUNDS,
+    );
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution:
@@ -96,11 +153,16 @@ export function MapView({
     setZoom(map.getZoom());
     // 寄ったら塊を解き直す。動かしただけ（moveend）では塊は変わらない。
     map.on("zoomend", () => setZoom(map.getZoom()));
+    // 「この範囲で探す」は、押した瞬間にここから読む。
+    onReadyRef.current?.(() => viewBounds(map));
     return () => {
       map.off("zoomend");
       map.remove();
       mapRef.current = null;
     };
+    // initialBounds は名前のとおり初期値。あとから変わっても作り直さない。
+    // react-doctor-disable-next-line react-doctor/exhaustive-effect-dependencies
+    // oxlint-disable-next-line react/exhaustive-deps
   }, []);
 
   /*
@@ -161,7 +223,14 @@ export function MapView({
         // 読み上げは一覧が担う。地図の塊はここでは名前を持たない。
         keyboard: false,
       })
-        .on("click", () => map.fitBounds(bounds, { padding: [32, 32], maxZoom: 17 }))
+        /*
+         * **アニメーションさせない。** 動いている途中に「この範囲で探す」を
+         * 押されると、中途半端な画角で探してしまう。DESIGN.md の
+         * 「アニメーションで情報を伝えない」にも合う。
+         */
+        .on("click", () =>
+          map.fitBounds(bounds, { padding: [32, 32], maxZoom: 17, animate: false }),
+        )
         .addTo(layer);
     }
 
@@ -183,6 +252,8 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    // 範囲で探し直した直後は、ユーザーが決めた画角をそのまま残す。
+    if (!refit) return;
     if (shops.length > 0) {
       map.fitBounds(L.latLngBounds(shops.map((s) => [s.lat, s.lon] as [number, number])), {
         padding: [24, 24],
@@ -195,7 +266,7 @@ export function MapView({
     const resize = setTimeout(() => map.invalidateSize(), 0);
     // 同じ tick で外れたときに、消えた地図を触りに行かないようにする。
     return () => clearTimeout(resize);
-  }, [shops]);
+  }, [shops, refit]);
 
   /*
    * 枠の寸法が変わったら Leaflet に測り直させる。

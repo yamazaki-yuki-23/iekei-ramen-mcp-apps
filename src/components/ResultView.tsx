@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import type { SearchMode, Shop } from "../lib/types";
+import { useRef, type ReactNode } from "react";
+import type { Bounds, SearchMode, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import { MapView } from "./MapView";
 import { MapToolbar, type FullscreenControl } from "./MapToolbar";
@@ -25,6 +25,11 @@ interface Props {
   routeOrigin?: { lat: number; lon: number };
   /** 地図の全画面化。ホストが対応していなければ渡ってこない。 */
   fullscreen?: FullscreenControl;
+  /** 地図に出ている範囲で探し直す。 */
+  onSearchArea?: (bounds: Bounds) => void;
+  /** 範囲で絞った結果なら、その範囲。地図の初期表示に使い、寄せ直しもしない。 */
+  bounds?: Bounds;
+  busy?: boolean;
 }
 
 /**
@@ -51,11 +56,29 @@ export function ResultView({
   route,
   routeOrigin,
   fullscreen,
+  onSearchArea,
+  bounds,
+  busy = false,
 }: Props) {
+  /*
+   * いま地図に出ている範囲の読み取り口。**値ではなく読み方を持つ。**
+   * 値で持つと、寄せ終わる前に押されたときに古い範囲で探してしまう。
+   */
+  const getBoundsRef = useRef<(() => Bounds) | null>(null);
   if (mode === "map") {
     return (
       <div className={styles.mapLayout}>
-        <MapToolbar fullscreen={fullscreen} />
+        <MapToolbar
+          fullscreen={fullscreen}
+          busy={busy}
+          onSearchArea={
+            onSearchArea &&
+            (() => {
+              const shown = getBoundsRef.current?.();
+              if (shown) onSearchArea(shown);
+            })
+          }
+        />
         <MapView
           shops={shops}
           selectedId={selectedId}
@@ -63,6 +86,9 @@ export function ResultView({
           route={route}
           routeOrigin={routeOrigin}
           expanded={fullscreen?.expanded ?? false}
+          onReady={(getBounds) => (getBoundsRef.current = getBounds)}
+          initialBounds={bounds}
+          refit={!bounds}
         />
         <ShopList
           shops={mapListShops(shops, selectedId)}

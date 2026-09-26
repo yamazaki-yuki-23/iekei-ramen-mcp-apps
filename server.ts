@@ -22,13 +22,14 @@ import { z } from "zod";
 import shopsData from "./data/shops.json" with { type: "json" };
 import { APP_HTML } from "./src/generated/app-html.ts";
 import { distanceKm, formatDistance, originLabel } from "./src/lib/geo.ts";
-import { PayloadSchema } from "./src/lib/schema.ts";
+import { BoundsSchema, PayloadSchema } from "./src/lib/schema.ts";
 import { describeBasis, shortlist } from "./src/lib/shortlist.ts";
 import {
   CONFIDENCE,
   ORIGIN_NOTES,
   TASTES,
   type AppPayload,
+  type Bounds,
   type Origin,
   type OriginSource,
   type Shop,
@@ -130,8 +131,14 @@ function summarize(shops: Shop[], heading: string, withDistance = false): string
  * 地図モードのテキスト。件数だけ返すと、未判定の店まで家系だと断定して
  * 伝わってしまう。一覧を出さないぶん、内訳と断り書きをここで添える。
  */
-function mapSummary(shops: Shop[], prefecture?: string): string {
-  const where = prefecture ?? "全国";
+function mapSummary(shops: Shop[], prefecture?: string, bounds?: Bounds): string {
+  /*
+   * 範囲で絞ったときは「全国」と名乗らない。
+   *
+   * **どこを見ているかはモデルに分からない。** 画面に出ている範囲だと
+   * 言っておかないと、モデルが「全国で 12 件しかない」と読んで話す。
+   */
+  const where = bounds ? "地図に出ている範囲" : (prefecture ?? "全国");
   if (shops.length === 0) return `${where}に該当する店舗はありませんでした。`;
 
   const counts = shops.reduce<Partial<Record<Shop["confidence"], number>>>((acc, s) => {
@@ -242,11 +249,19 @@ function blankToUndefined(text?: string): string | undefined {
   return text?.trim() || undefined;
 }
 
-function filterShops(opts: { prefecture?: string; taste?: TasteKey; keyword?: string }): Shop[] {
+function filterShops(opts: {
+  prefecture?: string;
+  taste?: TasteKey;
+  keyword?: string;
+  bounds?: Bounds;
+}): Shop[] {
   const kw = opts.keyword?.trim().toLowerCase();
+  const b = opts.bounds;
   return SHOPS.filter((s) => {
     if (opts.prefecture && s.prefecture !== opts.prefecture) return false;
     if (opts.taste && opts.taste !== "unknown" && s.taste !== opts.taste) return false;
+    // 範囲は南西・北東の角で来る。日付変更線はまたがない（国内だけのデータ）。
+    if (b && (s.lat < b.south || s.lat > b.north || s.lon < b.west || s.lon > b.east)) return false;
     if (kw) {
       const hay = [s.name, s.nameEn, s.brand, s.city, s.address].join(" ").toLowerCase();
       if (!hay.includes(kw)) return false;
@@ -545,23 +560,26 @@ export function createServer(): McpServer {
       inputSchema: z.object({
         prefecture: z.enum(ALL_PREFECTURES).optional().describe("この都道府県にズームして表示する"),
         taste: z.enum(["rich", "creamy", "chain"]).optional().describe("味の傾向で絞り込む"),
+        bounds: BoundsSchema.optional().describe(
+          "地図に出ている範囲で絞り込む。UI の「この範囲で探す」から渡る",
+        ),
       }),
       outputSchema: PayloadSchema,
       _meta: { ui: { resourceUri } },
     },
-    async ({ prefecture, taste }): Promise<CallToolResult> => {
-      const shops = filterShops({ prefecture, taste });
+    async ({ prefecture, taste, bounds }): Promise<CallToolResult> => {
+      const shops = filterShops({ prefecture, taste, bounds });
       const payload: Omit<AppPayload, "prefectures"> = {
         mode: "map",
         shops,
         total: shops.length,
-        query: { prefecture, taste },
+        query: { prefecture, taste, bounds },
       };
       return {
         content: [
           {
             type: "text",
-            text: mapSummary(shops, prefecture),
+            text: mapSummary(shops, prefecture, bounds),
           },
         ],
         structuredContent: structured(payload),
