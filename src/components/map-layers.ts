@@ -50,6 +50,19 @@ const RING = { color: ORIGIN_COLOR, weight: 1, opacity: 0.5, fill: false, dashAr
 /** 日本全体が収まる初期表示。 */
 export const JAPAN_BOUNDS = L.latLngBounds([24.0, 122.5], [45.7, 146.0]);
 
+/**
+ * 文字として出すツールチップの中身。
+ *
+ * **文字列を渡さない。** Leaflet は渡された文字列を HTML として描くので、
+ * 店名や地名に markup が入っていればそのまま解釈される。基準地点の表示名は
+ * tool の引数と geocode の結果（どちらも外から来る）なので、素通しにできない。
+ */
+function textTooltip(text: string): HTMLElement {
+  const el = document.createElement("span");
+  el.textContent = text;
+  return el;
+}
+
 /** 基準地点。表示名は無いこともある。 */
 export interface MapOrigin {
   lat: number;
@@ -60,20 +73,34 @@ export interface MapOrigin {
 /**
  * いま地図に出ている範囲。
  *
- * **±180 / ±90 に丸める。** 引ききると Leaflet は世界を繰り返して数えるので、
- * 経度が 200 度などになる。そのままサーバーへ渡すとスキーマで弾かれる。
+ * 緯度は ±90 に丸めるだけでよい。**経度は丸めてはいけない。** Leaflet は
+ * 世界を横に繰り返して描くので、隣の複製まで動かすと経度が 480〜510 のように
+ * なる。両端を 180 に丸めると、日本が画面に出ているのに幅ゼロの範囲になり、
+ * 「この範囲で探す」が 0 件を返す。360 度で折り返して実際の経度に戻す。
  */
 const clampLat = (v: number) => Math.max(-90, Math.min(90, v));
-const clampLon = (v: number) => Math.max(-180, Math.min(180, v));
+
+/** 経度を -180〜180 に折り返す。 */
+const wrapLon = (v: number) => ((((v + 180) % 360) + 360) % 360) - 180;
 
 export function viewBounds(map: L.Map): Bounds {
   const b = map.getBounds();
-  return {
-    north: clampLat(b.getNorth()),
-    south: clampLat(b.getSouth()),
-    east: clampLon(b.getEast()),
-    west: clampLon(b.getWest()),
-  };
+  const north = clampLat(b.getNorth());
+  const south = clampLat(b.getSouth());
+  const west = b.getWest();
+  const east = b.getEast();
+
+  // 1 周以上が画面に入っているなら、折り返しても意味が無いので世界全体。
+  if (east - west >= 360) return { north, south, east: 180, west: -180 };
+
+  const wrapped = { west: wrapLon(west), east: wrapLon(east) };
+  /*
+   * 折り返した結果が日付変更線をまたぐ場合。国内だけのデータでは南西 → 北東の
+   * 箱で表せないので、世界全体として渡す。**0 件にはしない**——見えている店を
+   * 「無い」と答えるより、広く返すほうが嘘が少ない。
+   */
+  if (wrapped.west > wrapped.east) return { north, south, east: 180, west: -180 };
+  return { north, south, ...wrapped };
 }
 
 /** 店の一覧を囲む枠。 */
@@ -115,7 +142,7 @@ export function drawShops(
         fillColor: TASTE_COLORS[shop.taste],
         fillOpacity: 0.9,
       })
-        .bindTooltip(`${shop.name}（${TASTES[shop.taste].label}）`)
+        .bindTooltip(textTooltip(`${shop.name}（${TASTES[shop.taste].label}）`))
         .on("click", () => opts.onSelect(shop));
       marker.addTo(layer);
       markers.set(shop.id, marker);
@@ -176,7 +203,7 @@ export function drawOrigin(layer: L.LayerGroup, origin: MapOrigin): void {
     fillColor: ORIGIN_COLOR,
     fillOpacity: 1,
   })
-    .bindTooltip(origin.label ? `基準地点: ${origin.label}` : "基準地点")
+    .bindTooltip(textTooltip(origin.label ? `基準地点: ${origin.label}` : "基準地点"))
     .addTo(layer);
 }
 

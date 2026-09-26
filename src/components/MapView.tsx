@@ -119,9 +119,16 @@ export function MapView({
   // 地図の生成は 1 度だけ。以降はレイヤーだけ差し替える。
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, { attributionControl: true }).fitBounds(
-      initialBounds ? toLatLngBounds(initialBounds) : JAPAN_BOUNDS,
-    );
+    /*
+     * **worldCopyJump で正規の世界へ戻す。** Leaflet はタイルを横に繰り返して
+     * 描くが、店のピン（ベクタ層）は複製しない。隣の複製まで動かすと、地図には
+     * 日本が見えているのにピンが 1 つも無い、という状態になる。
+     * そのまま「この範囲で探す」を押すと当然 0 件で、理由が画面から分からない。
+     */
+    const map = L.map(containerRef.current, {
+      attributionControl: true,
+      worldCopyJump: true,
+    }).fitBounds(initialBounds ? toLatLngBounds(initialBounds) : JAPAN_BOUNDS);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution:

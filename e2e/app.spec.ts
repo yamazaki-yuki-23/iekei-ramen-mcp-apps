@@ -1406,6 +1406,82 @@ test.describe("この範囲で探す", () => {
   });
 });
 
+test.describe("隣の世界まで動かしたとき", () => {
+  /**
+   * Leaflet は世界を横に繰り返して描く。隣の複製まで動かすと経度が 480〜510 の
+   * ようになるので、両端を 180 に丸めると**日本が画面に出ているのに幅ゼロの
+   * 範囲**になり、「この範囲で探す」が 0 件を返す。
+   */
+  test("隣の複製に動かしても、この範囲で探すが 0 件にならない", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const map = app.locator("div[role=application]");
+
+    /*
+     * 世界を小さくしてから、1 周を超えて引きずる。
+     *
+     * **整定を待つこと。** 待たずに続けて引きずると途中で呑まれ、複製まで
+     * 届かない＝日本が見えたままになり、直っていなくても通ってしまう
+     * （実際にそうなっていた）。ズームと慣性が止まってから次へ進む。
+     */
+    for (let i = 0; i < 3; i++) await app.locator(".leaflet-control-zoom-out").click();
+    await page.waitForTimeout(800);
+    const box = (await map.boundingBox())!;
+    const y = box.y + box.height / 2;
+    for (let i = 0; i < 3; i++) {
+      await page.mouse.move(box.x + box.width - 20, y);
+      await page.mouse.down();
+      await page.mouse.move(box.x + 20, y, { steps: 20 });
+      await page.mouse.up();
+      await page.waitForTimeout(400);
+    }
+
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+
+    // 日本は見えているのだから、0 件にはならない。
+    await expect
+      .poll(async () => {
+        const text = await app
+          .getByText(/\d+ 件/)
+          .first()
+          .textContent();
+        return Number((text ?? "").replace(/\D/g, ""));
+      })
+      .toBeGreaterThan(0);
+  });
+});
+
+test.describe("外から来た文字の扱い", () => {
+  /**
+   * 基準地点の表示名は tool の引数と geocode の結果（どちらも外から来る）。
+   * Leaflet は渡された文字列を **HTML として描く**ので、素通しにできない。
+   */
+  test("地名に markup が入っていても、文字として出す", async ({ page }) => {
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: '<img src=x onerror="window.__pwned=1">横浜駅',
+      source: "place",
+    });
+    await waitForApp(app);
+    await app.getByRole("tab", { name: "地図から探す" }).click();
+    await expect(app.getByText(/直線距離 500m と 1km/)).toBeVisible();
+
+    /*
+     * 基準地点の印にカーソルが乗るとツールチップが開く。印は 5px と小さく、
+     * 同心円や店のピンと重なって hover の当たり判定を取りづらいので、
+     * イベントを直接送る。
+     */
+    await app.locator('path[fill="#1f6f4a"]').dispatchEvent("mouseover");
+    const tip = app.locator(".leaflet-tooltip");
+    await expect(tip).toBeVisible();
+
+    // 中身は文字。img が生えていない＝HTML として解釈されていない。
+    await expect(tip).toContainText("<img");
+    expect(await tip.locator("img").count()).toBe(0);
+  });
+});
+
 test.describe("範囲と他の条件の両立", () => {
   /**
    * 「この範囲で探す」のあと味を変えると、範囲が落ちて全国に戻っていた。
