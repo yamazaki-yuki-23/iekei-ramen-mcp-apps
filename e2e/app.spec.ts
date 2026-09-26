@@ -1501,6 +1501,37 @@ test.describe("塊の中身に行き着けること", () => {
       .toBe(label);
   });
 
+  test("寄り切った塊を開いても、引き戻されない", async ({ page }) => {
+    /*
+     * 上限を固定にすると、すでに 18〜19 まで寄っているところで押したときに
+     * 17 まで戻される（実測: 18 → 17）。**寄り切っても解けない塊はある**ので、
+     * 開くたびに遠ざかることになる。
+     */
+    // ろくの家 / 稲和家ラーメン（5.2m 差）だけを囲む枠。
+    const app = await callTool(page, "show-iekei-ramen-map", {
+      bounds: { north: 34.3344, south: 34.3334, east: 134.0707, west: 134.0697 },
+    });
+    await waitForApp(app);
+    const zoom = () =>
+      app.locator("div[role=application]").evaluate((el) => {
+        const tile = el.querySelector("img.leaflet-tile") as HTMLImageElement | null;
+        return Number(tile?.src.replace("https://tile.openstreetmap.org/", "").split("/")[0]);
+      });
+    await expect.poll(zoom).toBeGreaterThan(17);
+    const before = await zoom();
+
+    /*
+     * キーボードで開く。**クリックでは届かないことがある**——ホストの版面に
+     * よってピンが枠の外に出ると当たらず、開かないまま通ってしまう
+     * （実際に、押したつもりで一覧が出ていない測り方をしていた）。
+     */
+    await app.locator(".cluster-pin").first().focus();
+    await page.keyboard.press("Enter");
+
+    await expect(app.getByText("この地点の", { exact: false })).toBeVisible();
+    expect(await zoom()).toBe(before);
+  });
+
   test("キーボードだけでも塊を開ける", async ({ page }) => {
     /*
      * **一覧では代わりにならない。** 地図モードの一覧は 20 件で切れるので、

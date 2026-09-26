@@ -119,6 +119,14 @@ function makeActivatable(
   });
 }
 
+/**
+ * 塊を押したときに寄る上限。
+ *
+ * これ以上寄せても、塊が解けるとは限らない（5.2m しか離れていない 2 軒がある）。
+ * 街の様子が見える程度で止める。
+ */
+const CLUSTER_ZOOM_CAP = 17;
+
 /** 基準地点。表示名は無いこともある。 */
 export interface MapOrigin {
   lat: number;
@@ -196,7 +204,14 @@ export function drawShops(
      */
     const bounds = boundsOf(cluster.shops);
     const expand = (viaKeyboard = false) => {
-      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 17, animate: false });
+      /*
+       * **引き戻さない。** 上限を固定にすると、すでに 18〜19 まで寄っている
+       * ところで押したときに 17 まで戻される（実測: 18 → 17）。寄り切っても
+       * 解けない塊はあるので、開くたびに遠ざかることになる。
+       * いまより遠くへは行かせない。
+       */
+      const maxZoom = Math.max(map.getZoom(), CLUSTER_ZOOM_CAP);
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom, animate: false });
       opts.onCluster(cluster.shops, viaKeyboard);
     };
     const marker = L.marker([cluster.lat, cluster.lon], {
