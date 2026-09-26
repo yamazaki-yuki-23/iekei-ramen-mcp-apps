@@ -84,6 +84,27 @@ function textTooltip(text: string): HTMLElement {
   return el;
 }
 
+/**
+ * 地図上の印を釦として扱えるようにする。
+ *
+ * **キーボードから押せないと、その店には辿り着けない。** 一覧は 20 件で
+ * 切れるので、地図が唯一の入口になる店が出る。Leaflet は円（SVG の path）に
+ * tabindex も Enter も付けないので、ここで足す。
+ */
+function makeActivatable(el: Element | null | undefined, label: string, activate: () => void) {
+  if (!el) return;
+  el.setAttribute("role", "button");
+  el.setAttribute("tabindex", "0");
+  el.setAttribute("aria-label", label);
+  // 要素は描き直しのたびに捨てられるので、外す先は無い。
+  el.addEventListener("keydown", (e) => {
+    const key = (e as KeyboardEvent).key;
+    if (key !== "Enter" && key !== " ") return;
+    e.preventDefault();
+    activate();
+  });
+}
+
 /** 基準地点。表示名は無いこともある。 */
 export interface MapOrigin {
   lat: number;
@@ -145,6 +166,9 @@ export function drawShops(
         .on("click", () => opts.onSelect(shop));
       marker.addTo(layer);
       markers.set(shop.id, marker);
+      makeActivatable(marker.getElement(), `${shop.name}（${TASTES[shop.taste].label}）`, () =>
+        opts.onSelect(shop),
+      );
       continue;
     }
 
@@ -199,17 +223,7 @@ export function drawShops(
      * 名前は件数で名乗る。数字だけの丸は、読み上げでは「12」としか聞こえず、
      * 押すと何が起きるのか分からない。要素は addTo のあとでないと取れない。
      */
-    const el = marker.getElement();
-    if (el) {
-      el.setAttribute("role", "button");
-      el.setAttribute("aria-label", `この地点の ${cluster.shops.length} 軒を開く`);
-      // 釦として振る舞わせる。要素は塊ごと捨てられるので、外す先は無い。
-      el.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();
-        expand();
-      });
-    }
+    makeActivatable(marker.getElement(), `この地点の ${cluster.shops.length} 軒を開く`, expand);
   }
 
   return markers;

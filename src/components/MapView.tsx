@@ -286,11 +286,6 @@ export function MapView({
     const layer = routeLayerRef.current;
     const map = mapRef.current;
     if (!layer || !map) return;
-    if (!route || route.length === 0) return;
-    const line = drawRoute(layer, route, routeOrigin);
-    const clear = () => {
-      layer.clearLayers();
-    };
 
     /*
      * **寄せるのは順路が変わったときだけ。作り直しの 1 回目は線を引くに留める。**
@@ -300,11 +295,20 @@ export function MapView({
      * 寄せる理由が無い。
      *
      * 条件を refit で分けていたが、「結果へ寄せる節が後に走れば上書きされる」
-     * という並び順頼みになっていた（実測では上書きされていて害は出ていない）。
-     * 並び順に頼らず、宣言どおり「変わったときだけ」にしておく。
+     * という並び順頼みになっていた。並び順に頼らず「変わったときだけ」にしてある。
+     *
+     * **記録は早期 return より前で行う。** 空の順路で作り直されたあと、最初の
+     * 1 軒を積んだときが「1 回目」と誤解され、寄せ直しが飛んでいた（実測:
+     * 出発点が 250km 先にあるのに、選んだ店の周りのまま動かなかった）。
      */
     const firstRunAfterMount = !routeFitted.current;
     routeFitted.current = true;
+
+    if (!route || route.length === 0) return;
+    const line = drawRoute(layer, route, routeOrigin);
+    const clear = () => {
+      layer.clearLayers();
+    };
     if (firstRunAfterMount) return clear;
 
     /*

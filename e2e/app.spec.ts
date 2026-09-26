@@ -1424,6 +1424,27 @@ test.describe("塊の中身に行き着けること", () => {
    * 離れない＝まとめる下限 36px を下回ったまま。寄せるだけの逃げ道しか無いと、
    * その 2 軒は地図から永久に選べない。
    */
+  test("キーボードだけでも、単独のピンから店を選べる", async ({ page }) => {
+    /*
+     * 塊だけ押せても足りない。**一覧は 20 件で切れる**ので、単独のピンが
+     * その店への唯一の入口になることがある。円（SVG の path）は既定では
+     * tabindex も Enter も持たない。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const pin = app.locator(".leaflet-overlay-pane path[role=button]").first();
+    await expect(pin).toHaveAttribute("tabindex", "0");
+    const label = await pin.getAttribute("aria-label");
+    expect(label).toMatch(/（(直系・濃厚|クリーミー|チェーン・万人向け|情報なし)）$/);
+
+    await pin.focus();
+    await page.keyboard.press("Enter");
+
+    // 選べた＝詳細と行き先が出る。
+    await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+  });
+
   test("キーボードだけでも塊を開ける", async ({ page }) => {
     /*
      * **一覧では代わりにならない。** 地図モードの一覧は 20 件で切れるので、
@@ -1735,6 +1756,42 @@ test.describe("まわる店と範囲の両立", () => {
    * このとき順路の節が寄せ直すと、**画面の見出しと結果は範囲のものなのに、
    * 地図だけ順路へ飛ぶ。** その状態でもう一度押すと、見当違いの場所を探す。
    */
+  test("1 軒目を積んだときも、出発点ごと順路の全体へ寄せる", async ({ page }) => {
+    /*
+     * 地図を開いた時点では順路が空なので、そこで「作り直しの 1 回目」を
+     * 記録しそこねると、**最初の 1 軒を積んだときが 1 回目と誤解されて
+     * 寄せ直しが飛ぶ**。出発点が遠いと、順路の大半が画面の外に残る。
+     */
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+      source: "place",
+    });
+    await waitForApp(app);
+    await app.getByRole("tab", { name: "地図から探す" }).click();
+    await expect(app.getByText(/直線距離 500m と 1km/)).toBeVisible();
+
+    // 一覧の先頭は愛知県の店。横浜から 250km ほど離れている。
+    await shopCards(app).first().click();
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+
+    // 出発点の印が地図の枠に入っていること＝順路の全体へ寄せていること。
+    await expect
+      .poll(async () => {
+        const box = await app.locator("div[role=application]").boundingBox();
+        const origin = await app.locator('path[fill="#1f6f4a"]').boundingBox();
+        if (!box || !origin) return false;
+        return (
+          origin.x >= box.x &&
+          origin.x + origin.width <= box.x + box.width &&
+          origin.y >= box.y &&
+          origin.y + origin.height <= box.y + box.height
+        );
+      })
+      .toBe(true);
+  });
+
   test("条件を変えたら、古い順路ではなく新しい結果へ寄せる", async ({ page }) => {
     /*
      * 積んだ店があるまま条件を変えると、地図が作り直される。このとき順路の節が
