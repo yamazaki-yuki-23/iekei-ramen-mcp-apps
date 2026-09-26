@@ -377,6 +377,7 @@ function IekeiAppInner({
     onSelect,
     runSearch,
     bounds: payload.query.bounds,
+    prefecture: payload.query.prefecture,
     runArea,
     runDecide,
     runNearby,
@@ -486,7 +487,11 @@ function IekeiAppInner({
         route={routeShops}
         routeOrigin={routeOrigin}
         fullscreen={fullscreen}
-        onSearchArea={(bounds) => runArea(bounds, form, payload.query.origin)}
+        /* 枠が「どこ」を言い直すので、都道府県は空にして渡す。前の県が残ると、
+           隣の県へ動かした瞬間に 0 件になり、理由が画面に出ない。 */
+        onSearchArea={(bounds) =>
+          runArea(bounds, { ...form, prefecture: "" }, payload.query.origin)
+        }
       />
 
       {/* 結果の下、注記の上。モードを切り替えても残るので、組み立てたものが消えない。 */}

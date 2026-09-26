@@ -14,6 +14,8 @@ interface Options {
   runSearch: (values: FormValues, mode: "form" | "map", origin?: Origin) => void;
   /** いま効いている範囲。地図モードで「この範囲で探す」を使ったときだけ入る。 */
   bounds?: Bounds;
+  /** いま効いている都道府県。範囲を捨てるかは「変わったか」で決める。 */
+  prefecture?: string;
   runArea: (bounds: Bounds, values: FormValues, origin?: Origin) => void;
   runDecide: (
     values: FormValues,
@@ -39,6 +41,7 @@ export function useModeSwitch({
   onSelect,
   runSearch,
   bounds,
+  prefecture,
   runArea,
   runDecide,
   runNearby,
@@ -59,12 +62,17 @@ export function useModeSwitch({
        *
        * **味は「どこ」ではなく「何」。** 味を変えただけで範囲が落ちると、
        * 地図に出ていた土地の結果が黙って全国に戻る（実際にそうなっていた）。
-       * 都道府県を選んだときだけは「どこ」の言い直しなので、範囲を捨てる。
+       *
+       * **「都道府県が入っているか」ではなく「変わったか」で決める。**
+       * 入っているかで決めると、都道府県と範囲の両方が効いている状態
+       * （モデルは両方付きで tool を呼べる）で味を変えただけで県全体に広がる
+       * （実測: 枠の中 4 件が県全体の 6 件になった）。
        */
-      if (bounds && !values.prefecture) runArea(bounds, values, origin);
+      const changedPrefecture = (values.prefecture || undefined) !== prefecture;
+      if (bounds && !changedPrefecture) runArea(bounds, values, origin);
       else runSearch(values, "map", origin);
     },
-    [activeKeyword, bounds, mode, origin, runArea, runDecide, runSearch],
+    [activeKeyword, bounds, mode, origin, prefecture, runArea, runDecide, runSearch],
   );
 
   const switchMode = useCallback(

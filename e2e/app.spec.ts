@@ -1487,6 +1487,40 @@ test.describe("範囲と他の条件の両立", () => {
    * 「この範囲で探す」のあと味を変えると、範囲が落ちて全国に戻っていた。
    * 味は「どこ」ではなく「何」なので、範囲は保たれるべき。
    */
+  test("都道府県と範囲の両方が来ていても、味を変えて範囲を失わない", async ({ page }) => {
+    /*
+     * モデルは `show-iekei-ramen-map` を両方付きで呼べる（スキーマも payload も
+     * 両方を持てる）。「都道府県が入っていたら範囲を捨てる」と決め打つと、
+     * この状態で味を変えただけで県全体に広がる。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map", {
+      prefecture: "神奈川県",
+      bounds: { north: 35.52, south: 35.42, east: 139.68, west: 139.58 },
+    });
+    await waitForApp(app);
+    const count = async () => {
+      const text = await app
+        .getByText(/\d+ 件/)
+        .first()
+        .textContent();
+      return Number((text ?? "").replace(/\D/g, ""));
+    };
+
+    expect(await count()).toBe(32);
+
+    await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
+
+    // 枠の中の 4 件。範囲を落とすと県全体の 6 件になる。
+    await expect.poll(count).toBe(4);
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible();
+
+    // 逆に、都道府県を**変えた**ら範囲は捨てる。「どこ」の言い直しだから。
+    await app.locator("#pref").selectOption("東京都");
+    await expect(app.getByRole("heading", { name: "東京都の家系ラーメン" })).toBeVisible();
+  });
+
   test("味を変えても範囲は保たれる", async ({ page }) => {
     const app = await callTool(page, "show-iekei-ramen-map");
     await waitForApp(app);

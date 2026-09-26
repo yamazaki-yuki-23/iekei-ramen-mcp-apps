@@ -145,13 +145,16 @@ export function useServerTools({
   /**
    * 地図に出ている範囲で探し直す。
    *
-   * **都道府県は落とす。** 枠が「どこ」を言い直しているので、前の県が
-   * 残っていると、隣の県へ動かしたときに 0 件になって理由が画面に出ない。
-   * 味は「どこ」ではなく「何」なので残す。
+   * **渡された条件をそのまま送る。落とすかどうかは呼ぶ側が決める。**
+   * 「この範囲で探す」は枠が「どこ」を言い直しているので都道府県を空にして
+   * 呼び、味だけを変えたときは今の条件のまま呼ぶ。ここで一律に落とすと、
+   * 都道府県と範囲の両方が効いている状態（モデルはそう呼べる）で味を変えた
+   * だけで県全体に広がる（実測: 枠の中 4 件が県全体の 6 件になった）。
    */
   const runArea = useCallback(
     (bounds: Bounds, next: SearchValues, origin?: Origin) => {
       void call(TOOL_BY_MODE.map, {
+        prefecture: next.prefecture || undefined,
         taste: next.taste || undefined,
         bounds,
         // 基準地点は「どこ」の条件ではないので、範囲を変えても持ち続ける。
