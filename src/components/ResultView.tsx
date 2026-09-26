@@ -103,7 +103,15 @@ export function ResultView({
         <MapView
           shops={shops}
           selectedId={selectedId}
-          onSelect={onSelect}
+          /*
+           * **塊の外を選んだら、その塊の一覧は畳む。** 出したままだと
+           * 「この地点の 3 軒」の下に 4 枚並び、見出しの数も「この地点」という
+           * まとまりも嘘になる。外を選んだ時点で、その塊の話は終わっている。
+           */
+          onSelect={(shop) => {
+            if (focused && !focused.some((s) => s.id === shop.id)) setFocused(null);
+            onSelect(shop);
+          }}
           route={route}
           routeOrigin={routeOrigin}
           expanded={fullscreen?.expanded ?? false}
@@ -132,7 +140,7 @@ export function ResultView({
           </div>
         )}
         <ShopList
-          shops={mapListShops(focused ?? shops, selectedId, shops)}
+          shops={mapListShops(focused ?? shops, selectedId)}
           selectedId={selectedId}
           onSelect={onSelect}
           detail={detail}

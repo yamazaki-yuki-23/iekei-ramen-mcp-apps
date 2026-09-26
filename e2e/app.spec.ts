@@ -1501,6 +1501,30 @@ test.describe("塊の中身に行き着けること", () => {
       .toBe(label);
   });
 
+  test("塊の外の店を選んだら、その塊の一覧は畳む", async ({ page }) => {
+    /*
+     * 塊を開いたまま外の店を選ぶと、**「この地点の 3 軒」の下に 4 枚**並ぶ。
+     * 見出しの数も「この地点」というまとまりも嘘になる。外を選んだ時点で
+     * その塊の話は終わっているので、一覧を元に戻す。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map", {
+      bounds: { north: 35.4461, south: 35.4356, east: 139.6338, west: 139.6236 },
+    });
+    await waitForApp(app);
+
+    await app.locator(".cluster-pin").first().focus();
+    await page.keyboard.press("Enter");
+    await expect(app.getByText("この地点の 3 軒")).toBeVisible();
+    await expect.poll(() => shopCards(app).count()).toBe(3);
+
+    // その塊に入っていない店をキーボードで選ぶ。
+    await app.locator('path[aria-label^="寿々喜家 曙町店"]').focus();
+    await page.keyboard.press("Enter");
+
+    await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+    await expect(app.getByText("この地点の", { exact: false })).toHaveCount(0);
+  });
+
   test("寄り切った塊を開いても、引き戻されない", async ({ page }) => {
     /*
      * 上限を固定にすると、すでに 18〜19 まで寄っているところで押したときに

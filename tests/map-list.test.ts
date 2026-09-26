@@ -29,19 +29,11 @@ describe("mapListShops", () => {
     expect(list).toHaveLength(20);
   });
 
-  it("絞った一覧の外を選んでも、その 1 軒は載る", () => {
+  it("渡された一覧に居ない ID なら、一覧はそのまま", () => {
     /*
-     * 塊を押して一覧を絞っているとき、その塊の外のマーカーを押すと、
-     * 絞った一覧には居ない。入れ場所が無いと、選んだのに詳細も
-     * 「まわる店に追加」も消える。
+     * 塊を開いたまま外の店を選んだときは、塊の一覧ごと畳む側で面倒を見る。
+     * ここで拾ってしまうと「この地点の 3 軒」の下に 4 枚目が入る。
      */
-    const focused = [shop("a"), shop("b")];
-    const list = mapListShops(focused, "s25", ALL);
-
-    expect(list.map((s) => s.id)).toEqual(["s25", "a", "b"]);
-  });
-
-  it("どこにも居ない ID なら一覧はそのまま", () => {
-    expect(mapListShops([shop("a")], "missing", ALL).map((s) => s.id)).toEqual(["a"]);
+    expect(mapListShops([shop("a"), shop("b")], "s25").map((s) => s.id)).toEqual(["a", "b"]);
   });
 });

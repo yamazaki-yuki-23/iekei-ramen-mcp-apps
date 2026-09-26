@@ -9,15 +9,16 @@ const LIST_LIMIT = 20;
  * 全件並べると長すぎるので先頭 20 件で切る。ただしマーカーから選んだ店が
  * 20 件目より後ろだと詳細の置き場所が無くなるので、その店だけは先頭に持ってくる。
  *
- * **選んだ店は `all` から探す。** 塊を押して一覧を絞っているときに、その塊の
- * 外のマーカーを押すと、`shops` には居ないので入れ場所が無く、選んだのに
- * 詳細も「まわる店に追加」も消える。選択は地図のどこからでも起きるので、
- * 出す一覧が絞られていても、選んだ 1 軒だけは必ず載せる。
+ * **渡された一覧の中から探す。** 一時は「絞った一覧の外」も拾えるように
+ * 全件も受けていたが、それだと塊を開いたまま外の店を選んだときに
+ * 「この地点の 3 軒」の下へ 4 枚目が入り、見出しが嘘になる。外を選んだら
+ * 塊の一覧ごと畳む（[ResultView](../components/ResultView.tsx)）ので、
+ * ここは渡されたものだけを見ればよい。
  */
-export function mapListShops(shops: Shop[], selectedId?: string, all: Shop[] = shops): Shop[] {
+export function mapListShops(shops: Shop[], selectedId?: string): Shop[] {
   const head = shops.slice(0, LIST_LIMIT);
   if (!selectedId || head.some((s) => s.id === selectedId)) return head;
-  const selected = all.find((s) => s.id === selectedId);
+  const selected = shops.find((s) => s.id === selectedId);
   return selected ? [selected, ...head.slice(0, LIST_LIMIT - 1)] : head;
 }
 
