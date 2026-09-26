@@ -1,5 +1,5 @@
 import type { McpUiDisplayMode, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import type { FullscreenControl } from "../components/MapToolbar";
 
 /**
@@ -14,6 +14,8 @@ import type { FullscreenControl } from "../components/MapToolbar";
 export function useFullscreen(
   hostContext: McpUiHostContext | undefined,
   onDisplayMode: (mode: McpUiDisplayMode) => Promise<void>,
+  /** 広げたい画面を出しているか。地図モードだけ true。 */
+  wanted: boolean,
 ): FullscreenControl | undefined {
   const displayMode = hostContext?.displayMode ?? "inline";
   const expanded = displayMode === "fullscreen";
@@ -21,6 +23,18 @@ export function useFullscreen(
   const onToggle = useCallback(() => {
     void onDisplayMode(expanded ? "inline" : "fullscreen");
   }, [expanded, onDisplayMode]);
+
+  /*
+   * **広げる対象が消えたら畳む。**
+   *
+   * 畳む釦は地図モードにしか無い。全画面のまま別のタブへ移ると釦ごと消え、
+   * ホストは全画面のままなのにアプリ内から戻せなくなる（実測: タブを押しても
+   * 枠は 688px のまま）。モデルが別の tool を呼んで画面が変わったときも同じ
+   * なので、押した場所ではなく「いま広げる対象があるか」で畳む。
+   */
+  useEffect(() => {
+    if (!wanted && expanded) void onDisplayMode("inline");
+  }, [expanded, onDisplayMode, wanted]);
 
   if (!hostContext?.availableDisplayModes?.includes("fullscreen")) return undefined;
   return { expanded, onToggle };

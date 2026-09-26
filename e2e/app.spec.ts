@@ -1319,6 +1319,32 @@ test.describe("地図を広げる", () => {
   });
 });
 
+test.describe("全画面からの戻り道", () => {
+  /**
+   * 畳む釦は地図モードにしか無い。全画面のまま別のタブへ移ると釦ごと消え、
+   * **ホストは全画面のままなのにアプリ内から戻せなくなる。**
+   */
+  test("地図から離れたら全画面を畳む", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    /*
+     * **枠の高さでは測れない。** 高さはモードごとの中身で決まるので、
+     * 検索フォーム（長い一覧）のふつうの高さが、地図の全画面より高いことすらある。
+     * ホストが全画面のときに付ける印を見る。
+     */
+    const panel = page.locator("iframe").first().locator("xpath=..");
+    const isFullscreen = () => panel.evaluate((el) => el.className.includes("fullscreen"));
+
+    await app.getByRole("button", { name: "地図を広げる" }).click();
+    await expect.poll(isFullscreen).toBe(true);
+
+    // 地図を離れる。ここで戻さないと、出られなくなる。
+    await app.getByRole("tab", { name: "検索フォーム" }).click();
+
+    await expect.poll(isFullscreen).toBe(false);
+  });
+});
+
 test.describe("地図の塊", () => {
   /**
    * 東京 162 件・神奈川 121 件が重なると、何軒あるのかも、どれを押している

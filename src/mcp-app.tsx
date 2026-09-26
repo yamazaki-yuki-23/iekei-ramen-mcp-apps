@@ -366,7 +366,8 @@ function IekeiAppInner({
    */
   const activeKeyword = payload.mode === "decide" ? payload.query.keyword : undefined;
 
-  const fullscreen = useFullscreen(hostContext, onDisplayMode);
+  // 広げられるのは地図だけ。他のモードでは畳む（釦がその画面に無いため）。
+  const fullscreen = useFullscreen(hostContext, onDisplayMode, mode === "map");
 
   const { runConditions, searchArea, switchMode } = useModeSwitch({
     mode,
