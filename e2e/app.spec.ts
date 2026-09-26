@@ -1626,6 +1626,34 @@ test.describe("範囲と他の条件の両立", () => {
     ).toBeVisible({ timeout: 15_000 });
   });
 
+  test("範囲検索の応答を待つ間に味を変えても、都道府県は戻らない", async ({ page }) => {
+    /*
+     * 「この範囲で探す」は都道府県を空にして呼ぶが、画面のプルダウンは応答が
+     * 返るまで前の県を指したままになる。そこで味を変えると、2 本目が県を
+     * 付け直して走り、**枠が県境をまたいでいた場合に黙って県内へ絞り直される**。
+     */
+    await page.route("**/mcp", async (route) => {
+      if ((route.request().postData() ?? "").includes('"bounds"')) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      await route.continue();
+    });
+
+    const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    await expect(app.locator("#pref")).toHaveValue("神奈川県");
+
+    await app.locator(".cluster-pin").first().click();
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
+
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible({ timeout: 15_000 });
+    // 枠が「どこ」を言い直したのだから、県は外れたままであること。
+    await expect(app.locator("#pref")).toHaveValue("");
+  });
+
   test("地図タブを押し直しても範囲は保たれる", async ({ page }) => {
     /*
      * いま居るタブをもう一度押すのは「入り直し」ではない（「迷ったら」で
@@ -1681,6 +1709,40 @@ test.describe("まわる店と範囲の両立", () => {
    * このとき順路の節が寄せ直すと、**画面の見出しと結果は範囲のものなのに、
    * 地図だけ順路へ飛ぶ。** その状態でもう一度押すと、見当違いの場所を探す。
    */
+  test("条件を変えたら、古い順路ではなく新しい結果へ寄せる", async ({ page }) => {
+    /*
+     * 積んだ店があるまま条件を変えると、地図が作り直される。このとき順路の節が
+     * 寄せ直すと、**結果は入れ替わっているのに地図だけ古い順路へ飛ぶ**。
+     * 順路は変わっていないのだから、寄せる理由が無い。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const count = async () => {
+      const text = await app
+        .getByText(/\d+ 件/)
+        .first()
+        .textContent();
+      return Number((text ?? "").replace(/\D/g, ""));
+    };
+
+    // 一覧の先頭（愛知県）を積む。ここで地図はその 1 軒へ寄る。
+    await shopCards(app).first().click();
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+    await expect(app.getByRole("button", { name: "まわる店から外す" }).first()).toBeVisible();
+
+    // 条件を変えて結果を入れ替える（範囲は付かないので、結果の全体へ寄るはず）。
+    await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
+    // 全国の直系・濃厚は 17 件（関東 4 県に散っている）。
+    await expect.poll(count).toBe(17);
+
+    /*
+     * 結果の全体が見えているなら、その範囲で探しても件数は変わらない。
+     * 古い順路へ飛んでいると、見えているのは 1 軒の周りだけなので激減する。
+     */
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await expect.poll(count).toBe(17);
+  });
+
   test("積んだ店があっても、範囲で探した画角が動かない", async ({ page }) => {
     const app = await callTool(page, "show-iekei-ramen-map");
     await waitForApp(app);

@@ -293,12 +293,19 @@ export function MapView({
     };
 
     /*
-     * 寄せるのは順路が変わったときだけ。作り直しの 1 回目は線を引くに留める。
-     * refit が false のときは「ユーザーが決めた画角」なので、譲る。
+     * **寄せるのは順路が変わったときだけ。作り直しの 1 回目は線を引くに留める。**
+     *
+     * 作り直しは結果が入れ替わったときに起きる。そこで順路へ寄せると、結果は
+     * 新しいのに地図だけ古い順路を指すことになる。順路は変わっていないのだから、
+     * 寄せる理由が無い。
+     *
+     * 条件を refit で分けていたが、「結果へ寄せる節が後に走れば上書きされる」
+     * という並び順頼みになっていた（実測では上書きされていて害は出ていない）。
+     * 並び順に頼らず、宣言どおり「変わったときだけ」にしておく。
      */
     const firstRunAfterMount = !routeFitted.current;
     routeFitted.current = true;
-    if (firstRunAfterMount && !refit) return clear;
+    if (firstRunAfterMount) return clear;
 
     /*
      * 順路の全体が入るように寄せる。直前に選んだ店へズームしたままだと、
@@ -316,7 +323,7 @@ export function MapView({
     map.fitBounds(L.latLngBounds(line), { padding: [32, 32], maxZoom: 15, animate: false });
 
     return clear;
-  }, [route, routeOrigin, refit]);
+  }, [route, routeOrigin]);
 
   return (
     <div

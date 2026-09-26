@@ -17,8 +17,10 @@ interface Options {
    * ここでは**初期値**としてだけ使い、以降はこのフックが持つ（下を参照）。
    */
   bounds?: Bounds;
-  /** いま効いている都道府県。範囲を捨てるかは「変わったか」で決める。 */
+  /** いま効いている都道府県。これも初期値だけ。 */
   prefecture?: string;
+  /** 入力欄の値を書き換える。「この範囲で探す」で県を外すのに使う。 */
+  onForm: (values: FormValues) => void;
   runArea: (bounds: Bounds, values: FormValues, origin?: Origin) => void;
   runDecide: (
     values: FormValues,
@@ -45,31 +47,45 @@ export function useModeSwitch({
   runSearch,
   bounds,
   prefecture,
+  onForm,
   runArea,
   runDecide,
   runNearby,
 }: Options) {
   /*
-   * いま効いている範囲を、このフックが持つ。
+   * いま効いている「どこ」——範囲と都道府県を、このフックが持つ。
    *
-   * **payload だけを見てはいけない。** 「この範囲で探す」の応答が返る前に
-   * 味を変えると、そのときの payload にはまだ範囲が入っていない。payload 頼りだと
-   * 2 本目が全国検索になり、**あとから返った方が勝つ**ので範囲の結果が捨てられる
-   * （実測: 応答を 1.5 秒遅らせて味を押すと、見出しが「全国」に戻った）。
-   * 押した時点で覚え、落とすときも同じ場所で落とす。
+   * **payload だけを見てはいけない。** 呼び出しの応答が返るまで payload は前の
+   * ままで、その間に味を変えられる。payload 頼りだと 2 本目が違う「どこ」で走り、
+   * **あとから返った方が勝つ**ので、先に頼んだ条件が捨てられる。
    *
-   * payload ごとに key で作り直されるので、初期値を props から写す形でよい。
+   *   - 範囲: 応答を 1.5 秒遅らせて味を押すと、見出しが「全国」に戻った
+   *   - 都道府県: 同じ手順で、外したはずの県が付き直した
+   *
+   * 押した時点で覚え、落とすときも同じ場所で落とす。payload ごとに key で
+   * 作り直されるので、初期値を props から写す形でよい。
    * react-doctor-disable-next-line react-doctor/no-derived-useState
    */
-  const [areaBounds, setAreaBounds] = useState(bounds);
+  const [area, setArea] = useState<{ bounds?: Bounds; prefecture?: string }>({
+    bounds,
+    prefecture,
+  });
 
-  /** 地図に出ている範囲で探し直す。**枠が「どこ」を言い直すので都道府県は空にする。** */
+  /**
+   * 地図に出ている範囲で探し直す。
+   *
+   * **枠が「どこ」を言い直すので都道府県は外す。** 入力欄も同時に空にする。
+   * 画面のプルダウンが県を指したままだと、応答が返る前に味を変えたときに
+   * その県が付き直し、県境をまたいだ枠が黙って県内へ絞り直される。
+   */
   const searchArea = useCallback(
     (next: Bounds) => {
-      setAreaBounds(next);
-      runArea(next, { ...form, prefecture: "" }, origin);
+      const cleared = { ...form, prefecture: "" };
+      onForm(cleared);
+      setArea({ bounds: next, prefecture: undefined });
+      runArea(next, cleared, origin);
     },
-    [form, origin, runArea],
+    [form, onForm, origin, runArea],
   );
 
   /** 条件が決まったときに呼ぶもの。モードで行き先が変わる。 */
@@ -94,16 +110,16 @@ export function useModeSwitch({
        * （モデルは両方付きで tool を呼べる）で味を変えただけで県全体に広がる
        * （実測: 枠の中 4 件が県全体の 6 件になった）。
        */
-      const changedPrefecture = (values.prefecture || undefined) !== prefecture;
-      if (areaBounds && !changedPrefecture) {
-        runArea(areaBounds, values, origin);
+      const nextPrefecture = values.prefecture || undefined;
+      if (area.bounds && nextPrefecture === area.prefecture) {
+        runArea(area.bounds, values, origin);
         return;
       }
-      // 範囲を捨てる側でも、覚えている値を同じ場所で落とす。
-      setAreaBounds(undefined);
+      // 範囲を捨てる側でも、覚えている「どこ」を同じ場所で更新する。
+      setArea({ bounds: undefined, prefecture: nextPrefecture });
       runSearch(values, "map", origin);
     },
-    [activeKeyword, areaBounds, mode, origin, prefecture, runArea, runDecide, runSearch],
+    [activeKeyword, area, mode, origin, runArea, runDecide, runSearch],
   );
 
   const switchMode = useCallback(
@@ -119,9 +135,9 @@ export function useModeSwitch({
        * ときは、その画面の範囲ではないので持ち込まない。
        */
       if (next === "map") {
-        if (mode === "map" && areaBounds) runArea(areaBounds, form, origin);
+        if (mode === "map" && area.bounds) runArea(area.bounds, form, origin);
         else {
-          setAreaBounds(undefined);
+          setArea({ bounds: undefined, prefecture: form.prefecture || undefined });
           runSearch(form, "map", origin);
         }
       } else if (next === "form") runSearch(form, "form");
@@ -148,7 +164,7 @@ export function useModeSwitch({
     },
     [
       activeKeyword,
-      areaBounds,
+      area,
       form,
       mode,
       onSelect,

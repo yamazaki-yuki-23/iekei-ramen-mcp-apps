@@ -378,6 +378,7 @@ function IekeiAppInner({
     runSearch,
     bounds: payload.query.bounds,
     prefecture: payload.query.prefecture,
+    onForm: setForm,
     runArea,
     runDecide,
     runNearby,
