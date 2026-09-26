@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { clusterShops } from "../lib/cluster";
 import { TASTES, type Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 
@@ -20,6 +21,10 @@ const TASTE_COLORS: Record<Shop["taste"], string> = {
 
 /** 選択中のピンの縁。地図タイルのどの色の上でも輪郭が出る濃さ。 */
 const SELECTED_STROKE = "#141312";
+
+/** 店 1 軒のピン。選択中だけ大きく、縁を濃くする。 */
+const PIN = { radius: 6, color: "#ffffff", weight: 1.5 } as const;
+const PIN_SELECTED = { radius: 10, color: SELECTED_STROKE, weight: 2 } as const;
 
 /**
  * 順路の線。
@@ -58,6 +63,11 @@ export function MapView({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  /*
+   * いまのズーム。塊の大きさはこれで決まるので、state で持って描き直す。
+   * ref だと変わっても再描画が起きず、寄っても塊が解けない。
+   */
+  const [zoom, setZoom] = useState(5);
   const layerRef = useRef<L.LayerGroup | null>(null);
   // 順路は店のマーカーとは別のレイヤーに置く。検索し直しても順路は残るので、
   // 店の描き直しで一緒に消えないようにする。
@@ -83,16 +93,27 @@ export function MapView({
     // 順路は店のピンより上に置く。下だと線がピンに隠れて追えない。
     routeLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
+    setZoom(map.getZoom());
+    // 寄ったら塊を解き直す。動かしただけ（moveend）では塊は変わらない。
+    map.on("zoomend", () => setZoom(map.getZoom()));
     return () => {
+      map.off("zoomend");
       map.remove();
       mapRef.current = null;
     };
   }, []);
 
-  // 店舗が変わったらマーカーを描き直す。
-  //
-  // 後始末（clearTimeout / off / clearLayers）は下の return で書いてあるが、
+  /*
+   * マーカーを描き直す。
+   *
+   * 近すぎる店は塊にまとめる（[src/lib/cluster.ts](../lib/cluster.ts)）。
+   * 東京 162 件が重なると、何軒あるのかも、どれを押しているのかも分からない。
+   *
+   * **ズームが変わるたびに描き直す。** 塊の大きさは画面上の距離で決まるので、
+   * 寄ったら解け、引いたらまとまる。
+   */
   // マーカーをループで作るため、検出器が登録と解除を対応づけられない。
+  // 後始末は下の return に書いてある。
   // react-doctor-disable-next-line react-doctor/effect-needs-cleanup
   useEffect(() => {
     const layer = layerRef.current;
@@ -104,20 +125,64 @@ export function MapView({
     layer.clearLayers();
     markers.clear();
 
-    for (const shop of shops) {
-      const marker = L.circleMarker([shop.lat, shop.lon], {
-        radius: 6,
-        color: "#ffffff",
-        weight: 1.5,
-        fillColor: TASTE_COLORS[shop.taste],
-        fillOpacity: 0.9,
+    for (const cluster of clusterShops(shops, zoom, selectedId)) {
+      // 1 軒だけの塊は、ふつうの店のピンとして描く。
+      if (cluster.shops.length === 1) {
+        const shop = cluster.shops[0];
+        const marker = L.circleMarker([shop.lat, shop.lon], {
+          ...(shop.id === selectedId ? PIN_SELECTED : PIN),
+          fillColor: TASTE_COLORS[shop.taste],
+          fillOpacity: 0.9,
+        })
+          .bindTooltip(`${shop.name}（${TASTES[shop.taste].label}）`)
+          .on("click", () => onSelectRef.current(shop));
+        marker.addTo(layer);
+        markers.set(shop.id, marker);
+        continue;
+      }
+
+      /*
+       * 塊は件数を出す。押すと、その塊が画面いっぱいになるまで寄る。
+       *
+       * 何軒か分からない丸を押させると、開いてみるまで何が起きるか読めない。
+       * 番号（.routePin）と紛れないよう、面ではなく縁で色を持たせている。
+       */
+      const bounds = L.latLngBounds(cluster.shops.map((s) => [s.lat, s.lon] as [number, number]));
+      L.marker([cluster.lat, cluster.lon], {
+        icon: L.divIcon({
+          /*
+           * CSS モジュールのクラス名は毎ビルド変わるので、掴む先として
+           * 素のクラスも 1 つ付けておく（E2E が塊だけを数えるため）。
+           */
+          className: `${styles.clusterPin} cluster-pin`,
+          html: String(cluster.shops.length),
+          iconSize: [36, 36],
+        }),
+        // 読み上げは一覧が担う。地図の塊はここでは名前を持たない。
+        keyboard: false,
       })
-        .bindTooltip(`${shop.name}（${TASTES[shop.taste].label}）`)
-        .on("click", () => onSelectRef.current(shop));
-      marker.addTo(layer);
-      markers.set(shop.id, marker);
+        .on("click", () => map.fitBounds(bounds, { padding: [32, 32], maxZoom: 17 }))
+        .addTo(layer);
     }
 
+    return () => {
+      // 付けたハンドラは自分で外す。clearLayers だけでも参照は切れるが、
+      // 「付けた側が外す」を形にしておかないと、あとで読む人に分からない。
+      for (const marker of markers.values()) marker.off("click");
+      layer.clearLayers();
+      markers.clear();
+    };
+  }, [shops, zoom, selectedId]);
+
+  /*
+   * 結果が変わったら、その全体が入るところまで寄せ直す。
+   *
+   * **描き直し（ズーム）とは別の節にしてある。** 同じ節に置くと、ユーザーが
+   * 手で寄せるたびに結果の全体へ引き戻され、地図を動かせなくなる。
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
     if (shops.length > 0) {
       map.fitBounds(L.latLngBounds(shops.map((s) => [s.lat, s.lon] as [number, number])), {
         padding: [24, 24],
@@ -128,16 +193,8 @@ export function MapView({
     }
     // 親の高さが後から確定する場合に備えて再計測する。
     const resize = setTimeout(() => map.invalidateSize(), 0);
-
-    return () => {
-      // 同じ tick で外れたときに、消えた地図を触りに行かないようにする。
-      clearTimeout(resize);
-      // 付けたハンドラは自分で外す。clearLayers だけでも参照は切れるが、
-      // 「付けた側が外す」を形にしておかないと、あとで読む人に分からない。
-      for (const marker of markers.values()) marker.off("click");
-      layer.clearLayers();
-      markers.clear();
-    };
+    // 同じ tick で外れたときに、消えた地図を触りに行かないようにする。
+    return () => clearTimeout(resize);
   }, [shops]);
 
   /*
@@ -165,18 +222,18 @@ export function MapView({
     }
   }, [focus]);
 
-  // リストで選ばれた店舗を強調し、地図を寄せる。
+  /*
+   * 選んだ店へ 1 度だけ寄せる。
+   *
+   * **ズームを見ない。** 描き直しと同じ依存にすると、ユーザーが引いた瞬間に
+   * 選択中の店へ寄せ直され、広げる操作ができなくなる。
+   */
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selectedId) return;
-    const marker = markersRef.current.get(selectedId);
-    if (!marker) return;
-    marker.bringToFront().setStyle({ radius: 10, color: SELECTED_STROKE, weight: 2 });
+    const marker = selectedId ? markersRef.current.get(selectedId) : undefined;
+    if (!map || !marker) return;
+    marker.bringToFront().openTooltip();
     map.setView(marker.getLatLng(), Math.max(map.getZoom(), 14));
-    marker.openTooltip();
-    return () => {
-      marker.setStyle({ radius: 6, color: "#ffffff", weight: 1.5 });
-    };
   }, [selectedId]);
 
   /*

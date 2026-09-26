@@ -1303,3 +1303,30 @@ test.describe("地図を広げる", () => {
     await expect.poll(heightOf).toBe(inline);
   });
 });
+
+test.describe("地図の塊", () => {
+  /**
+   * 東京 162 件・神奈川 121 件が重なると、何軒あるのかも、どれを押している
+   * のかも分からない。近すぎる店はまとめ、件数を出す。
+   */
+  test("引いていると塊にまとまり、押すと寄って解ける", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const clusters = app.locator(".cluster-pin");
+
+    // 全国を見ている状態では、単独のピンより塊のほうが多い。
+    await expect.poll(() => clusters.count()).toBeGreaterThan(0);
+    const biggest = clusters.first();
+    const before = Number(await biggest.textContent());
+    expect(before).toBeGreaterThan(1);
+
+    // 押した塊の中身が画面いっぱいに広がるので、その塊は解ける。
+    await biggest.click();
+    await expect
+      .poll(async () => {
+        const counts = await clusters.allTextContents();
+        return Math.max(0, ...counts.map(Number));
+      })
+      .toBeLessThan(before);
+  });
+});

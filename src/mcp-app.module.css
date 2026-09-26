@@ -836,6 +836,30 @@
   box-shadow: 0 0 0 2px #ffffff;
 }
 
+/*
+ * 塊のピン。
+ *
+ * **数を必ず出す。** 「ここに何かある」だけでは、押す前に何が起きるか
+ * 分からない。順路の番号（.routePin）と紛れないよう、色は面ではなく縁で持つ。
+ * .leaflet-div-icon の白い四角とクラス 1 つ同士で競合するので 2 回書く。
+ */
+.clusterPin.clusterPin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  box-shadow:
+    0 0 0 2px #b8442c,
+    var(--elevation-1);
+  cursor: pointer;
+}
+
 /* --- 焦点（フォーカス） --- */
 
 /*
