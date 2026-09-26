@@ -78,6 +78,14 @@ export const ORIGIN_NOTES: Record<OriginSource, string> = {
   place: "指定した地名",
 };
 
+/** 地図に出ている範囲。南西と北東の角で持つ。 */
+export interface Bounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
 /** UI が tool 結果として受け取る構造化データ。 */
 export interface AppPayload {
   mode: SearchMode;
@@ -90,6 +98,8 @@ export interface AppPayload {
     taste?: TasteKey;
     keyword?: string;
     origin?: Origin;
+    /** 地図に出ていた範囲で絞ったときだけ入る。 */
+    bounds?: Bounds;
   };
   /** 選択可能な都道府県（データに実在するものだけ）。 */
   prefectures: string[];

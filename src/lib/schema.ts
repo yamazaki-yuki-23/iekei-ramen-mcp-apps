@@ -3,6 +3,37 @@ import { z } from "zod";
 
 const TasteSchema = z.enum(["rich", "creamy", "chain", "unknown"]);
 
+/**
+ * 地図に出ている範囲。
+ *
+ * **緯度経度の妥当性はここで弾く。** 地図から渡ってくる値は、引ききった
+ * ときに ±180 を超えることがある（Leaflet は世界を繰り返して数える）。
+ */
+export const BoundsSchema = z
+  .object({
+    north: z.number().min(-90).max(90),
+    south: z.number().min(-90).max(90),
+    east: z.number().min(-180).max(180),
+    west: z.number().min(-180).max(180),
+  })
+  /*
+   * **角の順番も見る。** 1 つずつの範囲だけ見ていると、南北が逆でも通る。
+   * そのまま絞り込むと、成り立たない比較になって必ず 0 件になり、
+   * 呼び出し側の間違いが「この範囲に店はありません」という答えに化ける
+   * （実測: isError は付かず、「該当する店舗はありませんでした」が返っていた）。
+   * 日付変更線はまたがない（国内だけのデータ）ので、経度も南西 → 北東で見る。
+   */
+  /*
+   * **幅も高さも要る。** 同じ値を渡されると、面積ゼロの範囲になって
+   * その点に完全一致する店しか当たらない＝事実上いつも 0 件になる。
+   * 逆さのときと同じで、呼び出し側の誤りが「この範囲に店はありません」に
+   * 化けるので、答えではなく誤りとして返す。
+   */
+  .refine((b) => b.south < b.north && b.west < b.east, {
+    message:
+      "範囲は南西と北東の角で、幅と高さのある箱を渡してください（south < north、west < east）",
+  });
+
 const ShopSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -39,6 +70,7 @@ export const PayloadSchema = z.object({
         source: z.enum(["precise", "host", "edge", "place"]),
       })
       .optional(),
+    bounds: BoundsSchema.optional(),
   }),
   /** 選択肢を UI に渡す（都道府県リストはデータ由来なのでサーバーが持つ）。 */
   prefectures: z.array(z.string()),

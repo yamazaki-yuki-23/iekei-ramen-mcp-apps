@@ -3,7 +3,7 @@
  * 実ブラウザ・実ホスト・実 MCP サーバーを通して 3 モードを操作する。
  */
 import { expect, test } from "@playwright/test";
-import { appFrame, callTool, shopCards, shopName, waitForApp } from "./helpers";
+import { appFrame, callTool, plottedShops, shopCards, shopName, waitForApp } from "./helpers";
 
 test.describe("検索フォーム", () => {
   test("全国の店舗を一覧表示する", async ({ page }) => {
@@ -164,7 +164,11 @@ test.describe("地図から探す", () => {
     await expect(map).toBeVisible();
     // Leaflet の circleMarker は SVG path として描かれる
     await expect(map.locator("svg path").first()).toBeVisible();
-    expect(await map.locator("svg path").count()).toBeGreaterThan(50);
+    /*
+     * 重なる店は塊にまとまるので、ピンの数は店の数と一致しない。
+     * **塊の件数を足すと全件になる**——そこを見張る。
+     */
+    expect(await plottedShops(app)).toBe(558);
   });
 
   test("OpenStreetMap の出典を表示する", async ({ page }) => {
@@ -186,15 +190,13 @@ test.describe("地図から探す", () => {
     const app = await callTool(page, "show-iekei-ramen-map");
     await waitForApp(app);
 
-    const map = app.getByRole("application", { name: "家系ラーメン店の地図" });
-    const before = await map.locator("svg path").count();
+    const before = await plottedShops(app);
 
     await app.locator("#pref").selectOption("神奈川県");
     await expect(app.getByRole("heading", { name: /神奈川県の家系ラーメン/ })).toBeVisible();
 
-    const after = await map.locator("svg path").count();
-    expect(after).toBeLessThan(before);
-    expect(after).toBeGreaterThan(0);
+    await expect.poll(() => plottedShops(app)).toBeLessThan(before);
+    expect(await plottedShops(app)).toBeGreaterThan(0);
   });
 });
 
@@ -1217,8 +1219,21 @@ test.describe("まわる店（順路）", () => {
     await expect(line).toHaveCount(1);
     await expect(line).toHaveAttribute("stroke-dasharray", "6 6");
     // 番号のピンは順路の軒数だけ出る。
-    const pins = app.locator(".leaflet-marker-icon");
+    const pins = app.locator(".route-pin");
     await expect(pins).toHaveCount(2);
+    /*
+     * **番号は選択中のピンより上。** 選んだ店はそのまま順路に入ることが多く、
+     * 下に潜ると何軒目か読めなくなる（選択中のピンを塊より上へ出したときに、
+     * 番号が巻き添えで下がった）。
+     *
+     * 番号は `interactive: false`＝`pointer-events: none` なので、
+     * **elementFromPoint では測れない**（当たり判定から外れて下の要素が返る）。
+     * 置かれているペインと、その重なり順で見る。
+     */
+    await expect(pins.first().locator("xpath=..")).toHaveClass(/leaflet-routeOrder-pane/);
+    const zIndexOf = (pane: string) =>
+      app.locator(`.leaflet-${pane}-pane`).evaluate((el) => Number(getComputedStyle(el).zIndex));
+    expect(await zIndexOf("routeOrder")).toBeGreaterThan(await zIndexOf("selectedShop"));
     /*
      * 直前に選んだ店へズームしたままだと、足した順路が地図の外に出て、
      * 線を引いても見えない。順路の全体が入るところまで寄せ直す。
@@ -1276,5 +1291,721 @@ test.describe("画面端の余白", () => {
     await setInset("8px");
     expect(await paddingOf("Left")).toBe("24px");
     expect(await paddingOf("Top")).toBe("24px");
+  });
+});
+
+test.describe("地図を広げる", () => {
+  /**
+   * 枠の中の 24rem では、東京 162 件が重なる範囲を読めない。
+   * ホストに全画面を頼み、**返ってきたモードに合わせて**枠を伸ばす。
+   */
+  test("全画面にすると地図が高くなり、押し戻すと元に戻る", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    const map = app.locator("div[role=application]");
+
+    const heightOf = async () => (await map.boundingBox())!.height;
+    const inline = await heightOf();
+
+    await app.getByRole("button", { name: "地図を広げる" }).click();
+    const shrink = app.getByRole("button", { name: "元の大きさに戻す" });
+    await expect(shrink).toBeVisible();
+    // 伸びるのはホストの枠なので、落ち着くまで測り直す。
+    await expect.poll(heightOf).toBeGreaterThan(inline);
+
+    await shrink.click();
+    await expect(app.getByRole("button", { name: "地図を広げる" })).toBeVisible();
+    await expect.poll(heightOf).toBe(inline);
+  });
+});
+
+test.describe("基準地点が店の邪魔をしないこと", () => {
+  /**
+   * 基準地点の印と店のピンが同じ場所に来ることはある（その店の名前で地点を
+   * 調べたときなど）。**印が上に乗って押せなくなると、その店は選べない。**
+   * レイヤーを作る順番では重なり順は決まらない（Leaflet は同じ SVG に描く）。
+   */
+  test("基準地点と重なっても、店のピンが手前に出る", async ({ page }) => {
+    // たかさご家の座標をそのまま基準地点にする。
+    const app = await callTool(page, "show-iekei-ramen-map", {
+      // その 1 軒だけを囲む枠。塊にならず、単独のピンとして出る。
+      bounds: { north: 35.441053, south: 35.440053, east: 139.629659, west: 139.628659 },
+      lat: 35.440553,
+      lon: 139.629159,
+      label: "たかさご家",
+      source: "place",
+    });
+    await waitForApp(app);
+
+    const pin = app.locator('path[aria-label^="たかさご家"]');
+    await expect(pin).toHaveCount(1);
+
+    /*
+     * **その位置で手前に出ているのは誰か**を見る。
+     *
+     * elementFromPoint はその文書の表示域だけを見るので、枠の外に出ている
+     * ピンでは null が返る。先に表示域へ入れてから測ること（それに気付かず
+     * 「手前に出ている」つもりの検査を書いていた）。
+     *
+     * 実際に押す形にもしてみたが、**ホストの版面によってピンが枠の外に出ると
+     * 当たらず、CI だけで落ちた。** 押せるかどうかではなく、重なり順そのものを
+     * 見る方が環境に左右されない。
+     */
+    expect(
+      await pin.evaluate((el) => {
+        el.scrollIntoView({ block: "center" });
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return hit?.getAttribute("aria-label") ?? null;
+      }),
+    ).toMatch(/^たかさご家/);
+  });
+});
+
+test.describe("全画面からの戻り道", () => {
+  /**
+   * 畳む釦は地図モードにしか無い。全画面のまま別のタブへ移ると釦ごと消え、
+   * **ホストは全画面のままなのにアプリ内から戻せなくなる。**
+   */
+  test("地図から離れたら全画面を畳む", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    /*
+     * **枠の高さでは測れない。** 高さはモードごとの中身で決まるので、
+     * 検索フォーム（長い一覧）のふつうの高さが、地図の全画面より高いことすらある。
+     * ホストが全画面のときに付ける印を見る。
+     */
+    const panel = page.locator("iframe").first().locator("xpath=..");
+    const isFullscreen = () => panel.evaluate((el) => el.className.includes("fullscreen"));
+
+    await app.getByRole("button", { name: "地図を広げる" }).click();
+    await expect.poll(isFullscreen).toBe(true);
+
+    // 地図を離れる。ここで戻さないと、出られなくなる。
+    await app.getByRole("tab", { name: "検索フォーム" }).click();
+
+    await expect.poll(isFullscreen).toBe(false);
+  });
+});
+
+test.describe("地図の塊", () => {
+  /**
+   * 東京 162 件・神奈川 121 件が重なると、何軒あるのかも、どれを押している
+   * のかも分からない。近すぎる店はまとめ、件数を出す。
+   */
+  test("引いていると塊にまとまり、押すと寄って解ける", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const clusters = app.locator(".cluster-pin");
+
+    // 全国を見ている状態では、単独のピンより塊のほうが多い。
+    await expect.poll(() => clusters.count()).toBeGreaterThan(0);
+    const biggest = clusters.first();
+    const before = Number(await biggest.textContent());
+    expect(before).toBeGreaterThan(1);
+
+    // 押した塊の中身が画面いっぱいに広がるので、その塊は解ける。
+    await biggest.click();
+    await expect
+      .poll(async () => {
+        const counts = await clusters.allTextContents();
+        return Math.max(0, ...counts.map(Number));
+      })
+      .toBeLessThan(before);
+  });
+});
+
+test.describe("選んだ店が塊に隠れないこと", () => {
+  /**
+   * 塊（divIcon）は markerPane、店のピン（circleMarker）は overlayPane に載る。
+   * 別のペインなので bringToFront では追い越せず、**選んだ店が 36px の塊に
+   * 覆われて見えなくなる**。実測で、選んだ 1 軒と残りの塊の中心が 0.4〜3.3px
+   * （zoom 12〜15）まで近づく組があった。
+   */
+  test("塊と重なっても、選択中のピンが手前に出る", async ({ page }) => {
+    // 横浜・曙町あたりの 6 軒。引くと塊になり、その中心が先頭の店に重なる。
+    const app = await callTool(page, "show-iekei-ramen-map", {
+      bounds: { north: 35.4461, south: 35.4356, east: 139.6338, west: 139.6236 },
+    });
+    await waitForApp(app);
+
+    await shopCards(app).first().click();
+    const pin = app.locator('path[stroke="#141312"]');
+    await expect(pin).toBeVisible();
+
+    /** 選択中のピンの中心が塊に覆われているか、その位置で手前に出ているか。 */
+    const inspect = () =>
+      pin.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const x = r.x + r.width / 2;
+        const y = r.y + r.height / 2;
+        const covered = [...document.querySelectorAll(".cluster-pin")].some((c) => {
+          const b = c.getBoundingClientRect();
+          return x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height;
+        });
+        return { covered, topIsPin: document.elementFromPoint(x, y) === el };
+      });
+
+    // 重なる状態になるまで引く。塊が離れていては、この検査に意味が無い。
+    let state = await inspect();
+    for (let i = 0; i < 5 && !state.covered; i++) {
+      await app.locator(".leaflet-control-zoom-out").click();
+      await page.waitForTimeout(400);
+      state = await inspect();
+    }
+
+    // 前提（重なっていること）も検査に含める。満たせないなら落とす。
+    expect(state.covered).toBe(true);
+    expect(state.topIsPin).toBe(true);
+  });
+});
+
+test.describe("塊の中身に行き着けること", () => {
+  /**
+   * **寄れば解ける、とは限らない。** 実データには 5.2m しか離れていない 2 軒が
+   * あり（ろくの家 / 稲和家ラーメン）、地図の最大ズーム 19 でも 21.1px しか
+   * 離れない＝まとめる下限 36px を下回ったまま。寄せるだけの逃げ道しか無いと、
+   * その 2 軒は地図から永久に選べない。
+   */
+  test("キーボードだけでも、単独のピンから店を選べる", async ({ page }) => {
+    /*
+     * 塊だけ押せても足りない。**一覧は 20 件で切れる**ので、単独のピンが
+     * その店への唯一の入口になることがある。円（SVG の path）は既定では
+     * tabindex も Enter も持たない。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "神奈川県" });
+    await waitForApp(app);
+
+    const pin = app.locator(".leaflet-overlay-pane path[role=button]").first();
+    await expect(pin).toHaveAttribute("tabindex", "0");
+    const label = await pin.getAttribute("aria-label");
+    expect(label).toMatch(/（(直系・濃厚|クリーミー|チェーン・万人向け|情報なし)）$/);
+
+    await pin.focus();
+    await page.keyboard.press("Enter");
+
+    // 選べた＝詳細と行き先が出る。
+    await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+
+    /*
+     * **焦点が地図に残ること。** 選ぶと印を描き直すので、押していた要素ごと
+     * 消える。ブラウザは焦点を引き継がないため body へ落ち、次の Tab が画面の
+     * 先頭から始まる（実測: activeElement が BODY になっていた）。
+     */
+    await expect
+      .poll(() =>
+        app
+          .locator("body")
+          .evaluate(() => document.activeElement?.getAttribute("aria-label") ?? null),
+      )
+      .toBe(label);
+  });
+
+  test("塊の外の店を選んだら、その塊の一覧は畳む", async ({ page }) => {
+    /*
+     * 塊を開いたまま外の店を選ぶと、**「この地点の 3 軒」の下に 4 枚**並ぶ。
+     * 見出しの数も「この地点」というまとまりも嘘になる。外を選んだ時点で
+     * その塊の話は終わっているので、一覧を元に戻す。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map", {
+      bounds: { north: 35.4461, south: 35.4356, east: 139.6338, west: 139.6236 },
+    });
+    await waitForApp(app);
+
+    await app.locator(".cluster-pin").first().focus();
+    await page.keyboard.press("Enter");
+    await expect(app.getByText("この地点の 3 軒")).toBeVisible();
+    await expect.poll(() => shopCards(app).count()).toBe(3);
+
+    // その塊に入っていない店をキーボードで選ぶ。
+    await app.locator('path[aria-label^="寿々喜家 曙町店"]').focus();
+    await page.keyboard.press("Enter");
+
+    await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+    await expect(app.getByText("この地点の", { exact: false })).toHaveCount(0);
+  });
+
+  test("寄り切った塊を開いても、引き戻されない", async ({ page }) => {
+    /*
+     * 上限を固定にすると、すでに 18〜19 まで寄っているところで押したときに
+     * 17 まで戻される（実測: 18 → 17）。**寄り切っても解けない塊はある**ので、
+     * 開くたびに遠ざかることになる。
+     */
+    // ろくの家 / 稲和家ラーメン（5.2m 差）だけを囲む枠。
+    const app = await callTool(page, "show-iekei-ramen-map", {
+      bounds: { north: 34.3344, south: 34.3334, east: 134.0707, west: 134.0697 },
+    });
+    await waitForApp(app);
+    const zoom = () =>
+      app.locator("div[role=application]").evaluate((el) => {
+        const tile = el.querySelector("img.leaflet-tile") as HTMLImageElement | null;
+        return Number(tile?.src.replace("https://tile.openstreetmap.org/", "").split("/")[0]);
+      });
+    await expect.poll(zoom).toBeGreaterThan(17);
+    const before = await zoom();
+
+    /*
+     * キーボードで開く。**クリックでは届かないことがある**——ホストの版面に
+     * よってピンが枠の外に出ると当たらず、開かないまま通ってしまう
+     * （実際に、押したつもりで一覧が出ていない測り方をしていた）。
+     */
+    await app.locator(".cluster-pin").first().focus();
+    await page.keyboard.press("Enter");
+
+    await expect(app.getByText("この地点の", { exact: false })).toBeVisible();
+    expect(await zoom()).toBe(before);
+  });
+
+  test("キーボードだけでも塊を開ける", async ({ page }) => {
+    /*
+     * **一覧では代わりにならない。** 地図モードの一覧は 20 件で切れるので、
+     * 塊を開けないと大半の店に辿り着けない。数字だけの丸は読み上げでも
+     * 「12」としか聞こえないため、件数で名乗らせる。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const cluster = app.locator(".cluster-pin").first();
+    const size = Number(await cluster.textContent());
+
+    await expect(cluster).toHaveAttribute("aria-label", `この地点の ${size} 軒を開く`);
+    await expect(cluster).toHaveAttribute("tabindex", "0");
+
+    await cluster.focus();
+    await page.keyboard.press("Enter");
+
+    await expect(app.getByText(`この地点の ${size} 軒`, { exact: false })).toBeVisible();
+
+    /*
+     * **焦点が出したばかりの一覧へ移ること。** 開くと地図が寄って塊ごと
+     * 描き直されるので、押していた要素は消える。body に落ちると次の Tab が
+     * 画面の先頭から始まり、開いた中身へ辿り着けない。
+     */
+    await expect
+      .poll(() =>
+        app.locator("body").evaluate(() => {
+          const el = document.activeElement;
+          // **body を外すこと。** body の textContent には画面中の文字が入るので、
+          // 焦点が落ちていても「この地点の」に一致してしまう（最初それで通していた）。
+          return !el || el.tagName === "BODY" ? null : (el.textContent?.slice(0, 20) ?? null);
+        }),
+      )
+      .toContain("この地点の");
+  });
+
+  test("塊を押すと中身が一覧に出て、そこから選べる", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+
+    const cluster = app.locator(".cluster-pin").first();
+    const size = Number(await cluster.textContent());
+    await cluster.click();
+
+    // 押した塊の中身だけが一覧に出る（上限 20 件）。
+    await expect(app.getByText(`この地点の ${size} 軒`, { exact: false })).toBeVisible();
+    await expect.poll(() => shopCards(app).count()).toBe(Math.min(size, 20));
+
+    // そこから選べる＝地図に出ていても行き先がある。
+    await shopCards(app).first().click();
+    await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+
+    // 元の一覧にも戻せる。
+    await app.getByRole("button", { name: "すべて表示" }).click();
+    await expect.poll(() => shopCards(app).count()).toBe(20);
+  });
+});
+
+test.describe("この範囲で探す", () => {
+  /**
+   * 地図を別の街へ動かしても、出ている店は最初の検索結果のままだった。
+   * 見ている範囲をサーバーへ渡して、そこにある店に入れ替える。
+   */
+  test("寄せた範囲の件数に入れ替わり、もう一度押しても変わらない", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const count = async () => {
+      const text = await app
+        .getByText(/\d+ 件/)
+        .first()
+        .textContent();
+      return Number((text ?? "").replace(/\D/g, ""));
+    };
+    const search = app.getByRole("button", { name: "この範囲で探す" });
+
+    const whole = await count();
+    expect(whole).toBeGreaterThan(500);
+    await expect(app.getByRole("heading", { name: "全国の家系ラーメン" })).toBeVisible();
+
+    // 塊を押すと、その中身が画面いっぱいになるまで寄る。
+    await app.locator(".cluster-pin").first().click();
+    await search.click();
+    await expect.poll(count).toBeLessThan(whole);
+    /*
+     * 見出しも範囲を名乗る。**「全国の家系ラーメン 489 件」と出ていた。**
+     * サーバーがモデルへ渡す文だけ直しても、画面に嘘が残る。
+     */
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible();
+
+    /*
+     * もう一度押しても件数が変わらないこと＝**寄せ直していない**こと。
+     * 結果の全体へ寄せ直すと枠が縮み、端の店が次の範囲から外れて減っていく。
+     * ユーザーが自分で決めた画角を勝手に詰めない、の実測になる。
+     */
+    const area = await count();
+    await search.click();
+    await expect.poll(count).toBe(area);
+  });
+});
+
+test.describe("隣の世界まで動かしたとき", () => {
+  /**
+   * Leaflet は世界を横に繰り返して描く。隣の複製まで動かすと経度が 480〜510 の
+   * ようになるので、両端を 180 に丸めると**日本が画面に出ているのに幅ゼロの
+   * 範囲**になり、「この範囲で探す」が 0 件を返す。
+   */
+  test("隣の複製に動かしても、この範囲で探すが 0 件にならない", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const map = app.locator("div[role=application]");
+
+    /*
+     * 世界を小さくしてから、1 周を超えて引きずる。
+     *
+     * **整定を待つこと。** 待たずに続けて引きずると途中で呑まれ、複製まで
+     * 届かない＝日本が見えたままになり、直っていなくても通ってしまう
+     * （実際にそうなっていた）。ズームと慣性が止まってから次へ進む。
+     */
+    for (let i = 0; i < 3; i++) await app.locator(".leaflet-control-zoom-out").click();
+    await page.waitForTimeout(800);
+    const box = (await map.boundingBox())!;
+    const y = box.y + box.height / 2;
+    for (let i = 0; i < 3; i++) {
+      await page.mouse.move(box.x + box.width - 20, y);
+      await page.mouse.down();
+      await page.mouse.move(box.x + 20, y, { steps: 20 });
+      await page.mouse.up();
+      await page.waitForTimeout(400);
+    }
+
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+
+    // 日本は見えているのだから、0 件にはならない。
+    await expect
+      .poll(async () => {
+        const text = await app
+          .getByText(/\d+ 件/)
+          .first()
+          .textContent();
+        return Number((text ?? "").replace(/\D/g, ""));
+      })
+      .toBeGreaterThan(0);
+  });
+});
+
+test.describe("外から来た文字の扱い", () => {
+  /**
+   * 基準地点の表示名は tool の引数と geocode の結果（どちらも外から来る）。
+   * Leaflet は渡された文字列を **HTML として描く**ので、素通しにできない。
+   */
+  test("地名に markup が入っていても、文字として出す", async ({ page }) => {
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: '<img src=x onerror="window.__pwned=1">横浜駅',
+      source: "place",
+    });
+    await waitForApp(app);
+    await app.getByRole("tab", { name: "地図から探す" }).click();
+    await expect(app.getByText(/直線距離 500m と 1km/)).toBeVisible();
+
+    /*
+     * 基準地点の印にカーソルが乗るとツールチップが開く。印は 5px と小さく、
+     * 同心円や店のピンと重なって hover の当たり判定を取りづらいので、
+     * イベントを直接送る。
+     */
+    await app.locator('path[fill="#1f6f4a"]').dispatchEvent("mouseover");
+    const tip = app.locator(".leaflet-tooltip");
+    await expect(tip).toBeVisible();
+
+    // 中身は文字。img が生えていない＝HTML として解釈されていない。
+    await expect(tip).toContainText("<img");
+    expect(await tip.locator("img").count()).toBe(0);
+  });
+});
+
+test.describe("範囲と他の条件の両立", () => {
+  /**
+   * 「この範囲で探す」のあと味を変えると、範囲が落ちて全国に戻っていた。
+   * 味は「どこ」ではなく「何」なので、範囲は保たれるべき。
+   */
+  test("都道府県と範囲の両方が来ていても、味を変えて範囲を失わない", async ({ page }) => {
+    /*
+     * モデルは `show-iekei-ramen-map` を両方付きで呼べる（スキーマも payload も
+     * 両方を持てる）。「都道府県が入っていたら範囲を捨てる」と決め打つと、
+     * この状態で味を変えただけで県全体に広がる。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map", {
+      prefecture: "神奈川県",
+      bounds: { north: 35.52, south: 35.42, east: 139.68, west: 139.58 },
+    });
+    await waitForApp(app);
+    const count = async () => {
+      const text = await app
+        .getByText(/\d+ 件/)
+        .first()
+        .textContent();
+      return Number((text ?? "").replace(/\D/g, ""));
+    };
+
+    expect(await count()).toBe(32);
+
+    await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
+
+    // 枠の中の 4 件。範囲を落とすと県全体の 6 件になる。
+    await expect.poll(count).toBe(4);
+    /*
+     * **効いている条件は両方名乗る。** 枠が県境をまたいでいた場合、県の外の店は
+     * 落ちている。範囲だけを名乗ると「見えている範囲の全部」と読めてしまう。
+     */
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲（神奈川県）の家系ラーメン" }),
+    ).toBeVisible();
+
+    // 逆に、都道府県を**変えた**ら範囲は捨てる。「どこ」の言い直しだから。
+    await app.locator("#pref").selectOption("東京都");
+    await expect(app.getByRole("heading", { name: "東京都の家系ラーメン" })).toBeVisible();
+  });
+
+  test("範囲検索の応答を待つ間に味を変えても、範囲は失われない", async ({ page }) => {
+    /*
+     * 「この範囲で探す」の応答が返る前に味を変えると、そのときの payload には
+     * まだ範囲が入っていない。payload だけを見ていると、2 本目が全国検索に
+     * なり、**あとから返った方が勝つ**ので範囲の結果が捨てられる。
+     */
+    await page.route("**/mcp", async (route) => {
+      // 範囲つきの呼び出しだけ遅らせて、追い越しを起こす。
+      if ((route.request().postData() ?? "").includes('"bounds"')) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      await route.continue();
+    });
+
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+
+    await app.locator(".cluster-pin").first().click();
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    // 応答を待たずに味を変える。
+    await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
+
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("範囲検索の応答を待つ間に味を変えても、都道府県は戻らない", async ({ page }) => {
+    /*
+     * 「この範囲で探す」は都道府県を空にして呼ぶが、画面のプルダウンは応答が
+     * 返るまで前の県を指したままになる。そこで味を変えると、2 本目が県を
+     * 付け直して走り、**枠が県境をまたいでいた場合に黙って県内へ絞り直される**。
+     */
+    await page.route("**/mcp", async (route) => {
+      if ((route.request().postData() ?? "").includes('"bounds"')) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      await route.continue();
+    });
+
+    const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    await expect(app.locator("#pref")).toHaveValue("神奈川県");
+
+    await app.locator(".cluster-pin").first().click();
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
+
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible({ timeout: 15_000 });
+    // 枠が「どこ」を言い直したのだから、県は外れたままであること。
+    await expect(app.locator("#pref")).toHaveValue("");
+  });
+
+  test("地図タブを押し直しても範囲は保たれる", async ({ page }) => {
+    /*
+     * いま居るタブをもう一度押すのは「入り直し」ではない（「迷ったら」で
+     * キーワードを保つのと同じ扱い）。ここで範囲が落ちると、押しただけで
+     * 母数が全国に広がり、理由が画面に残らない。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+
+    await app.locator(".cluster-pin").first().click();
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible();
+
+    await app.getByRole("tab", { name: "地図から探す" }).click();
+
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible();
+  });
+
+  test("味を変えても範囲は保たれる", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const count = async () => {
+      const text = await app
+        .getByText(/\d+ 件/)
+        .first()
+        .textContent();
+      return Number((text ?? "").replace(/\D/g, ""));
+    };
+
+    await app.locator(".cluster-pin").first().click();
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    const area = await count();
+    expect(area).toBeLessThan(558);
+
+    // 味のチップは押した瞬間に呼び直す。
+    await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
+
+    // 見出しも件数も、範囲のまま。
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible();
+    await expect.poll(count).toBeLessThanOrEqual(area);
+  });
+});
+
+test.describe("まわる店と範囲の両立", () => {
+  /**
+   * 積んだ店がある状態で「この範囲で探す」を押すと、地図が作り直される。
+   * このとき順路の節が寄せ直すと、**画面の見出しと結果は範囲のものなのに、
+   * 地図だけ順路へ飛ぶ。** その状態でもう一度押すと、見当違いの場所を探す。
+   */
+  test("1 軒目を積んだときも、出発点ごと順路の全体へ寄せる", async ({ page }) => {
+    /*
+     * 地図を開いた時点では順路が空なので、そこで「作り直しの 1 回目」を
+     * 記録しそこねると、**最初の 1 軒を積んだときが 1 回目と誤解されて
+     * 寄せ直しが飛ぶ**。出発点が遠いと、順路の大半が画面の外に残る。
+     */
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+      source: "place",
+    });
+    await waitForApp(app);
+    await app.getByRole("tab", { name: "地図から探す" }).click();
+    await expect(app.getByText(/直線距離 500m と 1km/)).toBeVisible();
+
+    // 一覧の先頭は愛知県の店。横浜から 250km ほど離れている。
+    await shopCards(app).first().click();
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+
+    // 出発点の印が地図の枠に入っていること＝順路の全体へ寄せていること。
+    await expect
+      .poll(async () => {
+        const box = await app.locator("div[role=application]").boundingBox();
+        const origin = await app.locator('path[fill="#1f6f4a"]').boundingBox();
+        if (!box || !origin) return false;
+        return (
+          origin.x >= box.x &&
+          origin.x + origin.width <= box.x + box.width &&
+          origin.y >= box.y &&
+          origin.y + origin.height <= box.y + box.height
+        );
+      })
+      .toBe(true);
+  });
+
+  test("条件を変えたら、古い順路ではなく新しい結果へ寄せる", async ({ page }) => {
+    /*
+     * 積んだ店があるまま条件を変えると、地図が作り直される。このとき順路の節が
+     * 寄せ直すと、**結果は入れ替わっているのに地図だけ古い順路へ飛ぶ**。
+     * 順路は変わっていないのだから、寄せる理由が無い。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const count = async () => {
+      const text = await app
+        .getByText(/\d+ 件/)
+        .first()
+        .textContent();
+      return Number((text ?? "").replace(/\D/g, ""));
+    };
+
+    // 一覧の先頭（愛知県）を積む。ここで地図はその 1 軒へ寄る。
+    await shopCards(app).first().click();
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+    await expect(app.getByRole("button", { name: "まわる店から外す" }).first()).toBeVisible();
+
+    // 条件を変えて結果を入れ替える（範囲は付かないので、結果の全体へ寄るはず）。
+    await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
+    // 全国の直系・濃厚は 17 件（関東 4 県に散っている）。
+    await expect.poll(count).toBe(17);
+
+    /*
+     * 結果の全体が見えているなら、その範囲で探しても件数は変わらない。
+     * 古い順路へ飛んでいると、見えているのは 1 軒の周りだけなので激減する。
+     */
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await expect.poll(count).toBe(17);
+  });
+
+  test("積んだ店があっても、範囲で探した画角が動かない", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const count = async () => {
+      const text = await app
+        .getByText(/\d+ 件/)
+        .first()
+        .textContent();
+      return Number((text ?? "").replace(/\D/g, ""));
+    };
+    const search = app.getByRole("button", { name: "この範囲で探す" });
+
+    // 1 軒積む。ここで地図は順路（その 1 軒）へ寄る。
+    await shopCards(app).first().click();
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+    await expect(app.getByRole("button", { name: "まわる店から外す" }).first()).toBeVisible();
+
+    // **順路から離れた広い画角にする。** 同じ場所のままだと、飛んでも
+    // 結果が変わらず、この不具合を捕まえられない。
+    for (let i = 0; i < 6; i++) await app.locator(".leaflet-control-zoom-out").click();
+
+    await search.click();
+    const area = await count();
+    expect(area).toBeGreaterThan(1);
+
+    // もう一度押しても同じ範囲＝地図が順路へ飛んでいない。
+    await search.click();
+    await expect.poll(count).toBe(area);
+  });
+});
+
+test.describe("基準地点の同心円", () => {
+  /**
+   * 「歩けるか」を決める材料が画面に無かった。基準地点があるときは印と、
+   * 直線距離 500m / 1km の円を出す。
+   */
+  test("現在地から地図へ移ると、基準地点が引き継がれて円が出る", async ({ page }) => {
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+      source: "place",
+    });
+    await waitForApp(app);
+
+    // 地図モードへ移っても、どこから見ているかは消えない。
+    await app.getByRole("tab", { name: "地図から探す" }).click();
+    await expect(app.getByText(/直線距離 500m と 1km/)).toBeVisible();
+    // 円は 2 本（500m / 1km）。Leaflet は円も path で描く。
+    await expect.poll(() => app.locator("path[stroke-dasharray='4 6']").count()).toBe(2);
   });
 });
