@@ -1521,6 +1521,28 @@ test.describe("範囲と他の条件の両立", () => {
     await expect(app.getByRole("heading", { name: "東京都の家系ラーメン" })).toBeVisible();
   });
 
+  test("地図タブを押し直しても範囲は保たれる", async ({ page }) => {
+    /*
+     * いま居るタブをもう一度押すのは「入り直し」ではない（「迷ったら」で
+     * キーワードを保つのと同じ扱い）。ここで範囲が落ちると、押しただけで
+     * 母数が全国に広がり、理由が画面に残らない。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+
+    await app.locator(".cluster-pin").first().click();
+    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible();
+
+    await app.getByRole("tab", { name: "地図から探す" }).click();
+
+    await expect(
+      app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+    ).toBeVisible();
+  });
+
   test("味を変えても範囲は保たれる", async ({ page }) => {
     const app = await callTool(page, "show-iekei-ramen-map");
     await waitForApp(app);

@@ -1,4 +1,5 @@
 import L from "leaflet";
+import { normalizeBounds } from "../lib/bounds";
 import { clusterShops } from "../lib/cluster";
 import { TASTES, type Bounds, type Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
@@ -70,37 +71,15 @@ export interface MapOrigin {
   label?: string;
 }
 
-/**
- * いま地図に出ている範囲。
- *
- * 緯度は ±90 に丸めるだけでよい。**経度は丸めてはいけない。** Leaflet は
- * 世界を横に繰り返して描くので、隣の複製まで動かすと経度が 480〜510 のように
- * なる。両端を 180 に丸めると、日本が画面に出ているのに幅ゼロの範囲になり、
- * 「この範囲で探す」が 0 件を返す。360 度で折り返して実際の経度に戻す。
- */
-const clampLat = (v: number) => Math.max(-90, Math.min(90, v));
-
-/** 経度を -180〜180 に折り返す。 */
-const wrapLon = (v: number) => ((((v + 180) % 360) + 360) % 360) - 180;
-
+/** いま地図に出ている範囲。丸め方は [bounds.ts](../lib/bounds.ts) に隔離してある。 */
 export function viewBounds(map: L.Map): Bounds {
   const b = map.getBounds();
-  const north = clampLat(b.getNorth());
-  const south = clampLat(b.getSouth());
-  const west = b.getWest();
-  const east = b.getEast();
-
-  // 1 周以上が画面に入っているなら、折り返しても意味が無いので世界全体。
-  if (east - west >= 360) return { north, south, east: 180, west: -180 };
-
-  const wrapped = { west: wrapLon(west), east: wrapLon(east) };
-  /*
-   * 折り返した結果が日付変更線をまたぐ場合。国内だけのデータでは南西 → 北東の
-   * 箱で表せないので、世界全体として渡す。**0 件にはしない**——見えている店を
-   * 「無い」と答えるより、広く返すほうが嘘が少ない。
-   */
-  if (wrapped.west > wrapped.east) return { north, south, east: 180, west: -180 };
-  return { north, south, ...wrapped };
+  return normalizeBounds({
+    north: b.getNorth(),
+    south: b.getSouth(),
+    east: b.getEast(),
+    west: b.getWest(),
+  });
 }
 
 /** 店の一覧を囲む枠。 */

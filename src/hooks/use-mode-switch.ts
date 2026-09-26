@@ -79,9 +79,18 @@ export function useModeSwitch({
     (next: SearchMode) => {
       setMode(next);
       onSelect(null);
-      // 地図には基準地点も持ち込む。印と同心円だけに使い、絞り込みはしない。
-      if (next === "map") runSearch(form, "map", origin);
-      else if (next === "form") runSearch(form, "form");
+      /*
+       * 地図には基準地点も持ち込む。印と同心円だけに使い、絞り込みはしない。
+       *
+       * **いま居るタブをもう一度押すのは入り直しではない。** そこで範囲を
+       * 落とすと、押しただけで母数が全国に広がり、理由が画面に残らない
+       * （「迷ったら」でキーワードを保つのと同じ扱い）。他のタブから入り直す
+       * ときは、その画面の範囲ではないので持ち込まない。
+       */
+      if (next === "map") {
+        if (mode === "map" && bounds) runArea(bounds, form, origin);
+        else runSearch(form, "map", origin);
+      } else if (next === "form") runSearch(form, "form");
       /*
        * 「迷ったら」は直前のモードで決まった基準地点を引き継ぐ。現在地から探した
        * 直後に切り替えたなら、そのまま近い順で絞れる。
@@ -103,7 +112,19 @@ export function useModeSwitch({
         runNearby(origin.lat, origin.lon, origin.label, origin.source);
       }
     },
-    [activeKeyword, form, mode, onSelect, origin, runDecide, runNearby, runSearch, setMode],
+    [
+      activeKeyword,
+      bounds,
+      form,
+      mode,
+      onSelect,
+      origin,
+      runArea,
+      runDecide,
+      runNearby,
+      runSearch,
+      setMode,
+    ],
   );
 
   return { runConditions, switchMode };
