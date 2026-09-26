@@ -100,6 +100,7 @@ export function Results({
       fullscreen={fullscreen}
       onSearchArea={onSearchArea}
       bounds={payload.query.bounds}
+      origin={payload.query.origin}
       busy={busy}
     />
   );

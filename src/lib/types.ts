@@ -78,7 +78,6 @@ export const ORIGIN_NOTES: Record<OriginSource, string> = {
   place: "指定した地名",
 };
 
-/** UI が tool 結果として受け取る構造化データ。 */
 /** 地図に出ている範囲。南西と北東の角で持つ。 */
 export interface Bounds {
   north: number;
@@ -87,6 +86,7 @@ export interface Bounds {
   west: number;
 }
 
+/** UI が tool 結果として受け取る構造化データ。 */
 export interface AppPayload {
   mode: SearchMode;
   shops: Shop[];

@@ -1,9 +1,15 @@
 import { useRef, type ReactNode } from "react";
-import type { Bounds, SearchMode, Shop } from "../lib/types";
+import type { Bounds, Origin, SearchMode, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import { MapView } from "./MapView";
 import { MapToolbar, type FullscreenControl } from "./MapToolbar";
 import { ShopList } from "./ShopList";
+
+/*
+ * 円の意味は画面に書く。**直線距離だと明示する**（徒歩◯分に換算する材料は
+ * 持っていないので、黙っていると「歩いて 6 分」と読まれる）。
+ */
+const RING_NOTE = "点線の円は基準地点からの直線距離 500m と 1km です。";
 
 const EMPTY_MESSAGE: Record<SearchMode, string> = {
   form: "条件に合う店舗が見つかりませんでした。",
@@ -29,6 +35,8 @@ interface Props {
   onSearchArea?: (bounds: Bounds) => void;
   /** 範囲で絞った結果なら、その範囲。地図の初期表示に使い、寄せ直しもしない。 */
   bounds?: Bounds;
+  /** 基準地点。地図に印と同心円を出す。 */
+  origin?: Origin;
   busy?: boolean;
 }
 
@@ -58,6 +66,7 @@ export function ResultView({
   fullscreen,
   onSearchArea,
   bounds,
+  origin,
   busy = false,
 }: Props) {
   /*
@@ -89,7 +98,9 @@ export function ResultView({
           onReady={(getBounds) => (getBoundsRef.current = getBounds)}
           initialBounds={bounds}
           refit={!bounds}
+          origin={origin}
         />
+        {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}
         <ShopList
           shops={mapListShops(shops, selectedId)}
           selectedId={selectedId}

@@ -563,17 +563,38 @@ export function createServer(): McpServer {
         bounds: BoundsSchema.optional().describe(
           "地図に出ている範囲で絞り込む。UI の「この範囲で探す」から渡る",
         ),
+        /*
+         * 基準地点は絞り込みではなく、地図に印と同心円を出すためのもの。
+         * 現在地モードから地図へ移ったときに引き継ぐ。
+         */
+        lat: z.number().min(-90).max(90).optional().describe("基準地点の緯度（印と同心円を出す）"),
+        lon: z.number().min(-180).max(180).optional().describe("基準地点の経度"),
+        label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
+        source: z
+          .enum(["precise", "host", "edge", "place"])
+          .optional()
+          .describe("緯度経度の出どころ。省略すると precise 扱い"),
       }),
       outputSchema: PayloadSchema,
       _meta: { ui: { resourceUri } },
     },
-    async ({ prefecture, taste, bounds }): Promise<CallToolResult> => {
+    async ({ prefecture, taste, bounds, lat, lon, label, source }): Promise<CallToolResult> => {
       const shops = filterShops({ prefecture, taste, bounds });
+      // 座標が片方だけ来たときは基準地点として扱わない（地図に嘘の印が出る）。
+      const origin: Origin | undefined =
+        lat !== undefined && lon !== undefined
+          ? {
+              lat,
+              lon,
+              label: blankToUndefined(label),
+              source: (source ?? "precise") as OriginSource,
+            }
+          : undefined;
       const payload: Omit<AppPayload, "prefectures"> = {
         mode: "map",
         shops,
         total: shops.length,
-        query: { prefecture, taste, bounds },
+        query: { prefecture, taste, bounds, origin },
       };
       return {
         content: [

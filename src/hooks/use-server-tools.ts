@@ -117,12 +117,26 @@ export function useServerTools({
     [app, onPayload, releaseSelection],
   );
 
+  /**
+   * 条件で探し直す。
+   *
+   * 地図には基準地点も渡す（**絞り込みではなく、印と同心円のため**）。
+   * 現在地から探した直後に地図へ移ったとき、どこから見ているのかが
+   * 画面から消えないようにする。
+   */
   const runSearch = useCallback(
-    (next: SearchValues, targetMode: "form" | "map") => {
+    (next: SearchValues, targetMode: "form" | "map", origin?: Origin) => {
       void call(TOOL_BY_MODE[targetMode], {
         prefecture: next.prefecture || undefined,
         taste: next.taste || undefined,
-        ...(targetMode === "form" ? { keyword: next.keyword || undefined } : {}),
+        ...(targetMode === "form"
+          ? { keyword: next.keyword || undefined }
+          : {
+              lat: origin?.lat,
+              lon: origin?.lon,
+              label: origin?.label,
+              source: origin?.source,
+            }),
       });
     },
     [call],
@@ -136,8 +150,16 @@ export function useServerTools({
    * 味は「どこ」ではなく「何」なので残す。
    */
   const runArea = useCallback(
-    (bounds: Bounds, next: SearchValues) => {
-      void call(TOOL_BY_MODE.map, { taste: next.taste || undefined, bounds });
+    (bounds: Bounds, next: SearchValues, origin?: Origin) => {
+      void call(TOOL_BY_MODE.map, {
+        taste: next.taste || undefined,
+        bounds,
+        // 基準地点は「どこ」の条件ではないので、範囲を変えても持ち続ける。
+        lat: origin?.lat,
+        lon: origin?.lon,
+        label: origin?.label,
+        source: origin?.source,
+      });
     },
     [call],
   );

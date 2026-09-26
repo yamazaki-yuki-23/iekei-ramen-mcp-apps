@@ -3,7 +3,7 @@
  * 実ブラウザ・実ホスト・実 MCP サーバーを通して 3 モードを操作する。
  */
 import { expect, test } from "@playwright/test";
-import { appFrame, callTool, shopCards, shopName, waitForApp } from "./helpers";
+import { appFrame, callTool, plottedShops, shopCards, shopName, waitForApp } from "./helpers";
 
 test.describe("検索フォーム", () => {
   test("全国の店舗を一覧表示する", async ({ page }) => {
@@ -164,7 +164,11 @@ test.describe("地図から探す", () => {
     await expect(map).toBeVisible();
     // Leaflet の circleMarker は SVG path として描かれる
     await expect(map.locator("svg path").first()).toBeVisible();
-    expect(await map.locator("svg path").count()).toBeGreaterThan(50);
+    /*
+     * 重なる店は塊にまとまるので、ピンの数は店の数と一致しない。
+     * **塊の件数を足すと全件になる**——そこを見張る。
+     */
+    expect(await plottedShops(app)).toBe(558);
   });
 
   test("OpenStreetMap の出典を表示する", async ({ page }) => {
@@ -186,15 +190,13 @@ test.describe("地図から探す", () => {
     const app = await callTool(page, "show-iekei-ramen-map");
     await waitForApp(app);
 
-    const map = app.getByRole("application", { name: "家系ラーメン店の地図" });
-    const before = await map.locator("svg path").count();
+    const before = await plottedShops(app);
 
     await app.locator("#pref").selectOption("神奈川県");
     await expect(app.getByRole("heading", { name: /神奈川県の家系ラーメン/ })).toBeVisible();
 
-    const after = await map.locator("svg path").count();
-    expect(after).toBeLessThan(before);
-    expect(after).toBeGreaterThan(0);
+    await expect.poll(() => plottedShops(app)).toBeLessThan(before);
+    expect(await plottedShops(app)).toBeGreaterThan(0);
   });
 });
 
@@ -1217,7 +1219,7 @@ test.describe("まわる店（順路）", () => {
     await expect(line).toHaveCount(1);
     await expect(line).toHaveAttribute("stroke-dasharray", "6 6");
     // 番号のピンは順路の軒数だけ出る。
-    const pins = app.locator(".leaflet-marker-icon");
+    const pins = app.locator(".route-pin");
     await expect(pins).toHaveCount(2);
     /*
      * 直前に選んだ店へズームしたままだと、足した順路が地図の外に出て、
@@ -1364,5 +1366,27 @@ test.describe("この範囲で探す", () => {
     const area = await count();
     await search.click();
     await expect.poll(count).toBe(area);
+  });
+});
+
+test.describe("基準地点の同心円", () => {
+  /**
+   * 「歩けるか」を決める材料が画面に無かった。基準地点があるときは印と、
+   * 直線距離 500m / 1km の円を出す。
+   */
+  test("現在地から地図へ移ると、基準地点が引き継がれて円が出る", async ({ page }) => {
+    const app = await callTool(page, "find-nearby-iekei-ramen", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+      source: "place",
+    });
+    await waitForApp(app);
+
+    // 地図モードへ移っても、どこから見ているかは消えない。
+    await app.getByRole("tab", { name: "地図から探す" }).click();
+    await expect(app.getByText(/直線距離 500m と 1km/)).toBeVisible();
+    // 円は 2 本（500m / 1km）。Leaflet は円も path で描く。
+    await expect.poll(() => app.locator("path[stroke-dasharray='4 6']").count()).toBe(2);
   });
 });

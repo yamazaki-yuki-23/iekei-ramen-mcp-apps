@@ -443,6 +443,30 @@ describe("show-iekei-ramen-map", () => {
     expect(payload.query.bounds).toEqual(bounds);
   });
 
+  it("基準地点を受け取り、そのまま返す（地図の印と同心円に使う）", async () => {
+    const { payload } = await callApp("show-iekei-ramen-map", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+      source: "place",
+    });
+
+    expect(payload.query.origin).toEqual({
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+      source: "place",
+    });
+    // 基準地点は絞り込みではない。件数は全国のまま。
+    expect(payload.shops.length).toBeGreaterThan(500);
+  });
+
+  it("座標が片方だけなら基準地点として扱わない", async () => {
+    // 片方だけで印を出すと、緯度だけ合った別の場所に立つ。
+    const { payload } = await callApp("show-iekei-ramen-map", { lat: 35.4657 });
+    expect(payload.query.origin).toBeUndefined();
+  });
+
   it("範囲で絞ったときは「全国」と名乗らない", async () => {
     /*
      * どこを見ているかはモデルに分からない。範囲だと言っておかないと、

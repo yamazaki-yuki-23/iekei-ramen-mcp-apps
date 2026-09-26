@@ -482,7 +482,7 @@ function IekeiAppInner({
         route={routeShops}
         routeOrigin={routeOrigin}
         fullscreen={fullscreen}
-        onSearchArea={(bounds) => runArea(bounds, form)}
+        onSearchArea={(bounds) => runArea(bounds, form, payload.query.origin)}
       />
 
       {/* 結果の下、注記の上。モードを切り替えても残るので、組み立てたものが消えない。 */}

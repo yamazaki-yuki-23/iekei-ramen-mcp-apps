@@ -11,7 +11,7 @@ interface Options {
   /** いま効いているキーワード（「迷ったら」のみ）。 */
   activeKeyword?: string;
   onSelect: (shop: Shop | null) => void;
-  runSearch: (values: FormValues, mode: "form" | "map") => void;
+  runSearch: (values: FormValues, mode: "form" | "map", origin?: Origin) => void;
   runDecide: (
     values: FormValues,
     origin: Origin | undefined,
@@ -42,7 +42,8 @@ export function useModeSwitch({
   const runConditions = useCallback(
     (values: FormValues) => {
       if (mode === "decide") runDecide(values, origin, 0, activeKeyword);
-      else runSearch(values, mode === "map" ? "map" : "form");
+      else if (mode === "map") runSearch(values, "map", origin);
+      else runSearch(values, "form");
     },
     [activeKeyword, mode, origin, runDecide, runSearch],
   );
@@ -51,7 +52,9 @@ export function useModeSwitch({
     (next: SearchMode) => {
       setMode(next);
       onSelect(null);
-      if (next === "form" || next === "map") runSearch(form, next);
+      // 地図には基準地点も持ち込む。印と同心円だけに使い、絞り込みはしない。
+      if (next === "map") runSearch(form, "map", origin);
+      else if (next === "form") runSearch(form, "form");
       /*
        * 「迷ったら」は直前のモードで決まった基準地点を引き継ぐ。現在地から探した
        * 直後に切り替えたなら、そのまま近い順で絞れる。
