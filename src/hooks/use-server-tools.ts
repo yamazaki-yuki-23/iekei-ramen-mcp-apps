@@ -73,6 +73,16 @@ export function useServerTools({
   const [inFlight, setInFlight] = useState(0);
   const busy = inFlight > 0;
   const [asking, setAsking] = useState(false);
+  /**
+   * 記録を書き換えている最中か。
+   *
+   * **検索とは別に数える。** 記録の応答にはその時点の記録の全体が入っており、
+   * 同時に走った検索の応答にも入っている。**あとから届いた方が勝つ**ので、
+   * 書き換えの最中に別の検索を始めさせない（タブはこれで止める）。
+   * 検索は遅い（地図は 558 件）が、記録の書き換えは 1 往復で終わるので、
+   * 止まって見える時間はほとんど無い。
+   */
+  const [mutations, setMutations] = useState(0);
   const [failure, setFailure] = useState<string | null>(null);
   /**
    * 画面に出ている結果が、いまの操作より古いかどうか。
@@ -139,6 +149,18 @@ export function useServerTools({
     },
     [app, onPayload, releaseSelection],
   );
+
+  /**
+   * 走っている「一覧を差し替える呼び出し」を捨てる。
+   *
+   * **tool を呼ばずにモードを移るときに要る。** 通し番号は呼ぶたびに進むので、
+   * 呼ばない移り方（基準地点の無い現在地・匿名の「行った店」）では前の呼び出しが
+   * 生き残り、**あとから届いてモードごと引き戻す**（payload でモードが決まるため）。
+   */
+  const discardPending = useCallback(() => {
+    resultSeq.current += 1;
+    setStale(false);
+  }, []);
 
   /**
    * 条件で探し直す。
@@ -265,10 +287,14 @@ export function useServerTools({
   const runStamp = useCallback(
     (shopId: string, visited: boolean) => {
       setInFlight((n) => n + 1);
+      setMutations((n) => n + 1);
       setFailure(null);
       const done = (stampQueue.current ?? Promise.resolve())
         .then(() => sendStamp(shopId, visited))
-        .finally(() => setInFlight((n) => n - 1));
+        .finally(() => {
+          setInFlight((n) => n - 1);
+          setMutations((n) => n - 1);
+        });
       // 失敗で列を止めない。1 本落ちても、次の操作は投げられる。
       stampQueue.current = done.catch(() => {});
       return done;
@@ -283,7 +309,8 @@ export function useServerTools({
 
   /** 記録を全部消す。戻せないので、呼ぶ側が確認を取ってから来ること。 */
   const runForget = useCallback(() => {
-    void call("forget-my-iekei-ramen-visits", {});
+    setMutations((n) => n + 1);
+    void call("forget-my-iekei-ramen-visits", {}).finally(() => setMutations((n) => n - 1));
   }, [call]);
 
   /**
@@ -362,6 +389,27 @@ export function useServerTools({
     [call],
   );
 
+  /**
+   * 地名を座標に直してから、そこで探す。**一続きで扱う。**
+   *
+   * 地名の解決（geocode-place）は一覧を差し替えない呼び出しなので通し番号が
+   * 進まない。解決を待つ間に別のタブへ移られると、**あとから現在地検索が走って
+   * 押したタブから引き戻される**（Codex の指摘で気付いた）。
+   * 始めた時点の番号を覚えておき、途中で別の操作が入っていたら捨てる。
+   */
+  const searchPlace = useCallback(
+    async (query: string) => {
+      const started = resultSeq.current;
+      const hit = await geocode(query);
+      if (!hit) return null;
+      // 待っている間に別のモードへ移った（あるいは別の検索が走った）。
+      if (resultSeq.current !== started) return null;
+      runNearby(hit.lat, hit.lon, hit.label, "place");
+      return hit;
+    },
+    [geocode, runNearby],
+  );
+
   /** ホスト経由で外部リンクを開く。iframe から直接 window.open はできない。 */
   const openExternal = useCallback(
     (url: string) => {
@@ -436,12 +484,15 @@ export function useServerTools({
 
   return {
     busy,
+    /** 記録を書き換えている最中。タブを止めるのはこの間だけ。 */
+    mutating: mutations > 0,
     asking,
     failure,
     stale,
     runSearch,
     runArea,
     runDecide,
+    discardPending,
     runStamp,
     runVisited,
     runForget,
@@ -451,6 +502,7 @@ export function useServerTools({
     runNearby,
     runNearbyByHost,
     geocode,
+    searchPlace,
     openInMaps,
     openExternal,
     askAboutShop,

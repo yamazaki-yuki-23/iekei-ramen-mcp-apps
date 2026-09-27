@@ -31,6 +31,8 @@ interface Options {
   runNearby: (lat: number, lon: number, label: string | undefined, source: OriginSource) => void;
   /** 行った店を取り直す。 */
   runVisited: () => void;
+  /** 走っている呼び出しを捨てる。tool を呼ばずにモードを移るときに使う。 */
+  discardPending: () => void;
   /** サインインしているか。していなければ、記録の tool は呼ばない。 */
   signedIn: boolean;
 }
@@ -56,6 +58,7 @@ export function useModeSwitch({
   runDecide,
   runNearby,
   runVisited,
+  discardPending,
   signedIn,
 }: Options) {
   /*
@@ -175,6 +178,21 @@ export function useModeSwitch({
        * 呼ばなければ案内の画面が出て、そこからチャット経由でサインインできる。
        */
       if (next === "visited" && signedIn) runVisited();
+
+      /*
+       * **tool を呼ばずに移ったときは、走っている呼び出しを捨てる。**
+       *
+       * 呼んだときは通し番号が進んで古い応答が捨てられるが、呼ばない移り方
+       * （基準地点の無い現在地・匿名の「行った店」）では前の呼び出しが生き残る。
+       * 届いた payload でモードが決まるので、**押したタブから勝手に引き戻される**。
+       */
+      const calls =
+        next === "map" ||
+        next === "form" ||
+        next === "decide" ||
+        (next === "nearby" && Boolean(origin)) ||
+        (next === "visited" && signedIn);
+      if (!calls) discardPending();
     },
     [
       activeKeyword,
@@ -190,6 +208,7 @@ export function useModeSwitch({
       runVisited,
       setMode,
       signedIn,
+      discardPending,
     ],
   );
 
