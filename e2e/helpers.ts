@@ -82,6 +82,18 @@ export function shopWhere(card: Locator): Locator {
 }
 
 /**
+ * 住所の行に出ている欄を、欄ごとに取り出す。
+ *
+ * **文字列を目で突き合わせない。** 住所に市名が入っている店
+ * （「横浜市」と「横浜市磯子区上中里町669-1」）や、欄の中に空白がある店があり、
+ * 部分一致では正しい表示を「重複」と誤判定する（Codex の指摘で 3 度踏んだ）。
+ */
+export async function shopMetaFields(card: Locator): Promise<string[]> {
+  const raw = (await card.locator("[data-shop-meta]").getAttribute("data-shop-meta-parts")) ?? "";
+  return raw ? raw.split("\u0000") : [];
+}
+
+/**
  * 地図に出ている店の数。
  *
  * 重なる店は塊にまとまるので、ピンの数は店の数と一致しない。単独のピンと、

@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from "react";
-import { sameNameLabels } from "../lib/same-name";
+import { metaParts, sameNameLabels } from "../lib/same-name";
 import { CONFIDENCE, TASTES, type Shop } from "../lib/types";
 import { formatDistance } from "../lib/geo";
 import styles from "../mcp-app.module.css";
@@ -65,12 +65,29 @@ export function ShopList({
                 </span>
                 {labels.has(shop.id) && (
                   <span className={styles.shopWhere} data-shop-where>
-                    {labels.get(shop.id)}
+                    {labels.get(shop.id)?.text}
                   </span>
                 )}
               </span>
-              <span className={styles.meta}>
-                {[shop.prefecture, shop.city, shop.address].filter(Boolean).join(" ")}
+              {/*
+               * 名前の隣に出した分は、住所の行で繰り返さない（同じ文字列が
+               * 2 つ並ぶと壊れて見える）。**ただし出していない分は残す**——
+               * 市区町村だけで見分けが付く店から町名まで消すと、持っている
+               * 情報が画面から減る。判断は src/lib/same-name.ts にある。
+               */}
+              {/*
+               * data-shop-meta-parts は、どの欄を出したかを区切って持つ。
+               * **見た目は変わらない。** 文字列を目で突き合わせると、住所に
+               * 市名が入っている店（「横浜市」/「横浜市磯子区上中里町669-1」）や、
+               * 欄の中に空白がある店で誤判定するため、テストが欄ごとに
+               * 比べられるようにしてある。
+               */}
+              <span
+                className={styles.meta}
+                data-shop-meta
+                data-shop-meta-parts={metaParts(shop, labels.get(shop.id)).join("\u0000")}
+              >
+                {metaParts(shop, labels.get(shop.id)).join(" ")}
               </span>
               {shop.openingHours && <span className={styles.meta}>営業: {shop.openingHours}</span>}
               <span className={styles.badges}>

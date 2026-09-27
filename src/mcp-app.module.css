@@ -416,6 +416,24 @@
     min-width: 0;
   }
 
+  /*
+   * 横 1 行に収める版面では、地名も省略する。**ここは住所の行も同じように
+   * 省略されるので**、地名を切ったことで新しく隠れる情報は無い。
+   */
+  .shopHead {
+    flex-wrap: nowrap;
+  }
+
+  /*
+   * **地名は縮めない。** 市区町村までしか出さないので短く、切れると
+   * 行き場が無い（住所の行からは外してある）。幅が足りないときは、
+   * 住所の行（flex: 1 1 0）が先に縮む。
+   */
+  .shopHead > .shopWhere {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
   .cardBody > .meta {
     flex: 1 1 0;
     min-width: 0;
@@ -1063,6 +1081,8 @@
   align-items: baseline;
   gap: var(--space-2);
   min-width: 0;
+  /* 入りきらない地名は次の行へ送る（切って隠さない）。 */
+  flex-wrap: wrap;
 }
 
 .shopHead > .shopName {
@@ -1073,15 +1093,21 @@
   white-space: nowrap;
 }
 
+/*
+ * **狭い版面では折り返して全部見せる。**
+ *
+ * この地名は同名の店を見分ける唯一の手がかりで、住所の行には出していない
+ * （同じ文字列が 2 つ並ぶため）。1 行に押し込んで省略すると、**切れた先が
+ * どこにも無くなる**。実データには 31 文字の地名がある
+ * （「横浜市 西区高島2丁目19-12-19-12 スカイビル10F」）。
+ * 縦に積む版面では高さに余裕があるので、折り返す方が読める。
+ */
 .shopWhere {
-  flex: 0 2 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: var(--color-text-muted);
   font-size: var(--font-size-note);
   font-weight: var(--font-weight-normal);
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 /* --- 焦点（フォーカス） --- */
