@@ -57,6 +57,8 @@ interface Props {
    * 範囲で探し直した直後は false。ユーザーが自分で決めた画角を動かさない。
    */
   refit?: boolean;
+  /** 行った店。ピンの中心に点を打つ。匿名なら渡ってこない。 */
+  visitedIds?: ReadonlySet<string>;
 }
 
 /**
@@ -78,6 +80,7 @@ export function MapView({
   onReady,
   initialBounds,
   refit = true,
+  visitedIds,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -197,6 +200,7 @@ export function MapView({
         onSelectRef.current(shop);
       },
       onCluster: (group, viaKeyboard) => onClusterRef.current?.(group, viaKeyboard),
+      visitedIds,
     });
     markersRef.current = markers;
 
@@ -210,7 +214,7 @@ export function MapView({
       layer.clearLayers();
       markers.clear();
     };
-  }, [shops, zoom, selectedId, remember, restore]);
+  }, [shops, zoom, selectedId, remember, restore, visitedIds]);
 
   /*
    * 結果が変わったら、その全体が入るところまで寄せ直す。

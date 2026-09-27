@@ -11,6 +11,8 @@ import { ShopList } from "./ShopList";
  * 持っていないので、黙っていると「歩いて 6 分」と読まれる）。
  */
 const RING_NOTE = "点線の円は基準地点からの直線距離 500m と 1km です。";
+/* 印の意味は画面に書く。色や形だけでは伝わらない。 */
+const VISITED_NOTE = "中心に白い点のあるピンは、行ったことのある店です。";
 
 const EMPTY_MESSAGE: Record<SearchMode, string> = {
   form: "条件に合う店舗が見つかりませんでした。",
@@ -18,6 +20,8 @@ const EMPTY_MESSAGE: Record<SearchMode, string> = {
   map: "この条件では地図に表示できる店舗がありません。",
   // 「迷ったら」は専用の画面が自前で出すので、ここは使わない。
   decide: "条件に合う店舗が見つかりませんでした。",
+  // 「行った店」は検索ではないので、0 件は失敗ではなくこれからの状態。
+  visited: "まだ記録がありません。店を選んで「行った」を押すと、ここに並びます。",
 };
 
 interface Props {
@@ -39,6 +43,8 @@ interface Props {
   /** 基準地点。地図に印と同心円を出す。 */
   origin?: Origin;
   busy?: boolean;
+  /** 訪問済みの店舗 ID。カードのバッジと地図の印に使う。 */
+  visitedIds?: ReadonlySet<string>;
 }
 
 /**
@@ -57,6 +63,7 @@ export function ResultView({
   bounds,
   origin,
   busy = false,
+  visitedIds,
 }: Props) {
   /*
    * いま地図に出ている範囲の読み取り口。**値ではなく読み方を持つ。**
@@ -123,8 +130,13 @@ export function ResultView({
           initialBounds={bounds}
           refit={!bounds}
           origin={origin}
+          visitedIds={visitedIds}
         />
         {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}
+        {/* 出ている店に 1 軒でも記録があるときだけ書く。無いと読む意味が無い。 */}
+        {shops.some((s) => visitedIds?.has(s.id)) && (
+          <p className={styles.mapNote}>{VISITED_NOTE}</p>
+        )}
         {focused && (
           <div className={styles.focusHead}>
             <span className={styles.focusHeadLabel} ref={focusHeadRef} tabIndex={-1}>
@@ -145,6 +157,7 @@ export function ResultView({
           onSelect={onSelect}
           detail={detail}
           emptyMessage={EMPTY_MESSAGE.map}
+          visitedIds={visitedIds}
         />
       </div>
     );
@@ -158,6 +171,7 @@ export function ResultView({
       onSelect={onSelect}
       detail={detail}
       emptyMessage={EMPTY_MESSAGE[mode]}
+      visitedIds={visitedIds}
     />
   );
 }

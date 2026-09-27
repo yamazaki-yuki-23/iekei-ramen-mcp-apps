@@ -50,7 +50,13 @@ export const CONFIDENCE = {
 
 type ConfidenceKey = keyof typeof CONFIDENCE;
 
-export type SearchMode = "form" | "nearby" | "map" | "decide";
+/**
+ * 画面のモード。
+ *
+ * `visited` だけはサインインした人のもので、**他と違って検索条件を持たない**
+ * （その人の記録がそのまま中身になる）。
+ */
+export type SearchMode = "form" | "nearby" | "map" | "decide" | "visited";
 
 /**
  * 「近くを探す」の基準地点。どこから得た座標かを source で持つ。
@@ -78,6 +84,8 @@ export const ORIGIN_NOTES: Record<OriginSource, string> = {
   place: "指定した地名",
 };
 
+import type { VisitSummary } from "./progress";
+
 /** 地図に出ている範囲。南西と北東の角で持つ。 */
 export interface Bounds {
   north: number;
@@ -103,6 +111,15 @@ export interface AppPayload {
   };
   /** 選択可能な都道府県（データに実在するものだけ）。 */
   prefectures: string[];
+  /**
+   * サインインしている人の訪問済み店舗 ID。
+   *
+   * **匿名なら入らない。** 「空の配列」と「サインインしていない」を区別する
+   * ためで、UI はこれの有無でスタンプを出すかどうかを決める。
+   */
+  visited?: string[];
+  /** 制覇率。visited と同じく、サインインしているときだけ入る。 */
+  progress?: VisitSummary;
   /** 「迷ったら」モードのときだけ入る、3 軒をどう選んだかの内訳。 */
   decide?: DecideInfo;
 }

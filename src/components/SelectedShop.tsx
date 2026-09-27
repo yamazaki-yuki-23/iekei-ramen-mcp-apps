@@ -12,6 +12,14 @@ const NOTE =
 /** 上限に達したときの説明。押せない理由を必ず書く。 */
 const FULL_HINT = "「まわる店」は 3 軒までです。外してから追加してください。";
 
+/*
+ * 匿名のまま「行った」を押したときの断り書き。
+ *
+ * **押せなくしない。** 何のための機能かが伝わらなくなる。押したらチャットへ
+ * 依頼が飛び、ホストがサインインを促す（UI から直接サインインはできない）。
+ */
+const STAMP_SIGN_IN_HINT = "記録にはサインインが要ります。押すとチャットに依頼を送ります。";
+
 interface Props {
   /** 会話に「この店について聞く」を流す。 */
   onAsk: () => void;
@@ -25,6 +33,12 @@ interface Props {
   routeFull: boolean;
   /** 「まわる店」に足す／外す。 */
   onToggleRoute: () => void;
+  /** サインインしているか。匿名なら記録ではなくチャットへの依頼になる。 */
+  signedIn: boolean;
+  /** この店が訪問済みか。 */
+  isVisited: boolean;
+  /** 行った印を付ける／外す（匿名ならチャットへ依頼）。 */
+  onToggleVisit: () => void;
 }
 
 /**
@@ -44,6 +58,9 @@ export function SelectedShop({
   inRoute,
   routeFull,
   onToggleRoute,
+  signedIn,
+  isVisited,
+  onToggleVisit,
 }: Props) {
   // 一覧は高さを制限してスクロールさせているので、下の方のカードを選ぶと
   // 詳細が見切れる。選んだ直後だけ、はみ出した分を寄せる。
@@ -62,6 +79,15 @@ export function SelectedShop({
         </button>
         <button
           type="button"
+          className={isVisited ? styles.buttonOn : styles.buttonSecondary}
+          onClick={onToggleVisit}
+          aria-pressed={signedIn ? isVisited : undefined}
+          disabled={asking}
+        >
+          {isVisited ? "行ったを取り消す" : "行った"}
+        </button>
+        <button
+          type="button"
           className={styles.buttonSecondary}
           onClick={onToggleRoute}
           disabled={routeFull}
@@ -76,6 +102,9 @@ export function SelectedShop({
           選択を解除
         </button>
       </div>
+
+      {/* 匿名のときは、押すと何が起きるかを先に書く。 */}
+      {!signedIn && <p className={styles.selectedNote}>{STAMP_SIGN_IN_HINT}</p>}
 
       {/* 押せない理由は画面に出す。title だけだとタッチ端末で読めない。 */}
       {routeFull && <p className={styles.selectedNote}>{FULL_HINT}</p>}

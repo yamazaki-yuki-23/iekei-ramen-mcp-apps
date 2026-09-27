@@ -15,9 +15,24 @@ interface Props {
    */
   detail?: ReactNode;
   emptyMessage?: string;
+  /**
+   * 訪問済みの店舗 ID。
+   *
+   * **匿名なら渡ってこない（undefined）。** 空集合と区別する必要はここには無いが、
+   * 渡す側が「サインインしていない」を空集合に化けさせないよう、省略可にしてある。
+   */
+  visitedIds?: ReadonlySet<string>;
 }
 
-export function ShopList({ shops, ranked, selectedId, onSelect, detail, emptyMessage }: Props) {
+export function ShopList({
+  shops,
+  ranked,
+  selectedId,
+  onSelect,
+  detail,
+  emptyMessage,
+  visitedIds,
+}: Props) {
   if (shops.length === 0) {
     return (
       <p className={styles.empty}>{emptyMessage ?? "条件に合う店舗が見つかりませんでした。"}</p>
@@ -42,6 +57,7 @@ export function ShopList({ shops, ranked, selectedId, onSelect, detail, emptyMes
               </span>
               {shop.openingHours && <span className={styles.meta}>営業: {shop.openingHours}</span>}
               <span className={styles.badges}>
+                {visitedIds?.has(shop.id) && <span className={styles.badgeVisited}>行った</span>}
                 <span className={shop.taste === "unknown" ? styles.badgeMuted : styles.badge}>
                   {TASTES[shop.taste].label}
                 </span>

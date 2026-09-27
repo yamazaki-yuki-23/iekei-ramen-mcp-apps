@@ -22,8 +22,11 @@ import { z } from "zod";
 import shopsData from "./data/shops.json" with { type: "json" };
 import { APP_HTML } from "./src/generated/app-html.ts";
 import { distanceKm, formatDistance, originLabel } from "./src/lib/geo.ts";
+import { summarize as summarizeVisits } from "./src/lib/progress.ts";
+import { RECORDS_WITHOUT_SHOPS } from "./src/lib/visited-view.ts";
 import { BoundsSchema, PayloadSchema } from "./src/lib/schema.ts";
 import { scopeLabel } from "./src/lib/scope.ts";
+import type { VisitStore } from "./src/lib/visits.ts";
 import { describeBasis, shortlist } from "./src/lib/shortlist.ts";
 import {
   CONFIDENCE,
@@ -374,7 +377,38 @@ function structured(payload: Omit<AppPayload, "prefectures">) {
   return { ...payload, prefectures: PREFECTURES_WITH_SHOPS };
 }
 
-export function createServer(): McpServer {
+/**
+ * サインインしている人に渡す追加分。
+ *
+ * **匿名のときは何も足さない。** 空配列を入れると、UI から見て
+ * 「サインインしていて 0 軒」と区別が付かなくなる。
+ */
+async function visitorExtras(deps: ServerDeps): Promise<Partial<AppPayload>> {
+  if (!deps.visitor || !deps.visits) return {};
+  const visited = await deps.visits.list(deps.visitor.id);
+  return { visited, progress: summarizeVisits(SHOPS, visited) };
+}
+
+/**
+ * サインインが要る tool。
+ *
+ * **worker 側がこの名前を見て 401 を返す。** tool の中からは HTTP の状態を
+ * 決められないので、入口で止めるしかない。
+ */
+export const MEMBER_TOOLS = [
+  "stamp-iekei-ramen",
+  "show-visited-iekei-ramen",
+  "forget-my-iekei-ramen-visits",
+] as const;
+
+export interface ServerDeps {
+  /** サインインしている人。匿名なら null。 */
+  visitor?: { id: string } | null;
+  /** 記録の置き場。ローカル実行では無い。 */
+  visits?: VisitStore;
+}
+
+export function createServer(deps: ServerDeps = {}): McpServer {
   /*
    * 名乗りは環境変数で上書きできる。検証ホストはプレビューと共用しており
    * （E2E のたびに立て直すと見ている画面が消える）、サーバーが 2 つ並ぶ。
@@ -436,7 +470,7 @@ export function createServer(): McpServer {
             text: summarize(shops.slice(0, 10), `【${cond}】${all.length} 件ヒット（上位 10 件）`),
           },
         ],
-        structuredContent: structured(payload),
+        structuredContent: await withVisitor(payload),
       };
     },
   );
@@ -512,7 +546,10 @@ export function createServer(): McpServer {
                 "lat / lon を指定して呼び直してください。",
             },
           ],
-          structuredContent: structured({
+          // **ここも withVisitor を通す。** 通さないと visited が落ち、
+          // サインインしている人が UI から匿名に見える（記録の釦がサインインの
+          // 依頼に変わる）。payload の出口はここも含めて 1 つにする。
+          structuredContent: await withVisitor({
             mode: "nearby",
             shops: [],
             total: 0,
@@ -546,7 +583,7 @@ export function createServer(): McpServer {
             ),
           },
         ],
-        structuredContent: structured(payload),
+        structuredContent: await withVisitor(payload),
       };
     },
   );
@@ -605,7 +642,7 @@ export function createServer(): McpServer {
             text: mapSummary(shops, prefecture, bounds),
           },
         ],
-        structuredContent: structured(payload),
+        structuredContent: await withVisitor(payload),
       };
     },
   );
@@ -711,7 +748,7 @@ export function createServer(): McpServer {
             ),
           },
         ],
-        structuredContent: structured(payload),
+        structuredContent: await withVisitor(payload),
       };
     },
   );
@@ -765,6 +802,172 @@ export function createServer(): McpServer {
             lon: Number(r.lon),
           })),
         },
+      };
+    },
+  );
+
+  /* --- 6. 訪問スタンプ（サインインが要る） -------------------------------- */
+
+  /**
+   * ここから下は **worker 側でトークンを確かめてから**呼ばれる。
+   * 匿名のまま来た場合は tool に届く前に 401 を返している（MEMBER_TOOLS）。
+   * それでも念のため確かめるのは、呼び出し口が増えたときに黙って通らないため。
+   */
+  /**
+   * payload の出口。**ここを通ると訪問情報が自動で乗る。**
+   *
+   * tool ごとに足すと、足し忘れた tool だけスタンプが出ない、という
+   * 見つけにくい穴ができる（実際に最初そうなっていた）。
+   */
+  /**
+   * payload の出口。**ここを通ると訪問情報が自動で乗る。**
+   *
+   * **読んだ記録があるなら渡すこと。** 中でもう一度読むと、その間に別のホスト
+   * から押された 1 件を拾い、**1 つの応答に 2 つの時点が混ざる**（一覧は前の
+   * 時点・バッジと制覇率は後の時点）。同じ応答の中で「行った店なのにバッジが
+   * 付いていない」が起きる。
+   */
+  const withVisitor = async (
+    payload: Omit<AppPayload, "prefectures">,
+    extras?: Partial<AppPayload>,
+  ) => ({
+    ...structured(payload),
+    ...(extras ?? (await visitorExtras(deps))),
+  });
+
+  const requireVisitor = () => {
+    if (!deps.visitor || !deps.visits) throw new Error("サインインが必要です");
+    return { visitor: deps.visitor, visits: deps.visits };
+  };
+
+  registerAppTool(
+    server,
+    "stamp-iekei-ramen",
+    {
+      title: "行った店に印を付ける",
+      description: "訪問した家系ラーメン店に印を付ける、または外す。サインインした人だけが使える。",
+      inputSchema: z.object({
+        shopId: z.string().describe("店舗 ID"),
+        visited: z.boolean().default(true).describe("true で付ける、false で外す"),
+      }),
+      outputSchema: PayloadSchema,
+      _meta: { ui: { resourceUri } },
+    },
+    async ({ shopId, visited }): Promise<CallToolResult> => {
+      const { visitor, visits } = requireVisitor();
+      const shop = SHOPS.find((s) => s.id === shopId);
+      // 知らない店 ID は記録しない。消えた店のゴミが溜まるため。
+      if (!shop) {
+        return {
+          content: [{ type: "text", text: `店舗 ${shopId} が見つかりませんでした。` }],
+          isError: true,
+        };
+      }
+
+      await visits.set(visitor.id, shopId, visited);
+      const extras = await visitorExtras(deps);
+      const progress = extras.progress!;
+      const payload: Omit<AppPayload, "prefectures"> = {
+        mode: "visited",
+        shops: SHOPS.filter((s) => extras.visited!.includes(s.id)),
+        total: progress.overall.visited,
+        query: {},
+      };
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              `${shop.name}を${visited ? "訪問済みにしました" : "未訪問に戻しました"}。` +
+              `全国 ${progress.overall.total} 軒のうち ${progress.overall.visited} 軒` +
+              `（${progress.overall.percent}%）です。`,
+          },
+        ],
+        structuredContent: await withVisitor(payload, extras),
+      };
+    },
+  );
+
+  registerAppTool(
+    server,
+    "show-visited-iekei-ramen",
+    {
+      title: "行った店と制覇率を見る",
+      description:
+        "訪問済みの家系ラーメン店の一覧と、県ごと・全国の制覇率を表示する。サインインした人だけが使える。",
+      inputSchema: z.object({}),
+      outputSchema: PayloadSchema,
+      _meta: { ui: { resourceUri } },
+    },
+    async (): Promise<CallToolResult> => {
+      requireVisitor();
+      const extras = await visitorExtras(deps);
+      const progress = extras.progress!;
+      const shops = SHOPS.filter((s) => extras.visited!.includes(s.id));
+      const payload: Omit<AppPayload, "prefectures"> = {
+        mode: "visited",
+        shops,
+        total: shops.length,
+        query: {},
+      };
+      const top = progress.prefectures
+        .slice(0, 5)
+        .map((p) => `${p.prefecture} ${p.visited}/${p.total}`)
+        .join(" / ");
+      /*
+       * **「1 軒も記録がない」は、記録の件数で決める。**
+       *
+       * 一覧が空でも、記録が残っていることがある（データを取り直して店が
+       * 消えた場合）。並んでいる店の数で決めると、記録があるのにモデルへ
+       * 「まだ 1 軒も記録がありません」と伝え、構造化データと食い違う。
+       * 画面と同じ文を渡す（UI は visited-view.ts で同じ判断をしている）。
+       */
+      const recorded = extras.visited!.length;
+      return {
+        content: [
+          {
+            type: "text",
+            text:
+              recorded === 0
+                ? "まだ 1 軒も記録がありません。"
+                : shops.length === 0
+                  ? RECORDS_WITHOUT_SHOPS
+                  : `${progress.overall.visited} 軒（全国 ${progress.overall.total} 軒中 ` +
+                    `${progress.overall.percent}%）。${top}`,
+          },
+        ],
+        structuredContent: await withVisitor(payload, extras),
+      };
+    },
+  );
+
+  registerAppTool(
+    server,
+    "forget-my-iekei-ramen-visits",
+    {
+      title: "記録を全部消す",
+      description: "その人の訪問記録をすべて削除する。元に戻せない。",
+      inputSchema: z.object({}),
+      outputSchema: PayloadSchema,
+      _meta: { ui: { resourceUri } },
+    },
+    async (): Promise<CallToolResult> => {
+      const { visitor, visits } = requireVisitor();
+      await visits.clear(visitor.id);
+      const payload: Omit<AppPayload, "prefectures"> = {
+        mode: "visited",
+        shops: [],
+        total: 0,
+        query: {},
+      };
+      return {
+        content: [{ type: "text", text: "訪問記録をすべて削除しました。" }],
+        // 消した直後の写しをその場で作る。読み直すと、その間に別のホストから
+        // 押された 1 件を拾い、「全部消した」と言いながら 1 軒残った応答になる。
+        structuredContent: await withVisitor(payload, {
+          visited: [],
+          progress: summarizeVisits(SHOPS, []),
+        }),
       };
     },
   );

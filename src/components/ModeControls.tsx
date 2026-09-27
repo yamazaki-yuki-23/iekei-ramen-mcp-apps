@@ -39,6 +39,14 @@ export function ModeControls({
   notice,
   busy,
 }: Props) {
+  /*
+   * 「行った店」に条件の入力欄は無い。**出すと壊れる**——ここで都道府県や味を
+   * 変えると runConditions が「検索フォーム」として扱い、`search-iekei-ramen`
+   * を呼んで記録の画面から弾き出す（Codex の指摘で気付いた）。
+   * 記録はその人のもので、条件で絞る対象ではない。
+   */
+  if (mode === "visited") return null;
+
   if (mode === "nearby") {
     return (
       <NearbyPanel

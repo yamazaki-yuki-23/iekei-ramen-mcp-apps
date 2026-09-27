@@ -38,14 +38,21 @@ async function callApp(
 }
 
 describe("tool の登録", () => {
-  it("UI 付き 4 つと補助 1 つを公開する", async () => {
+  it("匿名の 5 つと、サインインが要る 3 つを公開する", async () => {
+    /*
+     * **一覧には会員用も出す。** 隠すと「押せば促される」が成立せず、
+     * サインインの入口が画面から無くなる（401 を返すのは呼ばれたとき）。
+     */
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).toSorted()).toEqual([
       "decide-iekei-ramen",
       "find-nearby-iekei-ramen",
+      "forget-my-iekei-ramen-visits",
       "geocode-place",
       "search-iekei-ramen",
       "show-iekei-ramen-map",
+      "show-visited-iekei-ramen",
+      "stamp-iekei-ramen",
     ]);
   });
 

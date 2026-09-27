@@ -29,6 +29,10 @@ interface Options {
     keyword?: string,
   ) => void;
   runNearby: (lat: number, lon: number, label: string | undefined, source: OriginSource) => void;
+  /** 行った店を取り直す。 */
+  runVisited: () => void;
+  /** サインインしているか。していなければ、記録の tool は呼ばない。 */
+  signedIn: boolean;
 }
 
 /**
@@ -51,6 +55,8 @@ export function useModeSwitch({
   runArea,
   runDecide,
   runNearby,
+  runVisited,
+  signedIn,
 }: Options) {
   /*
    * いま効いている「どこ」——範囲と都道府県を、このフックが持つ。
@@ -161,6 +167,14 @@ export function useModeSwitch({
       if (next === "nearby" && origin) {
         runNearby(origin.lat, origin.lon, origin.label, origin.source);
       }
+      /*
+       * 「行った店」は、サインインしている人にだけ取りに行く。
+       *
+       * **匿名では呼ばない。** UI からの呼び出しが 401 を受けても、ホストは
+       * サインインの画面を出さないので、失敗の文が出るだけで先へ進めない。
+       * 呼ばなければ案内の画面が出て、そこからチャット経由でサインインできる。
+       */
+      if (next === "visited" && signedIn) runVisited();
     },
     [
       activeKeyword,
@@ -173,7 +187,9 @@ export function useModeSwitch({
       runDecide,
       runNearby,
       runSearch,
+      runVisited,
       setMode,
+      signedIn,
     ],
   );
 

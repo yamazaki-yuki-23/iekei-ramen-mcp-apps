@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "types": ["node", "vite/client"],
+    "types": ["node", "vite/client", "@cloudflare/workers-types"],
     "target": "ESNext",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
@@ -17,5 +17,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "main.ts", "server.ts", "worker.ts", "vite.config.ts"]
+  "include": ["src", "main.ts", "server.ts", "worker.ts", "oauth.ts", "vite.config.ts"]
 }

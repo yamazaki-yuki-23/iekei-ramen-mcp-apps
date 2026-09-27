@@ -17,6 +17,16 @@ const MCP_PORT = 3131;
  * プレビュー用（3031）と E2E 用（3131）を並べて登録し、名前で選び分ける。
  */
 const E2E_SERVER_NAME = "Iekei Ramen Finder (E2E)";
+/**
+ * サインイン済みの画面を確かめるための、もう 1 本。
+ *
+ * 会員機能（行った店・制覇率）は匿名では出ないので、偽のサインイン済み利用者で
+ * 動かす（`IEKEI_DEV_VISITOR`。main.ts にしか無い道で、本番には出ない）。
+ * **同じサーバーで兼ねられない**——1 つのプロセスは匿名かサインイン済みの
+ * どちらかで、両方の画面を同時には出せない。
+ */
+const MEMBER_PORT = 3132;
+const MEMBER_SERVER_NAME = "Iekei Ramen Finder (E2E signed-in)";
 /*
  * basic-host はサンドボックスの origin（http://localhost:8081）を dist に
  * 焼き込んでいるため、同時に 1 つしか動かせない。ホスト側のポートは
@@ -62,8 +72,24 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
+      /*
+       * サインイン済みの側。UI のビルドは 1 本目がやるので、ここでは起動だけ。
+       * 記録はプロセスの中だけに持つので、立て直せば空から始まる。
+       */
+      command: `npx tsx main.ts`,
+      env: {
+        PORT: String(MEMBER_PORT),
+        IEKEI_SERVER_NAME: MEMBER_SERVER_NAME,
+        IEKEI_DEV_VISITOR: "e2e-visitor",
+        IEKEI_LOCATION_ENDPOINT: "",
+      },
+      url: `http://localhost:${MEMBER_PORT}/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
       // basic-host の start は bun を要求するので、ビルド済みの serve.ts を tsx で直接起動する。
-      command: `SERVERS='["http://localhost:${MCP_PORT}/mcp"]' npx tsx e2e-host/ext-apps/examples/basic-host/serve.ts`,
+      command: `SERVERS='["http://localhost:${MCP_PORT}/mcp","http://localhost:${MEMBER_PORT}/mcp"]' npx tsx e2e-host/ext-apps/examples/basic-host/serve.ts`,
       url: `http://localhost:${HOST_PORT}`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

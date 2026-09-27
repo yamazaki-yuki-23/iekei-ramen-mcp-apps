@@ -4,6 +4,7 @@ import styles from "../mcp-app.module.css";
 import { DecidePanel } from "./DecidePanel";
 import type { FullscreenControl } from "./MapToolbar";
 import { ResultView } from "./ResultView";
+import { VisitedPanel } from "./VisitedPanel";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
 const LOADING = "読み込み中…";
@@ -34,6 +35,14 @@ interface Props {
   fullscreen?: FullscreenControl;
   /** 地図に出ている範囲で探し直す。 */
   onSearchArea?: (bounds: Bounds) => void;
+  /** サインインしているか。記録まわりの出し分けに使う。 */
+  signedIn: boolean;
+  /** 訪問済みの店舗 ID。匿名なら空。 */
+  visitedIds: ReadonlySet<string>;
+  /** 記録を全部消す。 */
+  onForget: () => void;
+  /** 会話でサインインを頼む。 */
+  onSignIn: () => void;
 }
 
 /**
@@ -60,7 +69,34 @@ export function Results({
   routeOrigin,
   fullscreen,
   onSearchArea,
+  signedIn,
+  visitedIds,
+  onForget,
+  onSignIn,
 }: Props) {
+  /*
+   * 「行った店」だけは ready を待たずに出す道がある。
+   *
+   * **匿名では tool を呼んでいない**（401 を受けてもホストはサインインの画面を
+   * 出さないため）。payload は前のモードのままなので ready は立たず、
+   * 素直に待つと「結果を取得できませんでした」という嘘の失敗が出る。
+   */
+  if (mode === "visited" && !signedIn) {
+    return (
+      <VisitedPanel
+        signedIn={false}
+        shops={[]}
+        recordCount={0}
+        selectedId={selected?.id}
+        onSelect={onSelect}
+        onForget={onForget}
+        onSignIn={onSignIn}
+        asking={asking}
+        busy={busy}
+      />
+    );
+  }
+
   /*
    * タブを押すと mode だけ先に変わり、payload は tool の結果が届いてから
    * 差し替わる。呼び出しが失敗すると前のモードの結果が残るので、揃うまで出さない。
@@ -68,6 +104,24 @@ export function Results({
    * 「この 558 軒から選ぶ」ボタンまで押せてしまう。
    */
   if (!ready) return <p className={styles.status}>{busy ? LOADING : UNAVAILABLE}</p>;
+
+  if (mode === "visited") {
+    return (
+      <VisitedPanel
+        signedIn
+        shops={shops}
+        recordCount={visitedIds.size}
+        progress={payload.progress}
+        selectedId={selected?.id}
+        onSelect={onSelect}
+        detail={detail}
+        onForget={onForget}
+        onSignIn={onSignIn}
+        asking={asking}
+        busy={busy}
+      />
+    );
+  }
 
   if (mode === "decide") {
     return (
@@ -102,6 +156,7 @@ export function Results({
       bounds={payload.query.bounds}
       origin={payload.query.origin}
       busy={busy}
+      visitedIds={visitedIds}
     />
   );
 }
