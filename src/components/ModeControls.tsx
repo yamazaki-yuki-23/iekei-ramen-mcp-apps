@@ -12,7 +12,7 @@ interface Props {
   origin?: Origin;
   onLocate: (lat: number, lon: number, label: string | undefined, source: OriginSource) => void;
   onLocateByHost: () => Promise<boolean>;
-  onGeocode: (query: string) => Promise<{ lat: number; lon: number; label: string } | null>;
+  onSearchPlace: (query: string) => Promise<{ lat: number; lon: number; label: string } | null>;
   notice: string | null;
   busy: boolean;
 }
@@ -35,7 +35,7 @@ export function ModeControls({
   origin,
   onLocate,
   onLocateByHost,
-  onGeocode,
+  onSearchPlace,
   notice,
   busy,
 }: Props) {
@@ -53,7 +53,7 @@ export function ModeControls({
         origin={origin}
         onLocate={onLocate}
         onLocateByHost={onLocateByHost}
-        onGeocode={onGeocode}
+        onSearchPlace={onSearchPlace}
         notice={notice}
         busy={busy}
       />

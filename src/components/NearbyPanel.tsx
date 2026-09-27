@@ -15,8 +15,13 @@ interface Props {
    * 位置情報が得られたかどうかを返す。
    */
   onLocateByHost: () => Promise<boolean>;
-  /** 地名を緯度経度に解決する（サーバーの geocode-place を呼ぶ）。 */
-  onGeocode: (query: string) => Promise<{ lat: number; lon: number; label: string } | null>;
+  /**
+   * 地名を座標に直して、そこで探すところまで。
+   *
+   * **解決と検索を分けない。** 分けると、解決を待つ間にタブを移られたとき、
+   * あとから検索だけが走って画面を引き戻す。見つからなければ null。
+   */
+  onSearchPlace: (query: string) => Promise<{ lat: number; lon: number; label: string } | null>;
   /** 親が保持する案内メッセージ。再マウントしても消えない。 */
   notice: string | null;
   busy: boolean;
@@ -45,7 +50,14 @@ function requestBrowserPosition(): Promise<GeolocationPosition | null> {
  * ChatGPT はアプリの iframe に geolocation を許可しないため 1 は必ず失敗する。
  * それでもボタンを押せば 2 で結果が出るようにしてある。
  */
-export function NearbyPanel({ origin, onLocate, onLocateByHost, onGeocode, notice, busy }: Props) {
+export function NearbyPanel({
+  origin,
+  onLocate,
+  onLocateByHost,
+  onSearchPlace,
+  notice,
+  busy,
+}: Props) {
   const [place, setPlace] = useState("");
   const [status, setStatus] = useState<string | null>(null);
 
@@ -71,13 +83,12 @@ export function NearbyPanel({ origin, onLocate, onLocateByHost, onGeocode, notic
     const q = place.trim();
     if (!q) return;
     setStatus(`「${q}」を検索中…`);
-    const hit = await onGeocode(q);
+    const hit = await onSearchPlace(q);
     if (!hit) {
       setStatus(`「${q}」が見つかりませんでした。`);
       return;
     }
     setStatus(null);
-    onLocate(hit.lat, hit.lon, hit.label, "place");
   };
 
   return (

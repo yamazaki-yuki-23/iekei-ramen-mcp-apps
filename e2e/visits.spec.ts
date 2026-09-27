@@ -216,6 +216,42 @@ test.describe("サインイン済み", () => {
     await expect(page.getByText("📋 Model Context")).toHaveCount(0);
   });
 
+  test("記録を書き換えている間だけ、タブが止まる", async ({ page }) => {
+    /*
+     * 記録の応答にも検索の応答にも、その時点の記録の全体が入っている。
+     * 同時に走らせると**あとから届いた方が勝つ**ので、押したばかりの印が
+     * 古い写しで消える。読み込み中のタブは開放したが、ここだけは止める。
+     */
+    const app = await callTool(
+      page,
+      "search-iekei-ramen",
+      { prefecture: "神奈川県" },
+      MEMBER_SERVER_NAME,
+    );
+    await waitForApp(app);
+    await selectFirst(app);
+
+    // 記録の応答だけを遅らせ、その間のタブを見る。
+    await page.route(`**/${MEMBER_SERVER_URL.split("//")[1]}`, async (route) => {
+      const body = route.request().postData() ?? "";
+      if (body.includes('"stamp-iekei-ramen"')) {
+        const response = await route.fetch();
+        const text = await response.text();
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await route.fulfill({ response, body: text });
+        return;
+      }
+      await route.continue();
+    });
+
+    await app.getByRole("button", { name: "行った", exact: true }).click();
+    // **時間を切って見る。** 終わったあとの状態に一致させない。
+    await expect(app.getByRole("tab", { name: "地図から探す" })).toBeDisabled({ timeout: 1000 });
+
+    // 書き換えが終われば、また押せる。
+    await expect(app.getByRole("tab", { name: "地図から探す" })).toBeEnabled({ timeout: 20_000 });
+  });
+
   test("記録を全部消すのは 2 段階で、やめれば残る", async ({ page }) => {
     const app = await callTool(
       page,

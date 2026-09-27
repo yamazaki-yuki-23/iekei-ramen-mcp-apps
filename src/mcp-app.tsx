@@ -410,16 +410,18 @@ function IekeiAppInner({
 
   const {
     busy,
+    mutating,
     asking,
     failure,
     stale,
     runSearch,
     runArea,
     runDecide,
+    discardPending,
     askToDecide,
     runNearby,
     runNearbyByHost,
-    geocode,
+    searchPlace,
     openInMaps,
     openExternal,
     askAboutShop,
@@ -469,6 +471,7 @@ function IekeiAppInner({
     runDecide,
     runNearby,
     runVisited,
+    discardPending,
     signedIn,
   });
 
@@ -550,7 +553,7 @@ function IekeiAppInner({
         {count ? <span className={styles.count}>{count}</span> : null}
       </div>
 
-      <ModeTabs mode={mode} onChange={switchMode} busy={busy} />
+      <ModeTabs mode={mode} onChange={switchMode} mutating={mutating} />
 
       <ModeControls
         mode={mode}
@@ -561,7 +564,7 @@ function IekeiAppInner({
         origin={payload.query.origin}
         onLocate={runNearby}
         onLocateByHost={runNearbyByHost}
-        onGeocode={geocode}
+        onSearchPlace={searchPlace}
         notice={notice}
         busy={busy}
       />

@@ -8,6 +8,8 @@ import { expect, type FrameLocator, type Locator, type Page } from "@playwright/
 
 /** E2E が使う MCP サーバーの名乗り。playwright.config が環境変数で渡している。 */
 const E2E_SERVER_NAME = "Iekei Ramen Finder (E2E)";
+/** その MCP エンドポイント。応答を遅らせる試験で経路を捕まえるのに使う。 */
+export const E2E_SERVER_URL = "http://localhost:3131/mcp";
 /** 偽のサインイン済み利用者で動いている方。会員機能の画面はこちらでしか出ない。 */
 export const MEMBER_SERVER_NAME = "Iekei Ramen Finder (E2E signed-in)";
 /** そのサーバーの MCP エンドポイント。応答を遅らせる試験で経路を捕まえるのに使う。 */

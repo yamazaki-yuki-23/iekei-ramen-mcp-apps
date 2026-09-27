@@ -13,11 +13,26 @@ const MODES: Array<{ key: SearchMode; label: string }> = [
 interface Props {
   mode: SearchMode;
   onChange: (mode: SearchMode) => void;
-  busy: boolean;
+  /**
+   * 記録を書き換えている最中か。**ここだけは止める。**
+   *
+   * 記録の応答にも検索の応答にも、その時点の記録の全体が入っている。
+   * 同時に走らせると**あとから届いた方が勝つ**ので、書き換えたばかりの印が
+   * 古い写しで消える。書き換えは 1 往復で終わるので、止まって見える時間は
+   * ほとんど無い（止めたかったのは 558 件を返す検索の方）。
+   */
+  mutating: boolean;
 }
 
-/** モード切り替えのタブ。 */
-export function ModeTabs({ mode, onChange, busy }: Props) {
+/**
+ * モード切り替えのタブ。
+ *
+ * **読み込み中でも押せる。** 地図は 558 件を返すので、その間ずっと押せないと
+ * 「壊れた」と読まれて押し直すことになる。押した操作が最後に効く方が読める。
+ * 追い越しは呼び出し側が捨てる（[use-server-tools](../hooks/use-server-tools.ts)
+ * の通し番号）。
+ */
+export function ModeTabs({ mode, onChange, mutating }: Props) {
   return (
     <div className={styles.tabs} role="tablist">
       {MODES.map(({ key, label }) => (
@@ -28,7 +43,7 @@ export function ModeTabs({ mode, onChange, busy }: Props) {
           aria-selected={mode === key}
           className={`${styles.tab} ${mode === key ? styles.tabActive : ""}`}
           onClick={() => onChange(key)}
-          disabled={busy}
+          disabled={mutating}
         >
           {label}
         </button>
