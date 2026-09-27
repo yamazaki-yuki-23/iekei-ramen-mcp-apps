@@ -3,7 +3,7 @@
  * 通常の E2E とは別扱いで、`npm run capture` から実行する。
  */
 import { expect, test } from "@playwright/test";
-import { callTool, shopCards, waitForApp } from "./helpers";
+import { callTool, MEMBER_SERVER_NAME, shopCards, waitForApp } from "./helpers";
 
 test.use({
   viewport: { width: 900, height: 760 },
@@ -77,4 +77,30 @@ test("地図から探す", async ({ page }) => {
   // タイルの読み込みを待ってから撮る
   await page.waitForTimeout(4000);
   await shot(page, "map");
+});
+
+test("行った店", async ({ page }) => {
+  /*
+   * **記録はサインインした人のものなので、偽の利用者で動くサーバーを使う**
+   * （IEKEI_DEV_VISITOR。main.ts にしかない道で、本番には出ない）。
+   * 制覇率が 0 だと画面の意味が伝わらないので、3 軒押してから撮る。
+   */
+  await callTool(page, "forget-my-iekei-ramen-visits", {}, MEMBER_SERVER_NAME);
+  const app = await callTool(
+    page,
+    "search-iekei-ramen",
+    { prefecture: "神奈川県" },
+    MEMBER_SERVER_NAME,
+  );
+  await waitForApp(app);
+
+  for (const index of [0, 1, 2]) {
+    await shopCards(app).nth(index).click();
+    await app.getByRole("button", { name: "行った", exact: true }).click();
+    await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
+  }
+
+  await app.getByRole("tab", { name: "行った店" }).click();
+  await expect(shopCards(app)).toHaveCount(3);
+  await shot(page, "visited");
 });
