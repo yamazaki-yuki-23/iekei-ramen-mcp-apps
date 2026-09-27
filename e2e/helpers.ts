@@ -8,6 +8,10 @@ import { expect, type FrameLocator, type Locator, type Page } from "@playwright/
 
 /** E2E が使う MCP サーバーの名乗り。playwright.config が環境変数で渡している。 */
 const E2E_SERVER_NAME = "Iekei Ramen Finder (E2E)";
+/** 偽のサインイン済み利用者で動いている方。会員機能の画面はこちらでしか出ない。 */
+export const MEMBER_SERVER_NAME = "Iekei Ramen Finder (E2E signed-in)";
+/** そのサーバーの MCP エンドポイント。応答を遅らせる試験で経路を捕まえるのに使う。 */
+export const MEMBER_SERVER_URL = "http://localhost:3132/mcp";
 
 /**
  * E2E が使う MCP サーバーを選ぶ。
@@ -22,9 +26,9 @@ const E2E_SERVER_NAME = "Iekei Ramen Finder (E2E)";
  * 古いビルドを検証して通る——という偽の合格が起きる（実際に踏んだ）。
  * 名前で選べば、選べた時点で切り替わったことが確定する。
  */
-async function selectTestServer(page: Page) {
+async function selectTestServer(page: Page, name = E2E_SERVER_NAME) {
   const servers = page.locator("select").first();
-  await servers.selectOption({ label: E2E_SERVER_NAME });
+  await servers.selectOption({ label: name });
   await expect(servers).toHaveValue(/\d+/);
 }
 
@@ -33,9 +37,11 @@ export async function callTool(
   page: Page,
   name: string,
   args: Record<string, unknown> = {},
+  /** どのサーバーで呼ぶか。会員機能は MEMBER_SERVER_NAME を指す。 */
+  server?: string,
 ): Promise<FrameLocator> {
   await page.goto("/");
-  await selectTestServer(page);
+  await selectTestServer(page, server);
   await page.locator("select").nth(1).selectOption(name);
   await page.locator("textarea").fill(JSON.stringify(args));
   await page.getByRole("button", { name: "Call Tool" }).click();

@@ -272,6 +272,38 @@
   color: var(--color-accent-strong);
 }
 
+/*
+ * 入っている状態のボタン（「行った」）。
+ *
+ * **第 1 ボタンの塗りは使わない。** `.button` と同じ塗りにすると、その行で
+ * 一番強い「この店について聞く」と同じ重さになり、どちらが主か読めなくなる。
+ * 選択中の見せ方（accent-soft の面 ＋ アクセントの枠）に合わせる。
+ */
+.buttonOn {
+  composes: buttonSecondary;
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+/*
+ * 元に戻せない操作（記録を全部消す）。
+ *
+ * **ブランドの赤ではなく失敗の赤を使う。** 家系の色もすでに赤寄りなので、
+ * 同じ色だと「強調」と「異常」が見分けられない。
+ */
+.buttonDanger {
+  composes: button;
+  background: var(--color-error-soft);
+  color: var(--color-error);
+  border-color: var(--color-error-border);
+}
+
+.buttonDanger:hover:not(:disabled) {
+  background: var(--color-error-soft);
+  border-color: var(--color-error);
+}
+
 /* --- 店舗リスト --- */
 .list {
   display: flex;
@@ -440,6 +472,13 @@
   color: var(--color-text-muted);
   border-color: var(--color-border);
   font-weight: var(--font-weight-normal);
+}
+
+/* 行った印。バッジの中では塗りで持つ（枠は他のバッジと高さを揃えるため透明）。 */
+.badgeVisited {
+  composes: badge;
+  background: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
 }
 
 /* 店名と同じ行に置く。縦中央に寄せると、どの店の距離か目で追えない。 */
@@ -886,6 +925,123 @@
   cursor: pointer;
 }
 
+/* --- 行った店・制覇率 --- */
+
+.visited {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* サインインの案内。空状態と同じ静かな面で出す（失敗ではないため）。 */
+.signIn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface-muted);
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.signInLead {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.progressHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* 並べて比べる数字なので幅を固定する。桁が変わると目が滑る。 */
+.progressCount,
+.progressPercent,
+.progressCell {
+  font-variant-numeric: tabular-nums;
+}
+
+.progressCount {
+  font-size: var(--font-heading-lg-size);
+  font-weight: var(--font-weight-bold);
+}
+
+.progressPercent {
+  color: var(--color-accent-strong);
+  font-size: var(--font-heading-lg-size);
+  font-weight: var(--font-weight-bold);
+}
+
+.progressBar {
+  flex: 1 1 auto;
+  height: 8px;
+  min-width: 4rem;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent-fill);
+  border-radius: var(--radius-full);
+}
+
+.progressList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.progressName {
+  flex: 0 0 6rem;
+  font-size: var(--font-size-note);
+}
+
+.progressCell {
+  flex: 0 0 4rem;
+  text-align: right;
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+/* 消す導線は一覧の下。目に入る場所に置くが、先頭には置かない。 */
+.forget {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.forgetActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 /* --- 焦点（フォーカス） --- */
 
 /*
@@ -901,6 +1057,8 @@
 .input:focus-visible,
 .tab:focus-visible,
 .button:focus-visible,
+.buttonOn:focus-visible,
+.buttonDanger:focus-visible,
 .chip:focus-visible,
 .card:focus-visible,
 .clusterPin:focus-visible,

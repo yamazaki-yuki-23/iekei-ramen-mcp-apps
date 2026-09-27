@@ -54,8 +54,10 @@ registerAppTool(..., { _meta: { ui: { resourceUri } } })
 registerAppResource(server, resourceUri, ...)  // APP_HTML を返す
 ```
 
-tool は 5 つ。UI 付き 4 つ（`search-iekei-ramen` / `find-nearby-iekei-ramen` /
-`show-iekei-ramen-map` / `decide-iekei-ramen`）と、UI 無しの `geocode-place`。
+tool は 8 つ。UI 付き 7 つ（`search-iekei-ramen` / `find-nearby-iekei-ramen` /
+`show-iekei-ramen-map` / `decide-iekei-ramen` と、サインインが要る
+`stamp-iekei-ramen` / `show-visited-iekei-ramen` / `forget-my-iekei-ramen-visits`）、
+UI 無しの `geocode-place`。
 
 ### UI へのデータ受け渡し
 
@@ -125,6 +127,35 @@ tool は 5 つ。UI 付き 4 つ（`search-iekei-ramen` / `find-nearby-iekei-ram
 - 地図に線を引く節は、**「選んだ店へ寄せる」より後に置くこと。** 同じ更新で
   両方走ると後の地図移動が勝ち、前に置くと順路が画面の外へ出る。
 
+### 訪問スタンプ（サインインが要る唯一の機能）
+
+**匿名の検索は止めない。** `/mcp` は誰でも叩け、記録の 3 tool（`MEMBER_TOOLS`）
+だけが、トークンの無い呼び出しに 401 を返す。ホストはこの 401 を見て
+「アクセス権を更新」を出す（ChatGPT で実測）。
+
+- 身元は Google に委ねる（`openid` だけ。**審査不要の範囲**）。受け取った `sub` は
+  専用の鍵で HMAC してから保存し、**生の sub は持たない**。この鍵
+  （`VISITOR_ID_PEPPER`）は二度と変えられない——変えると全員の記録が迷子になる
+- 記録は D1、認可の状態は KV。認可サーバーは `@cloudflare/workers-oauth-provider` の
+  `OAuthAuthorizationServer`。**`OAuthProvider` は使えない**（apiRoute の未認証を
+  ハンドラ手前で 401 にするので、匿名が通らなくなる）
+- **`/.well-known/oauth-protected-resource` は自分で返す**（[oauth.ts](oauth.ts)）。
+  ライブラリは認可サーバー側の文書しか出さず、任せると 401 の指す先が 404 になる
+- ライブラリは `cloudflare:workers` を取り込むので**動的 import**。KV の無い環境
+  （Node の手元サーバー）では読み込ませず 501 を返す。読み込むとプロセスごと落ちる
+  （ESM ローダの失敗は try/catch で拾えない）
+- **UI から記録の tool を呼べるのはサインイン済みのときだけ。** 匿名で呼んでも
+  401 を受けるだけで、ホストはサインインの画面を出さない（出すのはモデル発の
+  呼び出しに対してだけ）。匿名の「行った」は `sendMessage` でモデルに頼み直す
+  （文面は [shop-brief.ts](src/lib/shop-brief.ts)）
+- **サインインしているかは `payload.visited` の有無で判る。** 匿名ではこの欄ごと
+  落としてあるので、「1 軒も行っていない人」（空配列）と混ざらない
+- **スタンプの結果で画面を差し替えない。** この tool の payload は
+  `mode: "visited"` なので、素直に反映すると検索結果を見ていた人が「行った店」へ
+  飛ばされる。記録（`visited` / `progress`）だけを差す（`applyVisits`）
+- 制覇率の計算は [src/lib/progress.ts](src/lib/progress.ts)。**順位も称号も作らない**
+  ——持っているのは軒数だけで、頑張りの度合いを語る材料が無い
+
 ### UI の選択をモデルに返す
 
 UI で選んだ 1 軒は `app.updateModelContext()` でモデルに渡す。これが無いと、
@@ -157,7 +188,8 @@ Workers にはファイルシステムが無いので、HTML もデータもコ�
 ### データ
 
 店舗データは OpenStreetMap 由来の静的 JSON（558 店舗 / 37 都道府県）。
-DB もストレージも使わない。実行時の書き込みは無い。
+店舗データ自体は実行時に書き換えない。**書き込むのは訪問記録だけ**で、
+そこだけ D1（`visits` テーブル）に入る（下の「訪問スタンプ」を参照）。
 
 - [scripts/fetch-shops.mjs](scripts/fetch-shops.mjs) — Overpass API を都道府県ごとに並列 3 で叩く。
   1 県あたり 25〜80 秒かかり、たまに失敗する。失敗した県は
@@ -294,11 +326,25 @@ data URI にすること。
 **1 つのホストへ MCP サーバーを 2 つ登録**し、E2E は名前で選び分ける。
 
 ```bash
-SERVERS='["http://localhost:3031/mcp","http://localhost:3131/mcp"]' \
+SERVERS='["http://localhost:3031/mcp","http://localhost:3131/mcp","http://localhost:3132/mcp"]' \
   npx tsx e2e-host/ext-apps/examples/basic-host/serve.ts
 ```
 
-- プレビュー用は 3031（`npm run dev`）、E2E 用は 3131（Playwright が毎回ビルドして起動）
+**会員機能は「サインイン済みのサーバー」で確かめる。** 匿名とサインイン済みを
+1 つのプロセスで兼ねられないので、`IEKEI_DEV_VISITOR=誰か` を付けたもう 1 本
+（3132）を並べ、E2E は名前で選ぶ（`MEMBER_SERVER_NAME`）。**この偽サインインの
+道は [main.ts](main.ts) にしかない。** worker.ts に入れると、環境変数ひとつで
+認証を迂回できる口を本番へ置くことになる。
+
+**落ちているサーバーは外されるが、CORS で弾かれるサーバーは一覧ごと止める。**
+接続拒否なら黙って外れる（実測: 3132 を止めると残り 2 本が並んだ）。一方、
+繋がるのに CORS の返事が無いと、選択欄が `Loading…` のまま止まり**どのサーバーも
+選べなくなる**（実測: OPTIONS を横取りして CORS ヘッダを落としていた 3132 で発生）。
+サーバーを足すときは、まず `OPTIONS /mcp` が `Access-Control-Allow-Origin` を
+返すか確かめる。
+
+- プレビュー用は 3031（`npm run dev`）、E2E 用は 3131（Playwright が毎回ビルドして起動）、
+  **サインイン済みの検証用は 3132**（`IEKEI_DEV_VISITOR` を付けた同じサーバー）
 - E2E 用だけ `IEKEI_SERVER_NAME` で名乗りを変え、`e2e/helpers.ts` が**名前で**選ぶ
 - **並び順や option の数で選ばないこと。** 切り替えが反映される前に次へ進むと、
   古いサーバーのまま tool を呼び、**古いビルドを検証して通る**（実際に踏んだ）

@@ -15,7 +15,7 @@
  */
 import type { App, McpUiDisplayMode, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import { useApp } from "@modelcontextprotocol/ext-apps/react";
-import { StrictMode, useCallback, useEffect, useMemo, useState } from "react";
+import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ModeControls } from "./components/ModeControls";
 import { ModeTabs } from "./components/ModeTabs";
@@ -74,6 +74,15 @@ function IekeiApp() {
    * 最初の 1 軒を入れたときの基準地点を、空になるまで持ち続ける。
    */
   const [routeOrigin, setRouteOrigin] = useState<Origin | undefined>();
+
+  /**
+   * 訪問記録だけを差し替える。
+   *
+   * **payload ごと入れ替えない。** スタンプの結果は mode: "visited" で返るので、
+   * applyPayload に通すと Inner が key ごと作り直され、検索結果を見ていた人が
+   * 「行った店」の画面へ飛ばされる（選んでいた店も外れる）。押したのは
+   * 「行った」だけなので、変わるのは記録だけにする。
+   */
 
   const applyPayload = useCallback((next: AppPayload) => {
     setPayload(next);
@@ -182,6 +191,58 @@ function IekeiApp() {
   }, [enqueueDelivery, queue]);
 
   /**
+   * いまの画面と選択。**応答が返るまでに変わりうるので、掴んだ値を使わない。**
+   * 毎レンダーの後に写す（依存を書かないのは、写し忘れを作らないため）。
+   */
+  const latest = useRef({ mode: payload?.mode, selected });
+  useEffect(() => {
+    latest.current = { mode: payload?.mode, selected };
+  });
+
+  /**
+   * 記録の更新を反映する。
+   *
+   * **payload ごと入れ替えない。** スタンプの結果は mode: "visited" で返るので、
+   * applyPayload に通すと Inner が key ごと作り直され、検索結果を見ていた人が
+   * 「行った店」の画面へ飛ばされる（選んでいた店も外れる）。押したのは
+   * 「行った」だけなので、変わるのは記録だけにする。
+   */
+  const applyVisits = useCallback(
+    (next: AppPayload) => {
+      setPayload((prev) => {
+        if (!prev) return prev;
+        const records = { visited: next.visited, progress: next.progress };
+        /*
+         * **「行った店」の画面だけは一覧も差し替える。** この画面の中身は記録
+         * そのものなので、記録だけ更新すると、取り消した店がカードとして残り
+         * 「行った」釦付きで並ぶ（Codex の指摘で気付いた）。検索結果の画面では
+         * 逆に一覧を触らない——押したのは「行った」だけで、探していた条件は
+         * 変わっていない。
+         */
+        if (prev.mode !== "visited") return { ...prev, ...records };
+        return { ...prev, ...records, shops: next.shops, total: next.total };
+      });
+
+      /*
+       * 一覧から消えた店を選んだままにしない。
+       *
+       * 詳細（と「選択を解除」）はカードの直下にしか無いので、カードごと消えると
+       * **モデルには渡したまま、画面からは外せない**状態になる。検索結果の画面では
+       * カードが残るので、ここで手放すのは「行った店」の画面だけ。
+       *
+       * **いまの選択を ref から読む。** 応答を待つ間にも別の店は選べるので、
+       * 呼んだ時点の値を掴んだままだと、返事が届いたときに**いま選んでいる別の店**を
+       * 消してしまう（Codex の指摘で気付いた）。
+       */
+      const { mode, selected: current } = latest.current;
+      if (mode === "visited" && current && !next.shops.some((shop) => shop.id === current.id)) {
+        void releaseSelection();
+      }
+    },
+    [releaseSelection],
+  );
+
+  /**
    * この店の詳細がモデルに届いているか。
    * 届かないまま質問だけ送るとモデルは店名しか知らないまま答えるので、
    * 「聞く」側がこれを待って判断する。
@@ -228,6 +289,7 @@ function IekeiApp() {
       onAddStop={addStop}
       onRemoveStop={removeStop}
       onClearStops={clearStops}
+      onVisits={applyVisits}
       awaitContext={awaitContext}
       releaseSelection={releaseSelection}
       onDisplayMode={requestDisplayMode}
@@ -253,6 +315,7 @@ const HEADING_BY_MODE: Record<SearchMode, string> = {
   nearby: "現在地から家系ラーメンを探す",
   map: "家系ラーメンを地図で見る",
   decide: "迷ったら",
+  visited: "行った店",
 };
 
 /**
@@ -263,6 +326,11 @@ const HEADING_BY_MODE: Record<SearchMode, string> = {
  */
 function buildHeading(mode: SearchMode, payload: AppPayload, ready: boolean): string {
   if (!ready) return HEADING_BY_MODE[mode];
+  /*
+   * 「行った店」は条件で絞った一覧ではないので、「どこ」を名乗らせない。
+   * 落ちると、空の query が「全国」と読まれて「全国の家系ラーメン」になる。
+   */
+  if (mode === "visited") return HEADING_BY_MODE.visited;
   if (mode === "nearby") {
     return payload.query.origin
       ? `${originLabel(payload.query.origin)}の近くの家系ラーメン`
@@ -300,6 +368,8 @@ interface InnerProps {
   onAddStop: (shop: Shop, origin?: Origin) => void;
   onRemoveStop: (shop: Shop) => void;
   onClearStops: () => void;
+  /** 記録の更新を反映する（検索結果の画面は動かさない）。 */
+  onVisits: (next: AppPayload) => void;
   /** その店の詳細がモデルに届いたか。届いていなければ質問に詳細を同梱する。 */
   awaitContext: (shop: Shop) => Promise<boolean>;
   /** 選択を外し、モデル側から消えるまで待つ。 */
@@ -326,6 +396,7 @@ function IekeiAppInner({
   onAddStop,
   onRemoveStop,
   onClearStops,
+  onVisits,
   awaitContext,
   releaseSelection,
   onDisplayMode,
@@ -352,7 +423,21 @@ function IekeiAppInner({
     openInMaps,
     openExternal,
     askAboutShop,
-  } = useServerTools({ app, onPayload, onNotice, awaitContext, releaseSelection });
+    runStamp,
+    runVisited,
+    runForget,
+    askToStamp,
+    askToSignIn,
+  } = useServerTools({ app, onPayload, onNotice, awaitContext, releaseSelection, onVisits });
+
+  /*
+   * サインインしているか。
+   *
+   * **`visited` の有無で判断する。** サーバーは匿名のとき、この欄ごと落とす
+   * （空の配列を入れない）ので、「1 軒も行っていない人」と混ざらない。
+   */
+  const signedIn = payload.visited !== undefined;
+  const visitedIds = useMemo(() => new Set(payload.visited ?? []), [payload.visited]);
 
   // 「迷ったら」は「別の候補を見る」で巡回する。payload に乗ってくる値を初期値にして、
   // ここで進める（サーバーが範囲外を丸めるので、増やし続けても壊れない）。
@@ -383,6 +468,8 @@ function IekeiAppInner({
     runArea,
     runDecide,
     runNearby,
+    runVisited,
+    signedIn,
   });
 
   // 現在地モードは基準地点が決まるまで結果を出さない
@@ -435,6 +522,17 @@ function IekeiAppInner({
       routeFull={!inRoute && stops.length >= MAX_STOPS}
       onToggleRoute={() =>
         inRoute ? onRemoveStop(selected) : onAddStop(selected, payload.query.origin)
+      }
+      signedIn={signedIn}
+      isVisited={visitedIds.has(selected.id)}
+      /*
+       * 匿名のときは記録ではなく、チャットへの依頼になる。UI から呼んでも
+       * 401 でホストは何も出さないので、モデルに呼んでもらう。
+       */
+      onToggleVisit={() =>
+        signedIn
+          ? void runStamp(selected.id, !visitedIds.has(selected.id))
+          : void askToStamp(selected)
       }
     />
   );
@@ -490,6 +588,10 @@ function IekeiAppInner({
         routeOrigin={routeOrigin}
         fullscreen={fullscreen}
         onSearchArea={searchArea}
+        signedIn={signedIn}
+        visitedIds={visitedIds}
+        onForget={runForget}
+        onSignIn={() => void askToSignIn()}
       />
 
       {/* 結果の下、注記の上。モードを切り替えても残るので、組み立てたものが消えない。 */}

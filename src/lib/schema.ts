@@ -54,8 +54,14 @@ const ShopSchema = z.object({
   distanceKm: z.number().optional(),
 });
 
+const ProgressSchema = z.object({
+  visited: z.number(),
+  total: z.number(),
+  percent: z.number(),
+});
+
 export const PayloadSchema = z.object({
-  mode: z.enum(["form", "nearby", "map", "decide"]),
+  mode: z.enum(["form", "nearby", "map", "decide", "visited"]),
   shops: z.array(ShopSchema),
   total: z.number(),
   query: z.object({
@@ -74,6 +80,14 @@ export const PayloadSchema = z.object({
   }),
   /** 選択肢を UI に渡す（都道府県リストはデータ由来なのでサーバーが持つ）。 */
   prefectures: z.array(z.string()),
+  /** サインインしている人の訪問済み店舗 ID。匿名なら入らない。 */
+  visited: z.array(z.string()).optional(),
+  progress: z
+    .object({
+      overall: ProgressSchema,
+      prefectures: z.array(ProgressSchema.extend({ prefecture: z.string() })),
+    })
+    .optional(),
   /** 「迷ったら」のときだけ入る、3 軒をどう選んだかの内訳。 */
   decide: z
     .object({

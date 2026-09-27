@@ -57,6 +57,19 @@ export const ORIGIN_PANE = "originArea";
 /** 店 1 軒のピン。選択中だけ大きく、縁を濃くする。 */
 const PIN = { radius: 6, color: "#ffffff", weight: 1.5 } as const;
 const PIN_SELECTED = { radius: 10, color: SELECTED_STROKE, weight: 2 } as const;
+/*
+ * 行った店の印。**色を増やさず、中心に白い点を足す。**
+ * 色で表すと味のパレットと衝突し、縁で表すと「選択中」と見分けが付かない。
+ * `interactive: false` なので、下のピンがそのまま押せる。
+ */
+const VISITED_DOT = {
+  radius: 2.5,
+  weight: 0,
+  color: "#ffffff",
+  fillColor: "#ffffff",
+  fillOpacity: 1,
+  interactive: false,
+} as const;
 
 /**
  * 順路の線。
@@ -171,6 +184,8 @@ export function drawShops(
     onSelect: (shop: Shop, viaKeyboard: boolean) => void;
     /** 塊を押したときに、その中身を外へ渡す。キーボード由来かも伝える。 */
     onCluster: (shops: Shop[], viaKeyboard: boolean) => void;
+    /** 行った店。中心に点を打つ。匿名なら渡ってこない。 */
+    visitedIds?: ReadonlySet<string>;
   },
 ): Map<string, L.CircleMarker> {
   const markers = new Map<string, L.CircleMarker>();
@@ -179,19 +194,28 @@ export function drawShops(
     // 1 軒だけの塊は、ふつうの店のピンとして描く。
     if (cluster.shops.length === 1) {
       const shop = cluster.shops[0];
+      const selected = shop.id === opts.selectedId;
+      const visited = opts.visitedIds?.has(shop.id) ?? false;
+      // 印の意味は読み上げにも載せる。色と点は見えない人に届かない。
+      const label = `${shop.name}（${TASTES[shop.taste].label}${visited ? "・行った" : ""}）`;
       const marker = L.circleMarker([shop.lat, shop.lon], {
-        ...(shop.id === opts.selectedId ? { ...PIN_SELECTED, pane: SELECTED_PANE } : PIN),
+        ...(selected ? { ...PIN_SELECTED, pane: SELECTED_PANE } : PIN),
         fillColor: TASTE_COLORS[shop.taste],
         fillOpacity: 0.9,
       })
-        .bindTooltip(textTooltip(`${shop.name}（${TASTES[shop.taste].label}）`))
+        .bindTooltip(textTooltip(label))
         .on("click", () => opts.onSelect(shop, false));
       marker.addTo(layer);
       markers.set(shop.id, marker);
-      makeActivatable(
-        marker.getElement(),
-        `${shop.name}（${TASTES[shop.taste].label}）`,
-        (viaKeyboard) => opts.onSelect(shop, viaKeyboard),
+      // 点は必ずピンより後に描く。同じペインでは、後に描いたものが上に来る。
+      if (visited) {
+        L.circleMarker([shop.lat, shop.lon], {
+          ...VISITED_DOT,
+          ...(selected ? { pane: SELECTED_PANE } : {}),
+        }).addTo(layer);
+      }
+      makeActivatable(marker.getElement(), label, (viaKeyboard) =>
+        opts.onSelect(shop, viaKeyboard),
       );
       continue;
     }

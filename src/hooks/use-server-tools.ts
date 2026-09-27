@@ -1,14 +1,28 @@
 import type { App } from "@modelcontextprotocol/ext-apps";
 import { useCallback, useRef, useState } from "react";
 import { readPayload } from "../lib/payload";
-import { askMessageText, decideMessageText } from "../lib/shop-brief";
+import {
+  askMessageText,
+  decideMessageText,
+  stampMessageText,
+  visitedSignInText,
+} from "../lib/shop-brief";
 import type { AppPayload, Bounds, Origin, OriginSource, SearchMode, Shop } from "../lib/types";
+
+/*
+ * 記録に失敗したときの文。**サインインの切れも同じ見え方になる。**
+ * UI からの呼び出しで 401 を受けても、ホストはサインインの画面を出さないので、
+ * 会話へ戻る道を文で示す。
+ */
+const STAMP_FAILED =
+  "記録できませんでした。サインインが切れているかもしれません。チャットで「行った店を見せて」と頼むと入り直せます。";
 
 const TOOL_BY_MODE: Record<SearchMode, string> = {
   form: "search-iekei-ramen",
   nearby: "find-nearby-iekei-ramen",
   map: "show-iekei-ramen-map",
   decide: "decide-iekei-ramen",
+  visited: "show-visited-iekei-ramen",
 };
 
 /** 検索フォームの値。tool の引数に組み立て直す。 */
@@ -26,6 +40,14 @@ interface Options {
   awaitContext: (shop: Shop) => Promise<boolean>;
   /** 選択を外し、モデル側から消えるまで待つ。 */
   releaseSelection: () => Promise<boolean>;
+  /**
+   * 記録の更新を反映する。
+   *
+   * **payload ごと入れ替えない。** スタンプの結果は mode: "visited" で返るので、
+   * 素直に反映すると検索結果を見ていた人が「行った店」の画面へ飛ばされる。
+   * どこまで写すかは受け取る側が決める（「行った店」の画面だけ一覧も差し替える）。
+   */
+  onVisits: (next: AppPayload) => void;
 }
 
 /**
@@ -40,6 +62,7 @@ export function useServerTools({
   onNotice,
   awaitContext,
   releaseSelection,
+  onVisits,
 }: Options) {
   /**
    * 走っている呼び出しの数。busy はここから導く。
@@ -196,6 +219,115 @@ export function useServerTools({
     [call],
   );
 
+  /**
+   * 行った印を付ける／外す。
+   *
+   * **結果で一覧を差し替えない。** この tool の payload は mode: "visited" なので、
+   * 素直に反映すると、検索結果を見ていた人が「行った店」の画面へ飛ばされる。
+   * 記録の部分（visited / progress）だけを差し、画面はそのまま残す。
+   */
+  const sendStamp = useCallback(
+    async (shopId: string, visited: boolean) => {
+      try {
+        const result = await app.callServerTool({
+          name: "stamp-iekei-ramen",
+          arguments: { shopId, visited },
+        });
+        if (result.isError) {
+          setFailure(STAMP_FAILED);
+          return;
+        }
+        const next = readPayload(result);
+        // visited が無いのは、サインインが切れて匿名として処理されたとき。
+        // 黙って成功に見せない。
+        if (next?.visited) onVisits(next);
+        else setFailure(STAMP_FAILED);
+      } catch {
+        setFailure(STAMP_FAILED);
+      }
+    },
+    [app, onVisits],
+  );
+
+  /**
+   * 行った印を付ける／外す。**1 本ずつ順に投げる。**
+   *
+   * 応答にはその時点の記録の全体が入っているので、同時に投げると**先に押した方の
+   * 古い写しが後に返り、あとから押した店を画面から消す**（実測: 2 軒続けて押すと
+   * バッジが 1 つになった。記録そのものは両方残っている）。直列にすれば、
+   * 2 本目の応答は 1 本目を含んだ写しになり、画面と記録が合う。
+   *
+   * **釦を押せなくする形にはしない。** 押せるのに反応しない時間ができるより、
+   * 押した順に効く方が読める。
+   */
+  // null 始まりにするのは、毎レンダーで捨てる Promise を作らないため。
+  const stampQueue = useRef<Promise<void> | null>(null);
+  const runStamp = useCallback(
+    (shopId: string, visited: boolean) => {
+      setInFlight((n) => n + 1);
+      setFailure(null);
+      const done = (stampQueue.current ?? Promise.resolve())
+        .then(() => sendStamp(shopId, visited))
+        .finally(() => setInFlight((n) => n - 1));
+      // 失敗で列を止めない。1 本落ちても、次の操作は投げられる。
+      stampQueue.current = done.catch(() => {});
+      return done;
+    },
+    [sendStamp],
+  );
+
+  /** 行った店の一覧と制覇率を取り直す。こちらは画面ごと入れ替わる。 */
+  const runVisited = useCallback(() => {
+    void call(TOOL_BY_MODE.visited, {});
+  }, [call]);
+
+  /** 記録を全部消す。戻せないので、呼ぶ側が確認を取ってから来ること。 */
+  const runForget = useCallback(() => {
+    void call("forget-my-iekei-ramen-visits", {});
+  }, [call]);
+
+  /**
+   * サインインしていない人の「行った」。
+   *
+   * UI から呼んでも 401 でホストは何も出さないので、依頼文にして会話へ渡す。
+   * モデルが tool を呼び、ホストがサインインを促す（ChatGPT で実測）。
+   */
+  const askToStamp = useCallback(
+    async (shop: Shop) => {
+      setAsking(true);
+      setFailure(null);
+      try {
+        const result = await app.sendMessage({
+          role: "user",
+          content: [{ type: "text", text: stampMessageText(shop) }],
+        });
+        if (result.isError) setFailure("ホストがメッセージの送信を受け付けませんでした。");
+      } catch (e) {
+        setFailure(e instanceof Error ? e.message : String(e));
+      } finally {
+        setAsking(false);
+      }
+    },
+    [app],
+  );
+
+  /** サインインしていない人が「行った店」を開いたとき、会話でサインインを頼む。 */
+  const askToSignIn = useCallback(async () => {
+    setAsking(true);
+    setFailure(null);
+    try {
+      const result = await app.sendMessage({
+        role: "user",
+        content: [{ type: "text", text: visitedSignInText() }],
+      });
+      if (result.isError) setFailure("ホストがメッセージの送信を受け付けませんでした。");
+    } catch (e) {
+      setFailure(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAsking(false);
+    }
+  }, [app]);
+
   const runNearby = useCallback(
     (lat: number, lon: number, label: string | undefined, source: OriginSource) => {
       onNotice(null);
@@ -310,6 +442,11 @@ export function useServerTools({
     runSearch,
     runArea,
     runDecide,
+    runStamp,
+    runVisited,
+    runForget,
+    askToStamp,
+    askToSignIn,
     askToDecide,
     runNearby,
     runNearbyByHost,

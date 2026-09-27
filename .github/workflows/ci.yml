@@ -138,6 +138,12 @@ jobs:
               exit 0
             fi
           fi
+          # **表を先に作ってからコードを出す。** wrangler deploy は
+          # migrations/ を見ないので、ここで適用しないと、新しいコードが
+          # まだ無い表を触って会員機能だけが落ちる。
+          # 移行は足すだけ・冪等（CREATE TABLE IF NOT EXISTS）なので、
+          # 同じものが二度流れても壊れない。
+          npx wrangler d1 migrations apply iekei-ramen-visits --remote
           npx wrangler deploy
         env:
           EVENT_NAME: ${{ github.event_name }}

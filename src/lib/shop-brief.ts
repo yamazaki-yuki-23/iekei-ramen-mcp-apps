@@ -121,3 +121,31 @@ export function decideMessageText(shops: Shop[], basis: string, cleared: boolean
     ...alternatives,
   ].join("\n");
 }
+
+/**
+ * 「行った」を匿名のまま押したときに会話へ流す本文。
+ *
+ * **UI からは記録できない。** スタンプの tool はサインインした人にしか通らず、
+ * UI からの呼び出しで 401 を受けても、ホストにサインインを促す画面は出ない。
+ * モデルに呼んでもらえば、ホスト側が「アクセス権を更新」を出してくれる
+ * （ChatGPT で実測）。だから押した操作は、依頼文にして会話へ渡す。
+ *
+ * **店舗 ID をそのまま書く。** 店名だけ渡すと、モデルが先に検索し直すことに
+ * なり、同名の別店舗を記録しかねない。
+ */
+export function stampMessageText(shop: Shop): string {
+  const where = [shop.prefecture, shop.city].filter(Boolean).join("");
+  return [
+    `UI で「行った」を押しました。「${shop.name}」（${where}）を訪問済みとして記録してください。`,
+    `店舗 ID: ${shop.id}`,
+    "記録には stamp-iekei-ramen を使ってください（サインインが必要です）。",
+  ].join("\n");
+}
+
+/** 「行った店」を匿名で開いたときに、サインインを頼む本文。 */
+export function visitedSignInText(): string {
+  return [
+    "行った店の記録を見たいです。show-visited-iekei-ramen を呼んでください。",
+    "サインインが必要なら、その案内を出してください。",
+  ].join("\n");
+}

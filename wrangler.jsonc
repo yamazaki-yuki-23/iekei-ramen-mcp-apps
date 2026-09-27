@@ -5,4 +5,20 @@
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Google の OAuth クライアント ID。**秘密ではない**（認可 URL に平文で載る）。
+  // 対になるシークレットは `wrangler secret put GOOGLE_CLIENT_SECRET` で入れる。
+  "vars": {
+    "GOOGLE_CLIENT_ID": "137432264706-la7kvlrkic3t0h4j6apv30bdvihbt3nm.apps.googleusercontent.com",
+  },
+  // OAuth の控え（発行したトークン・クライアント登録・付与）。
+  // **消えてもスタンプは無事**——サインインし直しになるだけ。
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "06516559e3374d8ea0fef18bf28460c2" }],
+  // 訪問スタンプの記録。**利用者のデータなので、消えたら戻らない。**
+  "d1_databases": [
+    {
+      "binding": "VISITS",
+      "database_name": "iekei-ramen-visits",
+      "database_id": "00f8b2e9-c020-455b-b8ca-4dc67dbbdc01",
+    },
+  ],
 }
