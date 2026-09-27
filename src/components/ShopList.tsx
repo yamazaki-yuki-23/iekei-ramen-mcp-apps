@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+import { sameNameLabels } from "../lib/same-name";
 import { CONFIDENCE, TASTES, type Shop } from "../lib/types";
 import { formatDistance } from "../lib/geo";
 import styles from "../mcp-app.module.css";
@@ -33,6 +34,12 @@ export function ShopList({
   emptyMessage,
   visitedIds,
 }: Props) {
+  /*
+   * 同名の店が並ぶときだけ、どこの店かを名前の隣に出す。
+   * **一覧の中身から決める。** 渡す側に任せると、出し忘れた一覧だけ
+   * 同じ名前が並ぶ（「迷ったら」も「行った店」も同じ部品を使っている）。
+   */
+  const labels = useMemo(() => sameNameLabels(shops), [shops]);
   if (shops.length === 0) {
     return (
       <p className={styles.empty}>{emptyMessage ?? "条件に合う店舗が見つかりませんでした。"}</p>
@@ -51,7 +58,17 @@ export function ShopList({
           >
             {ranked && <span className={styles.rank}>{i + 1}</span>}
             <span className={styles.cardBody}>
-              <span className={styles.shopName}>{shop.name}</span>
+              <span className={styles.shopHead}>
+                {/* 取り出す対象を名指しできるようにしておく（テストが店名だけを読む）。 */}
+                <span className={styles.shopName} data-shop-name>
+                  {shop.name}
+                </span>
+                {labels.has(shop.id) && (
+                  <span className={styles.shopWhere} data-shop-where>
+                    {labels.get(shop.id)}
+                  </span>
+                )}
+              </span>
               <span className={styles.meta}>
                 {[shop.prefecture, shop.city, shop.address].filter(Boolean).join(" ")}
               </span>

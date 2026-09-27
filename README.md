@@ -149,6 +149,7 @@ Claude の Connectors 設定で、デプロイ先の `/mcp` URL をカスタム�
 npm run data:fetch    # OSM から取得（20〜30 分）      → data/osm-raw.json
 npm run data:judge    # 家系判定（要 TYPESAFE_API_KEY） → data/judged.json
 npm run data:dedupe   # 重複判定（要 TYPESAFE_API_KEY） → data/duplicates.json
+npm run data:areas    # 住所の逆引き（API キー不要）    → data/areas.json
 npm run data:build    # 整形（API キー不要）            → data/shops.json
 ```
 
@@ -163,13 +164,21 @@ npm run data:build    # 整形（API キー不要）            → data/shops.j
 判定に関わるファイルを変えたときに何を再実行するかは、変えた場所で決まります。
 判定の材料（確率・スコア）は保存してあるので、方針を変えるだけなら API は要りません。
 
-| 変えたもの                                           | 再実行するもの                       | API  |
-| ---------------------------------------------------- | ------------------------------------ | ---- |
-| 家系判定の閾値（`CONFIRMED_AT` など）と `decide()`   | `data:rescore` → `data:build`        | 不要 |
-| `KNOWN_BRANDS` / `EXCLUDE`（`scripts/classify.mjs`） | `data:rescore` → `data:build`        | 不要 |
-| 重複の閾値（`SAME_SHOP_AT`）                         | `data:build` だけ                    | 不要 |
-| 質問文（`QUESTIONS`）、`shopState`                   | `data:judge -- --all` → `data:build` | 要   |
-| 重複判定の質問（`PAIR_QUESTION`）、`PAIR_RADIUS_M`   | `data:dedupe` → `data:build`         | 要   |
+| 変えたもの                                           | 再実行するもの                                      | API  |
+| ---------------------------------------------------- | --------------------------------------------------- | ---- |
+| 家系判定の閾値（`CONFIRMED_AT` など）と `decide()`   | `data:rescore` → `data:areas` → `data:build`        | 不要 |
+| `KNOWN_BRANDS` / `EXCLUDE`（`scripts/classify.mjs`） | `data:rescore` → `data:areas` → `data:build`        | 不要 |
+| 重複の閾値（`SAME_SHOP_AT`）                         | `data:build` だけ                                   | 不要 |
+| 質問文（`QUESTIONS`）、`shopState`                   | `data:judge -- --all` → `data:areas` → `data:build` | 要   |
+| 重複判定の質問（`PAIR_QUESTION`）、`PAIR_RADIUS_M`   | `data:dedupe` → `data:build`                        | 要   |
+
+**判定を変えたら `data:areas` を挟みます。** 判定が変わると、それまで一覧に
+載っていなかった店が載ることがあり、その店の地名はまだ引いていません
+（`data:areas` は「いま載る店」だけを対象にするため）。挟まないと、その店だけ
+市区町村が空のまま出ます。引き直しは差分だけなので、数秒で終わります。
+
+重複の閾値だけを変えるときは要りません。重複と判定された店も含めて引いてあるので、
+どちらが残っても地名は揃っています。
 
 `rescore` は保存済みの確率を `decide()` に通し直すだけで、モデルには問い合わせません。
 質問文を変えたら確率そのものが変わるので `rescore` では反映されません。

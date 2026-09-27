@@ -12,6 +12,7 @@
     "data:judge": "node --env-file-if-exists=.dev.vars scripts/judge-all.mjs",
     "data:dedupe": "node --env-file-if-exists=.dev.vars scripts/find-duplicates.mjs",
     "data:rescore": "node scripts/rescore.mjs",
+    "data:areas": "node scripts/fill-areas.mjs",
     "data:build": "node scripts/build-dataset.mjs",
     "build:ui": "cross-env NODE_ENV=production vite build && node scripts/embed-html.mjs",
     "build": "npm run build:ui && tsc --noEmit",

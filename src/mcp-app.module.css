@@ -406,12 +406,14 @@
    * 潰れてもまだ足りないときにだけ縮む。一覧で店を見分ける手がかりは店名
    * しかないので、この順番を崩さないこと。
    */
-  .cardBody > .shopName {
+  /*
+   * **直下の子に当てること。** 店名を別の要素で包んだとき、この指定が
+   * 届かなくなって 20 文字超の店名が 2 行に戻った（55px → 78px）。
+   * 1 行化は `.shopHead` の中で行う（下の .shopHead > .shopName）。
+   */
+  .cardBody > .shopHead {
     flex: 0 1 auto;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .cardBody > .meta {
@@ -1040,6 +1042,46 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+/*
+ * 同名の店を見分けるための一言（市区町村・町名）。
+ *
+ * **店名より弱く、住所より強い。** 店名と同じ強さで出すと、どれが店名か
+ * 読めなくなる。住所の行に混ぜると、1 行に省略されて真っ先に消える。
+ */
+/*
+ * 店名と「どこの店か」を 1 行に並べる。
+ *
+ * **どちらも折り返さず、足りなければ省略する。** 折り返すとカードが 2 行ぶん
+ * 高くなり、一覧に入る件数が減る（55px → 78px）。先に削られるのは地名の方で、
+ * 店名は最後まで残す——ただし地名は同名を見分ける唯一の手がかりなので、
+ * 縮み方は店名より速いだけにして、消しはしない。
+ */
+.shopHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.shopHead > .shopName {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shopWhere {
+  flex: 0 2 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-normal);
+  white-space: nowrap;
 }
 
 /* --- 焦点（フォーカス） --- */
