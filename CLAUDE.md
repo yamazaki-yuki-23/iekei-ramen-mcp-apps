@@ -14,6 +14,7 @@ npm run deploy      # ビルドして wrangler deploy（通常は不要。main �
 npm run data:fetch   # OSM から再取得（20〜30 分。通常は実行不要）
 npm run data:judge   # 家系判定（要 TYPESAFE_API_KEY）→ judged.json
 npm run data:dedupe  # 重複判定（要 TYPESAFE_API_KEY）→ duplicates.json
+npm run data:areas   # 住所の欠けている店を座標から逆引き（API キー不要・1.2 秒/件）→ areas.json
 npm run data:rescore # 閾値だけ変えたとき（API 不要）
 npm run data:build   # judged.json + osm-raw.json → shops.json（API 不要）
 
@@ -188,6 +189,7 @@ Workers にはファイルシステムが無いので、HTML もデータもコ�
 ### データ
 
 店舗データは OpenStreetMap 由来の静的 JSON（558 店舗 / 37 都道府県）。
+市区町村と町名だけは座標からの逆引きで補っている（[areas.json](data/areas.json)）。
 店舗データ自体は実行時に書き換えない。**書き込むのは訪問記録だけ**で、
 そこだけ D1（`visits` テーブル）に入る（下の「訪問スタンプ」を参照）。
 
@@ -199,7 +201,13 @@ Workers にはファイルシステムが無いので、HTML もデータもコ�
 - [scripts/judge-all.mjs](scripts/judge-all.mjs) — 家系判定を実行して `judged.json` に保存。
   確率も保存するので、閾値だけ変えたときは `data:rescore` が API 無しで作り直す。
 - [scripts/find-duplicates.mjs](scripts/find-duplicates.mjs) — 200m 以内のペアが同一店舗かを判定。
+- [scripts/fill-areas.mjs](scripts/fill-areas.mjs) — 住所の欠けている店を座標から逆引きする
+  （Nominatim）。**OSM のタグには住所がほとんど入っていない**（558 件中 82 件しか
+  市区町村を持たず、東京都の町田商店 14 店は 1 件も持たない）ので、同名の店を
+  見分けられない。**判定の後・整形の前に実行する**——shops.json を見る作りにすると
+  「整形 → 逆引き → もう一度整形」になる。座標が動いた店は引き直す。
 - [scripts/build-dataset.mjs](scripts/build-dataset.mjs) — 判定結果の整形と重複除去。判定は持たない。
+  areas.json は**欠けているところだけ**に使う（現地で入力された OSM のタグを上書きしない）。
 
 ## 気をつけること
 

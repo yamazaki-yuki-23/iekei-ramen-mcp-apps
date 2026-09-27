@@ -67,10 +67,18 @@ export function shopCards(app: FrameLocator) {
 
 /**
  * カードから店名だけを取り出す。
- * カード直下の span は住所やバッジも含むまとまりなので、入れ子の span を見る。
+ *
+ * **要素を名指しする。** 「入れ子の span の最初」で拾っていたが、同名の店を
+ * 見分けるための地名を隣に足したときに、そこまで一緒に読んでしまった
+ * （同名が「町田商店 新宿区」と「町田商店 町田市」になり、別名に見えた）。
  */
 export function shopName(card: Locator): Promise<string> {
-  return card.locator("span span").first().innerText();
+  return card.locator("[data-shop-name]").first().innerText();
+}
+
+/** カードの「どこの店か」（同名が並ぶときだけ付く）。 */
+export function shopWhere(card: Locator): Locator {
+  return card.locator("[data-shop-where]");
 }
 
 /**

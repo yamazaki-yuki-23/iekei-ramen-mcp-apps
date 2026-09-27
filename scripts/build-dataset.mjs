@@ -6,6 +6,8 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
+import { findAmbiguous } from "./labels.mjs";
+import { readJson } from "./read-json.mjs";
 import {
   nearbyPairs,
   pairFingerprint,
@@ -19,6 +21,15 @@ const DIR = path.join(import.meta.dirname, "..", "data");
 const raw = JSON.parse(await fs.readFile(path.join(DIR, "osm-raw.json"), "utf-8"));
 const judged = JSON.parse(await fs.readFile(path.join(DIR, "judged.json"), "utf-8"));
 // 重複判定の結果。find-duplicates.mjs が書く。
+/*
+ * 座標から引いた市区町村・町名（data/areas.json）。
+ *
+ * **OSM のタグに住所がほとんど入っていない**ので、同名のチェーン店を
+ * 見分けられない（東京都の町田商店 14 店は 1 件も住所を持っていない）。
+ * 足りないところだけ、ここで補う。作るのは scripts/fill-areas.mjs。
+ */
+const areas = await readJson(new URL("../data/areas.json", import.meta.url), { optional: true });
+
 const judgedPairs = await fs.readFile(path.join(DIR, "duplicates.json"), "utf-8").then(
   (t) => new Map(JSON.parse(t).pairs.map((p) => [p.fingerprint, p])),
   () => new Map(),
@@ -112,6 +123,16 @@ for (const el of raw) {
   const shop = toShop(el, judged[id]);
   if (!shop) continue;
 
+  /*
+   * **OSM のタグを上書きしない。** 現地で入力された住所のほうが確かなので、
+   * 欠けているところだけを座標由来の地名で埋める。
+   */
+  const area = areas[id];
+  if (area) {
+    if (!shop.city && area.city) shop.city = area.city;
+    if (!shop.address && area.area) shop.address = area.area;
+  }
+
   // 名前も座標も完全に一致するものは、判定にかけるまでもなく重複。
   // 近いが少しずれる node/way の重複は duplicates.json が持っている。
   const key = `${shop.name}@${shop.lat.toFixed(4)},${shop.lon.toFixed(4)}`;
@@ -129,6 +150,36 @@ const sorted = shops.toSorted(
     a.prefecture.localeCompare(b.prefecture, "ja") ||
     a.name.localeCompare(b.name, "ja"),
 );
+
+/*
+ * **地名が埋まっていない店は数えて出す。** 判定を変えて新しく載るようになった店は
+ * まだ逆引きしていないので、黙って出すと同名の店を見分けられない一覧になる
+ * （Codex の指摘で気付いた）。data:areas を挟めば埋まる。
+ */
+const withoutCity = sorted.filter((shop) => !shop.city);
+if (withoutCity.length > 0) {
+  console.error(
+    `市区町村が入っていない店: ${withoutCity.length} 件（npm run data:areas を実行すると埋まります）`,
+  );
+}
+
+/*
+ * **見分けが付かない同名の店を公開しない。**
+ *
+ * 市区町村までしか取れなかった店が同じ市に 2 つあると、UI はどう出しても
+ * 同じ文字列になる（それがこの仕組みで無くしたかったもの）。警告だけでは
+ * 手順の途中で止まらず、そのまま commit まで進んでしまうので、書き出す前に
+ * 止める。data:areas を実行し直すと埋まることがある（町名が取れない土地なら、
+ * OSM 側に addr:* を足すしかない）。
+ */
+const ambiguous = findAmbiguous(sorted);
+if (ambiguous.length > 0) {
+  for (const { prefecture, name, label, ids } of ambiguous) {
+    console.error(`見分けが付かない同名の店: ${prefecture} ${name}「${label}」 ${ids.join(" / ")}`);
+  }
+  console.error("npm run data:areas を実行してから、もう一度お試しください。");
+  process.exit(1);
+}
 
 await fs.writeFile(path.join(DIR, "shops.json"), JSON.stringify(sorted));
 
