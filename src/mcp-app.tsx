@@ -13,7 +13,7 @@
  * これが無いと、地図で店を選んだ直後に「この店は？」と聞かれてもモデルは
  * 何も知らず、UI と会話が別々のものに見える。
  */
-import type { App, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
+import type { App, McpUiDisplayMode, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import { useApp } from "@modelcontextprotocol/ext-apps/react";
 import { StrictMode, useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -23,12 +23,14 @@ import type { FormValues } from "./components/SearchForm";
 import { Results } from "./components/Results";
 import { RoutePanel } from "./components/RoutePanel";
 import { SelectedShop } from "./components/SelectedShop";
+import { useFullscreen } from "./hooks/use-fullscreen";
 import { useModeSwitch } from "./hooks/use-mode-switch";
 import { useServerTools } from "./hooks/use-server-tools";
 import { originLabel } from "./lib/geo";
 import { createDeliveryQueue } from "./lib/model-context";
 import { EMPTY_PAYLOAD, readPayload } from "./lib/payload";
 import { safeAreaStyle } from "./lib/safe-area";
+import { scopeLabel } from "./lib/scope";
 import { MAX_STOPS, planRoute } from "./lib/route";
 import type { AppPayload, Origin, SearchMode, Shop } from "./lib/types";
 import styles from "./mcp-app.module.css";
@@ -186,6 +188,25 @@ function IekeiApp() {
    */
   const awaitContext = useCallback((shop: Shop) => queue.hasDelivered(shop.id), [queue]);
 
+  /**
+   * 表示モードの切り替え。
+   *
+   * **返ってきた mode を正とする。** ホストは要求と違うモードを返すことがあり
+   * （使えないモードを頼んだときなど）、要求した側の値で画面を組むと、
+   * 全画面になっていないのに「元に戻す」が出る。
+   *
+   * ホストは host-context-changed でも知らせてくるが、送ってこないホストが
+   * あっても釦の表示がずれないよう、戻り値でも同じ場所を更新しておく。
+   */
+  const requestDisplayMode = useCallback(
+    async (mode: McpUiDisplayMode) => {
+      if (!app) return;
+      const result = await app.requestDisplayMode({ mode });
+      setHostContextPatch((prev) => ({ ...prev, displayMode: result.mode }));
+    },
+    [app],
+  );
+
   if (error) {
     return <p className={styles.error}>接続エラー: {error.message}</p>;
   }
@@ -209,6 +230,7 @@ function IekeiApp() {
       onClearStops={clearStops}
       awaitContext={awaitContext}
       releaseSelection={releaseSelection}
+      onDisplayMode={requestDisplayMode}
       // 初期値はホストから直接読み、以降の変更分を上書きする。
       hostContext={{ ...app.getHostContext(), ...hostContextPatch }}
     />
@@ -246,7 +268,8 @@ function buildHeading(mode: SearchMode, payload: AppPayload, ready: boolean): st
       ? `${originLabel(payload.query.origin)}の近くの家系ラーメン`
       : HEADING_BY_MODE.nearby;
   }
-  const where = payload.query.prefecture ?? "全国";
+  // 範囲で絞ったときに「全国」と名乗らない。語はサーバーの文と共通。
+  const where = scopeLabel(payload.query);
   if (mode === "decide") {
     // 0 件のときに「この 0 軒」と名乗らない。件数はここでは意味を持たない。
     if (payload.shops.length === 0) return HEADING_BY_MODE.decide;
@@ -281,6 +304,8 @@ interface InnerProps {
   awaitContext: (shop: Shop) => Promise<boolean>;
   /** 選択を外し、モデル側から消えるまで待つ。 */
   releaseSelection: () => Promise<boolean>;
+  /** 表示モードを変えてもらう。ホストが受けた実際のモードは hostContext に返る。 */
+  onDisplayMode: (mode: McpUiDisplayMode) => Promise<void>;
   hostContext?: McpUiHostContext;
 }
 
@@ -303,6 +328,7 @@ function IekeiAppInner({
   onClearStops,
   awaitContext,
   releaseSelection,
+  onDisplayMode,
   hostContext,
 }: InnerProps) {
   // payload が変わるたび key で作り直されるので、ここは「初期値を 1 度だけ写す」形。
@@ -317,6 +343,7 @@ function IekeiAppInner({
     failure,
     stale,
     runSearch,
+    runArea,
     runDecide,
     askToDecide,
     runNearby,
@@ -339,7 +366,10 @@ function IekeiAppInner({
    */
   const activeKeyword = payload.mode === "decide" ? payload.query.keyword : undefined;
 
-  const { runConditions, switchMode } = useModeSwitch({
+  // 広げられるのは地図だけ。他のモードでは畳む（釦がその画面に無いため）。
+  const fullscreen = useFullscreen(hostContext, onDisplayMode, mode === "map");
+
+  const { runConditions, searchArea, switchMode } = useModeSwitch({
     mode,
     setMode,
     form,
@@ -347,6 +377,10 @@ function IekeiAppInner({
     activeKeyword,
     onSelect,
     runSearch,
+    bounds: payload.query.bounds,
+    prefecture: payload.query.prefecture,
+    onForm: setForm,
+    runArea,
     runDecide,
     runNearby,
   });
@@ -454,6 +488,8 @@ function IekeiAppInner({
         detail={detail}
         route={routeShops}
         routeOrigin={routeOrigin}
+        fullscreen={fullscreen}
+        onSearchArea={searchArea}
       />
 
       {/* 結果の下、注記の上。モードを切り替えても残るので、組み立てたものが消えない。 */}

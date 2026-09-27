@@ -1,37 +1,22 @@
-import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { TASTES, type Shop } from "../lib/types";
+import { useEffect, useRef, useState } from "react";
+import { useMarkerFocus } from "../hooks/use-marker-focus";
+import type { Bounds, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
-
-/**
- * 味の傾向ごとのピンの色。
- *
- * Leaflet は CSS 変数を受け取らないので、ここだけ実値を持つ。
- * global.css のパレットから取っている（rich = --ramen-600、
- * unknown = --gray-500）ので、パレットを変えたらここも合わせる。
- */
-const TASTE_COLORS: Record<Shop["taste"], string> = {
-  rich: "#b8442c",
-  creamy: "#e0a04a",
-  chain: "#4a7fb8",
-  unknown: "#7d776e",
-};
-
-/** 選択中のピンの縁。地図タイルのどの色の上でも輪郭が出る濃さ。 */
-const SELECTED_STROKE = "#141312";
-
-/**
- * 順路の線。
- *
- * **破線なのは、道のりではないことを見た目でも示すため。** 引いているのは
- * 店と店を直線で結んだだけのもので、経路探索の結果ではない。実線にすると
- * 「この道を通る」と読めてしまう。
- */
-const ROUTE_LINE = { color: SELECTED_STROKE, weight: 2, opacity: 0.55, dashArray: "6 6" };
-
-/** 日本全体が収まる初期表示。 */
-const JAPAN_BOUNDS = L.latLngBounds([24.0, 122.5], [45.7, 146.0]);
+import {
+  boundsOf,
+  drawOrigin,
+  drawRoute,
+  drawShops,
+  JAPAN_BOUNDS,
+  ORIGIN_PANE,
+  ROUTE_PANE,
+  SELECTED_PANE,
+  toLatLngBounds,
+  viewBounds,
+  type MapOrigin,
+} from "./map-layers";
 
 interface Props {
   shops: Shop[];
@@ -43,92 +28,228 @@ interface Props {
   route?: Shop[];
   /** 順路の出発点。あれば線をここから引く。 */
   routeOrigin?: { lat: number; lon: number };
+  /** 基準地点。あれば印と同心円を出す。 */
+  origin?: MapOrigin;
+  /** 塊を押したときに、その中身を渡す。寄っても解けない塊への逃げ道。 */
+  onClusterSelect?: (shops: Shop[], viaKeyboard: boolean) => void;
+  /** 全画面のときは地図を高くする。 */
+  expanded?: boolean;
+  /**
+   * 範囲の読み取り口を外へ渡す。
+   *
+   * **動かすたびに値を流さない。** 直近の移動を覚えておく形にすると、
+   * 寄せ終わる前に押されたときに古い範囲で探してしまう（実際に踏んだ:
+   * 塊を押した直後に「この範囲で探す」を押すと、全国 558 件のまま返った）。
+   * 押した瞬間に読む。
+   */
+  onReady?: (getBounds: () => Bounds) => void;
+  /**
+   * 最初に表示する範囲。
+   *
+   * **payload から渡す。** 結果が差し替わるとこの部品ごと作り直されるので
+   * （payload ごとに key を振ってある）、地図は毎回新品で生まれる。
+   * 覚えていたつもりの画角は残らず、「この範囲で探す」の直後に日本全体へ
+   * 戻ってしまう（実測: 範囲で 489 件に絞った直後、もう一度押すと 558 件）。
+   */
+  initialBounds?: Bounds;
+  /**
+   * 結果が変わったときに全体へ寄せ直すか。
+   * 範囲で探し直した直後は false。ユーザーが自分で決めた画角を動かさない。
+   */
+  refit?: boolean;
 }
 
-export function MapView({ shops, selectedId, onSelect, focus, route, routeOrigin }: Props) {
+/**
+ * 地図。
+ *
+ * **ここが持つのは「いつ描くか」だけ。** 何をどう描くかは map-layers.ts にある。
+ * 節の順番に意味があるので、足すときは各節のコメントを読んでから位置を決めること。
+ */
+export function MapView({
+  shops,
+  selectedId,
+  onSelect,
+  focus,
+  route,
+  routeOrigin,
+  origin,
+  onClusterSelect,
+  expanded = false,
+  onReady,
+  initialBounds,
+  refit = true,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
   // 順路は店のマーカーとは別のレイヤーに置く。検索し直しても順路は残るので、
   // 店の描き直しで一緒に消えないようにする。
   const routeLayerRef = useRef<L.LayerGroup | null>(null);
+  // 基準地点も店のマーカーとは別のレイヤー。描き直しで消えないようにする。
+  const originLayerRef = useRef<L.LayerGroup | null>(null);
   const markersRef = useRef<Map<string, L.CircleMarker>>(new Map());
+  /*
+   * 順路へ寄せたことがあるか。
+   *
+   * **作り直しの 1 回目は寄せない。** 範囲で探した直後は、ユーザーが決めた
+   * 画角が初期表示に入っている。そこへ順路が割り込むと、見出しと結果は範囲の
+   * ものなのに地図だけ順路へ飛び、もう一度「この範囲で探す」を押すと見当違いの
+   * 場所を探すことになる（実測: 同じ操作の 2 回目で 3 件 → 2 件）。
+   */
+  const routeFitted = useRef(false);
+  const { remember, restore } = useMarkerFocus(markersRef);
+  /*
+   * いまのズーム。塊の大きさはこれで決まるので、state で持って描き直す。
+   * ref だと変わっても再描画が起きず、寄っても塊が解けない。
+   */
+  const [zoom, setZoom] = useState(5);
+
   // マーカーのクリックハンドラは 1 度だけ登録するので、最新の onSelect を
   // ref 経由で参照する。ref の更新は render 中ではなく effect で行う。
   const onSelectRef = useRef(onSelect);
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+  // 塊の中身を渡す先も ref 経由。ハンドラは描き直しのたびに付け替えない。
+  const onClusterRef = useRef(onClusterSelect);
+  useEffect(() => {
+    onClusterRef.current = onClusterSelect;
+  }, [onClusterSelect]);
+  // 読み取り口を渡す相手も ref 経由。親が描き直しても渡し直さない。
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
 
   // 地図の生成は 1 度だけ。以降はレイヤーだけ差し替える。
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, { attributionControl: true }).fitBounds(JAPAN_BOUNDS);
+    /*
+     * **worldCopyJump で正規の世界へ戻す。** Leaflet はタイルを横に繰り返して
+     * 描くが、店のピン（ベクタ層）は複製しない。隣の複製まで動かすと、地図には
+     * 日本が見えているのにピンが 1 つも無い、という状態になる。
+     * そのまま「この範囲で探す」を押すと当然 0 件で、理由が画面から分からない。
+     */
+    const map = L.map(containerRef.current, {
+      attributionControl: true,
+      worldCopyJump: true,
+    });
+    /*
+     * **タイル層を先に足してから寄せる。** 地図の最大ズームはタイル層が
+     * 決める。寄せてから足すと、その瞬間は上限が無い状態で寸法を測ることに
+     * なり、面積ゼロの範囲では寄せ先が無限大になりうる。
+     */
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
+    map.fitBounds(initialBounds ? toLatLngBounds(initialBounds) : JAPAN_BOUNDS);
+    /*
+     * 重なり順を明示する。**レイヤーを足す前に作ること。**
+     *
+     *   基準地点 390 < 店のピン 400 < 塊 600 < 選択中 640 < 順路の番号 645 < ツールチップ 650
+     *
+     * 塊は divIcon なので markerPane（600）に載り、店のピンは circleMarker で
+     * overlayPane（400）に載る。別のペインは bringToFront では追い越せないので、
+     * 選択中だけ上に出す。番号はさらに上——選んだ店がそのまま順路に入っている
+     * ことが多く、下に潜ると何軒目か読めなくなる。
+     */
+    map.createPane(ORIGIN_PANE).style.zIndex = "390";
+    map.createPane(SELECTED_PANE).style.zIndex = "640";
+    map.createPane(ROUTE_PANE).style.zIndex = "645";
+    // 同心円は店のピンより下。上に置くと、線が店に重なって押しにくくなる。
+    originLayerRef.current = L.layerGroup().addTo(map);
     layerRef.current = L.layerGroup().addTo(map);
     // 順路は店のピンより上に置く。下だと線がピンに隠れて追えない。
     routeLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
+    setZoom(map.getZoom());
+    // 寄ったら塊を解き直す。
+    map.on("zoomend", () => setZoom(map.getZoom()));
+    // 「この範囲で探す」は、押した瞬間にここから読む。
+    onReadyRef.current?.(() => viewBounds(map));
     return () => {
+      map.off("zoomend");
       map.remove();
       mapRef.current = null;
     };
+    // initialBounds は名前のとおり初期値。あとから変わっても作り直さない。
+    // oxlint-disable-next-line react/exhaustive-deps
   }, []);
 
-  // 店舗が変わったらマーカーを描き直す。
-  //
-  // 後始末（clearTimeout / off / clearLayers）は下の return で書いてあるが、
-  // マーカーをループで作るため、検出器が登録と解除を対応づけられない。
-  // react-doctor-disable-next-line react-doctor/effect-needs-cleanup
+  /*
+   * マーカーを描き直す。
+   *
+   * **ズームが変わるたびに描き直す。** 塊の大きさは画面上の距離で決まるので、
+   * 寄ったら解け、引いたらまとまる。
+   */
   useEffect(() => {
     const layer = layerRef.current;
     const map = mapRef.current;
     if (!layer || !map) return;
-    // 後始末のときに ref を辿らずに済むよう、ここで掴んでおく。
-    const markers = markersRef.current;
+    const markers = drawShops(layer, map, {
+      shops,
+      zoom,
+      selectedId,
+      onSelect: (shop, viaKeyboard) => {
+        if (viaKeyboard) remember(shop.id);
+        onSelectRef.current(shop);
+      },
+      onCluster: (group, viaKeyboard) => onClusterRef.current?.(group, viaKeyboard),
+    });
+    markersRef.current = markers;
 
-    layer.clearLayers();
-    markers.clear();
-
-    for (const shop of shops) {
-      const marker = L.circleMarker([shop.lat, shop.lon], {
-        radius: 6,
-        color: "#ffffff",
-        weight: 1.5,
-        fillColor: TASTE_COLORS[shop.taste],
-        fillOpacity: 0.9,
-      })
-        .bindTooltip(`${shop.name}（${TASTES[shop.taste].label}）`)
-        .on("click", () => onSelectRef.current(shop));
-      marker.addTo(layer);
-      markers.set(shop.id, marker);
-    }
-
-    if (shops.length > 0) {
-      map.fitBounds(L.latLngBounds(shops.map((s) => [s.lat, s.lon] as [number, number])), {
-        padding: [24, 24],
-        maxZoom: 14,
-      });
-    } else {
-      map.fitBounds(JAPAN_BOUNDS);
-    }
-    // 親の高さが後から確定する場合に備えて再計測する。
-    const resize = setTimeout(() => map.invalidateSize(), 0);
+    // キーボードで選んだ直後だけ、描き直したピンへ焦点を戻す。
+    restore(selectedId);
 
     return () => {
-      // 同じ tick で外れたときに、消えた地図を触りに行かないようにする。
-      clearTimeout(resize);
       // 付けたハンドラは自分で外す。clearLayers だけでも参照は切れるが、
       // 「付けた側が外す」を形にしておかないと、あとで読む人に分からない。
       for (const marker of markers.values()) marker.off("click");
       layer.clearLayers();
       markers.clear();
     };
-  }, [shops]);
+  }, [shops, zoom, selectedId, remember, restore]);
+
+  /*
+   * 結果が変わったら、その全体が入るところまで寄せ直す。
+   *
+   * **描き直し（ズーム）とは別の節にしてある。** 同じ節に置くと、ユーザーが
+   * 手で寄せるたびに結果の全体へ引き戻され、地図を動かせなくなる。
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    // 範囲で探し直した直後は、ユーザーが決めた画角をそのまま残す。
+    if (!refit) return;
+    map.fitBounds(shops.length > 0 ? boundsOf(shops) : JAPAN_BOUNDS, {
+      padding: [24, 24],
+      maxZoom: 14,
+    });
+    // 親の高さが後から確定する場合に備えて再計測する。
+    const resize = setTimeout(() => map.invalidateSize(), 0);
+    // 同じ tick で外れたときに、消えた地図を触りに行かないようにする。
+    return () => clearTimeout(resize);
+  }, [shops, refit]);
+
+  /*
+   * 枠の寸法が変わったら Leaflet に測り直させる。
+   *
+   * Leaflet は生成時に測った寸法を持ち続けるので、全画面にして枠が伸びても
+   * 内部の寸法は古いまま。タイルが途中までしか描かれず、下半分が灰色になる。
+   *
+   * **全画面の切り替えを見張るのではなく、枠そのものを見張る。** 高さが変わる
+   * のは全画面のときだけではない（ホストの窓の伸縮、セーフエリアの変化）。
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    const el = containerRef.current;
+    if (!map || !el) return;
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // 外から指定されたフォーカス位置へ移動する。
   useEffect(() => {
@@ -137,60 +258,74 @@ export function MapView({ shops, selectedId, onSelect, focus, route, routeOrigin
     }
   }, [focus]);
 
-  // リストで選ばれた店舗を強調し、地図を寄せる。
+  /*
+   * 選んだ店へ 1 度だけ寄せる。
+   *
+   * **ズームを見ない。** 描き直しと同じ依存にすると、ユーザーが引いた瞬間に
+   * 選択中の店へ寄せ直され、広げる操作ができなくなる。
+   */
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selectedId) return;
-    const marker = markersRef.current.get(selectedId);
-    if (!marker) return;
-    marker.bringToFront().setStyle({ radius: 10, color: SELECTED_STROKE, weight: 2 });
+    const marker = selectedId ? markersRef.current.get(selectedId) : undefined;
+    if (!map || !marker) return;
+    marker.bringToFront().openTooltip();
     map.setView(marker.getLatLng(), Math.max(map.getZoom(), 14));
-    marker.openTooltip();
+
+    /*
+     * ここでも戻す。**`bringToFront` は要素を DOM に付け替える**ので、
+     * 描き直しの直後に戻しただけでは外れてしまう。
+     */
+    restore(selectedId);
+  }, [selectedId, restore]);
+
+  /*
+   * 基準地点の印と同心円。
+   *
+   * **地図は動かさない。** ここで寄せると、結果の全体や順路へ寄せた直後に
+   * 基準地点へ引き戻され、どこを見ているのか分からなくなる。
+   */
+  useEffect(() => {
+    const layer = originLayerRef.current;
+    if (!layer || !origin) return;
+    drawOrigin(layer, origin);
     return () => {
-      marker.setStyle({ radius: 6, color: "#ffffff", weight: 1.5 });
+      layer.clearLayers();
     };
-  }, [selectedId]);
+  }, [origin]);
 
   /*
    * **この節は「選んだ店へ寄せる」より後に置くこと。** 同じ更新で両方走ると、
    * 後に置いた方の地図移動が勝つ。順路を足した直後は順路の全体が見たいので、
    * こちらが後。店を選んだだけのときは順路が変わらず、この effect は走らない。
    */
-  /*
-   * 順路の線と番号。
-   *
-   * 番号は divIcon（ただの HTML）で描く。Leaflet の既定アイコンは PNG を
-   * 外部参照するので、単一 HTML に固められない（CLAUDE.md の制約）。
-   */
-  // 線とマーカーをループで足すため、検出器が登録と解除を対応づけられない。
-  // 後始末は下の return に書いてある。
-  // react-doctor-disable-next-line react-doctor/effect-needs-cleanup
   useEffect(() => {
     const layer = routeLayerRef.current;
     const map = mapRef.current;
     if (!layer || !map) return;
-    layer.clearLayers();
+
+    /*
+     * **寄せるのは順路が変わったときだけ。作り直しの 1 回目は線を引くに留める。**
+     *
+     * 作り直しは結果が入れ替わったときに起きる。そこで順路へ寄せると、結果は
+     * 新しいのに地図だけ古い順路を指すことになる。順路は変わっていないのだから、
+     * 寄せる理由が無い。
+     *
+     * 条件を refit で分けていたが、「結果へ寄せる節が後に走れば上書きされる」
+     * という並び順頼みになっていた。並び順に頼らず「変わったときだけ」にしてある。
+     *
+     * **記録は早期 return より前で行う。** 空の順路で作り直されたあと、最初の
+     * 1 軒を積んだときが「1 回目」と誤解され、寄せ直しが飛んでいた（実測:
+     * 出発点が 250km 先にあるのに、選んだ店の周りのまま動かなかった）。
+     */
+    const firstRunAfterMount = !routeFitted.current;
+    routeFitted.current = true;
+
     if (!route || route.length === 0) return;
-
-    const points: Array<[number, number]> = route.map((s) => [s.lat, s.lon]);
-    // 出発点が分かっているなら、そこから 1 軒目までも引く。
-    const line = routeOrigin
-      ? [[routeOrigin.lat, routeOrigin.lon] as [number, number], ...points]
-      : points;
-    if (line.length > 1) L.polyline(line, ROUTE_LINE).addTo(layer);
-
-    route.forEach((shop, i) => {
-      L.marker([shop.lat, shop.lon], {
-        icon: L.divIcon({
-          className: styles.routePin,
-          html: String(i + 1),
-          iconSize: [24, 24],
-        }),
-        // 番号は順路を読むためのもの。押す先は店のピンに任せる。
-        interactive: false,
-        keyboard: false,
-      }).addTo(layer);
-    });
+    const line = drawRoute(layer, route, routeOrigin);
+    const clear = () => {
+      layer.clearLayers();
+    };
+    if (firstRunAfterMount) return clear;
 
     /*
      * 順路の全体が入るように寄せる。直前に選んだ店へズームしたままだと、
@@ -207,14 +342,12 @@ export function MapView({ shops, selectedId, onSelect, focus, route, routeOrigin
     map.invalidateSize();
     map.fitBounds(L.latLngBounds(line), { padding: [32, 32], maxZoom: 15, animate: false });
 
-    return () => {
-      layer.clearLayers();
-    };
+    return clear;
   }, [route, routeOrigin]);
 
   return (
     <div
-      className={styles.map}
+      className={expanded ? `${styles.map} ${styles.mapExpanded}` : styles.map}
       ref={containerRef}
       role="application"
       aria-label="家系ラーメン店の地図"

@@ -668,6 +668,48 @@
   background: var(--color-surface-muted);
 }
 
+/*
+ * 全画面のときの高さ。
+ *
+ * 枠の中では 24rem が精一杯だが、全画面では画面の高さに合わせて伸ばす。
+ * 一覧を完全に追い出さないよう 70vh で止めてある（地図だけになると、
+ * 押した店の詳細がどこに出たのか分からなくなる）。
+ */
+.mapExpanded {
+  height: 70vh;
+}
+
+/*
+ * 押した塊の中身を出しているときの見出し。
+ *
+ * キーボードで開いたときの焦点の行き先でもある（tabIndex={-1}）。押せる
+ * ものではないが、焦点がどこへ行ったかは見えている必要がある。
+ */
+.focusHeadLabel {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+}
+
+/* 解除の導線と並べる。 */
+.focusHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* 地図の下に置く但し書き。円が何かを、円の近くで言う。 */
+.mapNote {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+}
+
+.mapToolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .mapLayout {
   display: flex;
   flex-direction: column;
@@ -820,6 +862,30 @@
   box-shadow: 0 0 0 2px #ffffff;
 }
 
+/*
+ * 塊のピン。
+ *
+ * **数を必ず出す。** 「ここに何かある」だけでは、押す前に何が起きるか
+ * 分からない。順路の番号（.routePin）と紛れないよう、色は面ではなく縁で持つ。
+ * .leaflet-div-icon の白い四角とクラス 1 つ同士で競合するので 2 回書く。
+ */
+.clusterPin.clusterPin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  box-shadow:
+    0 0 0 2px #b8442c,
+    var(--elevation-1);
+  cursor: pointer;
+}
+
 /* --- 焦点（フォーカス） --- */
 
 /*
@@ -837,6 +903,8 @@
 .button:focus-visible,
 .chip:focus-visible,
 .card:focus-visible,
+.clusterPin:focus-visible,
+.focusHeadLabel:focus-visible,
 .guideSummary:focus-visible {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 1px;

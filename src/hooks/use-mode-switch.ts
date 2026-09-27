@@ -1,6 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { FormValues } from "../components/SearchForm";
-import type { Origin, OriginSource, SearchMode, Shop } from "../lib/types";
+import type { Bounds, Origin, OriginSource, SearchMode, Shop } from "../lib/types";
 
 interface Options {
   mode: SearchMode;
@@ -11,7 +11,17 @@ interface Options {
   /** いま効いているキーワード（「迷ったら」のみ）。 */
   activeKeyword?: string;
   onSelect: (shop: Shop | null) => void;
-  runSearch: (values: FormValues, mode: "form" | "map") => void;
+  runSearch: (values: FormValues, mode: "form" | "map", origin?: Origin) => void;
+  /**
+   * いま効いている範囲。地図モードで「この範囲で探す」を使ったときだけ入る。
+   * ここでは**初期値**としてだけ使い、以降はこのフックが持つ（下を参照）。
+   */
+  bounds?: Bounds;
+  /** いま効いている都道府県。これも初期値だけ。 */
+  prefecture?: string;
+  /** 入力欄の値を書き換える。「この範囲で探す」で県を外すのに使う。 */
+  onForm: (values: FormValues) => void;
+  runArea: (bounds: Bounds, values: FormValues, origin?: Origin) => void;
   runDecide: (
     values: FormValues,
     origin: Origin | undefined,
@@ -35,23 +45,102 @@ export function useModeSwitch({
   activeKeyword,
   onSelect,
   runSearch,
+  bounds,
+  prefecture,
+  onForm,
+  runArea,
   runDecide,
   runNearby,
 }: Options) {
+  /*
+   * いま効いている「どこ」——範囲と都道府県を、このフックが持つ。
+   *
+   * **payload だけを見てはいけない。** 呼び出しの応答が返るまで payload は前の
+   * ままで、その間に味を変えられる。payload 頼りだと 2 本目が違う「どこ」で走り、
+   * **あとから返った方が勝つ**ので、先に頼んだ条件が捨てられる。
+   *
+   *   - 範囲: 応答を 1.5 秒遅らせて味を押すと、見出しが「全国」に戻った
+   *   - 都道府県: 同じ手順で、外したはずの県が付き直した
+   *
+   * 押した時点で覚え、落とすときも同じ場所で落とす。payload ごとに key で
+   * 作り直されるので、初期値を props から写す形でよい。
+   * react-doctor-disable-next-line react-doctor/no-derived-useState
+   */
+  const [area, setArea] = useState<{ bounds?: Bounds; prefecture?: string }>({
+    bounds,
+    prefecture,
+  });
+
+  /**
+   * 地図に出ている範囲で探し直す。
+   *
+   * **枠が「どこ」を言い直すので都道府県は外す。** 入力欄も同時に空にする。
+   * 画面のプルダウンが県を指したままだと、応答が返る前に味を変えたときに
+   * その県が付き直し、県境をまたいだ枠が黙って県内へ絞り直される。
+   */
+  const searchArea = useCallback(
+    (next: Bounds) => {
+      const cleared = { ...form, prefecture: "" };
+      onForm(cleared);
+      setArea({ bounds: next, prefecture: undefined });
+      runArea(next, cleared, origin);
+    },
+    [form, onForm, origin, runArea],
+  );
+
   /** 条件が決まったときに呼ぶもの。モードで行き先が変わる。 */
   const runConditions = useCallback(
     (values: FormValues) => {
-      if (mode === "decide") runDecide(values, origin, 0, activeKeyword);
-      else runSearch(values, mode === "map" ? "map" : "form");
+      if (mode === "decide") {
+        runDecide(values, origin, 0, activeKeyword);
+        return;
+      }
+      if (mode !== "map") {
+        runSearch(values, "form");
+        return;
+      }
+      /*
+       * 地図では、いま効いている範囲を保つ。
+       *
+       * **味は「どこ」ではなく「何」。** 味を変えただけで範囲が落ちると、
+       * 地図に出ていた土地の結果が黙って全国に戻る（実際にそうなっていた）。
+       *
+       * **「都道府県が入っているか」ではなく「変わったか」で決める。**
+       * 入っているかで決めると、都道府県と範囲の両方が効いている状態
+       * （モデルは両方付きで tool を呼べる）で味を変えただけで県全体に広がる
+       * （実測: 枠の中 4 件が県全体の 6 件になった）。
+       */
+      const nextPrefecture = values.prefecture || undefined;
+      if (area.bounds && nextPrefecture === area.prefecture) {
+        runArea(area.bounds, values, origin);
+        return;
+      }
+      // 範囲を捨てる側でも、覚えている「どこ」を同じ場所で更新する。
+      setArea({ bounds: undefined, prefecture: nextPrefecture });
+      runSearch(values, "map", origin);
     },
-    [activeKeyword, mode, origin, runDecide, runSearch],
+    [activeKeyword, area, mode, origin, runArea, runDecide, runSearch],
   );
 
   const switchMode = useCallback(
     (next: SearchMode) => {
       setMode(next);
       onSelect(null);
-      if (next === "form" || next === "map") runSearch(form, next);
+      /*
+       * 地図には基準地点も持ち込む。印と同心円だけに使い、絞り込みはしない。
+       *
+       * **いま居るタブをもう一度押すのは入り直しではない。** そこで範囲を
+       * 落とすと、押しただけで母数が全国に広がり、理由が画面に残らない
+       * （「迷ったら」でキーワードを保つのと同じ扱い）。他のタブから入り直す
+       * ときは、その画面の範囲ではないので持ち込まない。
+       */
+      if (next === "map") {
+        if (mode === "map" && area.bounds) runArea(area.bounds, form, origin);
+        else {
+          setArea({ bounds: undefined, prefecture: form.prefecture || undefined });
+          runSearch(form, "map", origin);
+        }
+      } else if (next === "form") runSearch(form, "form");
       /*
        * 「迷ったら」は直前のモードで決まった基準地点を引き継ぐ。現在地から探した
        * 直後に切り替えたなら、そのまま近い順で絞れる。
@@ -73,8 +162,20 @@ export function useModeSwitch({
         runNearby(origin.lat, origin.lon, origin.label, origin.source);
       }
     },
-    [activeKeyword, form, mode, onSelect, origin, runDecide, runNearby, runSearch, setMode],
+    [
+      activeKeyword,
+      area,
+      form,
+      mode,
+      onSelect,
+      origin,
+      runArea,
+      runDecide,
+      runNearby,
+      runSearch,
+      setMode,
+    ],
   );
 
-  return { runConditions, switchMode };
+  return { runConditions, searchArea, switchMode };
 }
