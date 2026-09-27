@@ -423,6 +423,112 @@ describe("show-iekei-ramen-map", () => {
     expect(text).toContain("該当する店舗はありませんでした");
   });
 
+  it("地図に出ている範囲で絞り込む", async () => {
+    // 横浜駅のあたりだけを囲んだ枠。
+    const bounds = { north: 35.48, south: 35.44, east: 139.65, west: 139.6 };
+    const { payload } = await callApp("show-iekei-ramen-map", { bounds });
+
+    expect(payload.shops.length).toBeGreaterThan(0);
+    expect(payload.shops.length).toBeLessThan(50);
+    expect(
+      payload.shops.every(
+        (s) =>
+          s.lat >= bounds.south &&
+          s.lat <= bounds.north &&
+          s.lon >= bounds.west &&
+          s.lon <= bounds.east,
+      ),
+    ).toBe(true);
+    // どの範囲を見ているかは UI 側でも要る（寄せ直さない判断に使う）。
+    expect(payload.query.bounds).toEqual(bounds);
+  });
+
+  it("逆さの範囲は 0 件ではなく誤りとして返す", async () => {
+    /*
+     * 1 つずつの範囲だけ見ていた頃は、南北が逆でも通っていた。成り立たない
+     * 比較になって必ず 0 件になり、**呼び出し側の間違いが「この範囲に店は
+     * ありません」という答えに化けていた**（実測: isError は付かず、
+     * 「該当する店舗はありませんでした」が返っていた）。
+     */
+    const reversedNorthSouth = await callApp("show-iekei-ramen-map", {
+      bounds: { north: 35.44, south: 35.48, east: 139.65, west: 139.6 },
+    });
+    expect(reversedNorthSouth.isError).toBe(true);
+
+    const reversedEastWest = await callApp("show-iekei-ramen-map", {
+      bounds: { north: 35.48, south: 35.44, east: 139.6, west: 139.65 },
+    });
+    expect(reversedEastWest.isError).toBe(true);
+  });
+
+  it("面積ゼロの範囲も 0 件ではなく誤りとして返す", async () => {
+    /*
+     * 同じ値を渡されると、その点に完全一致する店しか当たらない＝事実上いつも
+     * 0 件になる。逆さのときと同じで、呼び出し側の誤りが「この範囲に店は
+     * ありません」という答えに化ける。
+     */
+    const point = await callApp("show-iekei-ramen-map", {
+      bounds: { north: 35.4657, south: 35.4657, east: 139.622, west: 139.622 },
+    });
+    expect(point.isError).toBe(true);
+
+    const zeroHeight = await callApp("show-iekei-ramen-map", {
+      bounds: { north: 35.4657, south: 35.4657, east: 139.68, west: 139.58 },
+    });
+    expect(zeroHeight.isError).toBe(true);
+  });
+
+  it("範囲と都道府県が両方効いているなら、両方を名乗る", async () => {
+    /*
+     * 絞り込みは両方の重なりになる。範囲だけを名乗ると、枠が県境をまたいで
+     * いた場合に、県の外の店が黙って落ちているのにモデルは「見えている範囲の
+     * 全部」だと思って話す。
+     */
+    const { text } = await callApp("show-iekei-ramen-map", {
+      prefecture: "神奈川県",
+      bounds: { north: 35.52, south: 35.42, east: 139.68, west: 139.58 },
+    });
+
+    expect(text).toContain("地図に出ている範囲（神奈川県）");
+  });
+
+  it("基準地点を受け取り、そのまま返す（地図の印と同心円に使う）", async () => {
+    const { payload } = await callApp("show-iekei-ramen-map", {
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+      source: "place",
+    });
+
+    expect(payload.query.origin).toEqual({
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+      source: "place",
+    });
+    // 基準地点は絞り込みではない。件数は全国のまま。
+    expect(payload.shops.length).toBeGreaterThan(500);
+  });
+
+  it("座標が片方だけなら基準地点として扱わない", async () => {
+    // 片方だけで印を出すと、緯度だけ合った別の場所に立つ。
+    const { payload } = await callApp("show-iekei-ramen-map", { lat: 35.4657 });
+    expect(payload.query.origin).toBeUndefined();
+  });
+
+  it("範囲で絞ったときは「全国」と名乗らない", async () => {
+    /*
+     * どこを見ているかはモデルに分からない。範囲だと言っておかないと、
+     * 「全国で 12 件しかない」と読んで話してしまう。
+     */
+    const { text } = await callApp("show-iekei-ramen-map", {
+      bounds: { north: 35.48, south: 35.44, east: 139.65, west: 139.6 },
+    });
+
+    expect(text).toContain("地図に出ている範囲");
+    expect(text).not.toContain("全国");
+  });
+
   it("すべての店舗が地図に描ける座標を持つ", async () => {
     const { payload } = await callApp("show-iekei-ramen-map");
     for (const shop of payload.shops) {

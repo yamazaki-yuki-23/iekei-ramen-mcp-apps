@@ -64,3 +64,20 @@ export function shopCards(app: FrameLocator) {
 export function shopName(card: Locator): Promise<string> {
   return card.locator("span span").first().innerText();
 }
+
+/**
+ * 地図に出ている店の数。
+ *
+ * 重なる店は塊にまとまるので、ピンの数は店の数と一致しない。単独のピンと、
+ * 塊に書かれた件数を足す。**この合計が結果の件数と一致する**のが、塊が
+ * 取りこぼしていないことの証拠になる。
+ */
+export async function plottedShops(app: FrameLocator): Promise<number> {
+  /*
+   * **重なりレイヤーの中だけを数える。** 地図全体から svg path を拾うと、
+   * 出典表示に入っている旗（3 枚）まで数えて 3 件多くなる。
+   */
+  const singles = await app.locator(".leaflet-overlay-pane path").count();
+  const groups = await app.locator(".cluster-pin").allTextContents();
+  return singles + groups.reduce((sum, text) => sum + Number(text), 0);
+}
