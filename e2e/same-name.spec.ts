@@ -5,7 +5,7 @@
  * 東京都に町田商店が 14 店ある（最短 517m・最長 38.6km）。
  */
 import { expect, test, type FrameLocator } from "@playwright/test";
-import { callTool, shopCards, shopName, shopWhere, waitForApp } from "./helpers";
+import { callTool, shopCards, shopMetaFields, shopName, shopWhere, waitForApp } from "./helpers";
 
 /**
  * 一覧の店名を読み、名前ごとに何番目のカードかをまとめる。
@@ -38,18 +38,28 @@ test("同じ名前が並ぶときは、どこの店かが名前の隣に出る",
   expect(repeated.length, "同名の店が一覧に出ていない").toBeGreaterThan(0);
 
   const cards = shopCards(app);
+  let labelled = 0;
   for (const [, rows] of repeated) {
-    const labels: string[] = [];
+    const texts: string[] = [];
     for (const index of rows) {
-      const where = shopWhere(cards.nth(index));
-      await expect(where).toHaveCount(1);
-      labels.push((await where.innerText()).trim());
+      /*
+       * **地名が付かない店もある。** 市区町村が取れなかった店には出さない
+       * （町名で代えると長くなって、横 1 行の版面ではみ出すため）。
+       * その店は住所の行に町名が残るので、カードとしては見分けが付く。
+       */
+      labelled += await shopWhere(cards.nth(index)).count();
+      texts.push((await cards.nth(index).innerText()).trim());
     }
-    // 互いに違う地名になっていること（同じでは見分けが付かない）。
-    expect(new Set(labels).size, `同名のカードが同じ地名のまま: ${labels.join(" / ")}`).toBe(
-      labels.length,
-    );
+    /*
+     * **地名どうしが違うことまでは求めない。** 同じ市に 2 店あるときは同じ
+     * 市区町村が並び、そこから先（町名）は住所の行が受け持つ。カードとして
+     * 見分けが付いていればよい。
+     */
+    expect(new Set(texts).size, `同名のカードが同じ中身のまま`).toBe(texts.length);
   }
+
+  // いまのデータは 558 件すべてが市区町村を持つので、1 件も出ていなければ壊れている。
+  expect(labelled, "地名が 1 件も出ていない").toBeGreaterThan(0);
 });
 
 test("名前が重ならない店には、余計な地名を出さない", async ({ page }) => {
@@ -67,5 +77,35 @@ test("名前が重ならない店には、余計な地名を出さない", async
   const cards = shopCards(app);
   for (const [, [index]] of alone) {
     await expect(shopWhere(cards.nth(index))).toHaveCount(0);
+  }
+});
+
+test("名前の隣に出した地名を、住所の行で繰り返さない", async ({ page }) => {
+  /*
+   * 同じ文字列が並ぶと壊れて見える。実際、直す前は
+   * 「とんこつラーメン たかさご家 横浜市 野毛町二丁目 神奈川県 横浜市 野毛町二丁目」
+   * と出ていた（スクリーンショットを撮り直して気付いた）。
+   */
+  const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+  await waitForApp(app);
+
+  const byName = await cardsByName(app);
+  const repeated = [...byName.entries()].filter(([, rows]) => rows.length > 1);
+  expect(repeated.length, "同名の店が一覧に出ていない").toBeGreaterThan(0);
+
+  const cards = shopCards(app);
+  for (const [, rows] of repeated) {
+    for (const index of rows) {
+      const card = cards.nth(index);
+      // 市区町村が無い店には地名を出さない。その店はここで見るものが無い。
+      if ((await shopWhere(card).count()) === 0) continue;
+      const where = (await shopWhere(card).innerText()).trim();
+      /*
+       * **欄ごとに比べる。** 文字列の部分一致で見ると、住所に市名が入っている
+       * 店（「横浜市」と「横浜市磯子区上中里町669-1」）を「重複」と誤判定する。
+       */
+      const fields = await shopMetaFields(card);
+      expect(fields, `地名が住所の行にも出ている: ${where}`).not.toContain(where);
+    }
   }
 });
