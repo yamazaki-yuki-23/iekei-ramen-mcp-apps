@@ -48,7 +48,18 @@ export const SAME_SHOP_AT = 1.5;
 /** 重複候補として判定にかける距離 (m)。これより離れていれば別店舗として扱う。 */
 export const PAIR_RADIUS_M = 200;
 
-/** OSM の要素 1 件を state に変換する。判定に関係するタグだけを渡す。 */
+/**
+ * OSM の要素 1 件を state に変換する。判定に関係するタグだけを渡す。
+ *
+ * **現地で入力された説明の欄も渡す。** 店名だけを見ていたとき、`description` に
+ * 「資本系家系ラーメン」、`cuisine:ja` に「横浜家系ラーメン」と書いてある店が
+ * 「判断できない」に溜まっていた（実測: candidate 224 件のうち 34 件がこれらの欄を
+ * 持ち、うち 8 件は家系だと書いてあった）。**店名の推測より、現地の入力が強い。**
+ *
+ * `description` と `description:ja` は**つないで 1 つの欄にする。どちらかを選ばない。**
+ * いまは両方を持つ店が 1 件も無い（実測 0/767）が、片方を選ぶ作りにすると、
+ * 英語の説明と日本語の説明が並んだ店で、家系と書いてある日本語の方が捨てられる。
+ */
 export function shopState(tags) {
   const pick = (k) => tags[k] || undefined;
   return {
@@ -56,8 +67,21 @@ export function shopState(tags) {
       name: tags["name:ja"] || tags.name || tags.brand,
       name_en: pick("name:en"),
       brand: pick("brand"),
+      // 名前の言い換え。正式名や現地表記に、店名から落ちたジャンルが残る
+      // （実測: 大和家 の official_name が「横浜家系ラーメン 小作 大和家」）。
+      official_name: pick("official_name"),
+      local_name: pick("loc_name"),
+      branch: pick("branch"),
       operator: pick("operator"),
       cuisine: pick("cuisine"),
+      cuisine_ja: pick("cuisine:ja"),
+      description:
+        [tags.description, tags["description:ja"]].filter(Boolean).join(" / ") || undefined,
+      // SNS のハンドル名に名乗りが入っていることがある。**該当は 1 件だが、
+      // 落ちると一覧から消える**（実測: ラーメン三浦家 は twitter が
+      // iekei_miuraya なのに、夜だけ別名で営業する旨の description を見て
+      // 「家系ではない」と判定され、候補からも外れた）。
+      twitter: pick("twitter") || pick("contact:twitter"),
       amenity: pick("amenity"),
       shop: pick("shop"),
       website: pick("website"),
@@ -79,11 +103,16 @@ export const QUESTIONS = {
     },
   ),
 
+  // 「名前が名乗っているか」だったものを、現地で入力された欄まで広げた。
+  // description に「資本系家系ラーメン」と書いてある店が、店名に手がかりが
+  // 無いというだけで「判断できない」に落ちていた（実測 8 件）。
+  // **これは推測ではなく、地図に書かれた宣言**なので確定と同じ重さで扱う。
   name_declares_iekei: noul(
-    "Does the name or brand of `shop` explicitly declare that it is iekei (家系) ramen? Read the characters as written; Japanese map data contains typos, so a near-miss spelling of 家系 still counts, and so does 横浜ラーメン or 横濱ラーメン used as a genre label.",
+    "Do any of the written fields of `shop` — the name, brand, official_name, local_name, branch, cuisine_ja, or description — explicitly declare that it is iekei (家系) ramen? Read the characters as written; Japanese map data contains typos, so a near-miss spelling of 家系 still counts, and so does 横浜ラーメン or 横濱ラーメン used as a genre label.",
     {
-      true: "The name itself states the genre, e.g. 家系 / 横浜家系 / 横濱家系 / 横浜ラーメン, including a misspelling of those.",
-      false: "The name does not state the genre, even if the shop might serve iekei.",
+      true: "Some field states the genre in words, e.g. 家系 / 横浜家系 / 横濱家系 / 横浜ラーメン / 資本系家系ラーメン, including a misspelling of those.",
+      false:
+        "No field states the genre, even if the shop might serve iekei. A trade name merely ending in 家 is not a declaration. 横浜 standing alone inside a branch name (横浜荏田町店, ららぽーと横浜店) is a location, but 横浜ラーメン or 横濱ラーメン placed in front of a trade name (横浜ラーメン一品家) is a genre label and counts as true.",
     },
   ),
 
@@ -199,13 +228,13 @@ export function decide(answers, known = {}) {
   }
 
   if (answers.name_declares_iekei.noul >= CONFIRMED_AT) {
-    return { verdict: "confirmed", taste, why: "店名が家系を名乗っている" };
+    return { verdict: "confirmed", taste, why: "家系だと名乗っている" };
   }
   if (answers.name_declares_iekei.noul >= CONFIRMED_PAIR_AT && iekei >= CONFIRMED_PAIR_AT) {
     return {
       verdict: "confirmed",
       taste,
-      why: `店名と味の傾向が一致（名乗り ${answers.name_declares_iekei.noul.toFixed(2)} / 家系 ${iekei.toFixed(2)}）`,
+      why: `名乗りと味の傾向が一致（名乗り ${answers.name_declares_iekei.noul.toFixed(2)} / 家系 ${iekei.toFixed(2)}）`,
     };
   }
   if (answers.known_iekei_brand.noul >= CONFIRMED_AT) {
@@ -217,6 +246,22 @@ export function decide(answers, known = {}) {
   if (iekei >= LIKELY_AT) {
     return { verdict: "likely", taste, why: `家系の確率 ${iekei.toFixed(2)}` };
   }
+  /*
+   * 家系が最有力なのに、確信が足りないとき。**落とさない。**
+   *
+   * 下の節は「不明が 0.6 以上」を候補の条件にしているが、**2 つのジャンルに
+   * きれいに割れた店はそこに入らない**。実測: ラーメン三浦家 は家系 0.53 /
+   * 博多とんこつ 0.46 / 不明 0.01 で、モデルの一番の答えは家系なのに、
+   * 「家系ではない」と判定した店と同じ扱いで一覧から消えていた
+   * （この店は twitter が iekei_miuraya で、夜だけ別名で営業している）。
+   *
+   * **「家系ではない」と「判断できない」を混ぜないための段が candidate。**
+   * 不明が低くても、別のジャンルと拮抗しているなら判断は付いていない。
+   */
+  if (answers.genre.choice === "iekei" && answers.yago_is_ya.noul >= YAGO_AT) {
+    return { verdict: "candidate", taste: "unknown", why: `家系が最有力（${iekei.toFixed(2)}）` };
+  }
+
   // ジャンルを言い当てられないが、屋号が「〜家」のラーメン店。
   // 取得クエリが cuisine~ramen かつ name~家 に絞っているので、この母集団は狭い。
   if (unclear >= UNCLEAR_AT && answers.yago_is_ya.noul >= YAGO_AT) {

@@ -6,7 +6,44 @@ import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { createServer } from "../server";
+import shopsData from "../data/shops.json" with { type: "json" };
+import { SHORTLIST_SIZE } from "../src/lib/shortlist";
 import type { AppPayload } from "../src/lib/types";
+
+/**
+ * **データに出てくる数字をテストへ焼き込まない。**
+ *
+ * 店舗データは取得し直すたびに動く。「奈良県は 0 件」「神奈川県は 79 軒だから
+ * 最終巡は 1 軒」と書いていたので、データを取り直しただけで 3 本落ちた
+ * （奈良県に 2 軒入り、神奈川県の母数が 79 → 84 軒になった）。
+ * 見たい性質は「0 件の県」「最終巡が 3 軒に満たない県」であって、県の名前ではない。
+ */
+const shops = shopsData as Array<{ prefecture: string; confidence: string }>;
+
+/**
+ * 受け付ける都道府県。**サーバーが広告している enum から取る。**
+ * 定数を公開してもらうと、テストのためだけに公開範囲が広がる。
+ */
+let acceptedPrefectures: string[] = [];
+
+/** いま 1 軒も無い県。無ければテストが成り立たないので、その旨で落とす。 */
+function prefectureWithoutShops(): string {
+  const has = new Set(shops.map((s) => s.prefecture));
+  const found = acceptedPrefectures.find((p) => !has.has(p));
+  if (!found) throw new Error("全 47 都道府県に店舗がある。0 件の県を使うテストは書き直すこと");
+  return found;
+}
+
+/** 「迷ったら」の最終巡が 3 軒に満たない県と、その軒数。 */
+function prefectureWithPartialLastRound(): { prefecture: string; lastRound: number } {
+  for (const prefecture of acceptedPrefectures) {
+    // 母数は「家系か未判定」を外した数。3 軒に届かない県は母集団ごと変わるので避ける。
+    const pool = shops.filter((s) => s.prefecture === prefecture && s.confidence !== "candidate");
+    const rest = pool.length % SHORTLIST_SIZE;
+    if (pool.length > SHORTLIST_SIZE && rest !== 0) return { prefecture, lastRound: rest };
+  }
+  throw new Error("どの県も 3 で割り切れる。最終巡のテストは書き直すこと");
+}
 
 let client: Client;
 
@@ -14,6 +51,13 @@ beforeAll(async () => {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   client = new Client({ name: "test", version: "1.0.0" });
   await Promise.all([createServer().connect(serverTransport), client.connect(clientTransport)]);
+
+  const { tools } = await client.listTools();
+  const schema = tools.find((t) => t.name === "search-iekei-ramen")?.inputSchema as
+    | { properties?: { prefecture?: { enum?: string[] } } }
+    | undefined;
+  acceptedPrefectures = schema?.properties?.prefecture?.enum ?? [];
+  expect(acceptedPrefectures, "都道府県の enum を読めていない").toHaveLength(47);
 });
 
 afterAll(async () => {
@@ -162,7 +206,9 @@ describe("search-iekei-ramen", () => {
   });
 
   it("店舗が 0 件の県も指定できる", async () => {
-    const { payload, isError } = await callApp("search-iekei-ramen", { prefecture: "奈良県" });
+    const { payload, isError } = await callApp("search-iekei-ramen", {
+      prefecture: prefectureWithoutShops(),
+    });
     expect(isError).toBeFalsy();
     expect(payload.total).toBe(0);
   });
@@ -426,7 +472,9 @@ describe("show-iekei-ramen-map", () => {
   });
 
   it("該当が無ければ 0 件とわかるテキストを返す", async () => {
-    const { text } = await callApp("show-iekei-ramen-map", { prefecture: "奈良県" });
+    const { text } = await callApp("show-iekei-ramen-map", {
+      prefecture: prefectureWithoutShops(),
+    });
     expect(text).toContain("該当する店舗はありませんでした");
   });
 
@@ -608,21 +656,31 @@ describe("decide-iekei-ramen", () => {
     expect(text).toContain("1 巡目");
   });
 
-  it("最終巡が 1 軒なら、無い 2 軒の話をさせない", async () => {
+  it("最終巡が 3 軒に満たないとき、無い店の話をさせない", async () => {
     /*
-     * 母数が 3 の倍数でなければ最終巡は必ず 3 軒未満になる（神奈川県は 79 軒 = 27 巡、
-     * 最後は 1 軒）。件数を決め打ちすると「選ばなかった 2 軒について」と頼むことになり、
-     * モデルは存在しない店を作って答える。
+     * 母数が 3 の倍数でなければ最終巡は必ず 3 軒未満になる。件数を決め打ちすると
+     * 「選ばなかった 2 軒について」と頼むことになり、モデルは存在しない店を作って答える。
+     *
+     * **どの県かはデータから選ぶ。** 県名を焼き込むと、取り直しで母数が変わった
+     * だけで落ちる（実際に神奈川県が 79 → 84 軒になって落ちた）。
      */
-    const first = await callApp("decide-iekei-ramen", { prefecture: "神奈川県" });
+    const { prefecture, lastRound } = prefectureWithPartialLastRound();
+    const first = await callApp("decide-iekei-ramen", { prefecture });
     const last = await callApp("decide-iekei-ramen", {
-      prefecture: "神奈川県",
+      prefecture,
       round: first.payload.decide!.rounds - 1,
     });
-    expect(last.payload.shops).toHaveLength(1);
-    expect(last.text).toContain("候補はこの 1 軒");
-    expect(last.text).not.toContain("3 軒まで絞りました");
-    expect(last.text).not.toMatch(/選ばなかった \d+ 軒/);
+    expect(last.payload.shops).toHaveLength(lastRound);
+    /*
+     * **画面とモデルに同じ数を見せる。** 文面は軒数で変わる（1 軒なら
+     * 「候補はこの 1 軒」、複数なら「この N 軒まで絞りました」）ので、
+     * 言い回しではなく数字が合っているかを見る。
+     */
+    expect(last.text).toContain(`${lastRound} 軒`);
+    expect(last.text).not.toContain(`${SHORTLIST_SIZE} 軒まで絞りました`);
+    // 選ばなかった軒数も実数から出す。1 軒しか無いなら、そもそも頼まない。
+    if (lastRound === 1) expect(last.text).not.toMatch(/選ばなかった/);
+    else expect(last.text).toContain(`選ばなかった ${lastRound - 1} 軒`);
   });
 
   it("3 軒あるときは、選ばなかった 2 軒にも触れさせる", async () => {

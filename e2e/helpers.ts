@@ -76,6 +76,18 @@ export function shopName(card: Locator): Promise<string> {
   return card.locator("[data-shop-name]").first().innerText();
 }
 
+/**
+ * カードが指している店の id。
+ *
+ * **同じ店かどうかは id で見る。** 店名はチェーンの別店舗どうしで重なるので、
+ * 名前で突き合わせると別の店を同じ店と数える。
+ */
+export async function shopId(card: Locator): Promise<string> {
+  const id = await card.getAttribute("data-shop-id");
+  if (!id) throw new Error("カードが data-shop-id を持っていない");
+  return id;
+}
+
 /** カードの「どこの店か」（同名が並ぶときだけ付く）。 */
 export function shopWhere(card: Locator): Locator {
   return card.locator("[data-shop-where]");

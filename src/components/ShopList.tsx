@@ -55,6 +55,13 @@ export function ShopList({
             className={`${styles.card} ${selectedId === shop.id ? styles.cardSelected : ""}`}
             onClick={() => onSelect?.(shop)}
             aria-current={selectedId === shop.id || undefined}
+            /*
+             * どの店かを名指しできるようにする。**店名は同一性ではない**——
+             * 同じチェーンの別店舗は同じ名前で並ぶので、名前で突き合わせると
+             * 別の店を同じ店と数える（実測: 「別の候補を見る」の前後を店名で
+             * 比べていて、壱八家が 2 店入った途端に重複と判定された）。
+             */
+            data-shop-id={shop.id}
           >
             {ranked && <span className={styles.rank}>{i + 1}</span>}
             <span className={styles.cardBody}>

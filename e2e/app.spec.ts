@@ -3,7 +3,16 @@
  * 実ブラウザ・実ホスト・実 MCP サーバーを通して 3 モードを操作する。
  */
 import { expect, test } from "@playwright/test";
-import { appFrame, callTool, plottedShops, shopCards, shopName, waitForApp } from "./helpers";
+import { countShops, prefectureWithOneShop, TOTAL, type Bounds } from "./dataset";
+import {
+  appFrame,
+  callTool,
+  plottedShops,
+  shopCards,
+  shopId,
+  shopName,
+  waitForApp,
+} from "./helpers";
 
 test.describe("検索フォーム", () => {
   test("全国の店舗を一覧表示する", async ({ page }) => {
@@ -168,7 +177,7 @@ test.describe("地図から探す", () => {
      * 重なる店は塊にまとまるので、ピンの数は店の数と一致しない。
      * **塊の件数を足すと全件になる**——そこを見張る。
      */
-    expect(await plottedShops(app)).toBe(558);
+    expect(await plottedShops(app)).toBe(TOTAL);
   });
 
   test("OpenStreetMap の出典を表示する", async ({ page }) => {
@@ -285,16 +294,21 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
     await waitForApp(app);
 
-    const before = await Promise.all([0, 1, 2].map((i) => shopName(shopCards(app).nth(i))));
+    /*
+     * **店名ではなく id で突き合わせる。** 同じチェーンの別店舗は同じ名前で
+     * 並ぶので、名前で比べると別の店を「重複」と数える（実測: 神奈川県に
+     * 壱八家が 2 店入った途端に落ちた）。
+     */
+    const before = await Promise.all([0, 1, 2].map((i) => shopId(shopCards(app).nth(i))));
     await expect(app.getByText("1 / ")).toBeVisible();
 
     await app.getByRole("button", { name: "別の候補を見る" }).click();
     await expect(app.getByText("2 / ")).toBeVisible();
 
-    const after = await Promise.all([0, 1, 2].map((i) => shopName(shopCards(app).nth(i))));
+    const after = await Promise.all([0, 1, 2].map((i) => shopId(shopCards(app).nth(i))));
     expect(after).not.toEqual(before);
     // 乱数ではなく次の 3 軒なので、前の 3 軒とは重ならない。
-    expect(after.filter((n) => before.includes(n))).toEqual([]);
+    expect(after.filter((id) => before.includes(id))).toEqual([]);
   });
 
   test("「この 3 軒から選ぶ」でチャットに 3 軒を流す", async ({ page }) => {
@@ -353,10 +367,14 @@ test.describe("迷ったら（3 軒に絞る）", () => {
   });
 
   test("候補が 1 軒のときは、3 軒の言い方をしない", async ({ page }) => {
-    // 神奈川県は 79 軒 = 27 巡で、最終巡は 1 軒。
+    /*
+     * **巡の番号を数えない。** 母数が変われば最終巡の番号も中身も変わるので、
+     * 「神奈川県の 26 巡目」と書くとデータを取り直すたびに指す先がずれる
+     * （実測: 神奈川県の母数が 79 → 84 軒になって落ちた）。
+     * 店が 1 軒しか無い県なら、最初の巡がそのまま 1 軒になる。
+     */
     const app = await callTool(page, "decide-iekei-ramen", {
-      prefecture: "神奈川県",
-      round: 26,
+      prefecture: prefectureWithOneShop(),
     });
     await waitForApp(app);
 
@@ -1745,9 +1763,10 @@ test.describe("範囲と他の条件の両立", () => {
      * 両方を持てる）。「都道府県が入っていたら範囲を捨てる」と決め打つと、
      * この状態で味を変えただけで県全体に広がる。
      */
+    const bounds: Bounds = { north: 35.52, south: 35.42, east: 139.68, west: 139.58 };
     const app = await callTool(page, "show-iekei-ramen-map", {
       prefecture: "神奈川県",
-      bounds: { north: 35.52, south: 35.42, east: 139.68, west: 139.58 },
+      bounds,
     });
     await waitForApp(app);
     const count = async () => {
@@ -1758,12 +1777,21 @@ test.describe("範囲と他の条件の両立", () => {
       return Number((text ?? "").replace(/\D/g, ""));
     };
 
-    expect(await count()).toBe(32);
+    // 件数はデータから出す。書き込むと、取り直しただけで落ちる。
+    expect(await count()).toBe(countShops({ prefecture: "神奈川県", bounds }));
 
     await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
 
-    // 枠の中の 4 件。範囲を落とすと県全体の 6 件になる。
-    await expect.poll(count).toBe(4);
+    /*
+     * 枠の中の直系・濃厚だけになる。**範囲を落とすと県全体の数になる**ので、
+     * その 2 つが違うことまで確かめる（同じなら、この節は何も見ていない）。
+     */
+    const inFrame = countShops({ prefecture: "神奈川県", taste: "rich", bounds });
+    const wholePrefecture = countShops({ prefecture: "神奈川県", taste: "rich" });
+    expect(inFrame, "枠と県全体が同数では、範囲が効いているか分からない").toBeLessThan(
+      wholePrefecture,
+    );
+    await expect.poll(count).toBe(inFrame);
     /*
      * **効いている条件は両方名乗る。** 枠が県境をまたいでいた場合、県の外の店は
      * 落ちている。範囲だけを名乗ると「見えている範囲の全部」と読めてしまう。
@@ -1868,7 +1896,7 @@ test.describe("範囲と他の条件の両立", () => {
     await app.locator(".cluster-pin").first().click();
     await app.getByRole("button", { name: "この範囲で探す" }).click();
     const area = await count();
-    expect(area).toBeLessThan(558);
+    expect(area).toBeLessThan(TOTAL);
 
     // 味のチップは押した瞬間に呼び直す。
     await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
@@ -1946,15 +1974,16 @@ test.describe("まわる店と範囲の両立", () => {
 
     // 条件を変えて結果を入れ替える（範囲は付かないので、結果の全体へ寄るはず）。
     await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
-    // 全国の直系・濃厚は 17 件（関東 4 県に散っている）。
-    await expect.poll(count).toBe(17);
+    // 全国の直系・濃厚の件数。データから出す。
+    const rich = countShops({ taste: "rich" });
+    await expect.poll(count).toBe(rich);
 
     /*
      * 結果の全体が見えているなら、その範囲で探しても件数は変わらない。
      * 古い順路へ飛んでいると、見えているのは 1 軒の周りだけなので激減する。
      */
     await app.getByRole("button", { name: "この範囲で探す" }).click();
-    await expect.poll(count).toBe(17);
+    await expect.poll(count).toBe(rich);
   });
 
   test("積んだ店があっても、範囲で探した画角が動かない", async ({ page }) => {
