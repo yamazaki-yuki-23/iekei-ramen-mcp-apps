@@ -7,6 +7,7 @@ import { countShops, prefectureWithOneShop, TOTAL, type Bounds } from "./dataset
 import {
   appFrame,
   callTool,
+  E2E_SERVER_URL,
   plottedShops,
   shopCards,
   shopId,
@@ -98,6 +99,58 @@ test.describe("現在地から探す", () => {
     await expect(shopCards(app)).toHaveCount(5);
     // 距離表示（m または km）が付いている
     await expect(shopCards(app).first()).toContainText(/\d+(\.\d+)?(m|km)/);
+  });
+
+  test("地名の検索が止められたら、見つからないとは言わずに理由を出す", async ({ page }) => {
+    /*
+     * 連打止めは Worker にしか無い（main.ts には無い）ので、応答を差し替える。
+     * ホストはブラウザから MCP サーバーを直接叩くので、ここで横取りできる。
+     */
+    const reason = "地名の検索が続いたため、少し止めています。";
+    await page.route(E2E_SERVER_URL, async (route) => {
+      const body = route.request().postDataJSON() as {
+        id?: number;
+        params?: { name?: string };
+      } | null;
+      if (body?.params?.name !== "geocode-place") return route.continue();
+      await route.fulfill({
+        contentType: "application/json",
+        headers: { "Access-Control-Allow-Origin": "*" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: { content: [{ type: "text", text: reason }], isError: true },
+        }),
+      });
+    });
+
+    const app = await callTool(page, "search-iekei-ramen");
+    await waitForApp(app);
+    await app.getByRole("tab", { name: "現在地から探す" }).click();
+    await app.locator("#place").fill("横浜駅");
+    await app.getByRole("button", { name: "この場所で探す" }).click();
+
+    await expect(app.getByText(reason)).toBeVisible();
+    await expect(app.getByText("「横浜駅」が見つかりませんでした。")).toHaveCount(0);
+    await expect(app.getByText("検索に失敗しました。もう一度お試しください。")).toHaveCount(0);
+  });
+
+  test("地名の検索が通信ごと落ちても、見つからないとは言わない", async ({ page }) => {
+    // 応答が無いのは「0 件」ではない。落ちたのに地名を疑わせると、打ち直して叩き直す。
+    await page.route(E2E_SERVER_URL, async (route) => {
+      const body = route.request().postDataJSON() as { params?: { name?: string } } | null;
+      if (body?.params?.name !== "geocode-place") return route.continue();
+      await route.abort("connectionrefused");
+    });
+
+    const app = await callTool(page, "search-iekei-ramen");
+    await waitForApp(app);
+    await app.getByRole("tab", { name: "現在地から探す" }).click();
+    await app.locator("#place").fill("横浜駅");
+    await app.getByRole("button", { name: "この場所で探す" }).click();
+
+    await expect(app.getByText(/地名の検索に失敗しました/)).toBeVisible();
+    await expect(app.getByText("「横浜駅」が見つかりませんでした。")).toHaveCount(0);
   });
 
   test("ブラウザの位置情報が使えるホストでは現在地ボタンで検索できる", async ({
