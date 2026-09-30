@@ -23,6 +23,18 @@ describe("describeShop", () => {
     expect(text).toContain("家系判定: 家系");
   });
 
+  it("判定の理由を、店名に限定して伝えない", () => {
+    /*
+     * **名乗りは店名だけに書かれているとは限らない。** 地図の `description` や
+     * `cuisine:ja` に「横浜家系ラーメン」とある店も確定になる（実測 11 件）。
+     * この説明文はモデルへ渡るので、店名に家系と書いていない店について
+     * 「店名が名乗っている」と伝えると、判定の理由を偽ることになる。
+     */
+    const akaya: Shop = { ...YOSHIMURAYA, id: "node/1", name: "赤家" };
+    expect(akaya.name, "この店名には家系の文字が無い").not.toContain("家系");
+    expect(describeShop(akaya)).not.toContain("店名が家系を名乗っている");
+  });
+
   it("味の傾向には参考値だと但し書きを付ける", () => {
     expect(describeShop(YOSHIMURAYA)).toContain("既知ブランドからの参考値");
   });

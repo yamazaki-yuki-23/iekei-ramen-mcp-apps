@@ -8,18 +8,23 @@ import {
   toShop,
 } from "../scripts/classify.mjs";
 // @ts-expect-error 同上
-import { decide } from "../scripts/judgments.mjs";
+import { decide, shopState } from "../scripts/judgments.mjs";
 
 /** OSM のタグを組み立てる小さなヘルパ。 */
 const tags = (t: Record<string, string>) => t;
 
 /** TypeSafe の回答の形。テストでは確率だけ差し替える。 */
-const answers = (o: Partial<Record<string, number>> & { genre?: Record<string, number> } = {}) => ({
+const answers = (
+  o: Partial<Record<string, number>> & { genre?: Record<string, number>; choice?: string } = {},
+) => ({
   is_ramen_shop: { noul: o.is_ramen_shop ?? 0.95 },
   name_declares_iekei: { noul: o.name_declares_iekei ?? 0.05 },
   known_iekei_brand: { noul: o.known_iekei_brand ?? 0.1 },
   yago_is_ya: { noul: o.yago_is_ya ?? 0.9 },
-  genre: { choice: "unclear", probabilities: { iekei: 0.02, unclear: 0.95, ...o.genre } },
+  genre: {
+    choice: o.choice ?? "unclear",
+    probabilities: { iekei: 0.02, unclear: 0.95, ...o.genre },
+  },
 });
 
 describe("knownFacts — 対応表で分かること", () => {
@@ -328,5 +333,109 @@ describe("toShop", () => {
   it("判定が無い要素は null を返す", () => {
     expect(toShop(element, undefined)).toBeNull();
     expect(toShop(element, { verdict: null, taste: "unknown" })).toBeNull();
+  });
+});
+
+/**
+ * **モデルへ渡す欄が減ると、判定材料ごと消える。**
+ *
+ * 店名しか渡していなかったとき、`description` に「資本系家系ラーメン」と
+ * 書いてある店が「判断できない」に溜まっていた（実測: candidate 224 件のうち
+ * 8 件が、渡していない欄に家系の宣言を持っていた）。閾値をいくら動かしても、
+ * 渡していない文字は読めない。
+ *
+ * ここが落ちるのは欄を外したときだけ。**質問文を変えても落ちない**ので、
+ * 文面の改訂を邪魔しない。
+ */
+describe("decide — 家系が最有力なのに確信が足りないとき", () => {
+  it("2 つのジャンルに割れた店を、一覧から落とさない", () => {
+    /*
+     * **「家系ではない」と「判断できない」を混ぜない。**
+     * 実測: ラーメン三浦家 は家系 0.53 / 博多とんこつ 0.46 / 不明 0.01。
+     * 「不明が 0.6 以上」だけを候補の条件にしていたので、モデルの一番の答えが
+     * 家系なのに、別ジャンルだと分かっている店と同じ扱いで消えていた。
+     */
+    const d = decide(
+      answers({ choice: "iekei", genre: { iekei: 0.53, hakata_tonkotsu: 0.46, unclear: 0.01 } }),
+    );
+    expect(d.verdict).toBe("candidate");
+  });
+
+  it("屋号が「〜家」でなければ、それでも落とす", () => {
+    // 候補の段は「屋号が〜家のラーメン店」に限る。ここを緩めると母集団が変わる。
+    const d = decide(
+      answers({
+        choice: "iekei",
+        yago_is_ya: 0.1,
+        genre: { iekei: 0.53, hakata_tonkotsu: 0.46, unclear: 0.01 },
+      }),
+    );
+    expect(d.verdict).toBeNull();
+  });
+
+  it("別ジャンルが最有力なら落とす", () => {
+    const d = decide(
+      answers({
+        choice: "hakata_tonkotsu",
+        genre: { iekei: 0.2, hakata_tonkotsu: 0.75, unclear: 0.02 },
+      }),
+    );
+    expect(d.verdict).toBeNull();
+  });
+});
+
+describe("shopState — 現地で入力された宣言を渡す", () => {
+  it("説明・正式名・現地表記・支店名・和名ジャンルを渡す", () => {
+    const { shop } = shopState(
+      tags({
+        name: "赤家",
+        description: "資本系家系ラーメン",
+        official_name: "横浜家系ラーメン 小作 大和家",
+        loc_name: "横浜家系ラーメン 鶴乃家 岡山円山店",
+        branch: "小作",
+        "cuisine:ja": "横浜家系ラーメン",
+        twitter: "iekei_miuraya",
+      }),
+    );
+    expect(shop).toMatchObject({
+      description: "資本系家系ラーメン",
+      official_name: "横浜家系ラーメン 小作 大和家",
+      local_name: "横浜家系ラーメン 鶴乃家 岡山円山店",
+      branch: "小作",
+      cuisine_ja: "横浜家系ラーメン",
+      twitter: "iekei_miuraya",
+    });
+  });
+
+  it("description:ja しか無い店も、同じ欄で渡る", () => {
+    const { shop } = shopState(tags({ name: "一松家", "description:ja": "横浜家系ラーメン" }));
+    expect(shop.description).toBe("横浜家系ラーメン");
+  });
+
+  it("description と description:ja が両方あれば、両方を渡す", () => {
+    /*
+     * **どちらかを選ぶと、名乗りの書いてある方を捨てることがある。**
+     * 英語の説明と日本語の説明が並び、家系と書いてあるのが日本語の方だけの店で、
+     * 片方しか渡さないと判定は根拠を受け取れない。
+     * いまのデータに両方を持つ店は無い（0/767）ので、ここでしか見張れない。
+     */
+    const { shop } = shopState(
+      tags({ name: "赤家", description: "Ramen shop", "description:ja": "資本系家系ラーメン" }),
+    );
+    expect(shop.description).toContain("Ramen shop");
+    expect(shop.description).toContain("資本系家系ラーメン");
+  });
+
+  it("空の欄はモデルまで届かない", () => {
+    /*
+     * 値が undefined の欄は、JSON にした時点で消える。**送られる文字列を直接見る。**
+     *
+     * `Object.keys` で見ると undefined のキーまで数えてしまい、何も見ていない。
+     * 複製してから数えるのも駄目で、`structuredClone` は undefined を残すので
+     * （実測: `["name","official_name","cuisine","description"]`）、欄を足しても
+     * 減らしても同じ結果になる。送られるのは文字列なので、文字列で測る。
+     */
+    const { shop } = shopState(tags({ name: "ありがた家", cuisine: "ramen" }));
+    expect(JSON.stringify(shop)).toBe('{"name":"ありがた家","cuisine":"ramen"}');
   });
 });

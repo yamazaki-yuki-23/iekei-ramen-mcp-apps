@@ -7,6 +7,7 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fetchPref, toElement } from "./overpass-query.mjs";
 
 const PREFECTURES = [
   "北海道",
@@ -58,47 +59,12 @@ const PREFECTURES = [
   "沖縄県",
 ];
 
-const ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
-];
-
-const query = (pref) => `
-[out:json][timeout:180];
-area["admin_level"="4"]["name"="${pref}"]->.a;
-(
-  nwr["cuisine"~"ramen"]["name"~"家"](area.a);
-  nwr["name"~"家系|町田商店"](area.a);
-);
-out center tags;
-`;
-
-async function fetchPref(pref, attempt = 0) {
-  const endpoint = ENDPOINTS[attempt % ENDPOINTS.length];
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "User-Agent": "iekei-ramen-mcp-apps/0.1 (data build script)",
-    },
-    body: query(pref),
-  });
-  if (!res.ok) {
-    if (attempt < 4) {
-      await new Promise((r) => setTimeout(r, 5000 * (attempt + 1)));
-      return fetchPref(pref, attempt + 1);
-    }
-    throw new Error(`${pref}: ${res.status} ${res.statusText}`);
-  }
-  const json = await res.json();
-  return json.elements ?? [];
-}
-
 const out = [];
 // Overpass の同時実行スロットを使い切らないよう、少数ずつ並列に投げる。
 const CONCURRENCY = 3;
 const queue = [...PREFECTURES];
 let done = 0;
+const failed = [];
 
 async function worker(slot) {
   while (queue.length > 0) {
@@ -106,20 +72,12 @@ async function worker(slot) {
     try {
       const els = await fetchPref(pref, slot);
       for (const el of els) {
-        const lat = el.lat ?? el.center?.lat;
-        const lon = el.lon ?? el.center?.lon;
-        if (lat == null || lon == null) continue;
-        out.push({
-          osmType: el.type,
-          osmId: el.id,
-          lat,
-          lon,
-          prefecture: pref,
-          tags: el.tags ?? {},
-        });
+        const element = toElement(el, pref);
+        if (element) out.push(element);
       }
       console.error(`[${++done}/${PREFECTURES.length}] ${pref}: ${els.length}`);
     } catch (e) {
+      failed.push(pref);
       console.error(`[${++done}/${PREFECTURES.length}] ${pref}: FAILED ${e.message}`);
     }
   }
@@ -130,3 +88,18 @@ await Promise.all(Array.from({ length: CONCURRENCY }, (_, i) => worker(i)));
 const file = path.join(import.meta.dirname, "..", "data", "osm-raw.json");
 await fs.writeFile(file, JSON.stringify(out, null, 1));
 console.error(`\ntotal raw: ${out.length} -> ${file}`);
+
+/*
+ * **落ちた県が 1 つでもあれば異常終了する。**
+ *
+ * 成功と同じ終了コードで返すと、県ごと欠けた osm-raw.json を正しいものとして
+ * 次の工程（data:judge）へ渡してしまう。このファイルは gitignore なので控えが
+ * 無く、欠けたまま上書きすると取り直すしかない（実際に 752 → 435 件にした）。
+ */
+if (failed.length > 0) {
+  console.error(
+    `\n${failed.length} 県が取れませんでした。` +
+      `次を実行して埋めてください:\n  node scripts/fetch-missing.mjs ${failed.join(" ")}`,
+  );
+  process.exitCode = 1;
+}
