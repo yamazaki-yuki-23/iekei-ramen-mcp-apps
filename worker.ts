@@ -15,10 +15,18 @@ import {
   type AuthEnv,
 } from "./oauth.ts";
 import { createServer, MEMBER_TOOLS, type ServerDeps } from "./server.ts";
+import { GeocodeGate } from "./src/lib/geocode-gate.ts";
 import { d1Visits } from "./src/lib/visits.ts";
+
+// wrangler が Durable Object のクラスを探すのは、入口のモジュールの export。
+export { GeocodeGate };
 
 interface Env extends AuthEnv {
   VISITS: D1Database;
+  /** 地名検索（Nominatim）の連打止め。接続元ごとに数える。 */
+  GEOCODE_LIMITER?: RateLimit;
+  /** Nominatim へ出ていく問い合わせの列。全体で 1 つ。 */
+  GEOCODE_GATE?: DurableObjectNamespace;
 }
 
 /** 認可サーバーが受け持つ道か（`/authorize` と Google からの戻りを含む）。 */
@@ -135,9 +143,25 @@ export default {
     // 「通信に失敗した」としか見えない（サインインが始まらない）。
     if (!visitor && raw !== null && needsSignIn(raw)) return signInChallenge(origin, CORS_HEADERS);
 
+    const { GEOCODE_LIMITER: limiter, GEOCODE_GATE: gate } = env;
     return serveMcp(request, {
       visitor,
       visits: env.VISITS ? d1Visits(env.VISITS) : undefined,
+      /*
+       * **OAuth と同じ KV に相乗りする。** 地名は `geocode:` で始まる鍵に置くので
+       * 認可の控えとは混ざらない。消えても問い合わせ直すだけで済む。
+       */
+      geocodeCache: env.OAUTH_KV,
+      // 接続元ごとの連打止め。1 人が列を埋めて、他の人を待たせ続けないように。
+      allowGeocode: limiter
+        ? async () =>
+            (await limiter.limit({ key: request.headers.get("CF-Connecting-IP") ?? "unknown" }))
+              .success
+        : undefined,
+      // 全体の「1 秒 1 回」。送るのは列（Durable Object）自身。
+      nominatim: gate
+        ? (target, init) => gate.get(gate.idFromName("nominatim")).fetch(target, init)
+        : undefined,
     });
   },
 };

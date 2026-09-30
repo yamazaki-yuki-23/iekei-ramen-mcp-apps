@@ -17,6 +17,9 @@ import type { AppPayload, Bounds, Origin, OriginSource, SearchMode, Shop } from 
 const STAMP_FAILED =
   "記録できませんでした。サインインが切れているかもしれません。チャットで「行った店を見せて」と頼むと入り直せます。";
 
+/** 地名の解決が、答えを受け取る前に落ちたときの文。 */
+const GEOCODE_UNREACHED = "地名の検索に失敗しました。通信を確かめて、もう一度お試しください。";
+
 const TOOL_BY_MODE: Record<SearchMode, string> = {
   form: "search-iekei-ramen",
   nearby: "find-nearby-iekei-ramen",
@@ -134,14 +137,19 @@ export function useServerTools({
         const result = await app.callServerTool({ name, arguments: args });
         if (superseded()) return result;
         if (result.isError) {
-          setFailure("検索に失敗しました。もう一度お試しください。");
+          // 下調べ（地名の解決）の失敗は、理由ごと呼んだ側が出す。一覧の下に
+          // 「検索に失敗しました」を重ねると、入力欄の案内と 2 つの文が並ぶ。
+          if (replacesResults) setFailure("検索に失敗しました。もう一度お試しください。");
           return result;
         }
         const next = readPayload(result);
         if (next) onPayload(next);
         return result;
       } catch (e) {
-        if (!superseded()) setFailure(e instanceof Error ? e.message : String(e));
+        // 下調べの失敗は、isError のときと同じく呼んだ側が出す。
+        if (!superseded() && replacesResults) {
+          setFailure(e instanceof Error ? e.message : String(e));
+        }
         return null;
       } finally {
         setInFlight((n) => n - 1);
@@ -374,8 +382,20 @@ export function useServerTools({
   const geocode = useCallback(
     async (query: string) => {
       const result = await call("geocode-place", { query }, false);
+      /*
+       * **失敗を「見つからない」にしない。** 連打止めや Nominatim の不調で落ちたのに
+       * 「見つかりませんでした」と出すと、地名の方を疑って打ち直し、さらに叩く。
+       */
+      // 呼び出しそのものが落ちた（通信・ホストの不調）。結果が無いのは「0 件」ではない。
+      if (!result) throw new Error(GEOCODE_UNREACHED);
+      if (result.isError) {
+        const text = (result.content as Array<{ type: string; text?: string }>).find(
+          (c) => c.type === "text",
+        )?.text;
+        throw new Error(text ?? "地名の検索に失敗しました。");
+      }
       const hits = (
-        result?.structuredContent as {
+        result.structuredContent as {
           results?: Array<{ label: string; lat: number; lon: number }>;
         }
       )?.results;

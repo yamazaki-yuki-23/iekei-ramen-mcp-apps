@@ -8,7 +8,7 @@
  * バインディング（KV・D1）は渡さない。**手元と同じ「匿名だけの環境」**を再現し、
  * そこで落ちないことを確かめる。
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import worker from "../worker";
 
 const ORIGIN = "http://localhost:3031";
@@ -133,5 +133,63 @@ describe("worker.fetch", () => {
       const response = await fetchPath(path);
       expect(response.status, path).toBe(501);
     }
+  });
+});
+
+/** 列の Durable Object の代わり。受け取った問い合わせを記録し、決めた状態で答える。 */
+function gateAnswering(status: number) {
+  const received: Request[] = [];
+  return {
+    received,
+    GEOCODE_GATE: {
+      idFromName: () => "nominatim",
+      get: () => ({
+        fetch: async (url: string, init?: RequestInit) => {
+          received.push(new Request(url, init));
+          return Response.json([], { status });
+        },
+      }),
+    },
+  };
+}
+
+const geocode = (gateEnv: object) =>
+  worker.fetch(
+    new Request(`${ORIGIN}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "geocode-place", arguments: { query: "横浜駅" } },
+      }),
+    }),
+    { ...(env as object), ...gateEnv } as never,
+    ctx,
+  );
+
+describe("地名検索の列（GEOCODE_GATE）", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("Nominatim へは列を通して送り、Worker から直接は送らない", async () => {
+    const direct = vi.fn(async () => Response.json([]));
+    vi.stubGlobal("fetch", direct);
+    const gate = gateAnswering(200);
+
+    await (await geocode({ GEOCODE_GATE: gate.GEOCODE_GATE })).text();
+    expect(direct).not.toHaveBeenCalled();
+    expect(gate.received).toHaveLength(1);
+    expect(gate.received[0].url).toMatch(/^https:\/\/nominatim\.openstreetmap\.org\/search\?/);
+    expect(gate.received[0].headers.get("User-Agent")).toMatch(/^iekei-ramen-mcp-apps\//);
+  });
+
+  it("列が断ったら（429）、混み合っていると返す", async () => {
+    const body = await (await geocode({ GEOCODE_GATE: gateAnswering(429).GEOCODE_GATE })).text();
+    expect(body).toContain('"isError":true');
+    expect(body).toContain("混み合っています");
   });
 });

@@ -83,7 +83,14 @@ export function NearbyPanel({
     const q = place.trim();
     if (!q) return;
     setStatus(`「${q}」を検索中…`);
-    const hit = await onSearchPlace(q);
+    let hit;
+    try {
+      hit = await onSearchPlace(q);
+    } catch (e) {
+      // 理由（連打止め・Nominatim の不調）はサーバーの文をそのまま出す。
+      setStatus(e instanceof Error ? e.message : String(e));
+      return;
+    }
     if (!hit) {
       setStatus(`「${q}」が見つかりませんでした。`);
       return;

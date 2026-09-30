@@ -21,4 +21,14 @@
       "database_id": "00f8b2e9-c020-455b-b8ca-4dc67dbbdc01",
     },
   ],
+  // 地名検索（Nominatim）の接続元ごとの連打止め。拠点ごとに数えるので、ポリシーの
+  // 「全体で 1 秒 1 回」はこれでは守れない（下の GEOCODE_GATE が守る）。
+  // 数えるのはキャッシュに無い地名だけ（server.ts の geocode-place）。
+  "ratelimits": [
+    { "name": "GEOCODE_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
+  ],
+  // Nominatim へ出ていく問い合わせを、全体で 1 本の列に並べる（src/lib/geocode-gate.ts）。
+  // 無料プランで使えるのは SQLite 版だけなので new_sqlite_classes で作る。
+  "durable_objects": { "bindings": [{ "name": "GEOCODE_GATE", "class_name": "GeocodeGate" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GeocodeGate"] }],
 }

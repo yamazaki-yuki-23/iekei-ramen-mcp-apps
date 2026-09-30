@@ -432,6 +432,51 @@ export interface ServerDeps {
   visitor?: { id: string } | null;
   /** 記録の置き場。ローカル実行では無い。 */
   visits?: VisitStore;
+  /**
+   * 地名検索の結果の置き場。**Nominatim は結果を手元に持つことを求めている。**
+   * Cache API は workers.dev では効かない（独自ドメインでだけ動く）ので KV に置く。
+   * ローカル実行では無く、毎回問い合わせる。
+   */
+  geocodeCache?: Pick<KVNamespace, "get" | "put">;
+  /**
+   * いま Nominatim へ問い合わせてよいか（同じ接続元からの連打止め）。
+   * 無ければ止めない（手元の Node サーバー）。
+   */
+  allowGeocode?: () => Promise<boolean>;
+  /**
+   * Nominatim への送り口。**全体の「1 秒 1 回」はここが守る**（worker.ts が
+   * Durable Object の列を渡す）。無ければ直接送る（手元の Node サーバー）。
+   * 待たせすぎになるときは 429 を返す。
+   */
+  nominatim?: (url: string, init: RequestInit) => Promise<Response>;
+}
+
+/** Nominatim の利用ポリシーが求める「アプリと連絡先が分かる」名乗り。 */
+const NOMINATIM_USER_AGENT =
+  "iekei-ramen-mcp-apps/0.1 (+https://github.com/yamazaki-yuki-23/iekei-ramen-mcp-apps)";
+
+/** 地名は変わらないので長めに持つ。ポリシーの例も 7 日単位。 */
+const GEOCODE_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+type GeocodeHit = { label: string; lat: number; lon: number };
+
+/**
+ * 表記の揺れを畳んだ問い合わせ文。**キャッシュの鍵と送る文を同じにする。**
+ * 全角の英数や空白を半角に寄せないと、同じ地名が別の鍵になる。
+ */
+export function normalizePlaceQuery(query: string): string {
+  return query.normalize("NFKC").trim().replace(/\s+/g, " ");
+}
+
+/**
+ * キャッシュの鍵。**問い合わせ文をそのまま鍵にしない。** KV の鍵は 512 バイトまでで、
+ * 和文は 1 字 3 バイトなので 170 字ほどの住所で超え、KV が例外を投げる
+ * （貼り付けた住所や、モデルが直接呼んだときに起きる）。長さの揃うハッシュにする。
+ */
+async function geocodeCacheKey(q: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(q));
+  const hex = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  return `geocode:${hex}`;
 }
 
 export function createServer(deps: ServerDeps = {}): McpServer {
@@ -753,45 +798,75 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       inputSchema: z.object({ query: z.string().describe("地名・駅名・住所") }),
     },
     async ({ query }): Promise<CallToolResult> => {
-      const params = new URLSearchParams({
-        q: query,
-        format: "json",
-        limit: "3",
-        "accept-language": "ja",
-      });
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-        headers: { "User-Agent": "iekei-ramen-mcp-apps/0.1" },
-      });
-      if (!res.ok) {
-        return {
-          content: [{ type: "text", text: `ジオコーディングに失敗しました: ${res.status}` }],
-          isError: true,
-        };
+      const q = normalizePlaceQuery(query);
+      const key = await geocodeCacheKey(q);
+      const cached = await deps.geocodeCache?.get(key);
+      let hits: GeocodeHit[];
+      if (cached) {
+        hits = JSON.parse(cached) as GeocodeHit[];
+      } else {
+        // 止めるのは Nominatim へ出ていくときだけ。キャッシュで答えられる分は数えない。
+        if (deps.allowGeocode && !(await deps.allowGeocode())) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "地名の検索が続いたため、少し止めています。1 分ほど待ってからもう一度お試しください。",
+              },
+            ],
+            isError: true,
+          };
+        }
+        const params = new URLSearchParams({
+          q,
+          format: "json",
+          limit: "3",
+          "accept-language": "ja",
+        });
+        const res = await (deps.nominatim ?? fetch)(
+          `https://nominatim.openstreetmap.org/search?${params}`,
+          { headers: { "User-Agent": NOMINATIM_USER_AGENT } },
+        );
+        if (!res.ok) {
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  res.status === 429
+                    ? "地名の検索が混み合っています。少し待ってからもう一度お試しください。"
+                    : `地名の検索に失敗しました（${res.status}）。少し待ってからもう一度お試しください。`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        const results = (await res.json()) as Array<{
+          display_name: string;
+          lat: string;
+          lon: string;
+        }>;
+        hits = results.map((r) => ({
+          label: r.display_name,
+          lat: Number(r.lat),
+          lon: Number(r.lon),
+        }));
+        // 見つからなかったことも持つ。打ち間違いの連打も Nominatim へ流さない。
+        await deps.geocodeCache?.put(key, JSON.stringify(hits), {
+          expirationTtl: GEOCODE_TTL_SECONDS,
+        });
       }
-      const results = (await res.json()) as Array<{
-        display_name: string;
-        lat: string;
-        lon: string;
-      }>;
-      if (results.length === 0) {
+      if (hits.length === 0) {
         return { content: [{ type: "text", text: `「${query}」は見つかりませんでした。` }] };
       }
       return {
         content: [
           {
             type: "text",
-            text: results
-              .map((r) => `${r.display_name}\n  lat=${r.lat}, lon=${r.lon}`)
-              .join("\n\n"),
+            text: hits.map((r) => `${r.label}\n  lat=${r.lat}, lon=${r.lon}`).join("\n\n"),
           },
         ],
-        structuredContent: {
-          results: results.map((r) => ({
-            label: r.display_name,
-            lat: Number(r.lat),
-            lon: Number(r.lon),
-          })),
-        },
+        structuredContent: { results: hits },
       };
     },
   );
