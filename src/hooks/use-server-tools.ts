@@ -314,19 +314,19 @@ export function useServerTools({
   }, [call]);
 
   /**
-   * サインインしていない人の「行った」。
+   * 会話へ一通送る。
    *
-   * UI から呼んでも 401 でホストは何も出さないので、依頼文にして会話へ渡す。
-   * モデルが tool を呼び、ホストがサインインを促す（ChatGPT で実測）。
+   * **本文の組み立ても中で呼ぶ。** 送る前に待つもの（モデルへ渡した文脈の確認、
+   * 選択の解除）があり、そこで転んだときも同じ扱いにしたいため。
    */
-  const askToStamp = useCallback(
-    async (shop: Shop) => {
+  const sendText = useCallback(
+    async (build: () => string | Promise<string>) => {
       setAsking(true);
       setFailure(null);
       try {
         const result = await app.sendMessage({
           role: "user",
-          content: [{ type: "text", text: stampMessageText(shop) }],
+          content: [{ type: "text", text: await build() }],
         });
         if (result.isError) setFailure("ホストがメッセージの送信を受け付けませんでした。");
       } catch (e) {
@@ -338,22 +338,19 @@ export function useServerTools({
     [app],
   );
 
+  /**
+   * サインインしていない人の「行った」。
+   *
+   * UI から呼んでも 401 でホストは何も出さないので、依頼文にして会話へ渡す。
+   * モデルが tool を呼び、ホストがサインインを促す（ChatGPT で実測）。
+   */
+  const askToStamp = useCallback(
+    (shop: Shop) => sendText(() => stampMessageText(shop)),
+    [sendText],
+  );
+
   /** サインインしていない人が「行った店」を開いたとき、会話でサインインを頼む。 */
-  const askToSignIn = useCallback(async () => {
-    setAsking(true);
-    setFailure(null);
-    try {
-      const result = await app.sendMessage({
-        role: "user",
-        content: [{ type: "text", text: visitedSignInText() }],
-      });
-      if (result.isError) setFailure("ホストがメッセージの送信を受け付けませんでした。");
-    } catch (e) {
-      setFailure(e instanceof Error ? e.message : String(e));
-    } finally {
-      setAsking(false);
-    }
-  }, [app]);
+  const askToSignIn = useCallback(() => sendText(visitedSignInText), [sendText]);
 
   const runNearby = useCallback(
     (lat: number, lon: number, label: string | undefined, source: OriginSource) => {
@@ -435,20 +432,8 @@ export function useServerTools({
    * 店名だけを送ると、モデルが但し書き無しに自分の知識で答えてしまうため。
    */
   const askAboutShop = useCallback(
-    async (shop: Shop) => {
-      setAsking(true);
-      setFailure(null);
-      try {
-        const text = askMessageText(shop, await awaitContext(shop));
-        const result = await app.sendMessage({ role: "user", content: [{ type: "text", text }] });
-        if (result.isError) setFailure("ホストがメッセージの送信を受け付けませんでした。");
-      } catch (e) {
-        setFailure(e instanceof Error ? e.message : String(e));
-      } finally {
-        setAsking(false);
-      }
-    },
-    [app, awaitContext],
+    (shop: Shop) => sendText(async () => askMessageText(shop, await awaitContext(shop))),
+    [awaitContext, sendText],
   );
 
   /**
@@ -459,27 +444,15 @@ export function useServerTools({
    * いるのか」が壊れる。3 軒はこの一通にだけ入れる。
    */
   const askToDecide = useCallback(
-    async (shops: Shop[], basis: string) => {
-      setAsking(true);
-      setFailure(null);
-      try {
-        /*
-         * 開いていた店があれば、先に外してモデル側から消えるまで待つ。
-         * 「この店を選んだ」という文脈を残したまま「この中から選んで」と頼むと、
-         * 相反する 2 つが同時に届き、答えが開いていた店に引きずられる。
-         * updateModelContext は次の発話まで待つので、送ってから消しても遅い。
-         */
-        const cleared = await releaseSelection();
-        const text = decideMessageText(shops, basis, cleared);
-        const result = await app.sendMessage({ role: "user", content: [{ type: "text", text }] });
-        if (result.isError) setFailure("ホストがメッセージの送信を受け付けませんでした。");
-      } catch (e) {
-        setFailure(e instanceof Error ? e.message : String(e));
-      } finally {
-        setAsking(false);
-      }
-    },
-    [app, releaseSelection],
+    (shops: Shop[], basis: string) =>
+      /*
+       * 開いていた店があれば、先に外してモデル側から消えるまで待つ。
+       * 「この店を選んだ」という文脈を残したまま「この中から選んで」と頼むと、
+       * 相反する 2 つが同時に届き、答えが開いていた店に引きずられる。
+       * updateModelContext は次の発話まで待つので、送ってから消しても遅い。
+       */
+      sendText(async () => decideMessageText(shops, basis, await releaseSelection())),
+    [releaseSelection, sendText],
   );
 
   return {
