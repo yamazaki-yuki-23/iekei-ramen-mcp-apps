@@ -37,6 +37,28 @@ test.describe("匿名のまま", () => {
     await expect(app.getByText("結果を取得できませんでした")).toHaveCount(0);
   });
 
+  test("匿名の「行った」もサインインの依頼も、チャットに届く", async ({ page }) => {
+    /*
+     * この 2 つは UI から tool を呼べない経路で、**チャットへ一通送るのが
+     * 仕事そのもの**。押せることだけを見ていると、送信が壊れても気付けない。
+     */
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    await selectFirst(app);
+
+    await app.getByRole("button", { name: "行った", exact: true }).click();
+    await page.getByText(/💬 Messages/).click();
+    await expect(page.locator("pre").filter({ hasText: "[user]" })).toContainText(
+      "stamp-iekei-ramen",
+    );
+
+    await app.getByRole("tab", { name: "行った店" }).click();
+    await app.getByRole("button", { name: "チャットでサインインする" }).click();
+    await expect(page.locator("pre").filter({ hasText: "[user]" })).toContainText(
+      "show-visited-iekei-ramen",
+    );
+  });
+
   test("「行った」は押せるが、記録ではなくチャットへの依頼だと書いてある", async ({ page }) => {
     const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
     await waitForApp(app);
