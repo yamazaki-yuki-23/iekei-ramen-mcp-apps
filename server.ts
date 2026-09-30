@@ -373,6 +373,32 @@ function readHostLocation(meta: Record<string, unknown> | undefined): Origin | u
 }
 
 /** UI へ渡す structuredContent。都道府県リストは毎回添える。 */
+/** 検索条件の欄。**文言が同じ tool だけで共有する**——説明はモデルが読む契約で、
+ * 地図の「この都道府県にズームして表示する」とは伝えることが違う。 */
+const conditionFields = {
+  prefecture: z.enum(ALL_PREFECTURES).optional().describe("都道府県名（例: 神奈川県）"),
+  taste: z
+    .enum(["rich", "creamy", "chain"])
+    .optional()
+    .describe("味の傾向: rich=直系・濃厚 / creamy=クリーミー / chain=チェーン・万人向け"),
+  keyword: z.string().optional().describe("店名・ブランド・地名の部分一致キーワード"),
+};
+
+/** 引数から基準地点を組み立てる。**既定の出どころは tool ごとに違う**ので受け取る。
+ * 緯度と経度が揃っていなければ基準地点は無い。 */
+function originFrom(
+  args: { lat?: number; lon?: number; label?: string; source?: string },
+  fallback: OriginSource,
+): Origin | undefined {
+  if (args.lat === undefined || args.lon === undefined) return undefined;
+  return {
+    lat: args.lat,
+    lon: args.lon,
+    label: blankToUndefined(args.label),
+    source: (args.source ?? fallback) as OriginSource,
+  };
+}
+
 function structured(payload: Omit<AppPayload, "prefectures">) {
   return { ...payload, prefectures: PREFECTURES_WITH_SHOPS };
 }
@@ -440,14 +466,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       title: "家系ラーメンを検索",
       description:
         "都道府県・味の傾向・キーワードで全国の家系ラーメン店を絞り込み、検索フォーム付きの一覧 UI を表示する。条件を指定しなければ全国の一覧を返す。",
-      inputSchema: z.object({
-        prefecture: z.enum(ALL_PREFECTURES).optional().describe("都道府県名（例: 神奈川県）"),
-        taste: z
-          .enum(["rich", "creamy", "chain"])
-          .optional()
-          .describe("味の傾向: rich=直系・濃厚 / creamy=クリーミー / chain=チェーン・万人向け"),
-        keyword: z.string().optional().describe("店名・ブランド・地名の部分一致キーワード"),
-      }),
+      inputSchema: z.object(conditionFields),
       outputSchema: PayloadSchema,
       _meta: { ui: { resourceUri } },
     },
@@ -518,21 +537,13 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       const incomplete = incompleteCoordinates(lat, lon);
       if (incomplete) return incomplete;
 
-      // TODO(診断): ホストがどんな _meta を送ってくるかを確認するための一時ログ。
-      // 原因が特定できたら消す。位置の値そのものは出さず、キーだけ記録する。
       // 精度の高い順に降りていく。引数 → ホストが渡す位置 → 接続元からの推定。
       // 最後のものは HTTP なら request.cf から、stdio なら照会エンドポイントから取る。
       const origin: Origin | undefined =
-        lat !== undefined && lon !== undefined
-          ? {
-              lat,
-              lon,
-              label: blankToUndefined(label),
-              source: (source ?? "precise") as OriginSource,
-            }
-          : (readHostLocation(ctx.mcpReq._meta) ??
-            readEdgeLocation(ctx.http?.req) ??
-            (await fetchEdgeLocation()));
+        originFrom({ lat, lon, label, source }, "precise") ??
+        readHostLocation(ctx.mcpReq._meta) ??
+        readEdgeLocation(ctx.http?.req) ??
+        (await fetchEdgeLocation());
 
       if (!origin) {
         // ホストが位置情報を渡さない環境。UI は地名入力へ誘導する。
@@ -620,15 +631,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
     async ({ prefecture, taste, bounds, lat, lon, label, source }): Promise<CallToolResult> => {
       const shops = filterShops({ prefecture, taste, bounds });
       // 座標が片方だけ来たときは基準地点として扱わない（地図に嘘の印が出る）。
-      const origin: Origin | undefined =
-        lat !== undefined && lon !== undefined
-          ? {
-              lat,
-              lon,
-              label: blankToUndefined(label),
-              source: (source ?? "precise") as OriginSource,
-            }
-          : undefined;
+      const origin = originFrom({ lat, lon, label, source }, "precise");
       const payload: Omit<AppPayload, "prefectures"> = {
         mode: "map",
         shops,
@@ -656,12 +659,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       description:
         "条件に合う家系ラーメン店を 3 軒まで絞り込み、その中から 1 軒を理由つきで推すための UI を表示する。一覧を見せても決められないとき、または「どこにする？」「おすすめは？」と聞かれたときに使う。round を 1 つ増やすと次の 3 軒に入れ替わる。",
       inputSchema: z.object({
-        prefecture: z.enum(ALL_PREFECTURES).optional().describe("都道府県名（例: 神奈川県）"),
-        taste: z
-          .enum(["rich", "creamy", "chain"])
-          .optional()
-          .describe("味の傾向: rich=直系・濃厚 / creamy=クリーミー / chain=チェーン・万人向け"),
-        keyword: z.string().optional().describe("店名・ブランド・地名の部分一致キーワード"),
+        ...conditionFields,
         lat: z.number().min(-90).max(90).optional().describe("基準地点の緯度。あれば近い順に絞る"),
         lon: z.number().min(-180).max(180).optional().describe("基準地点の経度"),
         label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
@@ -700,15 +698,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
        * 端末の位置情報から来た座標まで「指定した地名」に化け、現在地モードへ
        * 戻ったときに誤った精度が表示される。
        */
-      const origin: Origin | undefined =
-        lat !== undefined && lon !== undefined
-          ? {
-              lat,
-              lon,
-              label: blankToUndefined(label),
-              source: (source ?? "place") as OriginSource,
-            }
-          : undefined;
+      const origin = originFrom({ lat, lon, label, source }, "place");
       /*
        * 効かないキーワードを持ち回らない。filterShops は trim 後に空なら
        * 絞り込まないのに、生の値を payload と説明文に残すと、UI には外せる
