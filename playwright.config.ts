@@ -75,24 +75,12 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [
-    {
-      name: "chromium",
-      use: {
-        ...devices["Desktop Chrome"],
-        /*
-         * **縦を広げて、地図が画面に見切れない状態で操作する。** Leaflet は地図の上で
-         * 最初に押されたとき地図の枠へ焦点を移し、枠が見切れているとブラウザが
-         * 外側のページをスクロールする。押してから離すまでの間に中身がずれ、
-         * 離した位置に塊が無くなって、押下が空振りする（実測: 既定の高さ 720 では
-         * 133px ずれた。ホストが iframe の高さを決め終える前に枠を画面へ収めても、
-         * あとで伸びてまた見切れる）。これはアプリの不具合（#58）で、
-         * 見切れた状態はそのためのテストで意図して作る。
-         */
-        viewport: { width: 1280, height: 1400 },
-      },
-    },
-  ],
+  /*
+   * 画面の大きさは既定（1280×720）のまま。以前は地図の押下が空振りするのを避けて
+   * 縦を 1400 にしていたが、アプリ側で直した（#58）。見切れた状態での押下は
+   * e2e/map-offscreen.spec.ts が意図して作って確かめる。
+   */
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
       // 先に UI をビルドしてからサーバーを起動する（server.ts は埋め込み済み HTML を読む）

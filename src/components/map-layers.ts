@@ -147,6 +147,33 @@ export interface MapOrigin {
   label?: string;
 }
 
+/**
+ * 地図の上で押したときに、外側のページをスクロールさせない（#58）。
+ *
+ * Leaflet は地図に焦点が無いときに押されると、地図の枠へ `focus()` する
+ * （`Map.Keyboard` の `_onMouseDown`）。`focus()` は枠を見せようとして祖先を
+ * スクロールするので、枠が画面の下に見切れていると**ホスト側のページ**が動く。
+ * Leaflet は自分の `window` のスクロールしか戻さないので、押してから離すまでの
+ * 間に中身がずれたまま残り、`mouseup` が地図の地に落ちて塊もピンも空振りする
+ * （実測: 高さ 720 で外側のページが 0 → 133px 動いた）。
+ *
+ * **Leaflet より先に、スクロールさせずに焦点を置く。** 捕捉段階で
+ * `focus({ preventScroll: true })` すると、その場で Leaflet の `_onFocus` が走って
+ * 「焦点あり」になり、Leaflet 自身の `focus()` は呼ばれない。矢印キーで動かす
+ * 操作も、焦点が枠にあるので今までどおり使える。
+ *
+ * 焦点が枠の中の印（キーボードで押せるピンや塊）にあるときも、Leaflet にとっては
+ * 「焦点なし」なので同じように置き直す。
+ */
+export function focusWithoutScrolling(map: L.Map): () => void {
+  const container = map.getContainer();
+  const onPress = () => {
+    if (document.activeElement !== container) container.focus({ preventScroll: true });
+  };
+  container.addEventListener("mousedown", onPress, true);
+  return () => container.removeEventListener("mousedown", onPress, true);
+}
+
 /** いま地図に出ている範囲。丸め方は [bounds.ts](../lib/bounds.ts) に隔離してある。 */
 export function viewBounds(map: L.Map): Bounds {
   const b = map.getBounds();
