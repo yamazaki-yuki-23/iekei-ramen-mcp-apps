@@ -206,9 +206,15 @@ tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[s
 - **書けなくても検索は止めない。** 無料枠は書き込み 1 日 10 万件・読み取り 1 日 1 万回。
   超えたときの挙動はドキュメントに無いので、`writeDataPoint` が投げても握りつぶす
 - 手元の Node サーバー（main.ts）には binding が無いので、何も書かない
+- **アカウントで Analytics Engine を有効にしないと、デプロイごと落ちる。**
+  ダッシュボードの「Analytics Engine」で Enable を押す（続いて出るデータセット作成の
+  画面は閉じてよい。データセットは最初の 1 件で自動で作られる）。有効にする前は
+  `wrangler deploy` が「You need to enable Analytics Engine」で止まり、SQL API も
+  権限が正しいトークンに 403 を返す（実測。権限不足と見分けが付かない）
 - **読むには「Account Analytics: Read」の API トークンが要る。** wrangler のログイン
-  （OAuth）には権限が無く、SQL API が 403 を返す。`.dev.vars` に
-  `CLOUDFLARE_ACCOUNT_ID` と `CLOUDFLARE_ANALYTICS_TOKEN` を置く
+  （OAuth）には権限が無く、SQL API が 403 を返す。日本語の画面では「アカウント」→
+  「アカウント分析」→「読み取り」。`.dev.vars` に `CLOUDFLARE_ACCOUNT_ID` と
+  `CLOUDFLARE_ANALYTICS_TOKEN` を置く
 - 件数は `sum(_sample_interval)` で数える。量が多いと間引いて保存されるので、行数を
   数えると少なく出る
 - Web のページ閲覧（Cloudflare Web Analytics）は、Web 公開（#34）のときに足す
