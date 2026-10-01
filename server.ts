@@ -449,6 +449,12 @@ export interface ServerDeps {
    * 待たせすぎになるときは 429 を返す。
    */
   nominatim?: (url: string, init: RequestInit) => Promise<Response>;
+  /**
+   * tool が受け付けられたとき（引数の検査を通った後）に呼ぶ。使われているかを
+   * 数えるため（worker.ts）。本文を読んで数えると、引数が足りず SDK が弾いた
+   * 呼び出しまで数えてしまう。
+   */
+  onToolCall?: (name: string, args: unknown) => void;
 }
 
 /** Nominatim の利用ポリシーが求める「アプリと連絡先が分かる」名乗り。 */
@@ -490,6 +496,21 @@ export function createServer(deps: ServerDeps = {}): McpServer {
     name: process.env.IEKEI_SERVER_NAME ?? "Iekei Ramen Finder",
     version: "0.1.0",
   });
+
+  /*
+   * 数える口は registerTool 1 か所に付ける。registerAppTool もここを通り、SDK は
+   * 引数を検査してから handler を呼ぶので、弾かれた呼び出しは数えない。tool ごとに
+   * 付けると、足した tool だけ数え漏れる。
+   */
+  const { onToolCall } = deps;
+  if (onToolCall) {
+    const register = server.registerTool.bind(server);
+    server.registerTool = ((name: string, config: never, handler: (...a: never[]) => unknown) =>
+      register(name, config, ((...a: never[]) => {
+        onToolCall(name, a[0]);
+        return handler(...a);
+      }) as never)) as typeof server.registerTool;
+  }
 
   registerAppResource(
     server,

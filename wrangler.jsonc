@@ -31,4 +31,8 @@
   // 無料プランで使えるのは SQLite 版だけなので new_sqlite_classes で作る。
   "durable_objects": { "bindings": [{ "name": "GEOCODE_GATE", "class_name": "GeocodeGate" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GeocodeGate"] }],
+  // 使われているかを数える（src/lib/usage.ts）。無料枠は書き込み 1 日 10 万件・
+  // 読み取り 1 日 1 万回。書くのは tool 名とサインインの有無だけで、個人は特定しない。
+  // 週ごとの件数は `npm run usage`。
+  "analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "iekei_ramen_usage" }],
 }
