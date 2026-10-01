@@ -5,6 +5,7 @@
 import { expect, test } from "@playwright/test";
 import { countShops, prefectureWithOneShop, TOTAL, type Bounds } from "./dataset";
 import {
+  afterDelivered,
   appFrame,
   callTool,
   E2E_SERVER_URL,
@@ -12,7 +13,9 @@ import {
   shopCards,
   shopId,
   shopName,
+  smallestCluster,
   waitForApp,
+  waitForMapSettled,
 } from "./helpers";
 
 test.describe("検索フォーム", () => {
@@ -661,14 +664,22 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
     await waitForApp(app);
 
+    // 遅らせた東京都の応答そのものを待つ。呼び出す前に網を張っておく。
+    const lateTokyo = page.waitForResponse((res) => {
+      const body = res.request().postData() ?? "";
+      return body.includes("tools/call") && body.includes("東京都");
+    });
     await app.locator("#pref").selectOption("東京都");
     await app.locator("#pref").selectOption("大阪府");
 
     await expect(app.locator("#pref")).toHaveValue("大阪府");
     await expect(shopCards(app)).toHaveCount(3);
     await expect(shopCards(app).first()).toContainText("大阪府");
-    // 遅れて届く東京都の結果で巻き戻らないこと。
-    await page.waitForTimeout(3000);
+    // 遅れて届く東京都の結果で巻き戻らないこと。届き切ってから確かめる。
+    await afterDelivered(
+      app,
+      lateTokyo.then((res) => res.finished()),
+    );
     await expect(app.locator("#pref")).toHaveValue("大阪府");
     await expect(shopCards(app).first()).toContainText("大阪府");
   });
@@ -1471,18 +1482,35 @@ test.describe("地図の塊", () => {
 
     // 全国を見ている状態では、単独のピンより塊のほうが多い。
     await expect.poll(() => clusters.count()).toBeGreaterThan(0);
-    const biggest = clusters.first();
-    const before = Number(await biggest.textContent());
-    expect(before).toBeGreaterThan(1);
+    const { pin, size } = await smallestCluster(app);
+    expect(size).toBeGreaterThan(1);
 
-    // 押した塊の中身が画面いっぱいに広がるので、その塊は解ける。
-    await biggest.click();
+    /*
+     * 押した塊の中身が画面いっぱいに広がるので、その塊は解ける。
+     *
+     * **見るのは「地図に見えている範囲」だけ。** 塊は画面の外の店まで描くので、
+     * 全体の最大を見ると、押していない別の塊（関東）の大きさに引っぱられる。
+     * 寄った先に、押した塊と同じ大きさの塊が残っていなければ解けている。
+     */
+    await pin.click();
+    const map = (await app.locator(".leaflet-container").boundingBox())!;
     await expect
       .poll(async () => {
-        const counts = await clusters.allTextContents();
-        return Math.max(0, ...counts.map(Number));
+        const inView: number[] = [];
+        for (const c of await clusters.all()) {
+          const b = await c.boundingBox();
+          if (
+            b &&
+            b.x >= map.x &&
+            b.y >= map.y &&
+            b.x + b.width <= map.x + map.width &&
+            b.y + b.height <= map.y + map.height
+          )
+            inView.push(Number(await c.textContent()));
+        }
+        return inView.includes(size);
       })
-      .toBeLessThan(before);
+      .toBe(false);
   });
 });
 
@@ -1521,7 +1549,7 @@ test.describe("選んだ店が塊に隠れないこと", () => {
     let state = await inspect();
     for (let i = 0; i < 5 && !state.covered; i++) {
       await app.locator(".leaflet-control-zoom-out").click();
-      await page.waitForTimeout(400);
+      await waitForMapSettled(app);
       state = await inspect();
     }
 
@@ -1707,7 +1735,7 @@ test.describe("この範囲で探す", () => {
     await expect(app.getByRole("heading", { name: "全国の家系ラーメン" })).toBeVisible();
 
     // 塊を押すと、その中身が画面いっぱいになるまで寄る。
-    await app.locator(".cluster-pin").first().click();
+    await (await smallestCluster(app)).pin.click();
     await search.click();
     await expect.poll(count).toBeLessThan(whole);
     /*
@@ -1746,9 +1774,15 @@ test.describe("隣の世界まで動かしたとき", () => {
      * **整定を待つこと。** 待たずに続けて引きずると途中で呑まれ、複製まで
      * 届かない＝日本が見えたままになり、直っていなくても通ってしまう
      * （実際にそうなっていた）。ズームと慣性が止まってから次へ進む。
+     *
+     * **縮めるのは 1 回だけ。** 縮めすぎると世界が画面より小さくなり、1 周以上が
+     * 見えて、範囲が丸ごと世界全体として送られる。そうなると経度の折り返しを
+     * 通らないので、壊れていても通る（実測: 3 回縮めると、折り返しを丸めに戻し
+     * worldCopyJump を切った実装でも通った）。以前は 3 回押していたが、動いている
+     * 最中の縮小は Leaflet が黙って捨てるので、実際には 1 回分しか縮んでいなかった。
      */
-    for (let i = 0; i < 3; i++) await app.locator(".leaflet-control-zoom-out").click();
-    await page.waitForTimeout(800);
+    await app.locator(".leaflet-control-zoom-out").click();
+    await waitForMapSettled(app);
     const box = (await map.boundingBox())!;
     const y = box.y + box.height / 2;
     for (let i = 0; i < 3; i++) {
@@ -1756,7 +1790,7 @@ test.describe("隣の世界まで動かしたとき", () => {
       await page.mouse.down();
       await page.mouse.move(box.x + 20, y, { steps: 20 });
       await page.mouse.up();
-      await page.waitForTimeout(400);
+      await waitForMapSettled(app);
     }
 
     await app.getByRole("button", { name: "この範囲で探す" }).click();
@@ -1946,10 +1980,11 @@ test.describe("範囲と他の条件の両立", () => {
       return Number((text ?? "").replace(/\D/g, ""));
     };
 
-    await app.locator(".cluster-pin").first().click();
+    await (await smallestCluster(app)).pin.click();
     await app.getByRole("button", { name: "この範囲で探す" }).click();
+    // 押した直後は前の件数が出ている。入れ替わってから読む。
+    await expect.poll(count).toBeLessThan(TOTAL);
     const area = await count();
-    expect(area).toBeLessThan(TOTAL);
 
     // 味のチップは押した瞬間に呼び直す。
     await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();

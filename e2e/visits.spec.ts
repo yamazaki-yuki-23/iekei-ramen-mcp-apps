@@ -7,6 +7,7 @@
  */
 import { expect, test, type FrameLocator } from "@playwright/test";
 import {
+  afterDelivered,
   callTool,
   MEMBER_SERVER_NAME,
   MEMBER_SERVER_URL,
@@ -70,6 +71,14 @@ test.describe("匿名のまま", () => {
 });
 
 test.describe("サインイン済み", () => {
+  /*
+   * **この describe だけは並列にしない。** 記録は 3132 のプロセスに 1 つしか
+   * 無く、テストの頭で消してから始める。ほかのテストと同時に流すと、
+   * 走っている最中に記録を消し合う。設定の `fullyParallel` をここで打ち消し、
+   * 1 つの worker で順に流す。
+   */
+  test.describe.configure({ mode: "default" });
+
   /*
    * 記録はサーバーのプロセスに残るので、テストごとに空から始める。
    * 前のテストの 1 軒が残っていると、「行った」の釦が「行ったを取り消す」に
@@ -202,8 +211,7 @@ test.describe("サインイン済み", () => {
     await app.getByRole("button", { name: "行った", exact: true }).click();
 
     // 遅らせた方の返事が画面に反映されるところまで見届けてから数える。
-    await stale;
-    await page.waitForTimeout(500);
+    await afterDelivered(app, stale);
 
     // タブを移らずに数える（移ると取り直してしまい、画面の嘘が消える）。
     await expect(

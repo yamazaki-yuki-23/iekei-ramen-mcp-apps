@@ -58,6 +58,32 @@ export function appFrame(page: Page): FrameLocator {
 /** アプリの読み込み完了（タブが出るまで）を待つ。 */
 export async function waitForApp(app: FrameLocator) {
   await expect(app.getByRole("tab", { name: "検索フォーム" })).toBeVisible();
+  /*
+   * **地図で開いたときは、最初の寄せ直しが終わるまでを「準備できた」とする。**
+   * 開いた直後に結果の全体へ寄せ直すアニメーションが走り、その途中で塊を押すと、
+   * 押した寄せが後から上書きされる（実測: CI で 4 worker を同時に動かすと、
+   * 塊を押しても開いた直後の画角のまま範囲を読み、4 本が落ちた）。
+   */
+  if ((await app.getByRole("tab", { name: "地図から探す", selected: true }).count()) > 0) {
+    await expect(app.locator(".leaflet-map-pane")).toBeAttached();
+    await waitForMapSettled(app);
+  }
+}
+
+/**
+ * 押すと確かに寄る塊。いちばん小さい塊を返す。
+ *
+ * **先頭の塊を押せば寄る、とは限らない。** 全国を見ているときの先頭は
+ * 日本のほぼ全体を含む塊（実測 492 件）で、中身がすでに画面いっぱいなので
+ * 押しても寄らない。以前は通っていたが、地図が描き直す前の一瞬だけ先頭が
+ * 小さい塊になっていて、そこを押せていただけだった。
+ */
+export async function smallestCluster(app: FrameLocator): Promise<{ pin: Locator; size: number }> {
+  const pins = app.locator(".cluster-pin");
+  const sizes = (await pins.allTextContents()).map(Number);
+  if (sizes.length === 0) throw new Error("塊が 1 つも無い");
+  const size = Math.min(...sizes);
+  return { pin: pins.nth(sizes.indexOf(size)), size };
 }
 
 /** 店舗カードのロケータ。 */
@@ -120,4 +146,60 @@ export async function plottedShops(app: FrameLocator): Promise<number> {
   const singles = await app.locator(".leaflet-overlay-pane path").count();
   const groups = await app.locator(".cluster-pin").allTextContents();
   return singles + groups.reduce((sum, text) => sum + Number(text), 0);
+}
+
+/**
+ * 遅れて届いた応答が、アプリの画面に反映されるまで待つ。
+ *
+ * **「何も起きないこと」を確かめるときに使う。** 届いた合図を待ったあと、
+ * アプリの返ってきていない呼び出しが 0 になるのを待つ（`data-pending-calls`）。
+ * 数は反映と同じ描画で減るので、0 の画面には、その応答で起きることが
+ * （引き戻されるなら、それも）すべて出ている。
+ *
+ * **時間で待たない。** 届いてから一定時間だけ待つ形では、ホストからアプリへの
+ * 受け渡しや描画がそれより長くかかったとき（混んだ CI）、反映される前に
+ * 確かめて何も見ずに通る。
+ */
+export async function afterDelivered(app: FrameLocator, delivered: Promise<unknown>) {
+  await delivered;
+  await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
+}
+
+/**
+ * 地図のズームと慣性が止まり、描き直しまで済むのを待つ。
+ *
+ * **時間で待たない。** 遅い CI ではアニメーションが延び、固定の待ちが先に切れる。
+ * Leaflet は動いている間だけ地図の面に `leaflet-zoom-anim` / `leaflet-pan-anim`
+ * を付け、ズームの途中の縮尺を `.leaflet-proxy` の transform に持つ。
+ *
+ * **「動いていない」を一瞬見ただけで抜けない。** 押した直後や開いた直後は、
+ * Leaflet がまだ動き出していない（次の描画の頭で動き出す）。そこで見ると、
+ * 動き出す前の静けさに一致して待たずに抜ける。動いていない状態が 5 描画かつ
+ * 100ms 続いたら止まったと見なす。止まった後に、zoomend を受けたアプリが塊を
+ * 描き直す分もこの間に済む。
+ */
+export async function waitForMapSettled(app: FrameLocator) {
+  await app.locator(".leaflet-map-pane").evaluate(
+    (pane) =>
+      new Promise<void>((resolve) => {
+        const proxy = pane.querySelector(".leaflet-proxy") as HTMLElement | null;
+        let last = "";
+        let frames = 0;
+        let since = performance.now();
+        const tick = () => {
+          const moving = /leaflet-(zoom|pan)-anim/.test(pane.className);
+          const scale = proxy?.style.transform ?? "";
+          if (moving || scale !== last) {
+            frames = 0;
+            since = performance.now();
+          } else {
+            frames += 1;
+          }
+          last = scale;
+          if (frames >= 5 && performance.now() - since >= 100) resolve();
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+  );
 }
