@@ -51,6 +51,13 @@ interface Options {
    * どこまで写すかは受け取る側が決める（「行った店」の画面だけ一覧も差し替える）。
    */
   onVisits: (next: AppPayload) => void;
+  /**
+   * 返ってきていない呼び出しを数える（始めに +1、反映し終えたら -1）。
+   *
+   * **数は作り直されない外側が持つ。** この部品は payload ごとに作り直されるので、
+   * 中で数えると、作り直した直後に古い呼び出しが残っていても 0 になる。
+   */
+  trackCall: (delta: 1 | -1) => void;
 }
 
 /**
@@ -66,6 +73,7 @@ export function useServerTools({
   awaitContext,
   releaseSelection,
   onVisits,
+  trackCall,
 }: Options) {
   /**
    * 走っている呼び出しの数。busy はここから導く。
@@ -122,6 +130,7 @@ export function useServerTools({
       const superseded = () => replacesResults && seq !== resultSeq.current;
 
       setInFlight((n) => n + 1);
+      trackCall(1);
       setFailure(null);
       if (replacesResults) {
         setStale(true);
@@ -152,10 +161,13 @@ export function useServerTools({
         }
         return null;
       } finally {
+        // 反映（onPayload）と同じ流れで減らす。同じ描画にまとまるので、0 になった
+        // 画面には、この応答で起きることがすべて出ている。
         setInFlight((n) => n - 1);
+        trackCall(-1);
       }
     },
-    [app, onPayload, releaseSelection],
+    [app, onPayload, releaseSelection, trackCall],
   );
 
   /**
@@ -296,18 +308,20 @@ export function useServerTools({
     (shopId: string, visited: boolean) => {
       setInFlight((n) => n + 1);
       setMutations((n) => n + 1);
+      trackCall(1);
       setFailure(null);
       const done = (stampQueue.current ?? Promise.resolve())
         .then(() => sendStamp(shopId, visited))
         .finally(() => {
           setInFlight((n) => n - 1);
           setMutations((n) => n - 1);
+          trackCall(-1);
         });
       // 失敗で列を止めない。1 本落ちても、次の操作は投げられる。
       stampQueue.current = done.catch(() => {});
       return done;
     },
-    [sendStamp],
+    [sendStamp, trackCall],
   );
 
   /** 行った店の一覧と制覇率を取り直す。こちらは画面ごと入れ替わる。 */

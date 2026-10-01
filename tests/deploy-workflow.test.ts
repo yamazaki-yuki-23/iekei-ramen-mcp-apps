@@ -50,3 +50,34 @@ describe("本番デプロイ", () => {
     expect(deploy.indexOf("db:migrate")).toBeLessThan(deploy.indexOf("wrangler deploy"));
   });
 });
+
+/**
+ * E2E は 2 つのジョブに分けて流し、必須チェックの名前は取りまとめのジョブが名乗る。
+ *
+ * **取りまとめが黙ってスキップされると、落ちた E2E が必須チェックを素通りする。**
+ * GitHub はスキップした必須チェックを「通った」と扱う。`if: always()` で必ず走らせ、
+ * 分けたジョブの結果を自分で確かめる。どちらかを外しても、見た目には何も壊れない。
+ */
+describe("E2E の取りまとめ", () => {
+  /** `  e2e:` から次のジョブの手前まで。 */
+  const job = (() => {
+    const start = workflow.search(/^ {2}e2e:$/m);
+    const rest = workflow.slice(start + 1);
+    const next = rest.search(/^ {2}\S[^:]*:$/m);
+    return start === -1 ? "" : workflow.slice(start, next === -1 ? undefined : start + 1 + next);
+  })();
+
+  it("必須チェックの名前を名乗る", () => {
+    expect(job, "取りまとめのジョブが無い").not.toBe("");
+    expect(job).toMatch(/^ {4}name: E2E \(Playwright\)$/m);
+  });
+
+  it("分けたジョブが落ちても、スキップされずに走る", () => {
+    expect(job).toMatch(/^ {4}if: always\(\)$/m);
+  });
+
+  it("分けたジョブの結果が success でなければ落ちる", () => {
+    expect(job).toMatch(/needs\.e2e-shard\.result/);
+    expect(job).toMatch(/test "\$RESULT" = "success"/);
+  });
+});

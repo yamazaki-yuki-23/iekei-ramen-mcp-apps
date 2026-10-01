@@ -43,6 +43,17 @@ function IekeiApp() {
   const [payload, setPayload] = useState<AppPayload | null>(null);
   // payload が差し替わるたびに増える。Inner の key にして状態を初期化する。
   const [payloadVersion, setPayloadVersion] = useState(0);
+  /**
+   * 返ってきていない呼び出しの数。画面の `data-pending-calls` に出す。
+   *
+   * **E2E が「古い応答の反映まで済んだ」ことを知る合図。** 遅らせた応答で
+   * 引き戻されないことを確かめるとき、届いてから時間で待つと、混んだ CI では
+   * 反映が終わる前に確かめて何も見ずに通る。反映と同じ描画で減るので、0 に
+   * なった画面には、その応答で起きることがすべて出ている。Inner は payload ごとに
+   * 作り直されるので、数はここで持つ。
+   */
+  const [pendingCalls, setPendingCalls] = useState(0);
+  const trackCall = useCallback((delta: 1 | -1) => setPendingCalls((n) => n + delta), []);
   const [hostContextPatch, setHostContextPatch] = useState<McpUiHostContext | undefined>();
   /**
    * 位置情報が取れなかったときの案内。
@@ -290,6 +301,8 @@ function IekeiApp() {
       onRemoveStop={removeStop}
       onClearStops={clearStops}
       onVisits={applyVisits}
+      pendingCalls={pendingCalls}
+      trackCall={trackCall}
       awaitContext={awaitContext}
       releaseSelection={releaseSelection}
       onDisplayMode={requestDisplayMode}
@@ -370,6 +383,9 @@ interface InnerProps {
   onClearStops: () => void;
   /** 記録の更新を反映する（検索結果の画面は動かさない）。 */
   onVisits: (next: AppPayload) => void;
+  /** 返ってきていない呼び出しの数（外側が持つ）。 */
+  pendingCalls: number;
+  trackCall: (delta: 1 | -1) => void;
   /** その店の詳細がモデルに届いたか。届いていなければ質問に詳細を同梱する。 */
   awaitContext: (shop: Shop) => Promise<boolean>;
   /** 選択を外し、モデル側から消えるまで待つ。 */
@@ -397,6 +413,8 @@ function IekeiAppInner({
   onRemoveStop,
   onClearStops,
   onVisits,
+  pendingCalls,
+  trackCall,
   awaitContext,
   releaseSelection,
   onDisplayMode,
@@ -430,7 +448,15 @@ function IekeiAppInner({
     runForget,
     askToStamp,
     askToSignIn,
-  } = useServerTools({ app, onPayload, onNotice, awaitContext, releaseSelection, onVisits });
+  } = useServerTools({
+    app,
+    onPayload,
+    onNotice,
+    awaitContext,
+    releaseSelection,
+    onVisits,
+    trackCall,
+  });
 
   /*
    * サインインしているか。
@@ -541,7 +567,11 @@ function IekeiAppInner({
   );
 
   return (
-    <main className={styles.main} style={safeAreaStyle(hostContext?.safeAreaInsets)}>
+    <main
+      className={styles.main}
+      style={safeAreaStyle(hostContext?.safeAreaInsets)}
+      data-pending-calls={pendingCalls}
+    >
       <div className={styles.header}>
         <div className={styles.headerMain}>
           {/* 丼は飾りなので、見出しの読み上げには載せない。 */}

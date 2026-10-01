@@ -33,6 +33,12 @@ const MEMBER_SERVER_NAME = "Iekei Ramen Finder (E2E signed-in)";
  * 変えられるが、変えてもサンドボックスが競合するので既定のままにしてある。
  */
 const HOST_PORT = 8080;
+/**
+ * 地名の解決で Nominatim が返すはずの応答。**E2E から公開サーバーへ問い合わせない**
+ * ——CI は 2 つのジョブを別々のマシンで同時に流すので、全体で 1 秒 1 回の規約を
+ * 守れない。
+ */
+const GEOCODE_FIXTURE = "e2e/fixtures/nominatim.json";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -41,8 +47,23 @@ export default defineConfig({
   testIgnore: ["**/capture*.spec.ts", "**/shoot.spec.ts"],
   timeout: 60_000,
   expect: { timeout: 15_000 },
-  fullyParallel: false,
-  workers: 1,
+  /*
+   * **テストを 1 件ずつ並べて流す。** 1 本ずつ流すと 109 件で 4 分かかっていた
+   * （1 件あたり約 2.2 秒）。遅いのはテストではなく、CPU を 1 つしか使って
+   * いないことだった。
+   *
+   * `fullyParallel` が要る。無いと並列はファイル単位になり、90 件ある
+   * app.spec.ts が 1 つの worker に偏って、ほとんど縮まない。
+   *
+   * **記録を共有するテストは並列にしない。** サインイン済みの記録は 3132 の
+   * プロセスにあり、テストの頭で消してから始めるので、同時に流すと互いの記録を
+   * 消し合う。その describe だけ `mode: "default"` で順に流す
+   * （e2e/visits.spec.ts）。
+   *
+   * CI は 4 vCPU なので 4。手元は Playwright の既定（コア数の半分）に任せる。
+   */
+  fullyParallel: true,
+  workers: process.env.CI ? 4 : undefined,
   retries: process.env.CI ? 2 : 0,
   /*
    * CI では GitHub の注釈に加えて HTML レポートも出す。落ちたときに
@@ -54,7 +75,24 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        /*
+         * **縦を広げて、地図が画面に見切れない状態で操作する。** Leaflet は地図の上で
+         * 最初に押されたとき地図の枠へ焦点を移し、枠が見切れているとブラウザが
+         * 外側のページをスクロールする。押してから離すまでの間に中身がずれ、
+         * 離した位置に塊が無くなって、押下が空振りする（実測: 既定の高さ 720 では
+         * 133px ずれた。ホストが iframe の高さを決め終える前に枠を画面へ収めても、
+         * あとで伸びてまた見切れる）。これはアプリの不具合として別に追い、
+         * 見切れた状態はそのためのテストで意図して作る。
+         */
+        viewport: { width: 1280, height: 1400 },
+      },
+    },
+  ],
   webServer: [
     {
       // 先に UI をビルドしてからサーバーを起動する（server.ts は埋め込み済み HTML を読む）
@@ -66,6 +104,8 @@ export default defineConfig({
         // 接続元からの位置推定は実行環境によって結果が変わるので E2E では止める。
         // 「位置情報が取れないホスト」の挙動を決定的に検証したいため。
         IEKEI_LOCATION_ENDPOINT: "",
+        // 地名の解決は公開の Nominatim へ出さず、決まった応答で返す（main.ts）。
+        IEKEI_GEOCODE_FIXTURE: GEOCODE_FIXTURE,
       },
       url: `http://localhost:${MCP_PORT}/health`,
       reuseExistingServer: !process.env.CI,
@@ -82,6 +122,7 @@ export default defineConfig({
         IEKEI_SERVER_NAME: MEMBER_SERVER_NAME,
         IEKEI_DEV_VISITOR: "e2e-visitor",
         IEKEI_LOCATION_ENDPOINT: "",
+        IEKEI_GEOCODE_FIXTURE: GEOCODE_FIXTURE,
       },
       url: `http://localhost:${MEMBER_PORT}/health`,
       reuseExistingServer: !process.env.CI,

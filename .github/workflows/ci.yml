@@ -16,10 +16,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+# トークンは読むだけでよい。書き込みは Cloudflare 側（シークレットの API トークン）で、
+# GitHub への書き込みはどのジョブもしない。既定のままだと書き込み権限まで付く。
+permissions:
+  contents: read
+
 jobs:
   check:
     name: Lint / Format / Types / Unit
     runs-on: ubuntu-latest
+    # 既定は 360 分。固まると、その分だけランナーを占有する。いつもは 1 分弱。
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
@@ -52,9 +59,23 @@ jobs:
       - name: Worker をバンドルできるか確認
         run: npx wrangler deploy --dry-run --outdir /tmp/worker-dist
 
-  e2e:
-    name: E2E (Playwright)
+  e2e-shard:
+    # 「E2E (Playwright)」は必須チェックの名前なので、下の取りまとめジョブに残す。
+    name: E2E (Playwright) ${{ matrix.shard }}/3
     runs-on: ubuntu-latest
+    # いつもは 1 分半前後。retries が 2 回ずつ重なっても収まる長さにしてある。
+    timeout-minutes: 15
+    strategy:
+      # 片方が落ちても、もう片方は最後まで流す。どのテストが落ちたかを一度で見たい。
+      fail-fast: false
+      matrix:
+        # **3 つのジョブに分ける。** 4 worker でも、CI では 111 件に 163 秒かかり
+        # 2 分を切れなかった（手元の約半分の速さで、1 本あたりの開く手間が均等に効く）。
+        # ジョブごとに CPU が別なので、件数がそのまま分かれる。
+        #
+        # 2 つでは、サインイン済み（1 つの worker で順に流す 10 本）が入る方が
+        # 89〜109 秒で、上限まで余裕が無かった。3 つにすると 37 件ずつになる。
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v5
 
@@ -76,20 +97,39 @@ jobs:
       - name: Set up E2E host
         run: npm run e2e:setup
 
+      # ブラウザ本体はキャッシュしない。試したが、当たっても OS の依存（apt）を
+      # 入れる時間が残り、平均 20.7 秒（15 回）と、毎回入れる 22〜24 秒から 2 秒ほど
+      # しか縮まなかった。ステップを 3 つ増やすほどの差ではない。
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
       - name: E2E tests
-        run: npx playwright test
+        run: npx playwright test --shard=${{ matrix.shard }}/3
 
       # レポートは失敗を追うためのもの。成功したときは作られないので、
       # 常にアップロードしようとすると「ファイルが無い」と警告が出る。
       - uses: actions/upload-artifact@v5
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 7
+
+  e2e:
+    # 必須チェックはこの名前で登録してある。分けたジョブの名前は「1/3」などが付くので、
+    # ここで 1 つにまとめて名乗る。
+    name: E2E (Playwright)
+    needs: e2e-shard
+    # **必ず走らせる。** 分けたジョブが落ちるとここはスキップになり、GitHub は
+    # スキップした必須チェックを「通った」と扱う。走らせて、結果を自分で見る。
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 分けた E2E がすべて通ったか
+        run: test "$RESULT" = "success"
+        env:
+          RESULT: ${{ needs.e2e-shard.result }}
 
   deploy:
     name: Deploy (production)
@@ -101,6 +141,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # 連続でマージしたときに、古い方が後から上書きしないようにする。
     concurrency:
       group: deploy-production
