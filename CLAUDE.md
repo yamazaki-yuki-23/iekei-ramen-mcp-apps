@@ -7,6 +7,32 @@ MCP Apps 対応ホストの中で UI が動く。
 issue がたまる）。項目は [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/)、ラベルの基準は
 [.github/LABELS.md](.github/LABELS.md)。
 
+## 次にやる issue の探し方
+
+**対応順は GitHub の機能に分けて持たせてある。本文のチェックリストには書かない**
+（順番を変えるたびに書き換えることになり、更新し忘れるとずれる）。
+
+| 機能                   | 持たせるもの                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| マイルストーン         | 段階。「準備」→「段階 0: 足場」→ …「段階 4: 数字を見て伸ばす」の順（番号順） |
+| 依存関係（blocked by） | 本当の前後関係だけ（#46 は #38 の後、など）。並び順のためには付けない        |
+| サブ issue             | 親子関係。親（epic）は #50・#33。子の親は 1 つだけ                           |
+
+**いちばん前の段階で、開いていて、依存関係で止められていないもの**が次の候補。
+空なら次の段階へ進む。
+
+```bash
+for m in $(gh api 'repos/{owner}/{repo}/milestones?state=open' --jq 'sort_by(.number)[].title | @base64'); do
+  t=$(echo "$m" | base64 -d)
+  r=$(gh issue list --search "milestone:\"$t\" is:open -is:blocked" --json number,title --jq '.[] | "#\(.number) \(.title)"')
+  [ -n "$r" ] && { echo "次の段階: $t"; echo "$r"; break; }
+done
+```
+
+`-is:blocked` は**開いている**先の issue があるものだけを外す（先が閉じれば候補に戻る）。
+依存関係を付けた直後は、検索に反映されるまで少しかかる（実測: 約 20 秒）。
+同じ段階に候補が複数あるときの順番は、ユーザーに確かめる。
+
 ## コマンド
 
 ```bash
