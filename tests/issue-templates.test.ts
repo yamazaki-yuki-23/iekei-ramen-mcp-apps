@@ -121,4 +121,31 @@ describe("/create-issue の手順", () => {
     expect(check, "本文を書いた後に確かめている").toBeLessThan(write);
     expect(write).toBeLessThan(create);
   });
+
+  it("位置引数（$1 など）を書かない", () => {
+    /*
+     * スキルを引数付きで呼ぶと、本文の `$1` が呼んだときの引数で置き換わる
+     * （実際に `issues/$1` が `issues/issue` になり、id を取れなかった）。
+     */
+    expect(skill).not.toMatch(/\$(?:\d|ARGUMENTS\b)/);
+  });
+
+  it("作るときに段階（マイルストーン）を付ける", () => {
+    const create = skill.slice(skill.indexOf("### 4. 作る"), skill.indexOf("### 5."));
+    expect(create).toMatch(/gh issue create[\s\S]*--milestone/);
+  });
+
+  it("親はサブ issue で繋ぎ、本文にも親のチェックリストにも書かない", () => {
+    /*
+     * 親子はサブ issue が持つ。本文の `親: #番号` や親のチェックリストにも書くと
+     * 二重になり、子を別の親へ移したときに片方だけ古くなる。
+     */
+    expect(skill).toMatch(/\/sub_issues"/);
+    expect(skill, "親のチェックリストに足す手順が残っている").not.toMatch(
+      /チェックリストに「- \[ \]/,
+    );
+    expect(skill, "本文に親を書く手順が残っている").not.toMatch(
+      /本文の最後の行に `親: #番号` を書く/,
+    );
+  });
 });
