@@ -1,6 +1,6 @@
 # 種類ラベルはここで付く。領域ラベル（area:*）は付かないので、作るときに足す
 # （.github/LABELS.md と /create-issue を参照）。
-name: 親
+name: 親 issue
 description: 子 issue を束ねる親 issue（epic）
 labels: ["epic"]
 body:

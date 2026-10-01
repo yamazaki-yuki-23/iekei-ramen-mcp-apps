@@ -48,7 +48,13 @@ describe("issue のテンプレート", () => {
   });
 
   it.each(templates.map((t) => [t.file, t] as const))("%s は GitHub が読める形", (_, t) => {
-    expect(t.name).toBeTruthy();
+    /*
+     * **名前は 3 文字以上。** 短いと GitHub はテンプレートを無効として扱い、
+     * 「New issue」に出さない。エラーはファイルの画面にしか出ない（実測:
+     * 「機能」「調査」「作業」「親」の 4 つが Name is too short で無効になり、
+     * 出ていたのは 3 文字の「不具合」だけだった）。
+     */
+    expect([...t.name].length, `名前「${t.name}」が短い`).toBeGreaterThanOrEqual(3);
     expect(t.description).toBeTruthy();
     const ids = t.body.map((b) => b.id);
     expect(new Set(ids).size, "id が重なっている").toBe(ids.length);
