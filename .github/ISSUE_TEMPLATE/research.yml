@@ -1,6 +1,6 @@
 # 種類ラベルはここで付く。領域ラベル（area:*）は付かないので、作るときに足す
 # （.github/LABELS.md と /create-issue を参照）。
-name: 調査
+name: 調査・確認
 description: 調査・実機確認・観察。コードは変えない（research）
 labels: ["research"]
 body:
