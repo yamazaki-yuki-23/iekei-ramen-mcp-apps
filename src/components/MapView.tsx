@@ -9,6 +9,7 @@ import {
   drawOrigin,
   drawRoute,
   drawShops,
+  focusWithoutScrolling,
   JAPAN_BOUNDS,
   ORIGIN_PANE,
   ROUTE_PANE,
@@ -172,7 +173,10 @@ export function MapView({
     map.on("zoomend", () => setZoom(map.getZoom()));
     // 「この範囲で探す」は、押した瞬間にここから読む。
     onReadyRef.current?.(() => viewBounds(map));
+    // 見切れた地図を押したときに、外側のページが動いて押下が空振りしないように（#58）。
+    const releaseFocus = focusWithoutScrolling(map);
     return () => {
+      releaseFocus();
       map.off("zoomend");
       map.remove();
       mapRef.current = null;
