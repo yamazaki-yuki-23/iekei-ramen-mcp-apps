@@ -64,6 +64,7 @@
     "vite": "^8.3.0",
     "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^4.1.11",
-    "wrangler": "^4.136.2"
+    "wrangler": "^4.136.2",
+    "yaml": "^2.9.1"
   }
 }

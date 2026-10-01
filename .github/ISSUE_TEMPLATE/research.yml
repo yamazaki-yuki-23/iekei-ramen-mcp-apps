@@ -1,0 +1,42 @@
+# 種類ラベルはここで付く。領域ラベル（area:*）は付かないので、作るときに足す
+# （.github/LABELS.md と /create-issue を参照）。
+name: 調査
+description: 調査・実機確認・観察。コードは変えない（research）
+labels: ["research"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目的
+      description: 何を確かめるか。結果で何を決めるのか
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: やり方
+      description: どこで・何を・どう確かめるか
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: 残すもの
+      description: 結果をどこに何の形で残すか（この issue のコメント、スクリーンショット、数字の表など）
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 完了条件
+      description: チェックボックスで書く
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: input
+    id: parent
+    attributes:
+      label: 親
+      description: 親 issue があれば番号を書く
+      placeholder: "#50"
