@@ -1,0 +1,32 @@
+# 種類ラベルはここで付く。領域ラベル（area:*）は付かないので、作るときに足す
+# （.github/LABELS.md と /create-issue を参照）。
+name: 親
+description: 子 issue を束ねる親 issue（epic）
+labels: ["epic"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目的
+      description: 子 issue を全部終えたら、何ができるようになるか
+    validations:
+      required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: 決めたこと
+      description: 進め方・範囲について、すでに決めたことと、その理由
+  - type: textarea
+    id: children
+    attributes:
+      label: 子 issue
+      description: 子 issue のチェックリスト。1 行に 1 本
+      value: |
+        - [ ] #
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: 範囲外
+      description: やらないこと。やるならどの条件になったときか

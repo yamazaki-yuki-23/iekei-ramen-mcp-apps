@@ -3,6 +3,10 @@
 家系ラーメンを探す MCP Apps。Cloudflare Workers にデプロイし、Claude などの
 MCP Apps 対応ホストの中で UI が動く。
 
+**issue は `/create-issue` で作る。** `gh issue create` を直接叩かない（ラベルの無い
+issue がたまる）。項目は [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/)、ラベルの基準は
+[.github/LABELS.md](.github/LABELS.md)。
+
 ## コマンド
 
 ```bash
@@ -404,7 +408,7 @@ GitHub はスキップした必須チェックを「通った」と扱い、落�
   地図のズーム（4）に合わせて描き直す。速いと描き直す前の小さい塊を押せてしまい、
   「先頭の塊を押せば寄る」が通っていた。止まった後の先頭は日本のほぼ全体を含む塊で、
   押しても寄らない。**押して寄せたいときは `smallestCluster` を使う**
-- **地図の枠が画面に見切れていると、押下が空振りする。** Leaflet は押下で枠へ
+- **地図の枠が画面に見切れていると、押下が空振りする（#58）。** Leaflet は押下で枠へ
   焦点を移し、ブラウザが外側のページをスクロールするので、離した位置がずれる。
   E2E は画面の縦を 1400 にして見切れない状態で操作する（playwright.config.ts）。
   枠を画面に収めてから押す形は効かなかった——ホストが iframe の高さを決め終える

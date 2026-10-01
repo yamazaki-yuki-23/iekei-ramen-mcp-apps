@@ -1,0 +1,33 @@
+# 種類ラベルはここで付く。領域ラベル（area:*）は付かないので、作るときに足す
+# （.github/LABELS.md と /create-issue を参照）。
+name: 不具合
+description: 期待どおりに動かない・決まりを守れていない（bug）
+labels: ["bug"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 問題
+      description: 再現手順と、実測した結果（何が起き、何が起きるべきか）
+    validations:
+      required: true
+  - type: textarea
+    id: cause
+    attributes:
+      label: 原因の見立て
+      description: どこで何が起きていると見ているか。確かめていないことは見立てだと書く
+  - type: textarea
+    id: done
+    attributes:
+      label: 完了条件
+      description: チェックボックスで書く。直す前に戻すと落ちる回帰テストを含める
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: input
+    id: parent
+    attributes:
+      label: 親
+      description: 親 issue があれば番号を書く
+      placeholder: "#50"

@@ -4,7 +4,13 @@ dist/
 data/osm-raw.json
 src/generated/
 .dev.vars
-.claude/
+# Claude Code の手元の設定は残さない。ただし issue を作るスキルだけはリポジトリに置く
+# ——ほかの作業場所（git worktree）からも同じ手順で作れるように。ディレクトリごと
+# 外すと中のファイルを戻せないので、中身を外してから戻す。
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/create-issue/
 e2e-host/
 test-results/
 playwright-report/
