@@ -16,6 +16,7 @@ import {
 } from "./oauth.ts";
 import { createServer, MEMBER_TOOLS, type ServerDeps } from "./server.ts";
 import { GeocodeGate } from "./src/lib/geocode-gate.ts";
+import { recordUsage, usageEvent } from "./src/lib/usage.ts";
 import { d1Visits } from "./src/lib/visits.ts";
 
 // wrangler が Durable Object のクラスを探すのは、入口のモジュールの export。
@@ -27,6 +28,8 @@ interface Env extends AuthEnv {
   GEOCODE_LIMITER?: RateLimit;
   /** Nominatim へ出ていく問い合わせの列。全体で 1 つ。 */
   GEOCODE_GATE?: DurableObjectNamespace;
+  /** 使われているかを数える（Workers Analytics Engine）。手元の Node サーバーには無い。 */
+  USAGE?: AnalyticsEngineDataset;
 }
 
 /** 認可サーバーが受け持つ道か（`/authorize` と Google からの戻りを含む）。 */
@@ -34,15 +37,27 @@ function isSignInPath(pathname: string): boolean {
   return isOAuthPath(pathname) || pathname === "/authorize" || pathname === "/callback/google";
 }
 
-/** サインインが要る tool を呼ぼうとしているか。 */
+/**
+ * サインインが要る tool を呼ぼうとしているか。
+ *
+ * **まとめて送られた（配列の）本文も 1 件ずつ見る。** 1 件の形だけ見ていると、
+ * 記録の tool を配列に包むだけで 401 をすり抜ける（実測: 直す前は 200）。
+ * 1 件でも混ざっていれば全体を止める。
+ */
 function needsSignIn(body: string): boolean {
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(body) as { method?: string; params?: { name?: string } };
-    if (parsed.method !== "tools/call") return false;
-    return (MEMBER_TOOLS as readonly string[]).includes(parsed.params?.name ?? "");
+    parsed = JSON.parse(body);
   } catch {
     return false;
   }
+  const messages = Array.isArray(parsed) ? parsed : [parsed];
+  return messages.some((message) => {
+    const m = message as { method?: unknown; params?: { name?: unknown } } | null;
+    return (
+      m?.method === "tools/call" && (MEMBER_TOOLS as readonly unknown[]).includes(m.params?.name)
+    );
+  });
 }
 
 const CORS_HEADERS = {
@@ -162,6 +177,13 @@ export default {
       nominatim: gate
         ? (target, init) => gate.get(gate.idFromName("nominatim")).fetch(target, init)
         : undefined,
+      /*
+       * 使われているかを数える。**SDK が引数を検査して受け付けた呼び出しだけ**が
+       * ここへ来る（引数が足りない・壊れた呼び出しは数えない）。401 を返した呼び出しは
+       * 上で止めているので来ない——匿名でスタンプを押そうとしただけでは、まだ
+       * 使われていない。書くのは tool 名とサインインの有無だけ（src/lib/usage.ts）。
+       */
+      onToolCall: (name, args) => recordUsage(env.USAGE, usageEvent(name, args, Boolean(visitor))),
     });
   },
 };

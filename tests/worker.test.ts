@@ -193,3 +193,112 @@ describe("地名検索の列（GEOCODE_GATE）", () => {
     expect(body).toContain("混み合っています");
   });
 });
+
+/** 書かれたものを貯める、偽の Analytics Engine。 */
+const withUsage = (writeDataPoint: (p?: AnalyticsEngineDataPoint) => void) =>
+  ({
+    GOOGLE_CLIENT_ID: "",
+    GOOGLE_CLIENT_SECRET: "",
+    VISITOR_ID_PEPPER: "",
+    USAGE: { writeDataPoint },
+  }) as never;
+
+const callBody = (name: string, args: Record<string, unknown>) => ({
+  jsonrpc: "2.0",
+  id: 1,
+  method: "tools/call",
+  params: { name, arguments: args },
+});
+
+const post = (
+  usageEnv: never,
+  name: string,
+  args: Record<string, unknown>,
+  { batch = false } = {},
+) =>
+  worker.fetch(
+    new Request(`${ORIGIN}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+        // 接続元の IP。**書いてはいけないもの**の代表として渡しておく。
+        "CF-Connecting-IP": "203.0.113.7",
+      },
+      body: JSON.stringify(batch ? [callBody(name, args)] : callBody(name, args)),
+    }),
+    usageEnv,
+    ctx,
+  );
+
+describe("使われているかを数える（USAGE）", () => {
+  it("tool を呼ぶと 1 件書き、引数も IP も書かない", async () => {
+    const points: AnalyticsEngineDataPoint[] = [];
+    const response = await post(
+      withUsage((p) => p && points.push(p)),
+      "search-iekei-ramen",
+      {
+        prefecture: "神奈川県",
+        keyword: "横浜駅",
+      },
+    );
+    expect(response.status).toBe(200);
+    expect(points).toHaveLength(1);
+    expect(points[0].blobs?.[0]).toBe("search-iekei-ramen");
+    const written = JSON.stringify(points);
+    for (const secret of ["神奈川県", "横浜駅", "203.0.113.7"]) {
+      expect(written, `「${secret}」を書いている`).not.toContain(secret);
+    }
+  });
+
+  it("匿名のスタンプ（401 を返すもの）は数えない", async () => {
+    // まだ使われていない。サインインを求めただけ。
+    const points: AnalyticsEngineDataPoint[] = [];
+    const response = await post(
+      withUsage((p) => p && points.push(p)),
+      "stamp-iekei-ramen",
+      {
+        shopId: "node/1",
+        visited: true,
+      },
+    );
+    expect(response.status).toBe(401);
+    expect(points).toHaveLength(0);
+  });
+
+  it("引数が足りず SDK が弾いた呼び出しは数えない", async () => {
+    // 本文を読んで数えると、受け付けていない呼び出しまで「使われた」になる。
+    const points: AnalyticsEngineDataPoint[] = [];
+    const response = await post(
+      withUsage((p) => p && points.push(p)),
+      "geocode-place",
+      {},
+    );
+    expect(await response.text()).toContain("isError");
+    expect(points).toHaveLength(0);
+  });
+
+  it("配列に包んだ匿名のスタンプも 401 で止め、数えない", async () => {
+    // 1 件の形だけ見ていると、配列に包むだけでサインインの確認をすり抜ける。
+    const points: AnalyticsEngineDataPoint[] = [];
+    const response = await post(
+      withUsage((p) => p && points.push(p)),
+      "stamp-iekei-ramen",
+      { shopId: "node/1", visited: true },
+      { batch: true },
+    );
+    expect(response.status).toBe(401);
+    expect(points).toHaveLength(0);
+  });
+
+  it("書き込みが投げても、検索の応答は返る", async () => {
+    const response = await post(
+      withUsage(() => {
+        throw new Error("over the limit");
+      }),
+      "search-iekei-ramen",
+      {},
+    );
+    expect(response.status).toBe(200);
+  });
+});
