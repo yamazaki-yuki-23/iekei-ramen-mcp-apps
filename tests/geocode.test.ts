@@ -42,6 +42,97 @@ async function connect(deps: ServerDeps) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("geocode-place", () => {
+  it.each(["get", "put"] as const)("KV の %s が失敗しても取得した座標を返す", async (operation) => {
+    const fetchMock = stubNominatim();
+    const cache = memoryKv();
+    vi.spyOn(cache, operation).mockRejectedValue(new Error("internal KV failure"));
+    const result = await (await connect({ geocodeCache: cache }))("横浜駅");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toEqual({
+      results: [{ label: "横浜駅, 西区, 横浜市", lat: 35.466, lon: 139.622 }],
+    });
+    expect(JSON.stringify(result)).not.toContain("internal KV failure");
+  });
+
+  it.each(["get", "put"] as const)("KV の %s が失敗しても 0 件を正常に返す", async (operation) => {
+    const fetchMock = stubNominatim([]);
+    const cache = memoryKv();
+    vi.spyOn(cache, operation).mockRejectedValue(new Error("internal KV failure"));
+    const result = await (await connect({ geocodeCache: cache }))("よこはまえきx");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.isError).toBeFalsy();
+    expect(JSON.stringify(result.content)).toContain("見つかりませんでした");
+  });
+
+  it.each(["{", "{}", '[{"label":"駅","lat":null,"lon":139}]'])(
+    "壊れたキャッシュ %s は通常の送り口から取得し直す",
+    async (cached) => {
+      const directFetch = stubNominatim();
+      const cache = memoryKv();
+      vi.spyOn(cache, "get").mockResolvedValue(cached);
+      const allow = vi.fn(async () => true);
+      const gateway = vi.fn(async () => Response.json(YOKOHAMA));
+      const result = await (
+        await connect({
+          geocodeCache: cache,
+          allowGeocode: allow,
+          nominatim: gateway,
+        })
+      )("横浜駅");
+      expect(result.isError).toBeFalsy();
+      expect(result.structuredContent).toHaveProperty("results.0.lat", 35.466);
+      expect(allow).toHaveBeenCalledTimes(1);
+      expect(gateway).toHaveBeenCalledTimes(1);
+      expect(directFetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("KV の読み書き障害でも許可後は全体の送り口から検索する", async () => {
+    const directFetch = stubNominatim();
+    const cache = memoryKv();
+    vi.spyOn(cache, "get").mockRejectedValue(new Error("internal KV read failure"));
+    vi.spyOn(cache, "put").mockRejectedValue(new Error("internal KV write failure"));
+    const allow = vi.fn(async () => true);
+    const gateway = vi.fn(async () => {
+      expect(allow).toHaveBeenCalledTimes(1);
+      return Response.json(YOKOHAMA);
+    });
+    const result = await (
+      await connect({
+        geocodeCache: cache,
+        allowGeocode: allow,
+        nominatim: gateway,
+      })
+    )("横浜駅");
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toHaveProperty("results.0.lat", 35.466);
+    expect(gateway).toHaveBeenCalledTimes(1);
+    expect(directFetch).not.toHaveBeenCalled();
+    expect(JSON.stringify(result)).not.toContain("internal KV");
+  });
+
+  it("KV の読み取り障害でも連打止めを通し、拒否時は外部へ送らない", async () => {
+    const fetchMock = stubNominatim();
+    const cache = memoryKv();
+    vi.spyOn(cache, "get").mockRejectedValue(new Error("internal KV failure"));
+    const allow = vi.fn(async () => false);
+    const gateway = vi.fn(async () => Response.json(YOKOHAMA));
+    const result = await (
+      await connect({
+        geocodeCache: cache,
+        allowGeocode: allow,
+        nominatim: gateway,
+      })
+    )("横浜駅");
+    expect(allow).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(gateway).not.toHaveBeenCalled();
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain("待って");
+    expect(JSON.stringify(result)).not.toContain("internal KV failure");
+  });
+
   it("同じ地名の 2 回目は Nominatim を叩かない（表記の揺れも同じ鍵）", async () => {
     const fetchMock = stubNominatim();
     const geocode = await connect({ geocodeCache: memoryKv() });

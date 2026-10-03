@@ -465,6 +465,29 @@ const GEOCODE_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 type GeocodeHit = { label: string; lat: number; lon: number };
 
+const GeocodeCacheSchema = z.array(
+  z.object({
+    label: z.string(),
+    lat: z.number().min(-90).max(90),
+    lon: z.number().min(-180).max(180),
+  }),
+);
+
+/** KV の障害・壊れた値は未保存として扱い、通常の制限付き検索へ戻す。 */
+async function readGeocodeCache(
+  cache: ServerDeps["geocodeCache"],
+  key: string,
+): Promise<GeocodeHit[] | null> {
+  try {
+    const cached = await cache?.get(key);
+    if (!cached) return null;
+    const parsed = GeocodeCacheSchema.safeParse(JSON.parse(cached));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * 表記の揺れを畳んだ問い合わせ文。**キャッシュの鍵と送る文を同じにする。**
  * 全角の英数や空白を半角に寄せないと、同じ地名が別の鍵になる。
@@ -820,11 +843,8 @@ export function createServer(deps: ServerDeps = {}): McpServer {
     async ({ query }): Promise<CallToolResult> => {
       const q = normalizePlaceQuery(query);
       const key = await geocodeCacheKey(q);
-      const cached = await deps.geocodeCache?.get(key);
-      let hits: GeocodeHit[];
-      if (cached) {
-        hits = JSON.parse(cached) as GeocodeHit[];
-      } else {
+      let hits = await readGeocodeCache(deps.geocodeCache, key);
+      if (hits === null) {
         // 止めるのは Nominatim へ出ていくときだけ。キャッシュで答えられる分は数えない。
         if (deps.allowGeocode && !(await deps.allowGeocode())) {
           return {
@@ -872,9 +892,13 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           lon: Number(r.lon),
         }));
         // 見つからなかったことも持つ。打ち間違いの連打も Nominatim へ流さない。
-        await deps.geocodeCache?.put(key, JSON.stringify(hits), {
-          expirationTtl: GEOCODE_TTL_SECONDS,
-        });
+        try {
+          await deps.geocodeCache?.put(key, JSON.stringify(hits), {
+            expirationTtl: GEOCODE_TTL_SECONDS,
+          });
+        } catch {
+          // 保存が失敗しても取得済みの結果を返す。内部例外や問い合わせ文はログに出さない。
+        }
       }
       if (hits.length === 0) {
         return { content: [{ type: "text", text: `「${query}」は見つかりませんでした。` }] };
