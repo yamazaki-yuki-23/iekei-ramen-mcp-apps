@@ -218,7 +218,7 @@ npx wrangler login
 npm run deploy
 ```
 
-デプロイ後の URL は `https://iekei-ramen-mcp.<account>.workers.dev/mcp` です。
+本番の URL は `https://iekeiramen.com/mcp` です。自分のアカウントへデプロイするときは、[wrangler.jsonc](wrangler.jsonc) の `routes` を自分のドメインに変えるか、消してください（消すと `https://iekei-ramen-mcp.<account>.workers.dev/mcp` になります）。
 
 **店舗データはコードに埋め込むので、DB もストレージも要りません**（検索・絞り込み・
 「迷ったら」「まわる店」は、この埋め込みデータだけで完結します）。

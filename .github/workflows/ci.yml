@@ -198,7 +198,7 @@ jobs:
             # 接続や DNS で転んだときも curl は非ゼロで終わる。set -e で
             # 1 回目に打ち切られないよう、失敗は 000 として扱って次を試す。
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-              https://iekei-ramen-mcp.yamazaki-dev.workers.dev/health || true)
+              https://iekeiramen.com/health || true)
             [ "$code" = "200" ] && echo "health: 200" && exit 0
             echo "まだ 200 ではない（$code）。$i 回目、3 秒後に再試行" >&2
             sleep 3

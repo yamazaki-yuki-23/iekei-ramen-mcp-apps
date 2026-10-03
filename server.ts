@@ -314,8 +314,7 @@ function toCoordinate(value: unknown, max: number): number | undefined {
  * 空文字を設定すると問い合わせ自体を行わない（テストはこれで外部通信を止める）。
  */
 const LOCATION_ENDPOINT =
-  globalThis.process?.env?.IEKEI_LOCATION_ENDPOINT ??
-  "https://iekei-ramen-mcp.yamazaki-dev.workers.dev/whereami";
+  globalThis.process?.env?.IEKEI_LOCATION_ENDPOINT ?? "https://iekeiramen.com/whereami";
 
 /** プロセスが生きている間は使い回す（同じ場所から何度も引く意味がない）。 */
 let edgeLocationCache: Origin | null | undefined;
