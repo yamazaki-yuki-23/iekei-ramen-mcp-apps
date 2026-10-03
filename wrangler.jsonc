@@ -5,6 +5,14 @@
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // 本番の URL。**公開した後では変えにくい**（登録されたコネクタ・掲載情報・貼られた
+  // リンク・Google サインインの戻り先が全部壊れる）ので、公開前にここへ移した（#41）。
+  // ゾーンは同じアカウントの Cloudflare Registrar で取ったもの。
+  "routes": [{ "pattern": "iekeiramen.com", "custom_domain": true }],
+  // **routes を書くと workers_dev は既定で false になる**（Cloudflare のドキュメント）。
+  // 新しいドメインで本番が応答するのを見るまでは、旧い入口を残して逃げ道にする。
+  // 止めるのは別の PR（#41）。
+  "workers_dev": true,
   // Google の OAuth クライアント ID。**秘密ではない**（認可 URL に平文で載る）。
   // 対になるシークレットは `wrangler secret put GOOGLE_CLIENT_SECRET` で入れる。
   "vars": {
