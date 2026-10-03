@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
  */
 const GLOBAL = readFileSync(new URL("../src/global.css", import.meta.url), "utf8");
 const MODULE = readFileSync(new URL("../src/mcp-app.module.css", import.meta.url), "utf8");
+const CONSENT = readFileSync(new URL("../src/oauth-consent.css", import.meta.url), "utf8");
 
 /** 実行時に JS から差し込む変数。CSS には定義が無くてよい。 */
 const FROM_RUNTIME = /^--safe-area-/;
@@ -24,8 +25,12 @@ function usedNames(css: string): Set<string> {
 
 describe("CSS の変数", () => {
   it("使っている名前はすべて定義されている", () => {
-    const defined = new Set([...definedNames(GLOBAL), ...definedNames(MODULE)]);
-    const missing = [...usedNames(MODULE), ...usedNames(GLOBAL)]
+    const defined = new Set([
+      ...definedNames(GLOBAL),
+      ...definedNames(MODULE),
+      ...definedNames(CONSENT),
+    ]);
+    const missing = [...usedNames(MODULE), ...usedNames(GLOBAL), ...usedNames(CONSENT)]
       .filter((name) => !defined.has(name))
       .filter((name) => !FROM_RUNTIME.test(name));
 

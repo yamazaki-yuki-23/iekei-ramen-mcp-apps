@@ -100,6 +100,10 @@ UI 無しの `geocode-place`。
 - 記録は D1、認可の状態は KV。認可サーバーは `@cloudflare/workers-oauth-provider` の
   `OAuthAuthorizationServer`。**`OAuthProvider` は使えない**（apiRoute の未認証を
   ハンドラ手前で 401 にするので、匿名が通らなくなる）
+- Googleへ進む前に、クライアント名・戻り先ホスト・訪問記録の閲覧/変更/全削除の
+  権限を示し、毎回明示的な許可を求める。Googleの本人確認とは別の判断。
+  `beginConsent` / `approveConsent` / `denyConsent` に検証済み要求とCookieの管理を
+  任せる。フォームのclient_idやredirect_uriは使わない。許可画面はiframeを拒否する。
 - **`/.well-known/oauth-protected-resource` は自分で返す**（[oauth.ts](../oauth.ts)）。
   ライブラリは認可サーバー側の文書しか出さず、任せると 401 の指す先が 404 になる
 - ライブラリは `cloudflare:workers` を取り込むので**動的 import**。KV の無い環境
