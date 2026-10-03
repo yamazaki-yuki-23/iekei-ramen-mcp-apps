@@ -4,6 +4,21 @@
   "main": "worker.ts",
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/web",
+    "not_found_handling": "none",
+    // HTMLのナビゲーションでも、MCPと認可の経路を静的ページに置き換えない。
+    "run_worker_first": [
+      "/mcp",
+      "/health",
+      "/whereami",
+      "/authorize",
+      "/callback/google",
+      "/token",
+      "/register",
+      "/.well-known/*",
+    ],
+  },
   "observability": { "enabled": true },
   // 本番の URL。**公開した後では変えにくい**（登録されたコネクタ・掲載情報・貼られた
   // リンク・Google サインインの戻り先が全部壊れる）ので、公開前にここへ移した（#41）。
