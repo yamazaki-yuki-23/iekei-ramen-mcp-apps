@@ -33,7 +33,7 @@ import { safeAreaStyle } from "./lib/safe-area";
 import { DATA_FOOTNOTE } from "./lib/data-caveats";
 import { scopeLabel } from "./lib/scope";
 import { MAX_STOPS, planRoute } from "./lib/route";
-import type { AppPayload, Origin, SearchMode, Shop } from "./lib/types";
+import type { AppPayload, Origin, SearchMode, Shop, VisitResult } from "./lib/types";
 import styles from "./mcp-app.module.css";
 
 function IekeiApp() {
@@ -216,7 +216,7 @@ function IekeiApp() {
    * 「行った」だけなので、変わるのは記録だけにする。
    */
   const applyVisits = useCallback(
-    (next: AppPayload) => {
+    (next: VisitResult) => {
       setPayload((prev) => {
         if (!prev) return prev;
         const records = { visited: next.visited, progress: next.progress };
@@ -227,7 +227,7 @@ function IekeiApp() {
          * 逆に一覧を触らない——押したのは「行った」だけで、探していた条件は
          * 変わっていない。
          */
-        if (prev.mode !== "visited") return { ...prev, ...records };
+        if (prev.mode !== "visited" || !("shops" in next)) return { ...prev, ...records };
         return { ...prev, ...records, shops: next.shops, total: next.total };
       });
 
@@ -243,7 +243,12 @@ function IekeiApp() {
        * 消してしまう（Codex の指摘で気付いた）。
        */
       const { mode, selected: current } = latest.current;
-      if (mode === "visited" && current && !next.shops.some((shop) => shop.id === current.id)) {
+      if (
+        mode === "visited" &&
+        current &&
+        "shops" in next &&
+        !next.shops.some((shop) => shop.id === current.id)
+      ) {
         void releaseSelection();
       }
     },
@@ -379,7 +384,7 @@ interface InnerProps {
   onRemoveStop: (shop: Shop) => void;
   onClearStops: () => void;
   /** 記録の更新を反映する（検索結果の画面は動かさない）。 */
-  onVisits: (next: AppPayload) => void;
+  onVisits: (next: VisitResult) => void;
   /** 返ってきていない呼び出しの数（外側が持つ）。 */
   pendingCalls: number;
   trackCall: (delta: 1 | -1) => void;
@@ -452,6 +457,7 @@ function IekeiAppInner({
     awaitContext,
     releaseSelection,
     onVisits,
+    includeVisitedShops: payload.mode === "visited",
     trackCall,
   });
 

@@ -128,9 +128,15 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
   （文面は [shop-brief.ts](../src/lib/shop-brief.ts)）
 - **サインインしているかは `payload.visited` の有無で判る。** 匿名ではこの欄ごと
   落としてあるので、「1 軒も行っていない人」（空配列）と混ざらない
-- **スタンプの結果で画面を差し替えない。** この tool の payload は
-  `mode: "visited"` なので、素直に反映すると検索結果を見ていた人が「行った店」へ
-  飛ばされる。記録（`visited` / `progress`）だけを差す（`applyVisits`）
+- **スタンプの結果で画面を差し替えない。** `includeShops` は既定で `true`。
+  モデルや既存ホストには従来どおり `mode: "visited"` の店舗一覧を返す。
+  検索・地図などのUIは `false` を渡し、訪問IDと制覇率の全体snapshot
+  （`visited` / `progress`）だけを受け取る。`readVisitResult` / `applyVisits` が
+  記録だけを反映し、検索結果と選択を維持する。「行った店」画面は一覧が必要なので
+  `true` を渡す。どちらも書き込み後の1回の読み取りから組み、UIの操作は直列に送る
+- 応答サイズの再計測は `node --import tsx scripts/benchmark-stamps.mjs`。
+  実データの訪問0件・100件・全件で、MCP tool結果のJSON全体をUTF-8で比較する。
+  HTTP/SSEの付加分と圧縮後の転送量は含めない。記録はメモリだけで、本番のD1へは書かない
 - 制覇率の計算は [src/lib/progress.ts](../src/lib/progress.ts)。**順位も称号も作らない**
   ——持っているのは軒数だけで、頑張りの度合いを語る材料が無い
 

@@ -5,7 +5,7 @@
  * 一方で、両方の画面を同時には出せない。サインイン済みの側は偽の利用者で
  * 動いている（`IEKEI_DEV_VISITOR`。main.ts にしか無い道）。
  */
-import { expect, test, type FrameLocator } from "@playwright/test";
+import { expect, test, type FrameLocator, type Page } from "@playwright/test";
 import {
   afterDelivered,
   callTool,
@@ -25,9 +25,40 @@ async function selectFirst(app: FrameLocator): Promise<string> {
   return name;
 }
 
+/** 実際のMCP応答をそのままUIへ渡し、要求した形式と返却フィールドを記録する。 */
+async function observeStamps(page: Page) {
+  const stamps: Array<{
+    includeShops: boolean;
+    payload: Record<string, unknown>;
+  }> = [];
+  await page.route(`**/${MEMBER_SERVER_URL.split("//")[1]}`, async (route) => {
+    const request = route.request().postDataJSON();
+    if (request?.params?.name !== "stamp-iekei-ramen") {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    const body = await response.text();
+    const json = body.startsWith("{")
+      ? body
+      : body
+          .split("\n")
+          .find((line) => line.startsWith("data: "))!
+          .slice(6);
+    stamps.push({
+      includeShops: request.params.arguments.includeShops,
+      payload: JSON.parse(json).result.structuredContent,
+    });
+    await route.fulfill({ response, body });
+  });
+  return stamps;
+}
+
 test.describe("匿名のまま", () => {
   test("「行った店」を開いても失敗にせず、サインインへ案内する", async ({ page }) => {
-    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    const app = await callTool(page, "search-iekei-ramen", {
+      prefecture: "神奈川県",
+    });
     await waitForApp(app);
 
     await app.getByRole("tab", { name: "行った店" }).click();
@@ -43,7 +74,9 @@ test.describe("匿名のまま", () => {
      * この 2 つは UI から tool を呼べない経路で、**チャットへ一通送るのが
      * 仕事そのもの**。押せることだけを見ていると、送信が壊れても気付けない。
      */
-    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    const app = await callTool(page, "search-iekei-ramen", {
+      prefecture: "神奈川県",
+    });
     await waitForApp(app);
     await selectFirst(app);
 
@@ -61,7 +94,9 @@ test.describe("匿名のまま", () => {
   });
 
   test("「行った」は押せるが、記録ではなくチャットへの依頼だと書いてある", async ({ page }) => {
-    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    const app = await callTool(page, "search-iekei-ramen", {
+      prefecture: "神奈川県",
+    });
     await waitForApp(app);
     await selectFirst(app);
 
@@ -89,6 +124,7 @@ test.describe("サインイン済み", () => {
   });
 
   test("「行った」を押しても画面が飛ばず、その場で印が付く", async ({ page }) => {
+    const stamps = await observeStamps(page);
     const app = await callTool(
       page,
       "search-iekei-ramen",
@@ -110,6 +146,9 @@ test.describe("サインイン済み", () => {
     );
     await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
     await expect(shopCards(app).first().getByText("行った")).toBeVisible();
+    expect(stamps).toHaveLength(1);
+    expect(stamps[0].includeShops).toBe(false);
+    expect(Object.keys(stamps[0].payload).toSorted()).toEqual(["progress", "visited"]);
 
     // 「行った店」へ移ると、その 1 軒と制覇率が出る。
     await app.getByRole("tab", { name: "行った店" }).click();
@@ -144,6 +183,7 @@ test.describe("サインイン済み", () => {
   });
 
   test("「行った店」で取り消すと、その場で一覧から消える", async ({ page }) => {
+    const stamps = await observeStamps(page);
     const app = await callTool(
       page,
       "search-iekei-ramen",
@@ -167,6 +207,47 @@ test.describe("サインイン済み", () => {
      */
     await expect(app.getByText("まだ記録がありません")).toBeVisible();
     await expect(shopCards(app)).toHaveCount(0);
+    expect(stamps.map((stamp) => stamp.includeShops)).toEqual([false, true]);
+    expect(stamps[1].payload.shops).toEqual([]);
+    expect(stamps[1].payload.visited).toEqual([]);
+  });
+
+  test("壊れた軽量応答では印を付けず、エラー表示後にも再試行できる", async ({ page }) => {
+    let broken = true;
+    await page.route(`**/${MEMBER_SERVER_URL.split("//")[1]}`, async (route) => {
+      const request = route.request().postDataJSON();
+      if (request?.params?.name !== "stamp-iekei-ramen" || !broken) {
+        await route.continue();
+        return;
+      }
+      broken = false;
+      // この1回だけサーバーへ送らず、記録の無い応答を返す。
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: request.id,
+          result: {
+            content: [],
+            structuredContent: { visited: [request.params.arguments.shopId] },
+          },
+        }),
+      });
+    });
+    const app = await callTool(
+      page,
+      "search-iekei-ramen",
+      { prefecture: "神奈川県" },
+      MEMBER_SERVER_NAME,
+    );
+    await waitForApp(app);
+    await selectFirst(app);
+    await app.getByRole("button", { name: "行った", exact: true }).click();
+    await expect(app.getByText(/^記録できませんでした/)).toBeVisible();
+    await expect(shopCards(app).first().getByText("行った", { exact: true })).toHaveCount(0);
+    await app.getByRole("button", { name: "行った", exact: true }).click();
+    await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
+    await expect(app.getByText(/^記録できませんでした/)).toHaveCount(0);
   });
 
   test("続けて 2 軒押しても、先に押した応答が後の記録を消さない", async ({ page }) => {
@@ -276,10 +357,14 @@ test.describe("サインイン済み", () => {
 
     await app.getByRole("button", { name: "行った", exact: true }).click();
     // **時間を切って見る。** 終わったあとの状態に一致させない。
-    await expect(app.getByRole("tab", { name: "地図から探す" })).toBeDisabled({ timeout: 1000 });
+    await expect(app.getByRole("tab", { name: "地図から探す" })).toBeDisabled({
+      timeout: 1000,
+    });
 
     // 書き換えが終われば、また押せる。
-    await expect(app.getByRole("tab", { name: "地図から探す" })).toBeEnabled({ timeout: 20_000 });
+    await expect(app.getByRole("tab", { name: "地図から探す" })).toBeEnabled({
+      timeout: 20_000,
+    });
   });
 
   test("記録を全部消すのは 2 段階で、やめれば残る", async ({ page }) => {
@@ -399,13 +484,18 @@ test.describe("サインイン済み", () => {
      */
     await expect(app.getByText("読み込み中…")).toBeVisible({ timeout: 1000 });
     await expect(shopCards(app)).toHaveCount(0, { timeout: 1000 });
-    await expect(app.getByRole("button", { name: /^行った/ })).toHaveCount(0, { timeout: 1000 });
+    await expect(app.getByRole("button", { name: /^行った/ })).toHaveCount(0, {
+      timeout: 1000,
+    });
 
     // 届いたあとは、ふつうに空の画面になる。
-    await expect(app.getByText("まだ記録がありません")).toBeVisible({ timeout: 20_000 });
+    await expect(app.getByText("まだ記録がありません")).toBeVisible({
+      timeout: 20_000,
+    });
   });
 
   test("地図では、行った店だと読み上げにも分かる", async ({ page }) => {
+    const stamps = await observeStamps(page);
     const app = await callTool(
       page,
       "search-iekei-ramen",
@@ -423,5 +513,11 @@ test.describe("サインイン済み", () => {
       timeout: 20_000,
     });
     await expect(app.getByText("中心に白い点のあるピン")).toBeVisible();
+    await app.getByRole("button", { name: new RegExp(`${name}.*行った`) }).click();
+    await app.getByRole("button", { name: "行ったを取り消す" }).click();
+    await expect(app.getByRole("button", { name: "行った", exact: true })).toBeVisible();
+    expect(stamps.map((stamp) => stamp.includeShops)).toEqual([false, false]);
+    expect(Object.keys(stamps[1].payload).toSorted()).toEqual(["progress", "visited"]);
+    expect(stamps[1].payload.visited).toEqual([]);
   });
 });
