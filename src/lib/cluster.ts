@@ -72,7 +72,37 @@ export function clusterShops(shops: Shop[], zoom: number, keepId?: string): Shop
 
   // Map は挿入順を保つので、入力順のまま返る。
   const groups = mergeClose([...cells.values()], zoom);
-  return [...groups.map(toCluster), ...singles];
+  return [
+    ...groups.map((group) => ({
+      lat: group.latSum / group.count,
+      lon: group.lonSum / group.count,
+      shops: group.shops,
+    })),
+    ...singles,
+  ];
+}
+
+interface Group {
+  shops: Shop[];
+  count: number;
+  latSum: number;
+  lonSum: number;
+  x: number;
+  y: number;
+  /** 最初の升目の入力順。削除で番号を詰めなくても、最初の組の順序は変わらない。 */
+  order: number;
+  active: boolean;
+}
+
+function groupOf(shops: Shop[], order: number, zoom: number): Group {
+  let latSum = 0;
+  let lonSum = 0;
+  for (const shop of shops) {
+    latSum += shop.lat;
+    lonSum += shop.lon;
+  }
+  const { x, y } = project(latSum / shops.length, lonSum / shops.length, zoom);
+  return { shops, count: shops.length, latSum, lonSum, x, y, order, active: true };
 }
 
 /**
@@ -82,39 +112,97 @@ export function clusterShops(shops: Shop[], zoom: number, keepId?: string): Shop
  * 一度に全部の組を見て消すと、動いた先でまた重なった組を取り逃がす。
  * 毎回いちばん先に見つかった組からまとめるので、結果は入力順で決まる。
  */
-function mergeClose(groups: Shop[][], zoom: number): Shop[][] {
-  const merged = [...groups];
-  for (let pair = findClosePair(merged, zoom); pair; pair = findClosePair(merged, zoom)) {
-    const [i, j] = pair;
-    merged[i] = [...merged[i], ...merged[j]];
-    merged.splice(j, 1);
+// 中心を保持し、統合した側だけを計算し直す。
+function mergeClose(shops: Shop[][], zoom: number): Group[] {
+  const groups = shops.map((group, order) => groupOf(group, order, zoom));
+  // 少ない塊では索引を作る手間の方が大きい。全国表示のような小さい一覧は直接見る。
+  const nearby = groups.length > 32 ? new Nearby(groups) : undefined;
+  for (let pair = findClosePair(groups, nearby); pair; pair = findClosePair(groups, nearby)) {
+    const [left, right] = pair;
+    nearby?.remove(left);
+    nearby?.remove(right);
+    // 合計どうしを足すと丸め方が変わる。右の店を順番に加え、元のreduceと完全一致させる。
+    for (const shop of right.shops) {
+      left.shops.push(shop);
+      left.latSum += shop.lat;
+      left.lonSum += shop.lon;
+    }
+    left.count += right.count;
+    const center = project(left.latSum / left.count, left.lonSum / left.count, zoom);
+    left.x = center.x;
+    left.y = center.y;
+    right.active = false;
+    nearby?.add(left);
   }
-  return merged;
+  return groups.filter((group) => group.active);
 }
 
-/** 近すぎる塊の組。無ければ null。 */
-function findClosePair(groups: Shop[][], zoom: number): [number, number] | null {
-  const centers = groups.map((group) => {
-    const { lat, lon } = center(group);
-    return project(lat, lon, zoom);
-  });
-  for (let i = 0; i < centers.length; i++) {
-    for (let j = i + 1; j < centers.length; j++) {
-      const gap = Math.hypot(centers[i].x - centers[j].x, centers[i].y - centers[j].y);
-      if (gap < MIN_GAP_PX) return [i, j];
+/** 少ない塊だけは全組を見る。中心の投影は再計算しない。 */
+function findClosePair(groups: Group[], nearby?: Nearby): [Group, Group] | null {
+  for (let i = 0; i < groups.length; i++) {
+    const first = groups[i];
+    if (!first.active) continue;
+    if (nearby) {
+      const second = nearby.firstClose(first);
+      if (second) return [first, second];
+      continue;
+    }
+    for (let j = i + 1; j < groups.length; j++) {
+      const second = groups[j];
+      if (second.active && isClose(first, second)) return [first, second];
     }
   }
   return null;
 }
 
-function center(group: Shop[]): { lat: number; lon: number } {
-  return { lat: average(group.map((s) => s.lat)), lon: average(group.map((s) => s.lon)) };
+function isClose(first: Group, second: Group): boolean {
+  // 境界の判定も元と同じhypotを使う。二乗比較による丸め方の差を入れない。
+  const gap = Math.hypot(first.x - second.x, first.y - second.y);
+  return gap < MIN_GAP_PX;
 }
 
-function toCluster(group: Shop[]): ShopCluster {
-  return { ...center(group), shops: group };
-}
+/** 36px以内の候補は、36pxの升目の同じセルか隣接する8セルにしかいない。 */
+class Nearby {
+  private cells = new Map<string, Set<Group>>();
 
-function average(values: number[]): number {
-  return values.reduce((sum, v) => sum + v, 0) / values.length;
+  constructor(groups: Group[]) {
+    for (const group of groups) this.add(group);
+  }
+
+  add(group: Group) {
+    const key = this.key(group);
+    const cell = this.cells.get(key);
+    if (cell) cell.add(group);
+    else this.cells.set(key, new Set([group]));
+  }
+
+  remove(group: Group) {
+    const key = this.key(group);
+    const cell = this.cells.get(key);
+    cell?.delete(group);
+    if (cell?.size === 0) this.cells.delete(key);
+  }
+
+  firstClose(first: Group): Group | undefined {
+    const x = Math.floor(first.x / MIN_GAP_PX);
+    const y = Math.floor(first.y / MIN_GAP_PX);
+    let closestInOrder: Group | undefined;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const cell = this.cells.get(`${x + dx}:${y + dy}`);
+        if (!cell) continue;
+        for (const candidate of cell) {
+          if (candidate.order <= first.order) continue;
+          if (closestInOrder && candidate.order >= closestInOrder.order) continue;
+          // 空間索引の順で決めない。元の入力順でいちばん先の組を返す。
+          if (isClose(first, candidate)) closestInOrder = candidate;
+        }
+      }
+    }
+    return closestInOrder;
+  }
+
+  private key(group: Group): string {
+    return `${Math.floor(group.x / MIN_GAP_PX)}:${Math.floor(group.y / MIN_GAP_PX)}`;
+  }
 }
