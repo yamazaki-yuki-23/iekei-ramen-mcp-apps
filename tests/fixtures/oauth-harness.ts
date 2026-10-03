@@ -1,20 +1,25 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createTestHarness } from "wrangler";
+import { createTestHarness, unstable_readConfig } from "wrangler";
 
 export function createOAuthHarness() {
-  // 本番config・個人用.dev.varsを読み込まない。KVとD1は使い捨てのローカル環境。
-  return createTestHarness({
-    root: mkdtempSync(join(tmpdir(), "iekei-consent-")),
+  const { compatibility_date, compatibility_flags } = unstable_readConfig(
+    { config: fileURLToPath(new URL("../../wrangler.jsonc", import.meta.url)) },
+    { hideWarnings: true },
+  );
+  const root = mkdtempSync(join(tmpdir(), "iekei-oauth-"));
+  // 本番のbinding・資格情報や個人用.dev.varsは引き継がない。KVとD1は使い捨て。
+  const harness = createTestHarness({
+    root,
     workers: [
       {
         config: {
           name: "consent-test",
           main: fileURLToPath(new URL("./oauth-worker.ts", import.meta.url)),
-          compatibility_date: "2026-09-22",
-          compatibility_flags: ["nodejs_compat"],
+          compatibility_date,
+          compatibility_flags,
           kv_namespaces: [{ binding: "OAUTH_KV", id: "test-kv" }],
           d1_databases: [
             {
@@ -33,4 +38,14 @@ export function createOAuthHarness() {
       },
     ],
   });
+  return {
+    harness,
+    async close() {
+      try {
+        await harness.close();
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  };
 }

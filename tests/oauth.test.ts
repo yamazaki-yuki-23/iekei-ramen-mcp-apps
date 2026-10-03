@@ -2,7 +2,8 @@
  * 認証まわりのうち、**KV を立てずに確かめられるところ**だけを見る。
  *
  * 認可サーバー本体は `cloudflare:workers` を取り込むので Node では動かせない。
- * 実地の確認は本番（wrangler）へ出してから curl で行う。
+ * 認可サーバー本体とWorkerの実HTTP経路は oauth-consent.test.ts の
+ * workerd・ローカルKV/D1で検証する。Googleの交換だけを偽物に置き換える。
  */
 import { describe, expect, it } from "vitest";
 import {

@@ -3,9 +3,9 @@ import { expect, test } from "@playwright/test";
 import { createOAuthHarness } from "../tests/fixtures/oauth-harness";
 
 test("許可画面は明暗・狭い画面でも44px以上のボタンとキーボードの焦点を保つ", async ({ page }) => {
-  const harness = createOAuthHarness();
-  await harness.listen();
+  const { harness, close } = createOAuthHarness();
   try {
+    await harness.listen();
     const origin = "http://localhost";
     const registered = await harness.fetch(`${origin}/register`, {
       method: "POST",
@@ -63,6 +63,6 @@ test("許可画面は明暗・狭い画面でも44px以上のボタンとキー�
       }
     }
   } finally {
-    await harness.close();
+    await close();
   }
 });

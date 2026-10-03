@@ -346,6 +346,15 @@ data URI にすること。
 
 ## テスト
 
+**OAuthの実HTTP経路は `tests/oauth-consent.test.ts` で検証する。**
+本番の `OAuthAuthorizationServer` とWorkerを、使い捨てのローカルKV/D1で動かす。
+client登録・同意・Google callback・PKCEによるtoken取得・認証済みMCP呼び出しを
+通し、D1の利用者IDまで照合する。未登録clientと偽造・改変Bearer tokenは拒否する。
+Googleのtoken交換だけをテスト専用Workerで固定し、リクエスト内容も検証する。
+それ以外の外部通信はテストで失敗させる。互換設定だけを本番configから読み、
+資格情報・本番KV・個人用 `.dev.vars` は使わない。既存の `npm test` とCIで動く。
+匿名検索と高速な認証ヘルパーテストも維持する。
+
 | 種類            | 場所     | 対象                                                         |
 | --------------- | -------- | ------------------------------------------------------------ |
 | ユニット / 結合 | `tests/` | 距離計算、家系判定、MCP サーバー（InMemoryTransport で直結） |
