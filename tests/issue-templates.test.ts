@@ -149,3 +149,32 @@ describe("/create-issue の手順", () => {
     );
   });
 });
+
+describe("リポジトリに置くスキル", () => {
+  const names = ["create-issue", "codex-review-loop", "squash-and-merge", "ship-issue"];
+
+  it.each(names)("%s は位置引数（ドル記号と数字）を書かない", (name) => {
+    // 引数付きで呼ぶと本文の `$1` が置き換わる（上の create-issue で踏んだ）。
+    const skill = readFileSync(
+      new URL(`../.claude/skills/${name}/SKILL.md`, import.meta.url),
+      "utf8",
+    );
+    expect(skill).not.toMatch(/\$(?:\d|ARGUMENTS\b)/);
+  });
+
+  it.each(names)("%s は先頭の設定が YAML として読め、名前が合っている", (name) => {
+    // 引用符なしの `Use when: …` は厳密な YAML で読めず、スキルとして見つからなくなる。
+    const skill = readFileSync(
+      new URL(`../.claude/skills/${name}/SKILL.md`, import.meta.url),
+      "utf8",
+    );
+    const parsed = YAML.parse(skill.split(/^---$/m)[1] ?? "") as { name?: string };
+    expect(parsed.name).toBe(name);
+  });
+
+  it.each(names)("%s は .gitignore から外してある", (name) => {
+    // 外し忘れると手元にだけ残り、直した手順がほかの作業場所に届かない。
+    const ignore = readFileSync(new URL("../.gitignore", import.meta.url), "utf8");
+    expect(ignore).toContain(`!.claude/skills/${name}/`);
+  });
+});
