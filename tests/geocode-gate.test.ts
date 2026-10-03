@@ -119,6 +119,128 @@ describe("GeocodeGate", () => {
     expect(sentAt).toEqual([0, GEOCODE_SPACING_MS]);
   });
 
+  it.each([0, 2200])(
+    "再生成時は過去の保存値でも1間隔待ち、先の予約%s msを維持する",
+    async (ahead) => {
+      const sentAt = stubNominatim();
+      const state = memoryStorage();
+      await state.storage.put("nextFree", T0 + ahead);
+      const reply = ask(new GeocodeGate(state), "a");
+      await vi.runAllTimersAsync();
+      await reply;
+      expect(sentAt).toEqual([Math.max(ahead, GEOCODE_SPACING_MS)]);
+    },
+  );
+
+  it.each([
+    { delay: 7, restart: false },
+    { delay: 7, restart: true },
+    { delay: 250, restart: false },
+    { delay: 250, restart: true },
+  ])(
+    "保存遅延$delay msでも実送信から間隔を空ける（再生成=$restart）",
+    async ({ delay, restart }) => {
+      const sentAt = stubNominatim();
+      const store = new Map<string, unknown>();
+      const writes: Array<{ started: number; committed: number; nextFree: unknown }> = [];
+      const state = {
+        storage: {
+          get: async (key: string) => store.get(key),
+          put: async (key: string, value: unknown) => {
+            const started = Date.now() - T0;
+            if (writes.length === 1) await new Promise((resolve) => setTimeout(resolve, delay));
+            store.set(key, value);
+            writes.push({ started, committed: Date.now() - T0, nextFree: value });
+          },
+        } as never,
+      };
+      const gate = new GeocodeGate(state);
+      const first = ask(gate, "a");
+      await vi.runAllTimersAsync();
+      await first;
+      expect(sentAt).toEqual([delay]);
+      expect(writes[1]).toEqual({ started: 0, committed: delay, nextFree: T0 + 1100 });
+      const second = ask(restart ? new GeocodeGate(state) : gate, "b");
+      await vi.runAllTimersAsync();
+      await second;
+      expect(sentAt).toHaveLength(2);
+      expect(sentAt[1] - sentAt[0]).toBeGreaterThanOrEqual(GEOCODE_SPACING_MS);
+    },
+  );
+
+  it("別々の保存が逆順に完了しても、実送信の間隔を詰めない", async () => {
+    const sentAt = stubNominatim();
+    const store = new Map<string, unknown>();
+    let puts = 0;
+    const gate = new GeocodeGate({
+      storage: {
+        get: async (key: string) => store.get(key),
+        put: async (key: string, value: unknown) => {
+          if (++puts === 2) await new Promise((resolve) => setTimeout(resolve, 1500));
+          store.set(key, value);
+        },
+      } as never,
+    });
+    const first = ask(gate, "a");
+    await vi.advanceTimersByTimeAsync(0);
+    const second = ask(gate, "b");
+    await vi.runAllTimersAsync();
+    await Promise.all([first, second]);
+    expect(sentAt).toHaveLength(2);
+    expect(sentAt[1] - sentAt[0]).toBeGreaterThanOrEqual(GEOCODE_SPACING_MS);
+  });
+
+  it("予約待ち中に実体が置き換わって保存権限を失ったら、古い実体は送らない", async () => {
+    const sentAt = stubNominatim();
+    const store = new Map<string, unknown>();
+    let active = true;
+    const gate = new GeocodeGate({
+      storage: {
+        get: async (key: string) => store.get(key),
+        put: async (key: string, value: unknown) => {
+          if (!active) throw new Error("instance replaced");
+          store.set(key, value);
+        },
+      } as never,
+    });
+    const first = ask(gate, "a");
+    await vi.advanceTimersByTimeAsync(0);
+    await first;
+    const pending = ask(gate, "b").then(
+      (response) => ({ status: response.status }),
+      (error: Error) => ({ error: error.message }),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    active = false;
+    await vi.runAllTimersAsync();
+    expect(await pending).toEqual({ error: "instance replaced" });
+    expect(sentAt).toEqual([0]);
+  });
+
+  it.each([false, true])(
+    "fetch呼び出し自体が7ms進めても、その後の時刻から待つ（同期throw=%s）",
+    async (throws) => {
+      const sentAt: number[] = [];
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() => {
+          if (sentAt.length === 0) vi.setSystemTime(Date.now() + 7);
+          sentAt.push(Date.now() - T0);
+          if (throws && sentAt.length === 1) throw new TypeError("synchronous fetch failure");
+          return Promise.resolve(Response.json([]));
+        }),
+      );
+      const gate = new GeocodeGate(memoryStorage());
+      const first = ask(gate, "a");
+      await vi.runAllTimersAsync();
+      expect((await first).status).toBe(throws ? 502 : 200);
+      const second = ask(gate, "b");
+      await vi.runAllTimersAsync();
+      expect((await second).status).toBe(200);
+      expect(sentAt).toEqual([7, 7 + GEOCODE_SPACING_MS]);
+    },
+  );
+
   it("同じ地名が同時に来たら、Nominatim へは 1 本だけ送る", async () => {
     const sentAt = stubNominatim();
     const gate = new GeocodeGate(memoryStorage());
@@ -189,29 +311,33 @@ describe("GeocodeGate", () => {
     expect(calls).toBe(2);
   });
 
-  it("保存領域への書き込みで落ちても、控えに残さず次は送り直す", async () => {
-    stubNominatim();
-    let puts = 0;
-    const store = new Map<string, unknown>();
-    const gate = new GeocodeGate({
-      storage: {
-        get: async (k: string) => store.get(k),
-        put: async (k: string, v: unknown) => {
-          puts += 1;
-          if (puts === 1) throw new Error("storage unavailable");
-          store.set(k, v);
-        },
-      } as never,
-    });
-    // 待つ前に受け止めておく。後から await すると、その間は処理されない拒否になる。
-    const first = expect(ask(gate, "横浜駅")).rejects.toThrow("storage unavailable");
-    await vi.runAllTimersAsync();
-    await first;
+  it.each([1, 2])(
+    "保存領域の%s回目の書き込みで落ちても、送らずに次は再試行する",
+    async (failureAt) => {
+      const sentAt = stubNominatim();
+      let puts = 0;
+      const store = new Map<string, unknown>();
+      const gate = new GeocodeGate({
+        storage: {
+          get: async (k: string) => store.get(k),
+          put: async (k: string, v: unknown) => {
+            puts += 1;
+            if (puts === failureAt) throw new Error("storage unavailable");
+            store.set(k, v);
+          },
+        } as never,
+      });
+      // 待つ前に受け止めておく。後から await すると、その間は処理されない拒否になる。
+      const first = expect(ask(gate, "横浜駅")).rejects.toThrow("storage unavailable");
+      await vi.runAllTimersAsync();
+      await first;
+      expect(sentAt).toEqual([]);
 
-    const again = ask(gate, "横浜駅");
-    await vi.runAllTimersAsync();
-    expect((await again).status).toBe(200);
-  });
+      const again = ask(gate, "横浜駅");
+      await vi.runAllTimersAsync();
+      expect((await again).status).toBe(200);
+    },
+  );
 
   it("まとめる時間は、答えが返ってから数える", async () => {
     /*
@@ -262,6 +388,13 @@ describe("GeocodeGate（本物の時計）", () => {
     await Promise.all(replies);
 
     expect(sentAt).toHaveLength(3);
+    console.info(
+      JSON.stringify({
+        test: "event-loop-delay",
+        sentAt,
+        gaps: sentAt.slice(1).map((at, i) => at - sentAt[i]),
+      }),
+    );
     for (let i = 1; i < sentAt.length; i++) {
       expect(sentAt[i] - sentAt[i - 1]).toBeGreaterThanOrEqual(GEOCODE_SPACING_MS);
     }
@@ -296,6 +429,9 @@ describe("GeocodeGate（本物の時計）", () => {
     );
 
     expect(sentAt).toHaveLength(3);
+    console.info(
+      JSON.stringify({ test: "restart-after-delay", sentAt, gap: sentAt[2] - sentAt[1] }),
+    );
     expect(sentAt[2] - sentAt[1]).toBeGreaterThanOrEqual(GEOCODE_SPACING_MS);
   }, 10_000);
 });
