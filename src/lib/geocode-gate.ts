@@ -113,13 +113,21 @@ export class GeocodeGate {
    * 間に割り込まれない保証に頼らず、メモリの値を同期的に進める。
    */
   async #dispatch(request: Request, now: number): Promise<Answer> {
-    this.#loaded ??= this.#storage.get<number>("nextFree");
+    this.#loaded ??= this.#storage.get<number>("nextFree").then((stored) =>
+      // 保存完了は送信より前なので、保存値だけでは最後の実送信時刻が分からない。
+      // 作り直した実体は読み終えた時刻から1間隔待つ。先の予約があれば維持する。
+      stored === undefined ? undefined : Math.max(stored, Date.now() + GEOCODE_SPACING_MS),
+    );
     const stored = await this.#loaded;
     const slot = reserveSlot(this.#nextFree ?? stored ?? 0, now);
     if (!slot) return null;
     this.#nextFree = slot.next;
     await this.#storage.put("nextFree", slot.next);
-    if (slot.wait > 0) await sleep(slot.wait);
+    return this.#sendWhenGapOpens(request, slot.next - GEOCODE_SPACING_MS);
+  }
+
+  /** 保存・タイマーの遅れを含め、判定とfetch開始の間にはawaitを挟まない。 */
+  async #sendWhenGapOpens(request: Request, notBefore: number): Promise<Answer> {
     /*
      * **送る直前に、前の 1 本を実際に送った時刻から測り直す。** 処理が詰まって
      * 起きる予定の時刻を過ぎると、待っていた何本ものタイマーが続けて起き、
@@ -127,16 +135,23 @@ export class GeocodeGate {
      * 2 本目と 3 本目の間が 1 ms）。起きた後は同期的に確かめて時刻を書くので、
      * 続けて起きた方は必ず待ち直す。
      */
-    await this.#untilGapOpens();
-    this.#lastSentAt = Date.now();
+    const gap = this.#remainingGap(notBefore);
+    if (gap > 0) {
+      await sleep(gap);
+      return this.#sendWhenGapOpens(request, notBefore);
+    }
     /*
-     * **送った時刻も保存領域に残す（次の枠を押し上げる形で）。** 遅れて送ると、
-     * 保存してある次の枠はもう過ぎている。そのまま作り直されると、新しい実体は
-     * 実際に送った時刻を知らず、すぐに次を送る。押し上げは同期的に済ませ、
-     * 書き終えてから送る。
+     * 待機の後に保存する。置き換えられた古い実体はここで失敗し、送信を続けない。
+     * 保存値は実送信時刻ではない。await中に別の1本が送られた場合も待ち直し、
+     * 次に起きた後にもう一度保存する。判定後のfetch開始まではawaitを挟まない。
      */
-    this.#nextFree = Math.max(this.#nextFree ?? 0, this.#lastSentAt + GEOCODE_SPACING_MS);
+    this.#nextFree = Math.max(this.#nextFree ?? 0, Date.now() + GEOCODE_SPACING_MS);
     await this.#storage.put("nextFree", this.#nextFree);
+    const remaining = this.#remainingGap(notBefore);
+    if (remaining > 0) {
+      await sleep(remaining);
+      return this.#sendWhenGapOpens(request, notBefore);
+    }
     /*
      * **送信そのものの失敗も答えにする。投げたままにしない。** 落ちた Promise を
      * 控えに残すと、60 秒の間、同じ地名はずっと同じ失敗を返す（後片付けは
@@ -146,7 +161,16 @@ export class GeocodeGate {
     try {
       return await withGeocodeTimeout(async (signal) => {
         // 同じ地名の利用者で共有する通信は、Gate 自身の期限でキャンセルする。
-        const res = await fetch(new Request(request, { signal }));
+        const outgoing = new Request(request, { signal });
+        let upstream: Promise<Response>;
+        try {
+          upstream = fetch(outgoing);
+        } finally {
+          // 呼び出し後の時刻は実際の開始時刻より早くならない。同期throwでも間隔を置く。
+          this.#lastSentAt = Date.now();
+          this.#nextFree = Math.max(this.#nextFree ?? 0, this.#lastSentAt + GEOCODE_SPACING_MS);
+        }
+        const res = await upstream;
         // 失敗のときは状態だけ返す。受け取る側は、失敗の本文を読まない。
         return { status: res.status, body: res.ok ? await res.text() : "" };
       });
@@ -155,11 +179,7 @@ export class GeocodeGate {
     }
   }
 
-  /** 前の 1 本から間隔が空くまで待つ。待っている間に別の 1 本が送られうるので、起きたら測り直す。 */
-  async #untilGapOpens(): Promise<void> {
-    const gap = this.#lastSentAt + GEOCODE_SPACING_MS - Date.now();
-    if (gap <= 0) return;
-    await sleep(gap);
-    return this.#untilGapOpens();
+  #remainingGap(notBefore: number) {
+    return Math.max(notBefore, this.#lastSentAt + GEOCODE_SPACING_MS) - Date.now();
   }
 }
