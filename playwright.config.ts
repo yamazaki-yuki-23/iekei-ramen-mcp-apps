@@ -123,5 +123,19 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
+    {
+      // 境界テストだけが page.route 経由で利用する。8080の登録・再起動は不要。
+      command: `npx tsx main.ts`,
+      env: {
+        PORT: "3133",
+        IEKEI_SERVER_NAME: E2E_SERVER_NAME,
+        IEKEI_SHOP_FIXTURE: "e2e/fixtures/shops-boundaries.json",
+        IEKEI_LOCATION_ENDPOINT: "",
+        IEKEI_GEOCODE_FIXTURE: GEOCODE_FIXTURE,
+      },
+      url: "http://localhost:3133/health",
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
   ],
 });

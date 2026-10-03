@@ -3,7 +3,7 @@
  * 実ブラウザ・実ホスト・実 MCP サーバーを通して 3 モードを操作する。
  */
 import { expect, test } from "@playwright/test";
-import { countShops, prefectureWithOneShop, TOTAL, type Bounds } from "./dataset";
+import { countShops, TOTAL, type Bounds } from "./dataset";
 import {
   afterDelivered,
   appFrame,
@@ -420,24 +420,6 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     await app.getByRole("tab", { name: "迷ったら" }).click();
     await expect(app.locator("#kw")).toHaveCount(0);
     await expect(shopCards(app)).toHaveCount(3);
-  });
-
-  test("候補が 1 軒のときは、3 軒の言い方をしない", async ({ page }) => {
-    /*
-     * **巡の番号を数えない。** 母数が変われば最終巡の番号も中身も変わるので、
-     * 「神奈川県の 26 巡目」と書くとデータを取り直すたびに指す先がずれる
-     * （実測: 神奈川県の母数が 79 → 84 軒になって落ちた）。
-     * 店が 1 軒しか無い県なら、最初の巡がそのまま 1 軒になる。
-     */
-    const app = await callTool(page, "decide-iekei-ramen", {
-      prefecture: prefectureWithOneShop(),
-    });
-    await waitForApp(app);
-
-    await expect(shopCards(app)).toHaveCount(1);
-    await expect(app.getByRole("heading", { name: /迷ったらこの 1 軒/ })).toBeVisible();
-    await expect(app.getByRole("button", { name: "この 1 軒について聞く" })).toBeVisible();
-    await expect(app.getByRole("button", { name: /この 3 軒から選ぶ/ })).toHaveCount(0);
   });
 
   test("モデルが付けたキーワードを、巡回しても落とさない", async ({ page }) => {
@@ -1731,7 +1713,7 @@ test.describe("この範囲で探す", () => {
     const search = app.getByRole("button", { name: "この範囲で探す" });
 
     const whole = await count();
-    expect(whole).toBeGreaterThan(500);
+    expect(whole).toBe(TOTAL);
     await expect(app.getByRole("heading", { name: "全国の家系ラーメン" })).toBeVisible();
 
     // 塊を押すと、その中身が画面いっぱいになるまで寄る。
