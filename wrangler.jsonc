@@ -9,10 +9,9 @@
   // リンク・Google サインインの戻り先が全部壊れる）ので、公開前にここへ移した（#41）。
   // ゾーンは同じアカウントの Cloudflare Registrar で取ったもの。
   "routes": [{ "pattern": "iekeiramen.com", "custom_domain": true }],
-  // **routes を書くと workers_dev は既定で false になる**（Cloudflare のドキュメント）。
-  // 新しいドメインで本番が応答するのを見るまでは、旧い入口を残して逃げ道にする。
-  // 止めるのは別の PR（#41）。
-  "workers_dev": true,
+  // **workers_dev は書かない。** routes があると既定で false になり、旧い入口
+  // （workers.dev）は止まる（#41）。false と書くと、README に沿って routes を消した
+  // 自前のデプロイでも workers.dev が開かず、URL が 1 つも無くなる。
   // Google の OAuth クライアント ID。**秘密ではない**（認可 URL に平文で載る）。
   // 対になるシークレットは `wrangler secret put GOOGLE_CLIENT_SECRET` で入れる。
   "vars": {
