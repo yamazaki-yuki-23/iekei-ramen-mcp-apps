@@ -22,7 +22,7 @@ const STAMP_SIGN_IN_HINT = "記録にはサインインが要ります。押す�
 
 interface Props {
   /** 会話に「この店について聞く」を流す。 */
-  onAsk: () => void;
+  onAsk?: () => void;
   /** 外部地図を開く。 */
   onOpenMap: () => void;
   onClear: () => void;
@@ -38,7 +38,7 @@ interface Props {
   /** この店が訪問済みか。 */
   isVisited: boolean;
   /** 行った印を付ける／外す（匿名ならチャットへ依頼）。 */
-  onToggleVisit: () => void;
+  onToggleVisit?: () => void;
 }
 
 /**
@@ -74,18 +74,22 @@ export function SelectedShop({
   return (
     <section className={styles.selected} aria-label="選択中の店舗" ref={ref}>
       <div className={styles.selectedActions}>
-        <button type="button" className={styles.button} onClick={onAsk} disabled={asking}>
-          {asking ? "送信中…" : "この店について聞く"}
-        </button>
-        <button
-          type="button"
-          className={isVisited ? styles.buttonOn : styles.buttonSecondary}
-          onClick={onToggleVisit}
-          aria-pressed={signedIn ? isVisited : undefined}
-          disabled={asking}
-        >
-          {isVisited ? "行ったを取り消す" : "行った"}
-        </button>
+        {onAsk && (
+          <button type="button" className={styles.button} onClick={onAsk} disabled={asking}>
+            {asking ? "送信中…" : "この店について聞く"}
+          </button>
+        )}
+        {onToggleVisit && (
+          <button
+            type="button"
+            className={isVisited ? styles.buttonOn : styles.buttonSecondary}
+            onClick={onToggleVisit}
+            aria-pressed={signedIn ? isVisited : undefined}
+            disabled={asking}
+          >
+            {isVisited ? "行ったを取り消す" : "行った"}
+          </button>
+        )}
         <button
           type="button"
           className={styles.buttonSecondary}
@@ -104,14 +108,14 @@ export function SelectedShop({
       </div>
 
       {/* 匿名のときは、押すと何が起きるかを先に書く。 */}
-      {!signedIn && <p className={styles.selectedNote}>{STAMP_SIGN_IN_HINT}</p>}
+      {!signedIn && onToggleVisit && <p className={styles.selectedNote}>{STAMP_SIGN_IN_HINT}</p>}
 
       {/* 押せない理由は画面に出す。title だけだとタッチ端末で読めない。 */}
       {routeFull && <p className={styles.selectedNote}>{FULL_HINT}</p>}
 
       <OrderGuide />
 
-      <p className={styles.selectedNote}>{NOTE}</p>
+      {onAsk && <p className={styles.selectedNote}>{NOTE}</p>}
     </section>
   );
 }

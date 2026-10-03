@@ -235,12 +235,12 @@ function IekeiAppConnected({
    */
   const enqueueDelivery = useCallback(
     (shop: Shop | null): Promise<boolean> =>
-      app ? queue.enqueue(app, shop) : Promise.resolve(false),
+      app.capabilities.model ? queue.enqueue(app, shop) : Promise.resolve(false),
     [app, queue],
   );
 
   useEffect(() => {
-    if (!app) return;
+    if (!app.capabilities.model) return;
     // 渡したものも、列に並んでいるものも無いなら、消しに行く必要はない
     // （起動直後の無駄な往復を避ける）。並んでいる分まで見ないと、送信中に
     // 選択を外したときに消し忘れ、ホストがその店を持ったままになる。
@@ -465,6 +465,14 @@ interface InnerProps {
   hostContext?: McpUiHostContext;
 }
 
+/** 対応している操作だけを部品に渡す。部品側はcallbackの有無で描画する。 */
+function supportedAction<Action extends (...args: never[]) => unknown>(
+  supported: boolean,
+  action: Action,
+): Action | undefined {
+  return supported ? action : undefined;
+}
+
 /**
  * payload ごとに key で作り直されるので、状態は props からそのまま初期化できる。
  * tool 結果が届くたびにモード・フォーム・選択状態が新しい payload に揃う。
@@ -537,6 +545,7 @@ function IekeiAppInner({
    * （空の配列を入れない）ので、「1 軒も行っていない人」と混ざらない。
    */
   const signedIn = payload.visited !== undefined;
+  const visitsAvailable = signedIn || app.capabilities.visitSignIn;
   const visitedIds = useMemo(() => new Set(payload.visited ?? []), [payload.visited]);
 
   // 「迷ったら」は「別の候補を見る」で巡回する。payload に乗ってくる値を初期値にして、
@@ -615,7 +624,7 @@ function IekeiAppInner({
 
   const detail = selected && (
     <SelectedShop
-      onAsk={() => void askAboutShop(selected)}
+      onAsk={supportedAction(app.capabilities.model, () => void askAboutShop(selected))}
       onOpenMap={() => openInMaps(selected)}
       onClear={() => onSelect(null)}
       asking={asking}
@@ -630,11 +639,11 @@ function IekeiAppInner({
        * 匿名のときは記録ではなく、チャットへの依頼になる。UI から呼んでも
        * 401 でホストは何も出さないので、モデルに呼んでもらう。
        */
-      onToggleVisit={() =>
+      onToggleVisit={supportedAction(visitsAvailable, () =>
         signedIn
           ? void runStamp(selected.id, !visitedIds.has(selected.id))
-          : void askToStamp(selected)
-      }
+          : void askToStamp(selected),
+      )}
     />
   );
 
@@ -657,7 +666,12 @@ function IekeiAppInner({
         {count ? <span className={styles.count}>{count}</span> : null}
       </div>
 
-      <ModeTabs mode={mode} onChange={switchMode} mutating={mutating} />
+      <ModeTabs
+        mode={mode}
+        onChange={switchMode}
+        mutating={mutating}
+        visitsAvailable={visitsAvailable}
+      />
 
       <ModeControls
         mode={mode}
@@ -686,7 +700,10 @@ function IekeiAppInner({
         onClearKeyword={() => runDecide(form, payload.query.origin, 0)}
         selected={selected}
         onSelect={onSelect}
-        onAsk={(picks, basis) => void askToDecide(picks, basis, payload.decide)}
+        onAsk={supportedAction(
+          app.capabilities.model,
+          (picks: Shop[], basis: string) => void askToDecide(picks, basis, payload.decide),
+        )}
         onReroll={() => runDecide(form, payload.query.origin, round + 1, activeKeyword)}
         asking={asking}
         busy={busy}
@@ -698,7 +715,7 @@ function IekeiAppInner({
         signedIn={signedIn}
         visitedIds={visitedIds}
         onForget={runForget}
-        onSignIn={() => void askToSignIn()}
+        onSignIn={supportedAction(app.capabilities.visitSignIn, () => void askToSignIn())}
       />
 
       {/* 結果の下、注記の上。モードを切り替えても残るので、組み立てたものが消えない。 */}

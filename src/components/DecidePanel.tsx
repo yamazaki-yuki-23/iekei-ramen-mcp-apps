@@ -8,8 +8,10 @@ import { ShopList } from "./ShopList";
 const EMPTY = "条件に合う店舗が見つかりませんでした。都道府県や味の条件を緩めてください。";
 const EMPTY_WITH_KEYWORD =
   "条件に合う店舗が見つかりませんでした。上のキーワードを外すか、都道府県や味の条件を緩めてください。";
-const NOTE =
-  "並べる材料は家系判定の段階・距離・営業時間の有無だけです。味の濃さ・混雑・評判のデータは持っていないので、順位は「おすすめ度」ではありません。気になる店は押して選んでから、チャットで聞いてください。";
+const BASIS_NOTE =
+  "並べる材料は家系判定の段階・距離・営業時間の有無だけです。味の濃さ・混雑・評判のデータは持っていないので、順位は「おすすめ度」ではありません。";
+const NOTE = `${BASIS_NOTE}気になる店は押して選んでから、チャットで聞いてください。`;
+const BROWSE_NOTE = `${BASIS_NOTE}気になる店を選ぶと、店舗の情報や注文のカンペを確認できます。`;
 
 interface Props {
   shops: Shop[];
@@ -23,7 +25,7 @@ interface Props {
   selectedId?: string;
   onSelect: (shop: Shop) => void;
   /** 3 軒をモデルに渡して 1 軒推してもらう。 */
-  onAsk: (shops: Shop[], basis: string) => void;
+  onAsk?: (shops: Shop[], basis: string) => void;
   /** 次の 3 軒に入れ替える。 */
   onReroll: () => void;
   asking: boolean;
@@ -94,18 +96,20 @@ export function DecidePanel({
       <ShopList shops={shops} ranked selectedId={selectedId} onSelect={onSelect} detail={detail} />
 
       <div className={styles.decideActions}>
-        <button
-          type="button"
-          className={styles.button}
-          onClick={() => onAsk(shops, basis)}
-          disabled={asking || busy}
-        >
-          {asking
-            ? "送信中…"
-            : shops.length === 1
-              ? "この 1 軒について聞く"
-              : `この ${shops.length} 軒から選ぶ`}
-        </button>
+        {onAsk && (
+          <button
+            type="button"
+            className={styles.button}
+            onClick={() => onAsk(shops, basis)}
+            disabled={asking || busy}
+          >
+            {asking
+              ? "送信中…"
+              : shops.length === 1
+                ? "この 1 軒について聞く"
+                : `この ${shops.length} 軒から選ぶ`}
+          </button>
+        )}
         <button
           type="button"
           className={styles.buttonSecondary}
@@ -121,7 +125,7 @@ export function DecidePanel({
         )}
       </div>
 
-      <p className={styles.selectedNote}>{NOTE}</p>
+      <p className={styles.selectedNote}>{onAsk ? NOTE : BROWSE_NOTE}</p>
     </section>
   );
 }

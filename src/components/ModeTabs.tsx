@@ -22,6 +22,8 @@ interface Props {
    * ほとんど無い（止めたかったのは 558 件を返す検索の方）。
    */
   mutating: boolean;
+  /** 記録またはサインインの導線があるホストだけ、訪問記録を出す。 */
+  visitsAvailable?: boolean;
 }
 
 /**
@@ -32,10 +34,10 @@ interface Props {
  * 追い越しは呼び出し側が捨てる（[use-server-tools](../hooks/use-server-tools.ts)
  * の通し番号）。
  */
-export function ModeTabs({ mode, onChange, mutating }: Props) {
+export function ModeTabs({ mode, onChange, mutating, visitsAvailable = true }: Props) {
   return (
     <div className={styles.tabs} role="tablist">
-      {MODES.map(({ key, label }) => (
+      {MODES.filter(({ key }) => key !== "visited" || visitsAvailable).map(({ key, label }) => (
         <button
           key={key}
           type="button"
