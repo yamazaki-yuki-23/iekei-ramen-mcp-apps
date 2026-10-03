@@ -50,17 +50,3 @@ export function countShops(filter: {
       (!filter.bounds || inBounds(s, filter.bounds)),
   ).length;
 }
-
-/**
- * 店が 1 軒しか無い県。「迷ったら」で 1 軒しか出ない場面を作るのに使う。
- *
- * **巡の番号を数えない。** 母数が変われば最終巡の番号も中身も変わるので、
- * 「神奈川県の 26 巡目」と書くと取り直しのたびに指す先がずれる。
- * 1 軒しか無い県なら、最初の巡がそのまま 1 軒になる。
- */
-export function prefectureWithOneShop(): string {
-  const counts = new Map<string, number>();
-  for (const s of SHOPS) counts.set(s.prefecture, (counts.get(s.prefecture) ?? 0) + 1);
-  for (const [prefecture, n] of counts) if (n === 1) return prefecture;
-  throw new Error("1 軒だけの県が無い。1 軒のときの文言を見るテストは書き直すこと");
-}

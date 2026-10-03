@@ -11,6 +11,7 @@ import { createServer } from "./server.ts";
 import worker, { serveMcp } from "./worker.ts";
 import { GeocodeGate } from "./src/lib/geocode-gate.ts";
 import { memoryVisits } from "./src/lib/visits.ts";
+import { PayloadSchema } from "./src/lib/schema.ts";
 
 const PORT = Number(process.env.PORT ?? 3031);
 
@@ -27,6 +28,12 @@ const PORT = Number(process.env.PORT ?? 3031);
  */
 const devVisitor = process.env.IEKEI_DEV_VISITOR;
 const devVisits = devVisitor ? memoryVisits() : undefined;
+/** 境界 E2E 用の固定データ。ファイルの読み込みは Node の入口だけに置く。 */
+const devShops = process.env.IEKEI_SHOP_FIXTURE
+  ? PayloadSchema.shape.shops.parse(
+      JSON.parse(readFileSync(process.env.IEKEI_SHOP_FIXTURE, "utf8")),
+    )
+  : undefined;
 
 /**
  * 手元にも、Nominatim への列（本番の GEOCODE_GATE と同じもの）を置く。
@@ -111,11 +118,14 @@ async function startHttp() {
      * この道を塞ぐ（実測: basic-host のサーバー一覧が Loading… のまま止まった）。
      */
     const response =
-      devVisitor && request.method !== "OPTIONS" && new URL(request.url).pathname === "/mcp"
+      (devVisitor || devShops) &&
+      request.method !== "OPTIONS" &&
+      new URL(request.url).pathname === "/mcp"
         ? await serveMcp(request, {
-            visitor: { id: devVisitor },
+            visitor: devVisitor ? { id: devVisitor } : undefined,
             visits: devVisits,
             nominatim: localNominatim,
+            shops: devShops,
           })
         : await worker.fetch(request, localEnv(), localCtx());
     res.writeHead(response.status, Object.fromEntries(response.headers));
@@ -141,6 +151,7 @@ if (process.argv.includes("--stdio")) {
     visitor: devVisitor ? { id: devVisitor } : null,
     visits: devVisits,
     nominatim: localNominatim,
+    shops: devShops,
   }).connect(new StdioServerTransport());
 } else {
   await startHttp();

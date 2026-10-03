@@ -1,0 +1,102 @@
+[
+  {
+    "id": "fixture/0",
+    "name": "境界テスト店0",
+    "taste": "unknown",
+    "confidence": "confirmed",
+    "prefecture": "北海道",
+    "lat": 35.0,
+    "lon": 139,
+    "osmUrl": "https://example.test/shops/0"
+  },
+  {
+    "id": "fixture/1",
+    "name": "境界テスト店1",
+    "taste": "unknown",
+    "confidence": "confirmed",
+    "prefecture": "青森県",
+    "lat": 35.01,
+    "lon": 139,
+    "osmUrl": "https://example.test/shops/1"
+  },
+  {
+    "id": "fixture/2",
+    "name": "境界テスト店2",
+    "taste": "unknown",
+    "confidence": "confirmed",
+    "prefecture": "青森県",
+    "lat": 35.02,
+    "lon": 139,
+    "osmUrl": "https://example.test/shops/2"
+  },
+  {
+    "id": "fixture/3",
+    "name": "境界テスト店3",
+    "taste": "unknown",
+    "confidence": "confirmed",
+    "prefecture": "青森県",
+    "lat": 35.03,
+    "lon": 139,
+    "osmUrl": "https://example.test/shops/3"
+  },
+  {
+    "id": "fixture/4",
+    "name": "境界テスト店4",
+    "taste": "unknown",
+    "confidence": "confirmed",
+    "prefecture": "青森県",
+    "lat": 35.04,
+    "lon": 139,
+    "osmUrl": "https://example.test/shops/4"
+  },
+  {
+    "id": "fixture/5",
+    "name": "境界テスト店5",
+    "taste": "unknown",
+    "confidence": "confirmed",
+    "prefecture": "岩手県",
+    "lat": 35.05,
+    "lon": 139,
+    "osmUrl": "https://example.test/shops/5"
+  },
+  {
+    "id": "fixture/6",
+    "name": "境界テスト店6",
+    "taste": "unknown",
+    "confidence": "confirmed",
+    "prefecture": "岩手県",
+    "lat": 35.06,
+    "lon": 139,
+    "osmUrl": "https://example.test/shops/6"
+  },
+  {
+    "id": "fixture/7",
+    "name": "境界テスト店7",
+    "taste": "unknown",
+    "confidence": "confirmed",
+    "prefecture": "岩手県",
+    "lat": 35.07,
+    "lon": 139,
+    "osmUrl": "https://example.test/shops/7"
+  },
+  {
+    "id": "fixture/8",
+    "name": "境界テスト店8",
+    "taste": "unknown",
+    "confidence": "confirmed",
+    "prefecture": "岩手県",
+    "lat": 35.08,
+    "lon": 139,
+    "osmUrl": "https://example.test/shops/8"
+  },
+  {
+    "id": "fixture/9",
+    "name": "境界テスト店9",
+    "taste": "unknown",
+    "confidence": "confirmed",
+    "prefecture": "岩手県",
+    "lat": 35.09,
+    "lon": 139,
+    "osmUrl": "https://example.test/shops/9"
+  }
+]

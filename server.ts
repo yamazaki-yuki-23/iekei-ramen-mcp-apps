@@ -48,7 +48,7 @@ import {
   type TasteKey,
 } from "./src/lib/types.ts";
 
-const SHOPS = shopsData as Shop[];
+const DEFAULT_SHOPS = shopsData as Shop[];
 
 /** tool の入力スキーマ用。データに 0 件の県でも選べるよう全 47 都道府県を固定で持つ。 */
 const ALL_PREFECTURES = [
@@ -101,8 +101,10 @@ const ALL_PREFECTURES = [
   "沖縄県",
 ] as const;
 
-/** UI のプルダウン用。実際に店舗が 1 件以上ある県だけ。 */
-const PREFECTURES_WITH_SHOPS = ALL_PREFECTURES.filter((p) => SHOPS.some((s) => s.prefecture === p));
+/** 本番既定データの選択肢は起動時に一度だけ導出する。 */
+const DEFAULT_PREFECTURES = ALL_PREFECTURES.filter((p) =>
+  DEFAULT_SHOPS.some((s) => s.prefecture === p),
+);
 
 const resourceUri = "ui://iekei-ramen/mcp-app.html";
 
@@ -259,15 +261,18 @@ function blankToUndefined(text?: string): string | undefined {
   return text?.trim() || undefined;
 }
 
-function filterShops(opts: {
-  prefecture?: string;
-  taste?: TasteKey;
-  keyword?: string;
-  bounds?: Bounds;
-}): Shop[] {
+function filterShops(
+  dataset: Shop[],
+  opts: {
+    prefecture?: string;
+    taste?: TasteKey;
+    keyword?: string;
+    bounds?: Bounds;
+  },
+): Shop[] {
   const kw = opts.keyword?.trim().toLowerCase();
   const b = opts.bounds;
-  return SHOPS.filter((s) => {
+  return dataset.filter((s) => {
     if (opts.prefecture && s.prefecture !== opts.prefecture) return false;
     if (opts.taste && opts.taste !== "unknown" && s.taste !== opts.taste) return false;
     // 範囲は南西・北東の角で来る。日付変更線はまたがない（国内だけのデータ）。
@@ -403,8 +408,8 @@ function originFrom(
   };
 }
 
-function structured(payload: Omit<AppPayload, "prefectures">) {
-  return { ...payload, prefectures: PREFECTURES_WITH_SHOPS };
+function structured(payload: Omit<AppPayload, "prefectures">, prefectures: string[]) {
+  return { ...payload, prefectures };
 }
 
 /**
@@ -413,10 +418,10 @@ function structured(payload: Omit<AppPayload, "prefectures">) {
  * **匿名のときは何も足さない。** 空配列を入れると、UI から見て
  * 「サインインしていて 0 軒」と区別が付かなくなる。
  */
-async function visitorExtras(deps: ServerDeps): Promise<Partial<AppPayload>> {
+async function visitorExtras(deps: ServerDeps, dataset: Shop[]): Promise<Partial<AppPayload>> {
   if (!deps.visitor || !deps.visits) return {};
   const visited = await deps.visits.list(deps.visitor.id);
-  return { visited, progress: summarizeVisits(SHOPS, visited) };
+  return { visited, progress: summarizeVisits(dataset, visited) };
 }
 
 /**
@@ -432,6 +437,8 @@ export const MEMBER_TOOLS = [
 ] as const;
 
 export interface ServerDeps {
+  /** データ供給境界。省略時は同梱の実店舗データ。本番 Worker は差し替えない。 */
+  shops?: Shop[];
   /** サインインしている人。匿名なら null。 */
   visitor?: { id: string } | null;
   /** 記録の置き場。ローカル実行では無い。 */
@@ -523,6 +530,11 @@ async function geocodeCacheKey(q: string): Promise<string> {
 }
 
 export function createServer(deps: ServerDeps = {}): McpServer {
+  const dataset = deps.shops ?? DEFAULT_SHOPS;
+  const prefectures =
+    dataset === DEFAULT_SHOPS
+      ? DEFAULT_PREFECTURES
+      : ALL_PREFECTURES.filter((p) => dataset.some((s) => s.prefecture === p));
   /*
    * 名乗りは環境変数で上書きできる。検証ホストはプレビューと共用しており
    * （E2E のたびに立て直すと見ている画面が消える）、サーバーが 2 つ並ぶ。
@@ -575,7 +587,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
     },
     async ({ prefecture, taste, keyword }): Promise<CallToolResult> => {
       const kw = blankToUndefined(keyword);
-      const all = filterShops({ prefecture, taste, keyword: kw });
+      const all = filterShops(dataset, { prefecture, taste, keyword: kw });
       const shops = all.slice(0, 200);
       const cond =
         [prefecture, taste && TASTES[taste].label, kw].filter(Boolean).join(" / ") || "全国";
@@ -672,10 +684,11 @@ export function createServer(deps: ServerDeps = {}): McpServer {
         };
       }
 
-      const ranked = SHOPS.map((s) => ({
-        ...s,
-        distanceKm: Number(distanceKm(origin.lat, origin.lon, s.lat, s.lon).toFixed(3)),
-      }))
+      const ranked = dataset
+        .map((s) => ({
+          ...s,
+          distanceKm: Number(distanceKm(origin.lat, origin.lon, s.lat, s.lon).toFixed(3)),
+        }))
         .toSorted((a, b) => a.distanceKm - b.distanceKm)
         .slice(0, limit);
       const payload: Omit<AppPayload, "prefectures"> = {
@@ -732,7 +745,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       _meta: { ui: { resourceUri } },
     },
     async ({ prefecture, taste, bounds, lat, lon, label, source }): Promise<CallToolResult> => {
-      const shops = filterShops({ prefecture, taste, bounds });
+      const shops = filterShops(dataset, { prefecture, taste, bounds });
       // 座標が片方だけ来たときは基準地点として扱わない（地図に嘘の印が出る）。
       const origin = originFrom({ lat, lon, label, source }, "precise");
       const payload: Omit<AppPayload, "prefectures"> = {
@@ -808,7 +821,10 @@ export function createServer(deps: ServerDeps = {}): McpServer {
        * チップが出て、モデルには「この語に合う 558 軒」と伝わる。
        */
       const kw = blankToUndefined(keyword);
-      const list = shortlist(filterShops({ prefecture, taste, keyword: kw }), { origin, round });
+      const list = shortlist(filterShops(dataset, { prefecture, taste, keyword: kw }), {
+        origin,
+        round,
+      });
       /*
        * 基準地点があるなら必ず名乗る。label を省いて呼ばれたときに落とすと、
        * 距離で並べた結果なのに「全国」と書くことになる。
@@ -974,8 +990,8 @@ export function createServer(deps: ServerDeps = {}): McpServer {
     payload: Omit<AppPayload, "prefectures">,
     extras?: Partial<AppPayload>,
   ) => ({
-    ...structured(payload),
-    ...(extras ?? (await visitorExtras(deps))),
+    ...structured(payload, prefectures),
+    ...(extras ?? (await visitorExtras(deps, dataset))),
   });
 
   const requireVisitor = () => {
@@ -998,7 +1014,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
     },
     async ({ shopId, visited }): Promise<CallToolResult> => {
       const { visitor, visits } = requireVisitor();
-      const shop = SHOPS.find((s) => s.id === shopId);
+      const shop = dataset.find((s) => s.id === shopId);
       // 知らない店 ID は記録しない。消えた店のゴミが溜まるため。
       if (!shop) {
         return {
@@ -1008,11 +1024,12 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       }
 
       await visits.set(visitor.id, shopId, visited);
-      const extras = await visitorExtras(deps);
+      const extras = await visitorExtras(deps, dataset);
       const progress = extras.progress!;
+      const visitedIds = new Set(extras.visited);
       const payload: Omit<AppPayload, "prefectures"> = {
         mode: "visited",
-        shops: SHOPS.filter((s) => extras.visited!.includes(s.id)),
+        shops: dataset.filter((s) => visitedIds.has(s.id)),
         total: progress.overall.visited,
         query: {},
       };
@@ -1044,9 +1061,10 @@ export function createServer(deps: ServerDeps = {}): McpServer {
     },
     async (): Promise<CallToolResult> => {
       requireVisitor();
-      const extras = await visitorExtras(deps);
+      const extras = await visitorExtras(deps, dataset);
       const progress = extras.progress!;
-      const shops = SHOPS.filter((s) => extras.visited!.includes(s.id));
+      const visitedIds = new Set(extras.visited);
+      const shops = dataset.filter((s) => visitedIds.has(s.id));
       const payload: Omit<AppPayload, "prefectures"> = {
         mode: "visited",
         shops,
@@ -1109,7 +1127,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
         // 押された 1 件を拾い、「全部消した」と言いながら 1 軒残った応答になる。
         structuredContent: await withVisitor(payload, {
           visited: [],
-          progress: summarizeVisits(SHOPS, []),
+          progress: summarizeVisits(dataset, []),
         }),
       };
     },

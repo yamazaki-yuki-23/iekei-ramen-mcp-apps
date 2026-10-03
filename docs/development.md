@@ -351,6 +351,16 @@ data URI にすること。
 | ユニット / 結合 | `tests/` | 距離計算、家系判定、MCP サーバー（InMemoryTransport で直結） |
 | E2E             | `e2e/`   | 実ブラウザ + basic-host + 実サーバーで 3 モードを操作        |
 
+**0件・1件・最終巡は実店舗データの分布から選ばない。**
+`e2e/fixtures/shops-boundaries.json` の固定データ（北海道1軒・青森県4軒・岩手県5軒・秋田県0軒）を
+`tests/server-boundaries.test.ts` と `e2e/boundaries.spec.ts` で使う。
+サーバー結合テストでは `createServer({ shops })` で渡す。
+E2E は `main.ts` の `IEKEI_SHOP_FIXTURE` で3133に起動し、対象ページのPOSTだけを
+実ホストからその実MCPへ送る。8080の登録や再起動は不要。
+Workerにはファイル／環境変数によるデータ差し替えを追加しない。
+実店舗データの整合性とsmokeは既存のテストで維持し、件数は現在のデータと照合する。
+`total > 500` などの下限はデータ品質の要件ではないため、全件一致で検証する。
+
 `npm run e2e` は `e2e-host/` に MCP Apps SDK の basic-host を取得して使う。
 版は `package-lock.json` の `@modelcontextprotocol/ext-apps` と同じタグに固定する。
 `npm run e2e:setup` は既存 checkout のコミットと、依存・ビルド状態、両 HTML の
