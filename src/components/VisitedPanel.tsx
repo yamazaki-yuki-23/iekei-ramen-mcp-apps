@@ -31,7 +31,7 @@ interface Props {
   /** 記録を全部消す。 */
   onForget: () => void;
   /** 会話でサインインを頼む。 */
-  onSignIn: () => void;
+  onSignIn?: () => void;
   asking: boolean;
   busy: boolean;
 }
@@ -81,10 +81,12 @@ export function VisitedPanel({
     return (
       <section className={styles.signIn} aria-label="行った店">
         <p className={styles.signInLead}>{SIGN_IN_NOTE}</p>
-        <p className={styles.selectedNote}>{SIGN_IN_WHY}</p>
-        <button type="button" className={styles.button} onClick={onSignIn} disabled={asking}>
-          {asking ? "送信中…" : "チャットでサインインする"}
-        </button>
+        {onSignIn && <p className={styles.selectedNote}>{SIGN_IN_WHY}</p>}
+        {onSignIn && (
+          <button type="button" className={styles.button} onClick={onSignIn} disabled={asking}>
+            {asking ? "送信中…" : "チャットでサインインする"}
+          </button>
+        )}
       </section>
     );
   }

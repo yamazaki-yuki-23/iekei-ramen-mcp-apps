@@ -99,3 +99,24 @@ test("Webの地名検索は公開Nominatimへ出ず既存fixtureで解決する"
   await expect(cards(page)).toHaveCount(5);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("横浜駅");
 });
+
+test("Webは会話・記録の未対応操作を出さず、3候補と次の候補を使える", async ({ page, request }) => {
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "行った店" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "迷ったら", exact: true }).click();
+  const first = await tool(request, "decide-iekei-ramen", {});
+  await expect.poll(() => ids(page)).toEqual(first.shops.map((shop) => shop.id));
+  await expect(cards(page)).toHaveCount(3);
+  await expect(page.getByRole("button", { name: /この \d 軒から選ぶ/ })).toHaveCount(0);
+  await cards(page).first().click();
+  await expect(page.getByRole("button", { name: "この店について聞く" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "行った", exact: true })).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText("チャット");
+  await expect(page.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+  await page.getByRole("button", { name: "別の候補を見る" }).click();
+  const next = await tool(request, "decide-iekei-ramen", { round: 1 });
+  await expect.poll(() => ids(page)).toEqual(next.shops.map((shop) => shop.id));
+  expect(next.shops.map((shop) => shop.id)).not.toEqual(first.shops.map((shop) => shop.id));
+  await expect(page.locator("body")).not.toContainText("チャット");
+});

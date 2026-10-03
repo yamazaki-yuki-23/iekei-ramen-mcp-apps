@@ -87,6 +87,9 @@ export function useServerTools({
   includeVisitedShops,
   trackCall,
 }: Options) {
+  const stampFailed = app.capabilities.model
+    ? STAMP_FAILED
+    : "記録できませんでした。サインインを確認し、もう一度お試しください。";
   /**
    * 走っている呼び出しの数。busy はここから導く。
    *
@@ -288,19 +291,19 @@ export function useServerTools({
           arguments: { shopId, visited, includeShops: includeVisitedShops },
         });
         if (result.isError) {
-          setFailure(STAMP_FAILED);
+          setFailure(stampFailed);
           return;
         }
         const next = readVisitResult(result);
         // visited が無いのは、サインインが切れて匿名として処理されたとき。
         // 黙って成功に見せない。
         if (next && (!includeVisitedShops || "shops" in next)) onVisits(next);
-        else setFailure(STAMP_FAILED);
+        else setFailure(stampFailed);
       } catch {
-        setFailure(STAMP_FAILED);
+        setFailure(stampFailed);
       }
     },
-    [app, onVisits, includeVisitedShops],
+    [app, onVisits, includeVisitedShops, stampFailed],
   );
 
   /**

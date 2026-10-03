@@ -31,6 +31,12 @@ Webのテーマは `prefers-color-scheme`、ノッチは `src/web.css` の
 Playwrightは専用Vite preview（3134）を直接開き、匿名MCP fixture（3131）へ
 同じoriginで中継する。地名は既存fixtureで返し、公開Nominatimへは出ない。
 
+画面は `UiHost.capabilities` を見て、会話への依頼と訪問記録の導線を出す。
+部品は操作用callbackが渡された場合だけボタンと会話の説明を描く。
+Webでは3軒の候補・次の候補・店舗詳細・注文カンペ・まわる店を使える。
+モデルへの文脈送信は行わず、訪問記録のボタンとタブは#38のサインイン対応まで出さない。
+MCP Appsの会話・サインイン・記録の操作と文言は維持する。
+
 ### MCP Apps の 2 部構成
 
 tool と resource を `_meta.ui.resourceUri` で結び付けるのが MCP Apps の基本形。

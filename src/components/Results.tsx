@@ -22,7 +22,7 @@ interface Props {
   onClearKeyword: () => void;
   selected: Shop | null;
   onSelect: (shop: Shop | null) => void;
-  onAsk: (shops: Shop[], basis: string) => void;
+  onAsk?: (shops: Shop[], basis: string) => void;
   onReroll: () => void;
   asking: boolean;
   busy: boolean;
@@ -42,7 +42,7 @@ interface Props {
   /** 記録を全部消す。 */
   onForget: () => void;
   /** 会話でサインインを頼む。 */
-  onSignIn: () => void;
+  onSignIn?: () => void;
 }
 
 /**
