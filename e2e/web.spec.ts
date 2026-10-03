@@ -1,0 +1,101 @@
+import { test } from "./fixtures";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import type { AppPayload } from "../src/lib/types";
+
+const WEB_URL = "http://localhost:3134";
+const cards = (page: Page) => page.locator("ul > li > button[data-shop-id]");
+const ids = (page: Page) =>
+  cards(page).evaluateAll((items) => items.map((el) => el.getAttribute("data-shop-id")));
+
+/** 画面と同じMCPの結果を独立して取り、店IDと順序で比較する。 */
+async function tool(request: APIRequestContext, name: string, args: Record<string, unknown>) {
+  const response = await request.post("http://localhost:3131/mcp", {
+    headers: { Accept: "application/json, text/event-stream" },
+    data: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } },
+  });
+  expect(response.status()).toBe(200);
+  const body = await response.text();
+  const message = body.split("\n").find((line) => line.startsWith("data: "));
+  expect(message).toBeTruthy();
+  return JSON.parse(message!.slice(6)).result.structuredContent as AppPayload;
+}
+
+test("Webを直接開いて検索・現在地・地図・まわる店を使える", async ({ page, context, request }) => {
+  await context.grantPermissions(["geolocation"], { origin: WEB_URL });
+  await context.setGeolocation({ latitude: 35.466, longitude: 139.622 });
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  expect(page.frames()).toHaveLength(1);
+
+  await page.getByLabel("キーワード").fill("吉村");
+  await page.getByRole("button", { name: "検索", exact: true }).click();
+  const search = await tool(request, "search-iekei-ramen", { keyword: "吉村" });
+  await expect.poll(() => ids(page)).toEqual(search.shops.map((shop) => shop.id));
+  await cards(page).first().click();
+  await page.getByRole("button", { name: "まわる店に追加" }).click();
+  const route = page.getByRole("region", { name: "まわる店", exact: true });
+  await expect(route).toContainText(search.shops[0].name);
+
+  await page.getByRole("tab", { name: "現在地から探す" }).click();
+  await page.getByRole("button", { name: "現在地から探す", exact: true }).click();
+  const nearby = await tool(request, "find-nearby-iekei-ramen", {
+    lat: 35.466,
+    lon: 139.622,
+    limit: 5,
+    source: "precise",
+  });
+  await expect.poll(() => ids(page)).toEqual(nearby.shops.map((shop) => shop.id));
+  await cards(page).filter({ hasNotText: search.shops[0].name }).first().click();
+  await page.getByRole("button", { name: "まわる店に追加" }).click();
+  await expect(route.getByRole("heading")).toHaveText("まわる店（2 / 3 軒）");
+  await expect(route).toContainText("直線距離");
+
+  // 外部地図へ実通信せず、ブラウザに渡すURLを確かめる。
+  await page.evaluate(() => {
+    window.open = (url) => {
+      document.documentElement.dataset.openedUrl = String(url);
+      return null;
+    };
+  });
+  await route.getByRole("button", { name: "Google マップで開く" }).click();
+  await expect
+    .poll(() => page.locator("html").getAttribute("data-opened-url"))
+    .toContain("https://www.google.com/maps/dir/");
+
+  await page.getByRole("tab", { name: "地図から探す" }).click();
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await page.getByLabel("都道府県").selectOption("神奈川県");
+  const map = await tool(request, "show-iekei-ramen-map", { prefecture: "神奈川県" });
+  // 地図の一覧は既存の仕様どおり先頭20件。全件数は見出しでも確認する。
+  await expect.poll(() => ids(page)).toEqual(map.shops.slice(0, 20).map((shop) => shop.id));
+  await expect(page.locator("main")).toContainText(`${map.total} 件`);
+  await expect(page.getByRole("button", { name: "全画面" })).toHaveCount(0);
+  await expect(route.getByRole("heading")).toHaveText("まわる店（2 / 3 軒）");
+  expect(errors).toEqual([]);
+});
+
+test("Webの接続失敗を表示し、再読み込みで検索へ戻れる", async ({ page }) => {
+  await page.route(`${WEB_URL}/mcp`, (route) =>
+    route.fulfill({ status: 503, body: "unavailable" }),
+  );
+  await page.goto(WEB_URL);
+  await expect(
+    page.getByText("接続できませんでした。ページを再読み込みしてください。", { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByLabel("キーワード")).toHaveCount(0);
+  await page.unroute(`${WEB_URL}/mcp`);
+  await page.reload();
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+});
+
+test("Webの地名検索は公開Nominatimへ出ず既存fixtureで解決する", async ({ page }) => {
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  await page.getByRole("tab", { name: "現在地から探す" }).click();
+  await page.getByLabel("地名で指定").fill("横浜駅");
+  await page.getByRole("button", { name: "この場所で探す" }).click();
+  await expect(cards(page)).toHaveCount(5);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("横浜駅");
+});

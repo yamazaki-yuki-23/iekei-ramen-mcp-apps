@@ -87,6 +87,7 @@ export default defineConfig({
    */
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
+    // Web用previewはMCP fixtureのビルドが終わってから、末尾で起動する。
     {
       // 先に UI をビルドしてからサーバーを起動する（server.ts は埋め込み済み HTML を読む）
       command: `npm run build:ui && npx tsx main.ts`,
@@ -141,6 +142,13 @@ export default defineConfig({
       url: "http://localhost:3133/health",
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
+    },
+    {
+      command: "npx vite preview --mode web --port 3134 --strictPort",
+      url: "http://localhost:3134",
+      // 古いWebビルドを検証しないよう、専用previewは毎回起動する。
+      reuseExistingServer: false,
+      timeout: 45_000,
     },
   ],
 });
