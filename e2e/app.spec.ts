@@ -2,7 +2,8 @@
  * MCP Apps の E2E。
  * 実ブラウザ・実ホスト・実 MCP サーバーを通して 3 モードを操作する。
  */
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "./fixtures";
 import { countShops, TOTAL, type Bounds } from "./dataset";
 import {
   afterDelivered,

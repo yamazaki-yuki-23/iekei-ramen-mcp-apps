@@ -9,7 +9,8 @@
  * E2E の既定の画面は縦に長いので見切れない。ここだけ高さ 720 で、見切れた状態を
  * 意図して作る。
  */
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "./fixtures";
 import { callTool, smallestCluster, waitForApp } from "./helpers";
 
 test("地図が画面の下に見切れていても、塊を押せば開く", async ({ page }) => {

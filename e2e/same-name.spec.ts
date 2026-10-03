@@ -4,7 +4,8 @@
  * **重複登録ではなく、チェーンの別店舗**が同じ文字列で並ぶ。実データでは
  * 東京都に町田商店が 14 店ある（最短 517m・最長 38.6km）。
  */
-import { expect, test, type FrameLocator } from "@playwright/test";
+import { expect, type FrameLocator } from "@playwright/test";
+import { test } from "./fixtures";
 import { callTool, shopCards, shopMetaFields, shopName, shopWhere, waitForApp } from "./helpers";
 
 /**
