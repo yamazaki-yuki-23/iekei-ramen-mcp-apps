@@ -68,6 +68,11 @@ for (const web of [true, false]) {
       await expect(app.getByRole("button", { name: "直系・濃厚", exact: true })).toHaveClass(
         /chipActive/,
       );
+      // 下書きと条件が違う古い結果は、再検索するまで選べない。
+      await expect(app.locator("button[data-shop-id]")).toHaveCount(0);
+      await expect(
+        app.getByText("条件が変わりました。検索ボタンを押してください。", { exact: true }),
+      ).toBeVisible();
       await app.getByRole("button", { name: "検索", exact: true }).click();
       await expect(app.locator("button[data-shop-id]")).toHaveCount(1);
       await expect(app.locator("button[data-shop-id]").first()).toContainText("吉村家");
@@ -91,6 +96,10 @@ for (const web of [true, false]) {
       await held.delivered;
       await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
       await expect(app.getByLabel("キーワード")).toHaveValue("");
+      await expect(app.locator("button[data-shop-id]")).toHaveCount(0);
+      await expect(
+        app.getByText("条件が変わりました。検索ボタンを押してください。", { exact: true }),
+      ).toBeVisible();
       await app.getByRole("button", { name: "検索", exact: true }).click();
       await expect(app.locator("button[data-shop-id]")).toHaveCount(200);
     } finally {

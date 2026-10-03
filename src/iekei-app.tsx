@@ -131,11 +131,12 @@ export function IekeiApp({
     const draftAtStart = draftRevision.current;
     const hostAtStart = hostRevision.current;
     return (next: AppPayload) => {
-      if (hostRevision.current !== hostAtStart) return;
-      if (next.mode !== "form" || draftRevision.current === draftAtStart) {
-        setForm(initialForm(next.query));
-      }
+      if (hostRevision.current !== hostAtStart) return false;
+      // 条件が違う結果を下書きの隣に出さず、再検索まで既存の stale を維持する。
+      if (next.mode === "form" && draftRevision.current !== draftAtStart) return false;
+      setForm(initialForm(next.query));
       replacePayload(next);
+      return true;
     };
   }, [replacePayload]);
 
@@ -233,7 +234,7 @@ interface ConnectedProps extends PresentationProps {
   clearStops: () => void;
   form: FormValues;
   onForm: (form: FormValues) => void;
-  capturePayload: () => (payload: AppPayload) => void;
+  capturePayload: () => (payload: AppPayload) => boolean;
   pendingCalls: number;
   trackCall: (delta: 1 | -1) => void;
   hostContextPatch: McpUiHostContext | undefined;
@@ -486,7 +487,7 @@ interface InnerProps extends PresentationProps {
   resultReceived: boolean;
   form: FormValues;
   onForm: (form: FormValues) => void;
-  capturePayload: () => (payload: AppPayload) => void;
+  capturePayload: () => (payload: AppPayload) => boolean;
   /** 再マウントをまたいで残る案内メッセージ。 */
   notice: string | null;
   onNotice: (notice: string | null) => void;
@@ -563,6 +564,7 @@ function IekeiAppInner({
     asking,
     failure,
     stale,
+    needsSearch,
     runSearch,
     runArea,
     runDecide,
@@ -750,6 +752,7 @@ function IekeiAppInner({
         mode={mode}
         payload={payload}
         ready={payloadReady}
+        needsSearch={needsSearch}
         shops={shops}
         keyword={activeKeyword}
         onClearKeyword={() => runDecide(form, payload.query.origin, 0)}
