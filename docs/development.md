@@ -351,6 +351,14 @@ data URI にすること。
 | ユニット / 結合 | `tests/` | 距離計算、家系判定、MCP サーバー（InMemoryTransport で直結） |
 | E2E             | `e2e/`   | 実ブラウザ + basic-host + 実サーバーで 3 モードを操作        |
 
+**訪問記録のSQLは `tests/visits-runtime.test.ts` でローカルD1を通す。**
+既存Wranglerの `createTestHarness` を使い、各テストで使い捨てのworkerdとDBを作る。
+本番の互換設定だけを読み、テスト用bindingへ実際の `migrations/` を適用して
+Workerの中で本番の `d1Visits()` を呼ぶ。保存・一覧・削除・初回日時・利用者分離を
+検証する。本番DBや個人用 `.dev.vars` は使わず、資格情報は不要。
+`npm test` と既存CIで実行し、高速な `memoryVisits()` のtoolテストも維持する。
+APIの手順は [Cloudflareのテスト状態の準備](https://developers.cloudflare.com/workers/testing/test-harness/prepare-test-state/) を参照。
+
 **0件・1件・最終巡は実店舗データの分布から選ばない。**
 `e2e/fixtures/shops-boundaries.json` の固定データ（北海道1軒・青森県4軒・岩手県5軒・秋田県0軒）を
 `tests/server-boundaries.test.ts` と `e2e/boundaries.spec.ts` で使う。
