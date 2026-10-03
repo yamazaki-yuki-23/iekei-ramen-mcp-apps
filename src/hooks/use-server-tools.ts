@@ -1,6 +1,6 @@
 import type { App } from "@modelcontextprotocol/ext-apps";
 import { useCallback, useRef, useState } from "react";
-import { readPayload } from "../lib/payload";
+import { readPayload, readVisitResult } from "../lib/payload";
 import {
   askMessageText,
   decideMessageText,
@@ -15,6 +15,7 @@ import type {
   OriginSource,
   SearchMode,
   Shop,
+  VisitResult,
 } from "../lib/types";
 
 /*
@@ -58,7 +59,9 @@ interface Options {
    * 素直に反映すると検索結果を見ていた人が「行った店」の画面へ飛ばされる。
    * どこまで写すかは受け取る側が決める（「行った店」の画面だけ一覧も差し替える）。
    */
-  onVisits: (next: AppPayload) => void;
+  onVisits: (next: VisitResult) => void;
+  /** 「行った店」では取り消したカードも除くため、完全な一覧を要求する。 */
+  includeVisitedShops: boolean;
   /**
    * 返ってきていない呼び出しを数える（始めに +1、反映し終えたら -1）。
    *
@@ -81,6 +84,7 @@ export function useServerTools({
   awaitContext,
   releaseSelection,
   onVisits,
+  includeVisitedShops,
   trackCall,
 }: Options) {
   /**
@@ -281,22 +285,22 @@ export function useServerTools({
       try {
         const result = await app.callServerTool({
           name: "stamp-iekei-ramen",
-          arguments: { shopId, visited },
+          arguments: { shopId, visited, includeShops: includeVisitedShops },
         });
         if (result.isError) {
           setFailure(STAMP_FAILED);
           return;
         }
-        const next = readPayload(result);
+        const next = readVisitResult(result);
         // visited が無いのは、サインインが切れて匿名として処理されたとき。
         // 黙って成功に見せない。
-        if (next?.visited) onVisits(next);
+        if (next && (!includeVisitedShops || "shops" in next)) onVisits(next);
         else setFailure(STAMP_FAILED);
       } catch {
         setFailure(STAMP_FAILED);
       }
     },
-    [app, onVisits],
+    [app, onVisits, includeVisitedShops],
   );
 
   /**
@@ -385,7 +389,13 @@ export function useServerTools({
   const runNearby = useCallback(
     (lat: number, lon: number, label: string | undefined, source: OriginSource) => {
       onNotice(null);
-      void call("find-nearby-iekei-ramen", { lat, lon, limit: 5, label, source });
+      void call("find-nearby-iekei-ramen", {
+        lat,
+        lon,
+        limit: 5,
+        label,
+        source,
+      });
     },
     [call, onNotice],
   );
@@ -427,7 +437,11 @@ export function useServerTools({
       )?.results;
       if (!hits || hits.length === 0) return null;
       const [first] = hits;
-      return { lat: first.lat, lon: first.lon, label: first.label.split(",")[0].trim() };
+      return {
+        lat: first.lat,
+        lon: first.lon,
+        label: first.label.split(",")[0].trim(),
+      };
     },
     [call],
   );

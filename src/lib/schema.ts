@@ -60,6 +60,11 @@ const ProgressSchema = z.object({
   percent: z.number(),
 });
 
+const VisitSummarySchema = z.object({
+  overall: ProgressSchema,
+  prefectures: z.array(ProgressSchema.extend({ prefecture: z.string() })),
+});
+
 export const PayloadSchema = z.object({
   mode: z.enum(["form", "nearby", "map", "decide", "visited"]),
   shops: z.array(ShopSchema),
@@ -82,12 +87,7 @@ export const PayloadSchema = z.object({
   prefectures: z.array(z.string()),
   /** サインインしている人の訪問済み店舗 ID。匿名なら入らない。 */
   visited: z.array(z.string()).optional(),
-  progress: z
-    .object({
-      overall: ProgressSchema,
-      prefectures: z.array(ProgressSchema.extend({ prefecture: z.string() })),
-    })
-    .optional(),
+  progress: VisitSummarySchema.optional(),
   /** 「迷ったら」のときだけ入る、3 軒をどう選んだかの内訳。 */
   decide: z
     .object({
@@ -100,3 +100,17 @@ export const PayloadSchema = z.object({
     })
     .optional(),
 });
+
+const VisitSnapshotSchema = z.strictObject({
+  visited: z.array(z.string()),
+  progress: VisitSummarySchema,
+});
+
+/** MCPの既存クライアントが要求するobjectルートを維持する。 */
+export const StampResultSchema = PayloadSchema.partial()
+  .extend(VisitSnapshotSchema.shape)
+  .refine(
+    (value) =>
+      PayloadSchema.safeParse(value).success || VisitSnapshotSchema.safeParse(value).success,
+    { message: "スタンプ応答は完全な店舗一覧か、visitedとprogressだけのsnapshotにしてください" },
+  );

@@ -31,7 +31,7 @@ import {
 } from "./src/lib/geocode-timeout.ts";
 import { summarize as summarizeVisits } from "./src/lib/progress.ts";
 import { RECORDS_WITHOUT_SHOPS } from "./src/lib/visited-view.ts";
-import { BoundsSchema, PayloadSchema } from "./src/lib/schema.ts";
+import { BoundsSchema, PayloadSchema, StampResultSchema } from "./src/lib/schema.ts";
 import { scopeLabel } from "./src/lib/scope.ts";
 import type { VisitStore } from "./src/lib/visits.ts";
 import { describeBasis, shortlist } from "./src/lib/shortlist.ts";
@@ -334,7 +334,9 @@ async function fetchEdgeLocation(): Promise<Origin | undefined> {
   if (!LOCATION_ENDPOINT) return undefined;
   if (edgeLocationCache !== undefined) return edgeLocationCache ?? undefined;
   try {
-    const res = await fetch(LOCATION_ENDPOINT, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(LOCATION_ENDPOINT, {
+      signal: AbortSignal.timeout(3000),
+    });
     if (!res.ok) throw new Error(String(res.status));
     const cf = (await res.json()) as Record<string, unknown>;
     const lat = toCoordinate(cf.latitude, 90);
@@ -480,7 +482,10 @@ const GEOCODE_GATE_CALL_TIMEOUT_MS = GEOCODE_MAX_WAIT_MS + GEOCODE_RESPONSE_TIME
 
 const geocodeTimeoutResult = (): CallToolResult => ({
   content: [
-    { type: "text", text: "地名の検索に時間がかかったため中止しました。もう一度お試しください。" },
+    {
+      type: "text",
+      text: "地名の検索に時間がかかったため中止しました。もう一度お試しください。",
+    },
   ],
   isError: true,
 });
@@ -568,7 +573,12 @@ export function createServer(deps: ServerDeps = {}): McpServer {
     { mimeType: RESOURCE_MIME_TYPE },
     async (): Promise<ReadResourceResult> => ({
       contents: [
-        { uri: resourceUri, mimeType: RESOURCE_MIME_TYPE, text: APP_HTML, _meta: uiResourceMeta },
+        {
+          uri: resourceUri,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: APP_HTML,
+          _meta: uiResourceMeta,
+        },
       ],
     }),
   );
@@ -951,7 +961,9 @@ export function createServer(deps: ServerDeps = {}): McpServer {
         }
       }
       if (hits.length === 0) {
-        return { content: [{ type: "text", text: `「${query}」は見つかりませんでした。` }] };
+        return {
+          content: [{ type: "text", text: `「${query}」は見つかりませんでした。` }],
+        };
       }
       return {
         content: [
@@ -1008,11 +1020,15 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       inputSchema: z.object({
         shopId: z.string().describe("店舗 ID"),
         visited: z.boolean().default(true).describe("true で付ける、false で外す"),
+        includeShops: z
+          .boolean()
+          .default(true)
+          .describe("通常はtrue。検索・地図UIが訪問IDと制覇率だけを更新するときはfalse"),
       }),
-      outputSchema: PayloadSchema,
+      outputSchema: StampResultSchema,
       _meta: { ui: { resourceUri } },
     },
-    async ({ shopId, visited }): Promise<CallToolResult> => {
+    async ({ shopId, visited, includeShops }): Promise<CallToolResult> => {
       const { visitor, visits } = requireVisitor();
       const shop = dataset.find((s) => s.id === shopId);
       // 知らない店 ID は記録しない。消えた店のゴミが溜まるため。
@@ -1026,13 +1042,24 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       await visits.set(visitor.id, shopId, visited);
       const extras = await visitorExtras(deps, dataset);
       const progress = extras.progress!;
-      const visitedIds = new Set(extras.visited);
-      const payload: Omit<AppPayload, "prefectures"> = {
-        mode: "visited",
-        shops: dataset.filter((s) => visitedIds.has(s.id)),
-        total: progress.overall.visited,
-        query: {},
-      };
+      const snapshot = { visited: extras.visited!, progress };
+      // 軽量経路では一覧の抽出とJSON化も省く。同じ読み取りから両形式を組む。
+      let structuredContent: Record<string, unknown> = snapshot;
+      if (includeShops) {
+        const visitedIds = new Set(snapshot.visited);
+        structuredContent = {
+          ...structured(
+            {
+              mode: "visited",
+              shops: dataset.filter((s) => visitedIds.has(s.id)),
+              total: progress.overall.visited,
+              query: {},
+            },
+            prefectures,
+          ),
+          ...snapshot,
+        };
+      }
       return {
         content: [
           {
@@ -1043,7 +1070,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
               `（${progress.overall.percent}%）です。`,
           },
         ],
-        structuredContent: await withVisitor(payload, extras),
+        structuredContent,
       };
     },
   );

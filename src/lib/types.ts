@@ -134,6 +134,14 @@ export interface AppPayload {
   decide?: DecideInfo;
 }
 
+/** 検索・地図のスタンプ応答。一覧を差し替えず、記録の全体だけを反映する。 */
+interface VisitSnapshot {
+  visited: string[];
+  progress: VisitSummary;
+}
+
+export type VisitResult = AppPayload | VisitSnapshot;
+
 /**
  * 「迷ったら」で 3 軒を選んだ経緯。
  * なぜこの 3 軒なのかを UI とモデルの両方に見せるために持ち回す。
