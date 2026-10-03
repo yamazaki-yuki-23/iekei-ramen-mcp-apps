@@ -7,6 +7,11 @@ MCP Apps 対応ホストの中で UI が動く。
 issue がたまる）。項目は [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/)、ラベルの基準は
 [.github/LABELS.md](.github/LABELS.md)。
 
+**issue を対応するときは `/ship-issue <番号…>`。** 読む → 作る → PR → Codex レビュー
+（`scripts/wait-codex-review.sh` で待つ）→ squash してマージ → 本番で確かめる → 証拠を
+書いて閉じる、までを通す。部品は `/codex-review-loop` と `/squash-and-merge`。
+このリポジトリ用のスキルは `.claude/skills/` に置いてコミットする（`.gitignore` で 1 つずつ外す）。
+
 ## 次にやる issue の探し方
 
 **対応順は GitHub の機能に分けて持たせてある。本文のチェックリストには書かない**

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# tests/wait-codex-review.test.ts 用の偽の gh。FAKE_GH_FIXTURE（JSON）から、
+# 呼ばれた API の道に合う値を返す。--jq は本物の jq に通し、--slurp は配列に包む。
+set -euo pipefail
+path="" jqexpr="" slurp=0 q=""
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do
+  case "${args[i]}" in
+    --jq) jqexpr=${args[i + 1]}; i=$((i + 1)) ;;
+    -q) q=${args[i + 1]}; i=$((i + 1)) ;;
+    --slurp) slurp=1 ;;
+    repos/*) path=${args[i]} ;;
+  esac
+done
+case "${args[0]} ${args[1]}" in
+  "repo view") path="repo" ;;
+  "pr view") path="pr" ;;
+esac
+value=$(jq -c --arg p "$path" '.[$p] // empty' "$FAKE_GH_FIXTURE")
+[ -n "$value" ] || { echo "fake gh: 未定義の道 $path" >&2; exit 1; }
+[ "$slurp" = 1 ] && value="[$value]"
+expr=${jqexpr:-${q:-.}}
+echo "$value" | jq -r "$expr"
