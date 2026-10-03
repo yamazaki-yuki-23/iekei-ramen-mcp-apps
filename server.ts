@@ -22,6 +22,7 @@ import { z } from "zod";
 import shopsData from "./data/shops.json" with { type: "json" };
 import { APP_HTML } from "./src/generated/app-html.ts";
 import { distanceKm, formatDistance, originLabel } from "./src/lib/geo.ts";
+import { dataCaveats } from "./src/lib/data-caveats.ts";
 import { GEOCODE_MAX_WAIT_MS } from "./src/lib/geocode-gate.ts";
 import {
   GEOCODE_RESPONSE_TIMEOUT_MS,
@@ -40,6 +41,7 @@ import {
   TASTES,
   type AppPayload,
   type Bounds,
+  type DecideInfo,
   type Origin,
   type OriginSource,
   type Shop,
@@ -131,9 +133,8 @@ function summarize(shops: Shop[], heading: string, withDistance = false): string
     const conf = s.confidence === "confirmed" ? "" : ` / ${CONFIDENCE[s.confidence].label}`;
     return `${i + 1}. ${s.name} (${TASTES[s.taste].label}${conf}${dist})\n   ${where}${s.openingHours ? `\n   営業: ${s.openingHours}` : ""}`;
   });
-  const caveat = shops.some((s) => s.confidence !== "confirmed")
-    ? "\n\n※「家系の可能性」「家系か未判定」は店名からの推定です。断定しないでください。"
-    : "";
+  const notes = dataCaveats(shops);
+  const caveat = notes ? `\n\n${notes}` : "";
   return `${heading}\n\n${lines.join("\n")}${caveat}`;
 }
 
@@ -160,9 +161,8 @@ function mapSummary(shops: Shop[], prefecture?: string, bounds?: Bounds): string
     .filter((k) => counts[k])
     .map((k) => `${CONFIDENCE[k].label} ${counts[k]} 件`)
     .join(" / ");
-  const caveat = shops.some((s) => s.confidence !== "confirmed")
-    ? "\n「家系の可能性」「家系か未判定」は店名からの推定です。断定しないでください。"
-    : "";
+  const notes = dataCaveats(shops);
+  const caveat = notes ? `\n${notes}` : "";
   return `${where}の家系ラーメン ${shops.length} 件を地図に表示しました。\n内訳: ${breakdown}${caveat}`;
 }
 
@@ -177,7 +177,7 @@ function mapSummary(shops: Shop[], prefecture?: string, bounds?: Bounds): string
  * モデルは知識から「濃厚で人気」などと補ってしまうので、使っていい材料を
  * 明示して縛る。
  */
-function decidePrompt(shops: Shop[], basis: string, cond: string): string {
+function decidePrompt(shops: Shop[], basis: string, cond: string, info: DecideInfo): string {
   if (shops.length === 0) {
     return `【${cond}】条件に合う店舗が見つかりませんでした。条件を緩めて試してください。`;
   }
@@ -186,9 +186,7 @@ function decidePrompt(shops: Shop[], basis: string, cond: string): string {
     const dist = s.distanceKm !== undefined ? ` / ${formatDistance(s.distanceKm)}` : "";
     const conf = s.confidence === "confirmed" ? "" : ` / ${CONFIDENCE[s.confidence].label}`;
     const taste =
-      s.taste === "unknown"
-        ? "味の傾向は情報なし"
-        : `味の傾向 ${TASTES[s.taste].label}（既知ブランドからの参考値）`;
+      s.taste === "unknown" ? "味の傾向は情報なし" : `味の傾向 ${TASTES[s.taste].label}`;
     return [
       `${i + 1}. ${s.name}（${taste}${conf}${dist}）`,
       `   ${where}`,
@@ -225,6 +223,7 @@ function decidePrompt(shops: Shop[], basis: string, cond: string): string {
     "理由に使っていいのは上に書いた情報だけです（判定の段階・味の傾向・距離・営業時間・ブランド）。",
     "味の濃さ・混雑・行列・評判・口コミは、このアプリのデータには含まれていません。推測で補わず、",
     "分からないことは分からないと言ってください。",
+    dataCaveats(shops, info),
     ...ask.slice(1),
   ].join("\n");
 }
@@ -829,6 +828,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           poolTotal: list.poolTotal,
           basis: list.basis,
           widened: list.widened,
+          includesLikely: list.includesLikely,
         },
       };
       return {
@@ -839,6 +839,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
               list.picks,
               describeBasis(list, list.picks.length, origin, kw),
               cond,
+              list,
             ),
           },
         ],

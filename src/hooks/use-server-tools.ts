@@ -7,7 +7,15 @@ import {
   stampMessageText,
   visitedSignInText,
 } from "../lib/shop-brief";
-import type { AppPayload, Bounds, Origin, OriginSource, SearchMode, Shop } from "../lib/types";
+import type {
+  AppPayload,
+  Bounds,
+  DecideInfo,
+  Origin,
+  OriginSource,
+  SearchMode,
+  Shop,
+} from "../lib/types";
 
 /*
  * 記録に失敗したときの文。**サインインの切れも同じ見え方になる。**
@@ -482,14 +490,14 @@ export function useServerTools({
    * いるのか」が壊れる。3 軒はこの一通にだけ入れる。
    */
   const askToDecide = useCallback(
-    (shops: Shop[], basis: string) =>
+    (shops: Shop[], basis: string, info: DecideInfo | undefined) =>
       /*
        * 開いていた店があれば、先に外してモデル側から消えるまで待つ。
        * 「この店を選んだ」という文脈を残したまま「この中から選んで」と頼むと、
        * 相反する 2 つが同時に届き、答えが開いていた店に引きずられる。
        * updateModelContext は次の発話まで待つので、送ってから消しても遅い。
        */
-      sendText(async () => decideMessageText(shops, basis, await releaseSelection())),
+      sendText(async () => decideMessageText(shops, basis, await releaseSelection(), info)),
     [releaseSelection, sendText],
   );
 

@@ -30,14 +30,11 @@ import { originLabel } from "./lib/geo";
 import { createDeliveryQueue } from "./lib/model-context";
 import { EMPTY_PAYLOAD, readPayload } from "./lib/payload";
 import { safeAreaStyle } from "./lib/safe-area";
+import { DATA_FOOTNOTE } from "./lib/data-caveats";
 import { scopeLabel } from "./lib/scope";
 import { MAX_STOPS, planRoute } from "./lib/route";
 import type { AppPayload, Origin, SearchMode, Shop } from "./lib/types";
 import styles from "./mcp-app.module.css";
-
-/* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
-const FOOTNOTE =
-  "店舗データは OpenStreetMap（ODbL）由来。「家系の可能性」は地図の記載から家系と推定したもの、「家系か未判定」は記載だけでは判断できなかったものです。味の傾向は既知のブランドから割り当てた参考値で、多くの店舗は「情報なし」になります。営業時間は変わることがあるため訪問前にご確認ください。";
 
 function IekeiApp() {
   const [payload, setPayload] = useState<AppPayload | null>(null);
@@ -612,7 +609,7 @@ function IekeiAppInner({
         onClearKeyword={() => runDecide(form, payload.query.origin, 0)}
         selected={selected}
         onSelect={onSelect}
-        onAsk={(picks, basis) => void askToDecide(picks, basis)}
+        onAsk={(picks, basis) => void askToDecide(picks, basis, payload.decide)}
         onReroll={() => runDecide(form, payload.query.origin, round + 1, activeKeyword)}
         asking={asking}
         busy={busy}
@@ -636,7 +633,7 @@ function IekeiAppInner({
         onOpenLink={openExternal}
       />
 
-      <p className={styles.footnote}>{FOOTNOTE}</p>
+      <p className={styles.footnote}>{DATA_FOOTNOTE}</p>
     </main>
   );
 }

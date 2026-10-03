@@ -96,6 +96,7 @@ export const PayloadSchema = z.object({
       poolTotal: z.number(),
       basis: z.enum(["distance", "hours"]),
       widened: z.boolean(),
+      includesLikely: z.boolean().optional(),
     })
     .optional(),
 });
