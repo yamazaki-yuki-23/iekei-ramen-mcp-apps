@@ -46,7 +46,8 @@ export interface SearchValues {
 
 interface Options {
   app: UiHost;
-  onPayload: (payload: AppPayload) => void;
+  /** 呼び出し開始時点の下書きとホスト更新を記録し、応答を反映する。 */
+  capturePayload: () => (payload: AppPayload) => void;
   onNotice: (notice: string | null) => void;
   /** その店の詳細がモデルに届いたか。届いていなければ質問に詳細を同梱する。 */
   awaitContext: (shop: Shop) => Promise<boolean>;
@@ -79,7 +80,7 @@ interface Options {
  */
 export function useServerTools({
   app,
-  onPayload,
+  capturePayload,
   onNotice,
   awaitContext,
   releaseSelection,
@@ -141,6 +142,7 @@ export function useServerTools({
        * 素直に反映すると、後から選んだ条件が古い結果で上書きされ、payload から
        * 作り直されるフォームまで前の値に戻る（実際にそうなっていた）。
        */
+      const applyPayload = capturePayload();
       const seq = replacesResults ? (resultSeq.current += 1) : resultSeq.current;
       const superseded = () => replacesResults && seq !== resultSeq.current;
 
@@ -167,7 +169,7 @@ export function useServerTools({
           return result;
         }
         const next = readPayload(result);
-        if (next) onPayload(next);
+        if (next) applyPayload(next);
         return result;
       } catch (e) {
         // 下調べの失敗は、isError のときと同じく呼んだ側が出す。
@@ -176,13 +178,13 @@ export function useServerTools({
         }
         return null;
       } finally {
-        // 反映（onPayload）と同じ流れで減らす。同じ描画にまとまるので、0 になった
+        // 反映（applyPayload）と同じ流れで減らす。同じ描画にまとまるので、0 になった
         // 画面には、この応答で起きることがすべて出ている。
         setInFlight((n) => n - 1);
         trackCall(-1);
       }
     },
-    [app, onPayload, releaseSelection, trackCall],
+    [app, capturePayload, releaseSelection, trackCall],
   );
 
   /**
