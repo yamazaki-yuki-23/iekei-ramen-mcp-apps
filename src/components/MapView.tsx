@@ -2,6 +2,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
 import { useMarkerFocus } from "../hooks/use-marker-focus";
+import { useVisitedMarkers } from "../hooks/use-visited-markers";
 import type { Bounds, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import {
@@ -92,6 +93,7 @@ export function MapView({
   // 基準地点も店のマーカーとは別のレイヤー。描き直しで消えないようにする。
   const originLayerRef = useRef<L.LayerGroup | null>(null);
   const markersRef = useRef<Map<string, L.CircleMarker>>(new Map());
+  const shopDrawingRef = useRef<ReturnType<typeof drawShops> | null>(null);
   /*
    * 順路へ寄せたことがあるか。
    *
@@ -195,7 +197,7 @@ export function MapView({
     const layer = layerRef.current;
     const map = mapRef.current;
     if (!layer || !map) return;
-    const markers = drawShops(layer, map, {
+    const drawing = drawShops(layer, map, {
       shops,
       zoom,
       selectedId,
@@ -204,21 +206,19 @@ export function MapView({
         onSelectRef.current(shop);
       },
       onCluster: (group, viaKeyboard) => onClusterRef.current?.(group, viaKeyboard),
-      visitedIds,
     });
+    const { markers } = drawing;
+    shopDrawingRef.current = drawing;
     markersRef.current = markers;
 
     // キーボードで選んだ直後だけ、描き直したピンへ焦点を戻す。
     restore(selectedId);
 
     return () => {
-      // 付けたハンドラは自分で外す。clearLayers だけでも参照は切れるが、
-      // 「付けた側が外す」を形にしておかないと、あとで読む人に分からない。
-      for (const marker of markers.values()) marker.off("click");
-      layer.clearLayers();
-      markers.clear();
+      drawing.dispose();
+      shopDrawingRef.current = null;
     };
-  }, [shops, zoom, selectedId, remember, restore, visitedIds]);
+  }, [shops, zoom, selectedId, remember, restore]);
 
   /*
    * 結果が変わったら、その全体が入るところまで寄せ直す。
@@ -285,6 +285,10 @@ export function MapView({
      */
     restore(selectedId);
   }, [selectedId, restore]);
+
+  // 訪問状態は塊の所属・位置を変えない。既存のピンと焦点を保ち、印だけを更新する。
+  // 選択ピンをbringToFrontしたあとに点を描き、白い点が下に隠れないようにする。
+  useVisitedMarkers(shopDrawingRef, visitedIds);
 
   /*
    * 基準地点の印と同心円。

@@ -198,8 +198,8 @@ export function toLatLngBounds(bounds: Bounds): L.LatLngBounds {
 /**
  * 店のピンを描く。近すぎるものは塊にまとめる。
  *
- * 戻り値は「店 ID → ピン」の対応。選んだ店へ寄せるときに使う
- * （塊にまとめた店は単独のピンを持たないので、ここには入らない）。
+ * ピンの対応表と、訪問印だけを更新する口を返す。
+ * 塊にまとめた店は単独のピンを持たないので、対応表には入らない。
  */
 export function drawShops(
   layer: L.LayerGroup,
@@ -211,20 +211,22 @@ export function drawShops(
     onSelect: (shop: Shop, viaKeyboard: boolean) => void;
     /** 塊を押したときに、その中身を外へ渡す。キーボード由来かも伝える。 */
     onCluster: (shops: Shop[], viaKeyboard: boolean) => void;
-    /** 行った店。中心に点を打つ。匿名なら渡ってこない。 */
-    visitedIds?: ReadonlySet<string>;
   },
-): Map<string, L.CircleMarker> {
+) {
   const markers = new Map<string, L.CircleMarker>();
+  const singles = new Map<
+    string,
+    { shop: Shop; marker: L.CircleMarker; visited: boolean; dot?: L.CircleMarker }
+  >();
+  let previousVisitedIds: ReadonlySet<string> | undefined;
 
   for (const cluster of clusterShops(opts.shops, opts.zoom, opts.selectedId)) {
     // 1 軒だけの塊は、ふつうの店のピンとして描く。
     if (cluster.shops.length === 1) {
       const shop = cluster.shops[0];
       const selected = shop.id === opts.selectedId;
-      const visited = opts.visitedIds?.has(shop.id) ?? false;
       // 印の意味は読み上げにも載せる。色と点は見えない人に届かない。
-      const label = `${shop.name}（${TASTES[shop.taste].label}${visited ? "・行った" : ""}）`;
+      const label = shopLabel(shop, false);
       const marker = L.circleMarker([shop.lat, shop.lon], {
         ...(selected ? { ...PIN_SELECTED, pane: SELECTED_PANE } : PIN),
         fillColor: TASTE_COLORS[shop.taste],
@@ -234,13 +236,7 @@ export function drawShops(
         .on("click", () => opts.onSelect(shop, false));
       marker.addTo(layer);
       markers.set(shop.id, marker);
-      // 点は必ずピンより後に描く。同じペインでは、後に描いたものが上に来る。
-      if (visited) {
-        L.circleMarker([shop.lat, shop.lon], {
-          ...VISITED_DOT,
-          ...(selected ? { pane: SELECTED_PANE } : {}),
-        }).addTo(layer);
-      }
+      singles.set(shop.id, { shop, marker, visited: false });
       makeActivatable(marker.getElement(), label, (viaKeyboard) =>
         opts.onSelect(shop, viaKeyboard),
       );
@@ -308,7 +304,42 @@ export function drawShops(
     makeActivatable(marker.getElement(), `この地点の ${cluster.shops.length} 軒を開く`, expand);
   }
 
-  return markers;
+  return {
+    markers,
+    dispose() {
+      // 登録したハンドラと保持するピンは、描画を作った側で片付ける。
+      for (const marker of markers.values()) marker.off("click");
+      layer.clearLayers();
+      markers.clear();
+      singles.clear();
+    },
+    updateVisited(visitedIds?: ReadonlySet<string>) {
+      if (visitedIds === previousVisitedIds) return;
+      previousVisitedIds = visitedIds;
+      for (const [id, pin] of singles) {
+        const visited = visitedIds?.has(id) ?? false;
+        if (pin.visited === visited) continue;
+        pin.visited = visited;
+        const label = shopLabel(pin.shop, visited);
+        pin.marker.setTooltipContent(textTooltip(label));
+        pin.marker.getElement()?.setAttribute("aria-label", label);
+        if (visited) {
+          // 選択ピンを前に出したあとで描く。同じペインで白い点が上に残る。
+          pin.dot = L.circleMarker(pin.marker.getLatLng(), {
+            ...VISITED_DOT,
+            pane: pin.marker.options.pane,
+          }).addTo(layer);
+        } else if (pin.dot) {
+          layer.removeLayer(pin.dot);
+          pin.dot = undefined;
+        }
+      }
+    },
+  };
+}
+
+function shopLabel(shop: Shop, visited: boolean): string {
+  return `${shop.name}（${TASTES[shop.taste].label}${visited ? "・行った" : ""}）`;
 }
 
 /** 基準地点の印と同心円。**地図は動かさない。** */
