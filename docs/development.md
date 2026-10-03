@@ -17,6 +17,20 @@ Static Assetsはこのディレクトリだけを配信するので、MCPの埋�
 未定義のURLには404を返し、MCPや認可の誤ったURLにWebのHTMLを返さない。
 本番は#41の決定に従い `https://iekeiramen.com/`。workers.devは再開しない。
 
+### UI のホスト境界
+
+`src/iekei-app.tsx` は両方の入口が使う画面と状態を持つ。`src/hosts/types.ts` が
+tool呼び出し・リンク・表示モード・モデルとの会話の契約を定義し、SDKのAppは
+`src/hosts/mcp.tsx` に閉じ込める。MCPの初期通知は従来どおり受け取り、Webでは
+`src/hosts/web.tsx` が同じoriginの `/mcp` にSDKクライアントを接続する。
+Webの初期検索が揃ってから操作を許可するので、遅れた初回応答がユーザーの検索を
+上書きしない。破棄した接続の結果も画面へ反映しない。
+
+Webのテーマは `prefers-color-scheme`、ノッチは `src/web.css` の
+`env(safe-area-inset-*)` から同じCSS変数へ渡す。Webの全画面ボタンは出さない。
+Playwrightは専用Vite preview（3134）を直接開き、匿名MCP fixture（3131）へ
+同じoriginで中継する。地名は既存fixtureで返し、公開Nominatimへは出ない。
+
 ### MCP Apps の 2 部構成
 
 tool と resource を `_meta.ui.resourceUri` で結び付けるのが MCP Apps の基本形。
@@ -58,7 +72,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
 `outputSchema` を併記しないとホストに弾かれる。
 
 **重要:** UI が `app.callServerTool()` で呼んだ結果には `ontoolresult` が発火しない。
-戻り値から自分で `setPayload` する必要がある（[src/mcp-app.tsx](../src/mcp-app.tsx) の `call`）。
+戻り値から自分で `setPayload` する必要がある（[use-server-tools.ts](../src/hooks/use-server-tools.ts) の `call`）。
 `ontoolresult` はホスト（モデル）発の呼び出しにだけ来る。
 
 ブラウザの位置取得はMCP呼び出し前に始まるので、通信の通し番号だけでは古い操作を

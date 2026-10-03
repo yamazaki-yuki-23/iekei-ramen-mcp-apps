@@ -133,7 +133,10 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 | `server.ts`                   | MCP サーバー本体。7 つの UI 付き tool と補助 tool を登録          |
 | `worker.ts`                   | Cloudflare Workers エントリ（`/mcp` で Streamable HTTP を受ける） |
 | `main.ts`                     | ローカル実行エントリ（HTTP / stdio）                              |
-| `src/mcp-app.tsx`             | UI のシェル。モード切り替えと tool 呼び出し                       |
+| `src/mcp-app.tsx`             | MCP Apps の入口                                                   |
+| `src/web.tsx`                 | ブラウザで直接開く Web の入口                                     |
+| `src/iekei-app.tsx`           | 共通 UI。モード切り替え・選択・まわる店の状態                     |
+| `src/hosts/`                  | MCP Apps と Web の接続・tool 呼び出し・リンクの差し替え           |
 | `src/components/`             | 検索フォーム / 一覧 / 現在地パネル / 地図 / 迷ったら / まわる店   |
 | `src/lib/shortlist.ts`        | 「迷ったら」の 3 軒の選び方。おすすめ順は作らない                 |
 | `src/lib/route.ts`            | 「まわる店」の順番と距離、地図アプリへ渡す URL                    |

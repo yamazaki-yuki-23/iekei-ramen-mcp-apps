@@ -1,4 +1,4 @@
-import type { App } from "@modelcontextprotocol/ext-apps";
+import type { UiHost } from "../hosts/types";
 import { useCallback, useRef, useState } from "react";
 import { readPayload, readVisitResult } from "../lib/payload";
 import {
@@ -45,7 +45,7 @@ export interface SearchValues {
 }
 
 interface Options {
-  app: App;
+  app: UiHost;
   onPayload: (payload: AppPayload) => void;
   onNotice: (notice: string | null) => void;
   /** その店の詳細がモデルに届いたか。届いていなければ質問に詳細を同梱する。 */
