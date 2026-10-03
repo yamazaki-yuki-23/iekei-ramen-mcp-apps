@@ -8,6 +8,7 @@ import { VisitedPanel } from "./VisitedPanel";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
 const LOADING = "読み込み中…";
+const NEEDS_SEARCH = "条件が変わりました。検索ボタンを押してください。";
 const UNAVAILABLE = "結果を取得できませんでした。もう一度お試しください。";
 
 interface Props {
@@ -15,6 +16,8 @@ interface Props {
   payload: AppPayload;
   /** payload が今のモードのものか。揃うまで結果を出さない。 */
   ready: boolean;
+  /** 応答を待つ間に条件を編集したため、再検索が必要。 */
+  needsSearch: boolean;
   shops: Shop[];
   /** いま効いているキーワード（「迷ったら」のみ）。 */
   keyword?: string;
@@ -55,6 +58,7 @@ export function Results({
   mode,
   payload,
   ready,
+  needsSearch,
   shops,
   keyword,
   onClearKeyword,
@@ -103,7 +107,10 @@ export function Results({
    * 出してしまうと、地図の 558 件が「迷ったら」の候補として並び、
    * 「この 558 軒から選ぶ」ボタンまで押せてしまう。
    */
-  if (!ready) return <p className={styles.status}>{busy ? LOADING : UNAVAILABLE}</p>;
+  if (!ready) {
+    const status = busy ? LOADING : needsSearch && mode === "form" ? NEEDS_SEARCH : UNAVAILABLE;
+    return <p className={styles.status}>{status}</p>;
+  }
 
   if (mode === "visited") {
     return (

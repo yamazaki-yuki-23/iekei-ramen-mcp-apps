@@ -46,7 +46,8 @@ export interface SearchValues {
 
 interface Options {
   app: UiHost;
-  onPayload: (payload: AppPayload) => void;
+  /** 呼び出し開始時点の下書きとホスト更新を記録し、応答を反映する。 */
+  capturePayload: () => (payload: AppPayload) => boolean;
   onNotice: (notice: string | null) => void;
   /** その店の詳細がモデルに届いたか。届いていなければ質問に詳細を同梱する。 */
   awaitContext: (shop: Shop) => Promise<boolean>;
@@ -79,7 +80,7 @@ interface Options {
  */
 export function useServerTools({
   app,
-  onPayload,
+  capturePayload,
   onNotice,
   awaitContext,
   releaseSelection,
@@ -121,6 +122,7 @@ export function useServerTools({
    * 県を指しているのに候補は前の県のまま残り、そのままモデルへ送れてしまう。
    */
   const [stale, setStale] = useState(false);
+  const [needsSearch, setNeedsSearch] = useState(false);
   /** 一覧を差し替える呼び出しの通し番号。追い越しを捨てるために使う。 */
   const resultSeq = useRef(0);
 
@@ -141,6 +143,7 @@ export function useServerTools({
        * 素直に反映すると、後から選んだ条件が古い結果で上書きされ、payload から
        * 作り直されるフォームまで前の値に戻る（実際にそうなっていた）。
        */
+      const applyPayload = capturePayload();
       const seq = replacesResults ? (resultSeq.current += 1) : resultSeq.current;
       const superseded = () => replacesResults && seq !== resultSeq.current;
 
@@ -148,6 +151,7 @@ export function useServerTools({
       trackCall(1);
       setFailure(null);
       if (replacesResults) {
+        setNeedsSearch(false);
         setStale(true);
         /*
          * 一覧が入れ替わる時点で、開いていた店は候補ではなくなる。成功したときは
@@ -167,7 +171,7 @@ export function useServerTools({
           return result;
         }
         const next = readPayload(result);
-        if (next) onPayload(next);
+        if (next && !applyPayload(next)) setNeedsSearch(true);
         return result;
       } catch (e) {
         // 下調べの失敗は、isError のときと同じく呼んだ側が出す。
@@ -176,13 +180,13 @@ export function useServerTools({
         }
         return null;
       } finally {
-        // 反映（onPayload）と同じ流れで減らす。同じ描画にまとまるので、0 になった
+        // 反映（applyPayload）と同じ流れで減らす。同じ描画にまとまるので、0 になった
         // 画面には、この応答で起きることがすべて出ている。
         setInFlight((n) => n - 1);
         trackCall(-1);
       }
     },
-    [app, onPayload, releaseSelection, trackCall],
+    [app, capturePayload, releaseSelection, trackCall],
   );
 
   /**
@@ -525,6 +529,7 @@ export function useServerTools({
     asking,
     failure,
     stale,
+    needsSearch,
     runSearch,
     runArea,
     runDecide,

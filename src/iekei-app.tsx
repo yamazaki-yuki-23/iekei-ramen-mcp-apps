@@ -101,20 +101,44 @@ export function IekeiApp({
    */
   const [routeOrigin, setRouteOrigin] = useState<Origin | undefined>();
 
-  /**
-   * 訪問記録だけを差し替える。
-   *
-   * **payload ごと入れ替えない。** スタンプの結果は mode: "visited" で返るので、
-   * applyPayload に通すと Inner が key ごと作り直され、検索結果を見ていた人が
-   * 「行った店」の画面へ飛ばされる（選んでいた店も外れる）。押したのは
-   * 「行った」だけなので、変わるのは記録だけにする。
-   */
+  // 下書きは結果による再マウントをまたいで保持する。
+  const [form, setForm] = useState<FormValues>(() => initialForm(EMPTY_PAYLOAD.query));
+  const draftRevision = useRef(0);
+  const hostRevision = useRef(0);
+  const onForm = useCallback((next: FormValues) => {
+    draftRevision.current += 1;
+    setForm(next);
+  }, []);
 
-  const applyPayload = useCallback((next: AppPayload) => {
+  const replacePayload = useCallback((next: AppPayload) => {
     setPayload(next);
     setPayloadVersion((v) => v + 1);
     setSelected(null);
   }, []);
+
+  // ホストから届く新しい検索条件は、未送信の下書きより優先する。
+  const applyPayload = useCallback(
+    (next: AppPayload) => {
+      hostRevision.current += 1;
+      setForm(initialForm(next.query));
+      replacePayload(next);
+    },
+    [replacePayload],
+  );
+
+  // UI 呼び出しの開始時点を記録し、その後の入力を古い応答で上書きしない。
+  const capturePayload = useCallback(() => {
+    const draftAtStart = draftRevision.current;
+    const hostAtStart = hostRevision.current;
+    return (next: AppPayload) => {
+      if (hostRevision.current !== hostAtStart) return false;
+      // 条件が違う結果を下書きの隣に出さず、再検索まで既存の stale を維持する。
+      if (next.mode === "form" && draftRevision.current !== draftAtStart) return false;
+      setForm(initialForm(next.query));
+      replacePayload(next);
+      return true;
+    };
+  }, [replacePayload]);
 
   /**
    * 店を入れる。
@@ -180,7 +204,9 @@ export function IekeiApp({
             addStop={addStop}
             removeStop={removeStop}
             clearStops={clearStops}
-            applyPayload={applyPayload}
+            form={form}
+            onForm={onForm}
+            capturePayload={capturePayload}
             pendingCalls={pendingCalls}
             trackCall={trackCall}
             hostContextPatch={hostContextPatch}
@@ -206,7 +232,9 @@ interface ConnectedProps extends PresentationProps {
   addStop: (shop: Shop, origin?: Origin) => void;
   removeStop: (shop: Shop) => void;
   clearStops: () => void;
-  applyPayload: (payload: AppPayload) => void;
+  form: FormValues;
+  onForm: (form: FormValues) => void;
+  capturePayload: () => (payload: AppPayload) => boolean;
   pendingCalls: number;
   trackCall: (delta: 1 | -1) => void;
   hostContextPatch: McpUiHostContext | undefined;
@@ -229,7 +257,9 @@ function IekeiAppConnected({
   addStop,
   removeStop,
   clearStops,
-  applyPayload,
+  form,
+  onForm,
+  capturePayload,
   pendingCalls,
   trackCall,
   hostContextPatch,
@@ -375,7 +405,9 @@ function IekeiAppConnected({
       app={app}
       payload={payload ?? EMPTY_PAYLOAD}
       resultReceived={payload !== null}
-      onPayload={applyPayload}
+      form={form}
+      onForm={onForm}
+      capturePayload={capturePayload}
       notice={notice}
       onNotice={setNotice}
       selected={selected}
@@ -453,7 +485,9 @@ interface InnerProps extends PresentationProps {
   app: UiHost;
   payload: AppPayload;
   resultReceived: boolean;
-  onPayload: (payload: AppPayload) => void;
+  form: FormValues;
+  onForm: (form: FormValues) => void;
+  capturePayload: () => (payload: AppPayload) => boolean;
   /** 再マウントをまたいで残る案内メッセージ。 */
   notice: string | null;
   onNotice: (notice: string | null) => void;
@@ -491,7 +525,7 @@ function supportedAction<Action extends (...args: never[]) => unknown>(
 
 /**
  * payload ごとに key で作り直されるので、状態は props からそのまま初期化できる。
- * tool 結果が届くたびにモード・フォーム・選択状態が新しい payload に揃う。
+ * tool 結果が届くたびにモードを揃え、フォームの下書きは外側で保持する。
  */
 function IekeiAppInner({
   introduction,
@@ -499,7 +533,9 @@ function IekeiAppInner({
   app,
   payload,
   resultReceived,
-  onPayload,
+  form,
+  onForm,
+  capturePayload,
   notice,
   onNotice,
   selected,
@@ -518,10 +554,9 @@ function IekeiAppInner({
   hostContext,
 }: InnerProps) {
   // payload が変わるたび key で作り直されるので、ここは「初期値を 1 度だけ写す」形。
-  // 再同期しないことが前提なので、派生 state の警告はこの 2 つに限って外している。
+  // 再同期しないことが前提なので、派生 state の警告はモードの初期値に限って外している。
   // react-doctor-disable-next-line react-doctor/no-derived-useState
   const [mode, setMode] = useState<SearchMode>(payload.mode);
-  const [form, setForm] = useState<FormValues>(() => initialForm(payload.query));
 
   const {
     busy,
@@ -529,6 +564,7 @@ function IekeiAppInner({
     asking,
     failure,
     stale,
+    needsSearch,
     runSearch,
     runArea,
     runDecide,
@@ -547,7 +583,7 @@ function IekeiAppInner({
     askToSignIn,
   } = useServerTools({
     app,
-    onPayload,
+    capturePayload,
     onNotice,
     awaitContext,
     releaseSelection,
@@ -591,7 +627,7 @@ function IekeiAppInner({
     runSearch,
     bounds: payload.query.bounds,
     prefecture: payload.query.prefecture,
-    onForm: setForm,
+    onForm,
     runArea,
     runDecide,
     runNearby,
@@ -698,7 +734,7 @@ function IekeiAppInner({
         mode={mode}
         prefectures={payload.prefectures}
         form={form}
-        onForm={setForm}
+        onForm={onForm}
         onSubmit={runConditions}
         origin={payload.query.origin}
         onLocate={runNearby}
@@ -716,6 +752,7 @@ function IekeiAppInner({
         mode={mode}
         payload={payload}
         ready={payloadReady}
+        needsSearch={needsSearch}
         shops={shops}
         keyword={activeKeyword}
         onClearKeyword={() => runDecide(form, payload.query.origin, 0)}
