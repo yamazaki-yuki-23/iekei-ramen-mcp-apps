@@ -5,7 +5,7 @@ issue には**種類を必ず 1 つ**、**領域を 1 つ以上**付ける。
 一覧で系統が読めるようにするためのもの。ラベルの無い issue が 11 本たまり、
 後から全 28 本を付け直したことがある（#40〜#50）。
 
-issue は `/create-issue` で作る（[.claude/skills/create-issue/SKILL.md](../.claude/skills/create-issue/SKILL.md)）。
+issue は `/create-issue` で作る（[.agents/skills/create-issue/SKILL.md](../.agents/skills/create-issue/SKILL.md)）。
 スキルはこのファイルを毎回読むので、**決まりを変えるときはここだけ直す。**
 
 ## 種類（必ず 1 つ）

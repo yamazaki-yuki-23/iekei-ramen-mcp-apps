@@ -332,7 +332,7 @@ export function drawOrigin(layer: L.LayerGroup, origin: MapOrigin): void {
  * 順路の線と番号。
  *
  * 番号は divIcon（ただの HTML）で描く。Leaflet の既定アイコンは PNG を
- * 外部参照するので、単一 HTML に固められない（CLAUDE.md の制約）。
+ * 外部参照するので、単一 HTML に固められない（AGENTS.md の制約）。
  *
  * 戻り値は線が通る点。呼ぶ側がここへ寄せるのに使う。
  */
