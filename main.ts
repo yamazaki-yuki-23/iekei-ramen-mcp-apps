@@ -133,7 +133,15 @@ async function startHttp() {
 }
 
 if (process.argv.includes("--stdio")) {
-  await createServer().connect(new StdioServerTransport());
+  /*
+   * Claude Desktop はこの道で起動する。HTTP と同じく、偽のサインインと
+   * Nominatim の列を渡す（無いと会員の画面を出せず、地名検索は列を通らない）。
+   */
+  await createServer({
+    visitor: devVisitor ? { id: devVisitor } : null,
+    visits: devVisits,
+    nominatim: localNominatim,
+  }).connect(new StdioServerTransport());
 } else {
   await startHttp();
 }
