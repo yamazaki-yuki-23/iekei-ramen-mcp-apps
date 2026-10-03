@@ -18,6 +18,8 @@ const HEAD = "2222222bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 type Fixture = Record<string, unknown>;
 
+const completed = (sha: string) => `| Code Review | ✅ **Completed** | \`${sha.slice(0, 7)}\` |`;
+
 function run(fixture: Fixture) {
   const dir = mkdtempSync(join(tmpdir(), "wait-codex-"));
   const file = join(dir, "fixture.json");
@@ -90,11 +92,11 @@ describe("wait-codex-review.sh — 届いたかの見分け方", () => {
     expect(run(fixture).status).toBe(4);
   });
 
-  it("指摘ありは review の commit_id で届き、未返信の指摘を出す（exit 3）", () => {
+  it("指摘ありも総評の Completed 行で届き、未返信の指摘を出す（exit 3）", () => {
     const fixture = base({ at: "2026-10-03T10:05:00Z", thumbsUp: false });
-    fixture[`repos/${REPO}/pulls/${PR}/reviews`] = [
-      { commit_id: OLD, submitted_at: "2026-10-03T09:00:00Z", user: { login: BOT } },
-      { commit_id: HEAD, submitted_at: "2026-10-03T10:09:00Z", user: { login: BOT } },
+    fixture[`repos/${REPO}/issues/${PR}/comments`] = [
+      { id: 9, body: "@codex review", created_at: "2026-10-03T10:05:00Z", user: { login: "me" } },
+      { id: 10, updated_at: "2026-10-03T10:09:00Z", body: completed(HEAD), user: { login: BOT } },
     ];
     fixture[`repos/${REPO}/pulls/${PR}/comments`] = [
       {
@@ -142,5 +144,38 @@ describe("wait-codex-review.sh — 届いたかの見分け方", () => {
       { id: 9, body: "@codex review", created_at: "2026-10-03T10:30:00Z", user: { login: "me" } },
     ];
     expect(run(fixture).status).toBe(4);
+  });
+
+  it("返信のスレッドへの Codex の答え（review）は、届いた合図にしない", () => {
+    /*
+     * 返信の本文に「@codex」を書くと Codex がスレッドに答え、GitHub はそれを今の先頭への
+     * review として記録する。これを合図にして、3 分後に届いた本物の指摘を見落とした（PR #70）。
+     */
+    const fixture = base({ at: "2026-10-03T10:05:00Z", thumbsUp: false });
+    fixture[`repos/${REPO}/pulls/${PR}/reviews`] = [
+      { commit_id: HEAD, submitted_at: "2026-10-03T10:05:09Z", user: { login: BOT } },
+    ];
+    fixture[`repos/${REPO}/pulls/${PR}/comments`] = [
+      {
+        id: 5,
+        in_reply_to_id: 4,
+        body: "To use Codex here, create an environment",
+        user: { login: BOT },
+      },
+    ];
+    expect(run(fixture).status).toBe(4);
+  });
+
+  it("待っている間に PR の先頭が変わったら、指摘なしと言わない（exit 5）", () => {
+    // 古い先頭のレビューが届いても、新しい先頭は誰も見ていない。
+    const fixture = base({ at: "2026-10-03T10:05:00Z", thumbsUp: false });
+    fixture.pr = [{ headRefOid: HEAD }, { headRefOid: OLD }];
+    fixture[`repos/${REPO}/issues/${PR}/comments`] = [
+      { id: 9, body: "@codex review", created_at: "2026-10-03T10:05:00Z", user: { login: "me" } },
+      { id: 10, updated_at: "2026-10-03T10:09:00Z", body: completed(HEAD), user: { login: BOT } },
+    ];
+    const r = run(fixture);
+    expect(r.status).toBe(5);
+    expect(r.stdout).not.toContain("未返信の指摘: なし");
   });
 });
