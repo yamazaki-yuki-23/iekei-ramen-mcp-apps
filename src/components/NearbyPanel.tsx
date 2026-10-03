@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { originLabel } from "../lib/geo";
 import type { Origin, OriginSource } from "../lib/types";
 import { ORIGIN_NOTES } from "../lib/types";
@@ -60,12 +60,22 @@ export function NearbyPanel({
 }: Props) {
   const [place, setPlace] = useState("");
   const [status, setStatus] = useState<string | null>(null);
+  const operation = useRef(0);
+  useEffect(
+    () => () => {
+      // タブ移動・payloadの差し替えで、この画面から始めた位置取得を捨てる。
+      operation.current += 1;
+    },
+    [],
+  );
 
   // use 始まりにするとフックと見分けが付かない。これはクリックで走るただの関数。
   const startFromCurrentPosition = async () => {
+    const started = ++operation.current;
     setStatus("現在地を取得中…");
 
     const pos = await requestBrowserPosition();
+    if (operation.current !== started) return;
     if (pos) {
       setStatus(null);
       onLocate(pos.coords.latitude, pos.coords.longitude, "現在地", "precise");
@@ -76,21 +86,24 @@ export function NearbyPanel({
     // 結果の案内は親（再マウントされない側）が出すので、ここでは状態を畳むだけ。
     setStatus("おおよその現在地で検索中…");
     await onLocateByHost();
-    setStatus(null);
+    if (operation.current === started) setStatus(null);
   };
 
   const searchPlace = async () => {
     const q = place.trim();
     if (!q) return;
+    const started = ++operation.current;
     setStatus(`「${q}」を検索中…`);
     let hit;
     try {
       hit = await onSearchPlace(q);
     } catch (e) {
+      if (operation.current !== started) return;
       // 理由（連打止め・Nominatim の不調）はサーバーの文をそのまま出す。
       setStatus(e instanceof Error ? e.message : String(e));
       return;
     }
+    if (operation.current !== started) return;
     if (!hit) {
       setStatus(`「${q}」が見つかりませんでした。`);
       return;

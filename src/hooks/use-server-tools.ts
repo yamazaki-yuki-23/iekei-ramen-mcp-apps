@@ -387,7 +387,11 @@ export function useServerTools({
    * ChatGPT のように iframe の geolocation が塞がれたホスト向けの経路。
    */
   const runNearbyByHost = useCallback(async () => {
+    const started = resultSeq.current + 1;
+    onNotice(null);
     const result = await call("find-nearby-iekei-ramen", { limit: 5 });
+    // 結果を捨てるときは、再マウントをまたいで残る案内も更新しない。
+    if (resultSeq.current !== started) return false;
     const located = Boolean((result && readPayload(result))?.query.origin);
     onNotice(located ? null : "現在地を取得できませんでした。下の欄に地名を入力してください。");
     return located;
