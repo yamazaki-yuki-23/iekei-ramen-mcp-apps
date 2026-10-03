@@ -108,7 +108,7 @@ export function Results({
    * 「この 558 軒から選ぶ」ボタンまで押せてしまう。
    */
   if (!ready) {
-    const status = busy ? LOADING : needsSearch ? NEEDS_SEARCH : UNAVAILABLE;
+    const status = busy ? LOADING : needsSearch && mode === "form" ? NEEDS_SEARCH : UNAVAILABLE;
     return <p className={styles.status}>{status}</p>;
   }
 

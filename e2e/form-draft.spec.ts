@@ -100,6 +100,13 @@ for (const web of [true, false]) {
       await expect(
         app.getByText("条件が変わりました。検索ボタンを押してください。", { exact: true }),
       ).toBeVisible();
+      // 再検索の案内は、検索ボタンがあるフォームにだけ表示する。
+      await app.getByRole("tab", { name: "現在地から" }).click();
+      await expect(
+        app.getByText("条件が変わりました。検索ボタンを押してください。", { exact: true }),
+      ).toHaveCount(0);
+      await app.getByRole("tab", { name: "検索フォーム" }).click();
+      await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
       await app.getByRole("button", { name: "検索", exact: true }).click();
       await expect(app.locator("button[data-shop-id]")).toHaveCount(200);
     } finally {
