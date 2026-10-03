@@ -20,6 +20,14 @@ tool は 8 つ。UI 付き 7 つ（`search-iekei-ramen` / `find-nearby-iekei-ram
 `stamp-iekei-ramen` / `show-visited-iekei-ramen` / `forget-my-iekei-ramen-visits`）、
 UI 無しの `geocode-place`。
 
+地名検索は、Nominatim への送信開始から応答本文の読込完了まで合計 10 秒で打ち切る
+（`GEOCODE_RESPONSE_TIMEOUT_MS`）。本番・手元の `GeocodeGate` は期限切れに
+外部通信をキャンセルし、共有している問い合わせを 504 で完了して控えから外す。
+次の同じ地名は新しく試行できる。MCP 側は枠待ち最大 3 秒を加えた 13 秒で
+Gate 自体の待ちも打ち切り、期限切れは「見つからない」と分けて再試行を案内する。
+Gate のない直接検索にも本文を含む 10 秒の期限がある。接続元の連打制限・全体の
+1.1 秒の送信間隔・7 日の KV キャッシュは維持する。
+
 ### UI へのデータ受け渡し
 
 `structuredContent` に `PayloadSchema`（[src/lib/schema.ts](../src/lib/schema.ts)）の形で載せる。

@@ -6,6 +6,7 @@ import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createServer, normalizePlaceQuery, type ServerDeps } from "../server";
+import { GeocodeGate } from "../src/lib/geocode-gate";
 
 const YOKOHAMA = [{ display_name: "横浜駅, 西区, 横浜市", lat: "35.466", lon: "139.622" }];
 
@@ -39,9 +40,108 @@ async function connect(deps: ServerDeps) {
   return (query: string) => client.callTool({ name: "geocode-place", arguments: { query } });
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe("geocode-place", () => {
+  it("ローカルの Gate 経由でも期限切れを案内し、次の検索は新しく送る", async () => {
+    let signal: AbortSignal | undefined;
+    const upstream = vi.fn(async (request: Request) => {
+      if (upstream.mock.calls.length > 1) return Response.json(YOKOHAMA);
+      signal = request.signal;
+      return new Promise<Response>(() => {});
+    });
+    vi.stubGlobal("fetch", upstream);
+    const gate = new GeocodeGate({
+      storage: { get: async () => undefined, put: async () => {} } as never,
+    });
+    const geocode = await connect({ nominatim: (url, init) => gate.fetch(new Request(url, init)) });
+    vi.useFakeTimers({ now: 50_000 });
+    const completed: unknown[] = [];
+    const pending = geocode("横浜駅").then((result) => {
+      completed.push(result);
+      return result;
+    });
+    await vi.waitFor(() => expect(upstream).toHaveBeenCalledTimes(1));
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(completed).toHaveLength(1);
+    const result = await pending;
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain("もう一度");
+    expect(signal?.aborted).toBe(true);
+    vi.useRealTimers();
+    expect((await geocode("横浜駅")).isError).toBeFalsy();
+    expect(upstream).toHaveBeenCalledTimes(2);
+  });
+
+  it("共通送り口自体が止まっても 13 秒で待ちを中止する", async () => {
+    let signal: AbortSignal | null | undefined;
+    const gateway = vi.fn(async (_url: string, init: RequestInit) => {
+      signal = init.signal;
+      return new Promise<Response>(() => {});
+    });
+    const geocode = await connect({ nominatim: gateway });
+    vi.useFakeTimers();
+    const completed: unknown[] = [];
+    const pending = geocode("横浜駅").then((result) => {
+      completed.push(result);
+      return result;
+    });
+    await vi.waitFor(() => expect(gateway).toHaveBeenCalledTimes(1));
+    await vi.advanceTimersByTimeAsync(13_000);
+    expect(completed).toHaveLength(1);
+    expect((await pending).isError).toBe(true);
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it.each(["headers", "body"] as const)(
+    "ローカルの %s 待ちを期限で中止し、未発見と区別して再試行できる",
+    async (phase) => {
+      let signal: AbortSignal | null | undefined;
+      const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+        if (fetchMock.mock.calls.length > 1) return Response.json(YOKOHAMA);
+        signal = init?.signal;
+        if (phase === "headers") return new Promise<Response>(() => {});
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode("["));
+              signal?.addEventListener("abort", () => controller.error(signal?.reason), {
+                once: true,
+              });
+            },
+          }),
+        );
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const cache = memoryKv();
+      const geocode = await connect({ geocodeCache: cache });
+      vi.useFakeTimers();
+      const completed: unknown[] = [];
+      const pending = geocode("横浜駅").then((result) => {
+        completed.push(result);
+        return result;
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      // crypto.subtle.digest は偽時計の外で完了する。
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(completed).toHaveLength(1);
+      const result = await pending;
+      expect(result.isError).toBe(true);
+      expect(JSON.stringify(result.content)).toContain("時間");
+      expect(JSON.stringify(result.content)).toContain("もう一度");
+      expect(JSON.stringify(result.content)).not.toContain("見つかりません");
+      expect(signal?.aborted).toBe(true);
+      expect(cache.store.size).toBe(0);
+      vi.useRealTimers();
+      expect((await geocode("横浜駅")).isError).toBeFalsy();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    },
+  );
+
   it.each(["get", "put"] as const)("KV の %s が失敗しても取得した座標を返す", async (operation) => {
     const fetchMock = stubNominatim();
     const cache = memoryKv();

@@ -22,6 +22,12 @@ import { z } from "zod";
 import shopsData from "./data/shops.json" with { type: "json" };
 import { APP_HTML } from "./src/generated/app-html.ts";
 import { distanceKm, formatDistance, originLabel } from "./src/lib/geo.ts";
+import { GEOCODE_MAX_WAIT_MS } from "./src/lib/geocode-gate.ts";
+import {
+  GEOCODE_RESPONSE_TIMEOUT_MS,
+  GeocodeTimeoutError,
+  withGeocodeTimeout,
+} from "./src/lib/geocode-timeout.ts";
 import { summarize as summarizeVisits } from "./src/lib/progress.ts";
 import { RECORDS_WITHOUT_SHOPS } from "./src/lib/visited-view.ts";
 import { BoundsSchema, PayloadSchema } from "./src/lib/schema.ts";
@@ -463,6 +469,16 @@ const NOMINATIM_USER_AGENT =
 /** 地名は変わらないので長めに持つ。ポリシーの例も 7 日単位。 */
 const GEOCODE_TTL_SECONDS = 7 * 24 * 60 * 60;
 
+/** Gate の送信枠待ち最大 3 秒と、外部応答・本文の最大 10 秒を合わせる。 */
+const GEOCODE_GATE_CALL_TIMEOUT_MS = GEOCODE_MAX_WAIT_MS + GEOCODE_RESPONSE_TIMEOUT_MS;
+
+const geocodeTimeoutResult = (): CallToolResult => ({
+  content: [
+    { type: "text", text: "地名の検索に時間がかかったため中止しました。もう一度お試しください。" },
+  ],
+  isError: true,
+});
+
 type GeocodeHit = { label: string; lat: number; lon: number };
 
 const GeocodeCacheSchema = z.array(
@@ -863,11 +879,32 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           limit: "3",
           "accept-language": "ja",
         });
-        const res = await (deps.nominatim ?? fetch)(
-          `https://nominatim.openstreetmap.org/search?${params}`,
-          { headers: { "User-Agent": NOMINATIM_USER_AGENT } },
-        );
+        let res: {
+          ok: boolean;
+          status: number;
+          results: Array<{ display_name: string; lat: string; lon: string }>;
+        };
+        try {
+          res = await withGeocodeTimeout(
+            async (signal) => {
+              const response = await (deps.nominatim ?? fetch)(
+                `https://nominatim.openstreetmap.org/search?${params}`,
+                { headers: { "User-Agent": NOMINATIM_USER_AGENT }, signal },
+              );
+              return {
+                ok: response.ok,
+                status: response.status,
+                results: response.ok ? await response.json() : [],
+              };
+            },
+            deps.nominatim ? GEOCODE_GATE_CALL_TIMEOUT_MS : GEOCODE_RESPONSE_TIMEOUT_MS,
+          );
+        } catch (error) {
+          if (error instanceof GeocodeTimeoutError) return geocodeTimeoutResult();
+          throw error;
+        }
         if (!res.ok) {
+          if (res.status === 504) return geocodeTimeoutResult();
           return {
             content: [
               {
@@ -881,11 +918,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
             isError: true,
           };
         }
-        const results = (await res.json()) as Array<{
-          display_name: string;
-          lat: string;
-          lon: string;
-        }>;
+        const results = res.results;
         hits = results.map((r) => ({
           label: r.display_name,
           lat: Number(r.lat),
