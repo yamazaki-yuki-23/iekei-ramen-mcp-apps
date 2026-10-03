@@ -13,7 +13,7 @@
  * 決定的なので、同じ条件なら毎回同じ並びになり、テストもできる。
  */
 import { distanceKm, originLabel } from "./geo";
-import type { DecideInfo, Origin, Shop } from "./types";
+import { CONFIDENCE, type DecideInfo, type Origin, type Shop } from "./types";
 
 /** 1 巡で見せる軒数。3 を超えると、また選べなくなる。 */
 export const SHORTLIST_SIZE = 3;
@@ -103,6 +103,7 @@ export function shortlist(
     poolTotal: ordered.length,
     basis: opts.origin ? "distance" : "hours",
     widened,
+    includesLikely: pool.some((shop) => shop.confidence === "likely"),
   };
 }
 
@@ -122,7 +123,12 @@ export function describeBasis(
     info.basis === "distance"
       ? `${origin ? originLabel(origin) : "基準地点"}から近い順`
       : "営業時間が分かる店から順";
-  const scope = info.widened ? "「家系か未判定」も含めて" : "家系と分かっている店にしぼって";
+  // 旧結果は母集団の内訳が無いので、全件 confirmed と断定しない。
+  const scope = info.widened
+    ? `「${CONFIDENCE.candidate.label}」も含めて`
+    : info.includesLikely !== false
+      ? `「${CONFIDENCE.confirmed.label}」「${CONFIDENCE.likely.label}」の店にしぼって`
+      : "家系と分かっている店にしぼって";
   // 効いている絞り込みは必ず書く。書かないと、候補が減っていても理由が
   // どこにも出ない（キーワード欄はこのモードに無い）。
   const filtered = keyword ? `「${keyword}」に合う` : "";

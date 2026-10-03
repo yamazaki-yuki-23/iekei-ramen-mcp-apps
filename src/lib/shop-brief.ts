@@ -1,5 +1,6 @@
 import { formatDistance } from "./geo";
-import { CONFIDENCE, TASTES, type Shop } from "./types";
+import { dataCaveats, describeTaste } from "./data-caveats";
+import { CONFIDENCE, TASTES, type DecideInfo, type Shop } from "./types";
 
 /**
  * 選択した店をモデルに渡すためのテキスト。
@@ -18,11 +19,7 @@ export function describeShop(shop: Shop): string {
 
   if (shop.brand) lines.push(`ブランド: ${shop.brand}`);
 
-  lines.push(
-    shop.taste === "unknown"
-      ? "味の傾向: 情報なし（推測で補わないこと）"
-      : `味の傾向: ${TASTES[shop.taste].label}（既知ブランドからの参考値。実食に基づくものではない）`,
-  );
+  lines.push(`味の傾向: ${describeTaste(shop.taste)}`);
 
   if (shop.openingHours) lines.push(`営業時間: ${shop.openingHours}（OSM 由来。変わることがある）`);
   if (shop.phone) lines.push(`電話: ${shop.phone}`);
@@ -72,7 +69,12 @@ export function askMessageText(shop: Shop, contextDelivered: boolean): string {
  * 引きずられる。消せなかったときは、文面の側で明示的に打ち消す。
  * 既定値は置かない。呼び出し側が結果を見ずに送るのを、型で止めるため。
  */
-export function decideMessageText(shops: Shop[], basis: string, cleared: boolean): string {
+export function decideMessageText(
+  shops: Shop[],
+  basis: string,
+  cleared: boolean,
+  info: DecideInfo | undefined,
+): string {
   const lines = shops.map((s, i) => {
     const where = [s.prefecture, s.city, s.address].filter(Boolean).join(" ");
     const dist = s.distanceKm !== undefined ? ` / ${formatDistance(s.distanceKm)}` : "";
@@ -116,8 +118,8 @@ export function decideMessageText(shops: Shop[], basis: string, cleared: boolean
     "",
     "理由に使っていいのは上の情報だけです（家系判定の段階・味の傾向・距離・営業時間）。",
     "味の濃さ・混雑・行列・評判・口コミは、このアプリのデータには含まれていません。",
-    "推測で補わず、分からないことは分からないと言ってください。味の傾向は既知ブランドからの",
-    "参考値で、実食に基づくものではありません。",
+    "推測で補わず、分からないことは分からないと言ってください。",
+    dataCaveats(shops, info),
     ...alternatives,
   ].join("\n");
 }

@@ -149,4 +149,6 @@ export interface DecideInfo {
   basis: "distance" | "hours";
   /** 「家系か未判定」まで含めないと 3 軒に届かなかった。 */
   widened: boolean;
+  /** 今回の表示分だけでなく、母集団に「家系の可能性」が入っている。旧結果では未指定。 */
+  includesLikely?: boolean;
 }

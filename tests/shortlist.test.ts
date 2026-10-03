@@ -137,6 +137,30 @@ describe("shortlist", () => {
 });
 
 describe("describeBasis", () => {
+  it("母集団の内訳がない旧結果を全件 confirmed と断定しない", () => {
+    const { includesLikely: _includesLikely, ...legacy } = shortlist([shop("a")]);
+    expect(describeBasis(legacy, 1)).toContain("家系の可能性");
+    expect(describeBasis(legacy, 1)).not.toContain("家系と分かっている");
+  });
+
+  it("likely の 1 軒を確定扱いせず、可能性を含む母集団と伝える", () => {
+    const list = shortlist([shop("likely", { confidence: "likely" })]);
+    const text = describeBasis(list, 1);
+    expect(text).toContain("家系の可能性");
+    expect(text).not.toContain("家系と分かっている");
+  });
+
+  it("今回の 3 軒が confirmed だけでも母集団の likely を説明する", () => {
+    const list = shortlist([
+      shop("a"),
+      shop("b"),
+      shop("c"),
+      shop("likely", { confidence: "likely" }),
+    ]);
+    expect(list.picks.every((s) => s.confidence === "confirmed")).toBe(true);
+    expect(describeBasis(list, 3)).toContain("家系の可能性");
+  });
+
   it("基準地点があれば、その名前と近い順であることを書く", () => {
     const list = shortlist([atKmNorth("a", 1), atKmNorth("b", 2), atKmNorth("c", 3)], {
       origin: ORIGIN,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { askMessageText, decideMessageText, describeShop } from "../src/lib/shop-brief";
 import type { Shop } from "../src/lib/types";
+import { CONFIDENCE } from "../src/lib/types";
 
 const YOSHIMURAYA: Shop = {
   id: "node/604269583",
@@ -84,11 +85,42 @@ describe("askMessageText", () => {
 });
 
 describe("decideMessageText", () => {
+  it.each(["likely", "candidate"] as const)(
+    "今回の候補外の %s も母集団の注意書きへ含める",
+    (confidence) => {
+      const info = {
+        round: 0,
+        rounds: 2,
+        poolTotal: 4,
+        basis: "hours" as const,
+        widened: confidence === "candidate",
+        includesLikely: confidence === "likely",
+      };
+      const text = decideMessageText([YOSHIMURAYA], "母集団 4 軒", true, info);
+      expect(text).toContain(CONFIDENCE[confidence].description);
+      expect(text).toContain("断定しないでください");
+    },
+  );
+
+  it.each(["likely", "candidate"] as const)(
+    "UI から渡す %s の候補にも判定の意味を添える",
+    (confidence) => {
+      const text = decideMessageText(
+        [{ ...YOSHIMURAYA, confidence, taste: "unknown" }],
+        "候補 1 軒",
+        true,
+        undefined,
+      );
+      expect(text).toContain(CONFIDENCE[confidence].description);
+      expect(text).toContain("推測で補わない");
+    },
+  );
+
   const SHOPS = [YOSHIMURAYA, { ...YOSHIMURAYA, id: "node/2", name: "王道家" }];
   const BASIS = "家系と分かっている店にしぼって 79 軒を営業時間が分かる店から順に並べました。";
 
   it("消せたなら、前の選択の話はしない", () => {
-    const text = decideMessageText(SHOPS, BASIS, true);
+    const text = decideMessageText(SHOPS, BASIS, true, undefined);
     expect(text).toContain("この 2 軒まで絞りました");
     expect(text).not.toContain("直前に UI で選んでいた店");
   });
@@ -99,7 +131,7 @@ describe("decideMessageText", () => {
      * 残ったままになる。「この店を選んだ」と「この中から選んで」が同時に届き、
      * 答えが開いていた店に引きずられるので、文面の側で打ち消す。
      */
-    const text = decideMessageText(SHOPS, BASIS, false);
+    const text = decideMessageText(SHOPS, BASIS, false, undefined);
     expect(text).toContain("直前に UI で選んでいた店");
     expect(text).toContain("無視して、上の候補だけから選んでください");
     // 依頼より先に置く。後ろに付けると、読み飛ばされて効かない。

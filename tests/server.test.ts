@@ -9,6 +9,8 @@ import { createServer } from "../server";
 import shopsData from "../data/shops.json" with { type: "json" };
 import { SHORTLIST_SIZE } from "../src/lib/shortlist";
 import type { AppPayload } from "../src/lib/types";
+import { CONFIDENCE } from "../src/lib/types";
+import { PayloadSchema } from "../src/lib/schema";
 
 /**
  * **データに出てくる数字をテストへ焼き込まない。**
@@ -46,6 +48,55 @@ function prefectureWithPartialLastRound(): { prefecture: string; lastRound: numb
 }
 
 let client: Client;
+
+describe("判定と味の但し書き", () => {
+  it("今回の候補が confirmed だけでも母集団の likely の注意書きを渡す", async () => {
+    const { payload, text } = await callApp("decide-iekei-ramen");
+    expect(payload.shops.every((shop) => shop.confidence === "confirmed")).toBe(true);
+    expect(payload.decide?.includesLikely).toBe(true);
+    expect(text).toContain(CONFIDENCE.likely.description);
+    expect(text).toContain("断定しないでください");
+  });
+
+  it("母集団の likely をモデルと UI 用のスキーマの両方で保持する", async () => {
+    const likely = shopsData.find((s) => s.confidence === "likely")!;
+    const result = await callApp("decide-iekei-ramen", { keyword: likely.name });
+    expect(PayloadSchema.parse(result.payload).decide?.includesLikely).toBe(true);
+    expect(result.text).toContain("家系の可能性");
+    expect(result.text).not.toContain("家系と分かっている店にしぼって");
+  });
+
+  it.each(["search-iekei-ramen", "show-iekei-ramen-map"])(
+    "%s は地図の記載による推定と未判定を分ける",
+    async (tool) => {
+      const likely = shopsData.find((s) => s.confidence === "likely")!;
+      const { text } = await callApp(
+        tool,
+        tool === "show-iekei-ramen-map"
+          ? { prefecture: likely.prefecture }
+          : { keyword: likely.name },
+      );
+      expect(text).toContain(CONFIDENCE.likely.description);
+      expect(text).not.toContain("店名からの推定");
+      const candidate = shopsData.find((s) => s.confidence === "candidate")!;
+      const result = await callApp(
+        tool,
+        tool === "show-iekei-ramen-map"
+          ? { prefecture: candidate.prefecture }
+          : { keyword: candidate.name },
+      );
+      expect(result.text).toContain(CONFIDENCE.candidate.description);
+    },
+  );
+
+  it("モデル向け検索にも実食ではない参考値と、情報なしを補わない指示を添える", async () => {
+    const known = await callApp("search-iekei-ramen", { keyword: "町田商店" });
+    expect(known.text).toContain("既知ブランドからの参考値");
+    expect(known.text).toContain("実食に基づくものではありません");
+    const unknown = await callApp("search-iekei-ramen", { prefecture: "鹿児島県" });
+    expect(unknown.text).toContain("推測で補わない");
+  });
+});
 
 beforeAll(async () => {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
