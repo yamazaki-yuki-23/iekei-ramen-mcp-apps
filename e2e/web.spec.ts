@@ -29,6 +29,8 @@ test("Webを直接開いて検索・現在地・地図・まわる店を使え�
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
   expect(page.frames()).toHaveLength(1);
 
+  await page.getByRole("tab", { name: "検索フォーム" }).click();
+  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
   await page.getByLabel("キーワード").fill("吉村");
   await page.getByRole("button", { name: "検索", exact: true }).click();
   const search = await tool(request, "search-iekei-ramen", { keyword: "吉村" });

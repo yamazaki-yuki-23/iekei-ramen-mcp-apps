@@ -24,6 +24,8 @@ interface Props {
   mutating: boolean;
   /** 記録またはサインインの導線があるホストだけ、訪問記録を出す。 */
   visitsAvailable?: boolean;
+  /** 入口で前に出すモード。現在のタブに合わせて並べ直さない。 */
+  primaryMode?: SearchMode;
 }
 
 /**
@@ -34,22 +36,34 @@ interface Props {
  * 追い越しは呼び出し側が捨てる（[use-server-tools](../hooks/use-server-tools.ts)
  * の通し番号）。
  */
-export function ModeTabs({ mode, onChange, mutating, visitsAvailable = true }: Props) {
+export function ModeTabs({
+  mode,
+  onChange,
+  mutating,
+  visitsAvailable = true,
+  primaryMode = "form",
+}: Props) {
+  const modes = [
+    ...MODES.filter(({ key }) => key === primaryMode),
+    ...MODES.filter(({ key }) => key !== primaryMode),
+  ];
   return (
     <div className={styles.tabs} role="tablist">
-      {MODES.filter(({ key }) => key !== "visited" || visitsAvailable).map(({ key, label }) => (
-        <button
-          key={key}
-          type="button"
-          role="tab"
-          aria-selected={mode === key}
-          className={`${styles.tab} ${mode === key ? styles.tabActive : ""}`}
-          onClick={() => onChange(key)}
-          disabled={mutating}
-        >
-          {label}
-        </button>
-      ))}
+      {modes
+        .filter(({ key }) => key !== "visited" || visitsAvailable)
+        .map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={mode === key}
+            className={`${styles.tab} ${mode === key ? styles.tabActive : ""}`}
+            onClick={() => onChange(key)}
+            disabled={mutating}
+          >
+            {label}
+          </button>
+        ))}
     </div>
   );
 }

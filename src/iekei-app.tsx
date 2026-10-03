@@ -23,6 +23,7 @@ import {
   type ComponentType,
   type Dispatch,
   type SetStateAction,
+  type ReactNode,
 } from "react";
 import { ModeControls } from "./components/ModeControls";
 import { ModeTabs } from "./components/ModeTabs";
@@ -44,7 +45,16 @@ import type { AppPayload, Origin, SearchMode, Shop, VisitResult } from "./lib/ty
 import styles from "./mcp-app.module.css";
 import type { HostConnectionProps, UiHost } from "./hosts/types";
 
-export function IekeiApp({ Connection }: { Connection: ComponentType<HostConnectionProps> }) {
+interface PresentationProps {
+  introduction?: ReactNode;
+  primaryMode?: SearchMode;
+}
+
+export function IekeiApp({
+  Connection,
+  introduction,
+  primaryMode,
+}: { Connection: ComponentType<HostConnectionProps> } & PresentationProps) {
   const [payload, setPayload] = useState<AppPayload | null>(null);
   // payload が差し替わるたびに増える。Inner の key にして状態を初期化する。
   const [payloadVersion, setPayloadVersion] = useState(0);
@@ -155,6 +165,8 @@ export function IekeiApp({ Connection }: { Connection: ComponentType<HostConnect
           <p className={styles.status}>読み込み中…</p>
         ) : (
           <IekeiAppConnected
+            introduction={introduction}
+            primaryMode={primaryMode}
             app={host}
             payload={payload}
             payloadVersion={payloadVersion}
@@ -180,7 +192,7 @@ export function IekeiApp({ Connection }: { Connection: ComponentType<HostConnect
   );
 }
 
-interface ConnectedProps {
+interface ConnectedProps extends PresentationProps {
   app: UiHost;
   payload: AppPayload | null;
   payloadVersion: number;
@@ -202,6 +214,8 @@ interface ConnectedProps {
 }
 
 function IekeiAppConnected({
+  introduction,
+  primaryMode,
   app,
   payload,
   payloadVersion,
@@ -356,6 +370,8 @@ function IekeiAppConnected({
   return (
     <IekeiAppInner
       key={payloadVersion}
+      introduction={introduction}
+      primaryMode={primaryMode}
       app={app}
       payload={payload ?? EMPTY_PAYLOAD}
       resultReceived={payload !== null}
@@ -433,7 +449,7 @@ function formatCount(total: number, shown: number): string {
   return total > shown ? `${total} 件（${shown} 件表示）` : `${total} 件`;
 }
 
-interface InnerProps {
+interface InnerProps extends PresentationProps {
   app: UiHost;
   payload: AppPayload;
   resultReceived: boolean;
@@ -478,6 +494,8 @@ function supportedAction<Action extends (...args: never[]) => unknown>(
  * tool 結果が届くたびにモード・フォーム・選択状態が新しい payload に揃う。
  */
 function IekeiAppInner({
+  introduction,
+  primaryMode,
   app,
   payload,
   resultReceived,
@@ -666,11 +684,14 @@ function IekeiAppInner({
         {count ? <span className={styles.count}>{count}</span> : null}
       </div>
 
+      {introduction}
+
       <ModeTabs
         mode={mode}
         onChange={switchMode}
         mutating={mutating}
         visitsAvailable={visitsAvailable}
+        primaryMode={primaryMode}
       />
 
       <ModeControls

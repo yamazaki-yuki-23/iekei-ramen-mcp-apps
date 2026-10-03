@@ -41,7 +41,7 @@ export function WebConnection({ onPayload, children }: HostConnectionProps) {
           new StreamableHTTPClientTransport(new URL("/mcp", window.location.href)),
         );
         if (!active) return;
-        const result = await client.callTool({ name: "search-iekei-ramen", arguments: {} });
+        const result = await client.callTool({ name: "decide-iekei-ramen", arguments: {} });
         if (!active) return;
         const payload = readPayload(result);
         if (result.isError || !payload) throw new Error("検索結果を読み込めませんでした。");

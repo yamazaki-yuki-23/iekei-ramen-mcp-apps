@@ -37,6 +37,18 @@ Webでは3軒の候補・次の候補・店舗詳細・注文カンペ・まわ�
 モデルへの文脈送信は行わず、訪問記録のボタンとタブは#38のサインイン対応まで出さない。
 MCP Appsの会話・サインイン・記録の操作と文言は維持する。
 
+Webの初回toolは `decide-iekei-ramen`。最初から3候補を表示し、「迷ったら」を
+先頭のタブにする。入口の `introduction` と `primaryMode` だけが見た目を指定し、
+MCP Appsの既定の入口とタブ順は変えない。「家系とは」は3行の一般論から用語と
+同じOrderGuideへ進める。表示できた時点でlocalStorageへ既読を保存し、再訪時は
+畳む。保存が使えない場合は毎回開くだけで、検索を止めない。開閉状態はWebの入口が
+持つので、検索結果の更新で説明が勝手に畳まれない。
+
+一般論の確認先：[杉田家公式](https://ramensugitaya.com/menu/)、
+[町田商店公式](https://www.machidashoten.com/index.html)、
+[用語の説明](https://iekei.jp/about-iekei-ramen/lineage)。
+用語は呼び方の説明に限り、店舗データに直系などの認定を追加しない。
+
 ### MCP Apps の 2 部構成
 
 tool と resource を `_meta.ui.resourceUri` で結び付けるのが MCP Apps の基本形。
