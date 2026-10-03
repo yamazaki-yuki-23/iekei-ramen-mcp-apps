@@ -17,6 +17,12 @@ case "${args[0]} ${args[1]}" in
   "pr view") path="pr" ;;
 esac
 value=$(jq -c --arg p "$path" '.[$p] // empty' "$FAKE_GH_FIXTURE")
+# "pr" を配列にすると、呼ばれるたびに次の値を返す（待っている間の push を作る）。
+if [ "$path" = pr ] && [ "${value:0:1}" = "[" ]; then
+  n=$(cat "$FAKE_GH_FIXTURE.n" 2>/dev/null || echo 0)
+  value=$(echo "$value" | jq -c --argjson n "$n" '.[[$n, length - 1] | min]')
+  echo $((n + 1)) > "$FAKE_GH_FIXTURE.n"
+fi
 [ -n "$value" ] || { echo "fake gh: 未定義の道 $path" >&2; exit 1; }
 [ "$slurp" = 1 ] && value="[$value]"
 expr=${jqexpr:-${q:-.}}

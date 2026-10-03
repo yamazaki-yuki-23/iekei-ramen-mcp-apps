@@ -525,6 +525,9 @@ Cloudflare 側の確認は `npm run dev:worker`。バンドルサイズは gzip 
 **main にマージすると本番へ自動で出る。** CI の `deploy` ジョブが、テストが通ってから
 `wrangler deploy` を実行し、`/health` が 200 を返すまで確認する。
 認証はリポジトリのシークレット（`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`）。
+**このトークンには「ゾーン → Workers ルート → 編集」（`iekeiramen.com`）も要る。** アカウントの
+権限だけだと、Worker の upload は通るのに、続くゾーンのルートの読み取りで
+「No access to the specified resource」になり、デプロイが失敗する（実測: #70 のマージ後）。
 
 手元から出したいときだけ `npm run deploy`。戻すときは `npx wrangler rollback`。
 
