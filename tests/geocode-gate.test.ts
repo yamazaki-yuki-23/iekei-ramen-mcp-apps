@@ -48,6 +48,48 @@ describe("GeocodeGate", () => {
     vi.unstubAllGlobals();
   });
 
+  it.each(["headers", "body"] as const)(
+    "%s が止まっても同時検索を期限で終え、同じ地名を再試行できる",
+    async (phase) => {
+      let signal: AbortSignal | undefined;
+      const upstream = vi.fn(async (request: Request) => {
+        if (upstream.mock.calls.length > 1) return Response.json([]);
+        signal = request.signal;
+        if (phase === "headers") return new Promise<Response>(() => {});
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode("["));
+              request.signal.addEventListener(
+                "abort",
+                () => controller.error(request.signal.reason),
+                { once: true },
+              );
+            },
+          }),
+        );
+      });
+      vi.stubGlobal("fetch", upstream);
+      const gate = new GeocodeGate(memoryStorage());
+      const statuses: number[] = [];
+      const first = ask(gate, "横浜駅").then((response) => statuses.push(response.status));
+      await vi.advanceTimersByTimeAsync(100);
+      const second = ask(gate, "横浜駅").then((response) => statuses.push(response.status));
+      await vi.advanceTimersByTimeAsync(9899);
+      expect(statuses).toEqual([]);
+      expect(upstream).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(statuses).toEqual([504, 504]);
+      expect(signal?.aborted).toBe(true);
+      await Promise.all([first, second]);
+      const again = ask(gate, "横浜駅");
+      await vi.advanceTimersByTimeAsync(0);
+      expect((await again).status).toBe(200);
+      expect(upstream).toHaveBeenCalledTimes(2);
+      expect(vi.getTimerCount()).toBe(0);
+    },
+  );
+
   it("同じ瞬間に来た問い合わせを、送る時刻で 1.1 秒ずつ空ける", async () => {
     /*
      * **待ち時間を返すのではなく、ここから送る。** 呼び出し元に待たせて送らせると、

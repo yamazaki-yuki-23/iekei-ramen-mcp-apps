@@ -7,6 +7,8 @@
  * 取らせれば、どの拠点から来ても同じ列に並ぶ。
  */
 
+import { GeocodeTimeoutError, withGeocodeTimeout } from "./geocode-timeout";
+
 /** 間隔。1 秒ちょうどにすると、時計のずれで 1 秒に 2 回と数えられうる。 */
 export const GEOCODE_SPACING_MS = 1100;
 
@@ -142,11 +144,14 @@ export class GeocodeGate {
      */
     // 本文の読み込みも囲む。応答の頭が届いたあとに切れることもある。
     try {
-      const res = await fetch(request);
-      // 失敗のときは状態だけ返す。受け取る側（server.ts）は、失敗の本文を読まない。
-      return { status: res.status, body: res.ok ? await res.text() : "" };
-    } catch {
-      return { status: 502, body: "" };
+      return await withGeocodeTimeout(async (signal) => {
+        // 同じ地名の利用者で共有する通信は、Gate 自身の期限でキャンセルする。
+        const res = await fetch(new Request(request, { signal }));
+        // 失敗のときは状態だけ返す。受け取る側は、失敗の本文を読まない。
+        return { status: res.status, body: res.ok ? await res.text() : "" };
+      });
+    } catch (error) {
+      return { status: error instanceof GeocodeTimeoutError ? 504 : 502, body: "" };
     }
   }
 
