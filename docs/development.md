@@ -352,6 +352,13 @@ data URI にすること。
 | E2E             | `e2e/`   | 実ブラウザ + basic-host + 実サーバーで 3 モードを操作        |
 
 `npm run e2e` は `e2e-host/` に MCP Apps SDK の basic-host を取得して使う。
+版は `package-lock.json` の `@modelcontextprotocol/ext-apps` と同じタグに固定する。
+`npm run e2e:setup` は既存 checkout のコミットと、依存・ビルド状態、両 HTML の
+ハッシュを検証する。SDK の版が変われば checkout を更新し、上流の lockfile で
+`npm ci` して再ビルドする。レジストリの最新版は参照しない。
+未コミットの tracked ファイルがある場合は上書きせず、その場所を示して停止する。
+検証済みの状態は `e2e-host/setup-state.json` に保存し、CI は SDK の固定版・
+セットアップスクリプト・lockfile・Node 版をキーにキャッシュする。
 
 - **ドット始まりのディレクトリに置かないこと。** express の `sendFile` が dotfile 扱いで
   404 を返すため、`.e2e/` ではなく `e2e-host/` にしている。

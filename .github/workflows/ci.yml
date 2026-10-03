@@ -87,12 +87,16 @@ jobs:
       - run: npm ci
 
       # 検証ホスト（MCP Apps SDK の basic-host）を取得・ビルドする
+      - name: Read E2E host version
+        id: e2e-host-version
+        run: echo "version=$(node scripts/setup-e2e.mjs --version)" >> "$GITHUB_OUTPUT"
+
       - name: Cache E2E host
         id: cache-e2e-host
         uses: actions/cache@v5
         with:
           path: e2e-host
-          key: e2e-host-${{ hashFiles('scripts/setup-e2e.mjs') }}-${{ hashFiles('package-lock.json') }}
+          key: e2e-host-${{ steps.e2e-host-version.outputs.version }}-${{ hashFiles('scripts/setup-e2e.mjs', 'package-lock.json', '.nvmrc') }}
 
       - name: Set up E2E host
         run: npm run e2e:setup
