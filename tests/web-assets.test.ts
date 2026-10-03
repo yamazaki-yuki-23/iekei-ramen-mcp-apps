@@ -46,13 +46,51 @@ describe("workerdのWeb静的配信と既存API", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("text/html");
     const html = await response.text();
-    expect(html).toContain("家系ラーメンを探す");
+    expect(html).toContain("家系ラーメンを地図で探す｜迷ったら3軒に絞れる");
     const paths = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
     expect(paths.some((p) => p.endsWith(".js"))).toBe(true);
     expect(paths.some((p) => p.endsWith(".css"))).toBe(true);
     const responses = await Promise.all(paths.map((p) => request(p)));
     for (const asset of responses) expect(asset.status).toBe(200);
   });
+
+  it.each(["facebookexternalhit/1.1", "Twitterbot/1.0"])(
+    "%sにJS実行不要のリンク情報と静的PNGを配信する",
+    async (userAgent) => {
+      const response = await request("/", { headers: { "User-Agent": userAgent } });
+      expect(response.status).toBe(200);
+      const html = await response.text();
+      const metadata = new Map(
+        [...html.matchAll(/<meta\b[^>]*>/g)].map(([tag]) => [
+          tag.match(/\b(?:name|property)="([^"]+)"/)?.[1],
+          tag.match(/\bcontent="([^"]+)"/)?.[1],
+        ]),
+      );
+      expect(metadata.get("description")).toContain("地図データをもとにした推定です。");
+      expect(metadata.get("og:title")).toBe("家系ラーメンを地図で探す｜迷ったら3軒に絞れる");
+      expect(metadata.get("og:description")).toBe(
+        "今日の家系、決められない人へ。迷ったら3軒まで絞ります。",
+      );
+      expect(metadata.get("og:type")).toBe("website");
+      expect(metadata.get("og:url")).toBe("https://iekeiramen.com/");
+      expect(metadata.get("twitter:card")).toBe("summary_large_image");
+      const imageUrl = metadata.get("og:image");
+      expect(imageUrl).toBe("https://iekeiramen.com/og-card.png");
+      expect(metadata.get("twitter:image")).toBe(imageUrl);
+      expect(metadata.get("og:image:alt")).toBeTruthy();
+      const image = await request(new URL(imageUrl!).pathname, {
+        headers: { "User-Agent": userAgent },
+      });
+      expect(image.status).toBe(200);
+      expect(image.headers.get("Content-Type")).toContain("image/png");
+      const bytes = new Uint8Array(await image.arrayBuffer());
+      expect(bytes.slice(0, 8)).toEqual(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]));
+      const png = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      expect(png.getUint32(16)).toBe(Number(metadata.get("og:image:width")));
+      expect(png.getUint32(20)).toBe(Number(metadata.get("og:image:height")));
+      expect([png.getUint32(16), png.getUint32(20)]).toEqual([1200, 630]);
+    },
+  );
 
   it("APIへのHTMLナビゲーションでも静的ファイルを返さない", async () => {
     const init = { headers: { Accept: "text/html", "Sec-Fetch-Mode": "navigate" } };
