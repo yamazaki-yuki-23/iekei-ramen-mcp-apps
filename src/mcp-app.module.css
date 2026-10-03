@@ -653,6 +653,32 @@
   padding: 0 var(--space-4) var(--space-4);
 }
 
+.introLines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.introLines p {
+  margin: 0;
+}
+
+.introTerms {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.introTerms dt {
+  font-weight: var(--font-weight-bold);
+}
+
+.introTerms dd {
+  margin: 0;
+}
+
 .guideTable {
   width: 100%;
   border-collapse: collapse;
