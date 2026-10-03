@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createOAuthHarness } from "./fixtures/oauth-harness";
@@ -7,7 +7,7 @@ const ORIGIN = "http://localhost";
 const REDIRECT = "https://client.test/callback";
 const VERIFIER = "local-test-verifier-abcdefghijklmnopqrstuvwxyz0123456789";
 const CHALLENGE = createHash("sha256").update(VERIFIER).digest("base64url");
-const harness = createOAuthHarness();
+const { harness, close } = createOAuthHarness();
 
 const request = (path: string, init?: RequestInit) =>
   harness.fetch(`${ORIGIN}${path}`, { ...init, redirect: "manual" });
@@ -53,8 +53,8 @@ beforeAll(async () => {
   await harness.getWorker().applyD1Migrations("VISITS");
 }, 60_000);
 afterAll(async () => {
-  await harness.close();
-});
+  await close();
+}, 30_000);
 
 describe("workerdでのクライアントごとの同意", () => {
   it("URL形式のクライアントIDはHTTPSスキームの大小文字で表示が変わらない", async () => {
@@ -222,8 +222,40 @@ describe("workerdでのクライアントごとの同意", () => {
       return { status: response.status, visited: message.result.structuredContent.visited };
     };
     expect((await call("stamp-iekei-ramen", { shopId, visited: true }, "")).status).toBe(401);
+    expect(
+      (await call("stamp-iekei-ramen", { shopId, visited: true }, "forged-token")).status,
+    ).toBe(401);
+    expect(
+      (await call("stamp-iekei-ramen", { shopId, visited: true }, `${token}tampered`)).status,
+    ).toBe(401);
     expect((await call("stamp-iekei-ramen", { shopId, visited: true })).visited).toContain(shopId);
+    const env = await harness.getWorker<{ VISITS: D1Database }>().getEnv();
+    const stored = await env.VISITS.prepare("SELECT user_id, shop_id FROM visits").all();
+    // Googleの本人確認からtokenのprops、Worker、MCP、D1まで同じ利用者が届く。
+    const expectedId = createHmac("sha256", "local-test-pepper")
+      .update("local-consent-user")
+      .digest("hex");
+    expect(stored.results).toEqual([{ user_id: expectedId, shop_id: shopId }]);
     expect((await call("show-visited-iekei-ramen")).visited).toContain(shopId);
     expect((await call("forget-my-iekei-ramen-visits", { confirm: true })).visited).toEqual([]);
+  });
+
+  it("未登録clientのtoken要求を拒否し、訪問記録を作らない", async () => {
+    const response = await request("/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: "unregistered-client",
+        code: "forged-code",
+        redirect_uri: REDIRECT,
+        code_verifier: VERIFIER,
+        resource: `${ORIGIN}/mcp`,
+      }),
+    });
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ error: "invalid_client" });
+    const env = await harness.getWorker<{ VISITS: D1Database }>().getEnv();
+    expect((await env.VISITS.prepare("SELECT * FROM visits").all()).results).toEqual([]);
   });
 });
