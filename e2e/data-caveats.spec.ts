@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "./fixtures";
 import { CONFIDENCE } from "../src/lib/types";
 import { TASTE_REFERENCE_NOTE, TASTE_UNKNOWN_NOTE } from "../src/lib/data-caveats";
 import { callTool, waitForApp } from "./helpers";

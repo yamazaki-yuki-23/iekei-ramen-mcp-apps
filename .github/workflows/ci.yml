@@ -108,15 +108,18 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: E2E tests
+        id: e2e-tests
         run: npx playwright test --shard=${{ matrix.shard }}/3
 
-      # レポートは失敗を追うためのもの。成功したときは作られないので、
-      # 常にアップロードしようとすると「ファイルが無い」と警告が出る。
+      # 再試行で成功した初回失敗も保存する。HTMLと全試行のtrace/画像/JSONを一緒に残す。
       - uses: actions/upload-artifact@v5
-        if: failure()
+        if: always() && (steps.e2e-tests.outcome == 'success' || steps.e2e-tests.outcome == 'failure')
         with:
           name: playwright-report-${{ matrix.shard }}
-          path: playwright-report/
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: error
           retention-days: 7
 
   e2e:

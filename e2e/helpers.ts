@@ -4,7 +4,7 @@
  * アプリはサンドボックス iframe の中で動くので、操作対象は
  * ネストした frameLocator になる。ここでその出入りを吸収する。
  */
-import { expect, type FrameLocator, type Locator, type Page } from "@playwright/test";
+import { expect, test, type FrameLocator, type Locator, type Page } from "@playwright/test";
 
 /** E2E が使う MCP サーバーの名乗り。playwright.config が環境変数で渡している。 */
 const E2E_SERVER_NAME = "Iekei Ramen Finder (E2E)";
@@ -42,11 +42,13 @@ export async function callTool(
   /** どのサーバーで呼ぶか。会員機能は MEMBER_SERVER_NAME を指す。 */
   server?: string,
 ): Promise<FrameLocator> {
-  await page.goto("/");
-  await selectTestServer(page, server);
-  await page.locator("select").nth(1).selectOption(name);
-  await page.locator("textarea").fill(JSON.stringify(args));
-  await page.getByRole("button", { name: "Call Tool" }).click();
+  await test.step(`ホスト: ${name}を呼び出す`, async () => {
+    await page.goto("/");
+    await selectTestServer(page, server);
+    await page.locator("select").nth(1).selectOption(name);
+    await page.locator("textarea").fill(JSON.stringify(args));
+    await page.getByRole("button", { name: "Call Tool" }).click();
+  });
   return appFrame(page);
 }
 
@@ -55,18 +57,46 @@ export function appFrame(page: Page): FrameLocator {
   return page.frameLocator("iframe").first().frameLocator("iframe").first();
 }
 
-/** アプリの読み込み完了（タブが出るまで）を待つ。 */
-export async function waitForApp(app: FrameLocator) {
-  await expect(app.getByRole("tab", { name: "検索フォーム" })).toBeVisible();
+/** 初期画面を除き、tool結果と選択モードが揃うまで期限付きで待つ。 */
+export async function waitForApp(app: FrameLocator, timeoutMs = 15_000) {
+  let mode: string | null = null;
+  await test.step("アプリ: tool結果の受信と選択モードを確認", async () => {
+    await expect
+      .poll(
+        async () => {
+          try {
+            // 1回のブラウザ評価で読む。別のframe解決を挟んで初期画面と結果を混ぜない。
+            mode = await app.locator('main[data-tool-result-ready="true"]').evaluate(
+              (main) => {
+                const tab = main.querySelector('[role="tab"][aria-selected="true"]');
+                return tab && tab.getClientRects().length > 0
+                  ? main.getAttribute("data-mode")
+                  : null;
+              },
+              undefined,
+              { timeout: Math.min(timeoutMs, 1000) },
+            );
+          } catch {
+            // frameの差し替えも、準備待ちの期限内だけ待ち直す。
+            mode = null;
+          }
+          return mode;
+        },
+        { timeout: timeoutMs, message: "アプリのtool結果を受信して準備完了になること" },
+      )
+      .not.toBeNull();
+  });
   /*
    * **地図で開いたときは、最初の寄せ直しが終わるまでを「準備できた」とする。**
    * 開いた直後に結果の全体へ寄せ直すアニメーションが走り、その途中で塊を押すと、
    * 押した寄せが後から上書きされる（実測: CI で 4 worker を同時に動かすと、
    * 塊を押しても開いた直後の画角のまま範囲を読み、4 本が落ちた）。
    */
-  if ((await app.getByRole("tab", { name: "地図から探す", selected: true }).count()) > 0) {
-    await expect(app.locator(".leaflet-map-pane")).toBeAttached();
-    await waitForMapSettled(app);
+  if (mode === "map") {
+    await test.step("地図: 初期寄せと描画の完了を確認", async () => {
+      await expect(app.locator(".leaflet-map-pane")).toBeAttached();
+      await waitForMapSettled(app);
+    });
   }
 }
 

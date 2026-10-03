@@ -292,6 +292,7 @@ function IekeiApp() {
       key={payloadVersion}
       app={app}
       payload={payload ?? EMPTY_PAYLOAD}
+      resultReceived={payload !== null}
       onPayload={applyPayload}
       notice={notice}
       onNotice={setNotice}
@@ -369,6 +370,7 @@ function formatCount(total: number, shown: number): string {
 interface InnerProps {
   app: App;
   payload: AppPayload;
+  resultReceived: boolean;
   onPayload: (payload: AppPayload) => void;
   /** 再マウントをまたいで残る案内メッセージ。 */
   notice: string | null;
@@ -404,6 +406,7 @@ interface InnerProps {
 function IekeiAppInner({
   app,
   payload,
+  resultReceived,
   onPayload,
   notice,
   onNotice,
@@ -574,6 +577,8 @@ function IekeiAppInner({
       className={styles.main}
       style={safeAreaStyle(hostContext?.safeAreaInsets)}
       data-pending-calls={pendingCalls}
+      data-tool-result-ready={resultReceived}
+      data-mode={mode}
     >
       <div className={styles.header}>
         <div className={styles.headerMain}>

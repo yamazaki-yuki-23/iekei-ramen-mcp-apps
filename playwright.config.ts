@@ -66,10 +66,15 @@ export default defineConfig({
   workers: process.env.CI ? 4 : undefined,
   retries: process.env.CI ? 2 : 0,
   /*
-   * CI では GitHub の注釈に加えて HTML レポートも出す。落ちたときに
-   * アップロードして中身を追うためで、成功したときは使わない。
+   * CIでは全試行のHTMLとJSONを残す。retryで成功した初回失敗も追えるようにする。
    */
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
+  reporter: process.env.CI
+    ? [
+        ["github"],
+        ["html", { open: "never" }],
+        ["json", { outputFile: "test-results/results.json" }],
+      ]
+    : [["list"]],
   use: {
     baseURL: `http://localhost:${HOST_PORT}`,
     trace: "retain-on-failure",

@@ -5,7 +5,8 @@
  * 一方で、両方の画面を同時には出せない。サインイン済みの側は偽の利用者で
  * 動いている（`IEKEI_DEV_VISITOR`。main.ts にしか無い道）。
  */
-import { expect, test, type FrameLocator, type Page } from "@playwright/test";
+import { expect, type FrameLocator, type Page } from "@playwright/test";
+import { test } from "./fixtures";
 import {
   afterDelivered,
   callTool,

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "./fixtures";
 import { createOAuthHarness } from "../tests/fixtures/oauth-harness";
 
 test("許可画面は明暗・狭い画面でも44px以上のボタンとキーボードの焦点を保つ", async ({ page }) => {

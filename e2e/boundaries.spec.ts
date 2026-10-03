@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "./fixtures";
 import { callTool, E2E_SERVER_URL, shopCards, shopId, waitForApp } from "./helpers";
 
 test.beforeEach(async ({ page }) => {

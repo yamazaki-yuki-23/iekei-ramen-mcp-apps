@@ -4,7 +4,8 @@
  * **押せることより、押した順に効くことが大事。** 追い越しを捨て損ねると、
  * 古い応答が後から届いて、押したタブから勝手に引き戻される。
  */
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { test } from "./fixtures";
 import { afterDelivered, callTool, E2E_SERVER_URL, waitForApp } from "./helpers";
 
 type PositionOutcome = "success" | "denied" | "timeout";
