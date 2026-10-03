@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createTestHarness, unstable_readConfig } from "wrangler";
 
-export function createOAuthHarness() {
-  const { compatibility_date, compatibility_flags } = unstable_readConfig(
+export function createOAuthHarness(assetsDirectory?: string) {
+  const { compatibility_date, compatibility_flags, assets } = unstable_readConfig(
     { config: fileURLToPath(new URL("../../wrangler.jsonc", import.meta.url)) },
     { hideWarnings: true },
   );
@@ -20,6 +20,7 @@ export function createOAuthHarness() {
           main: fileURLToPath(new URL("./oauth-worker.ts", import.meta.url)),
           compatibility_date,
           compatibility_flags,
+          ...(assetsDirectory ? { assets: { ...assets, directory: assetsDirectory } } : {}),
           kv_namespaces: [{ binding: "OAUTH_KV", id: "test-kv" }],
           d1_databases: [
             {

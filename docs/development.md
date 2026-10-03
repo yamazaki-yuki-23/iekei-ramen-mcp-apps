@@ -4,6 +4,19 @@
 
 ## アーキテクチャ
 
+### Web の静的ページ
+
+`npm run dev:worker` を実行し、Wranglerが表示するURLの `/` を開く。
+既存の3031・8080はそのまま使い、Wrangler用の空いているポートを使う。
+`/mcp` は同じoriginのMCPエンドポイントで、認可・メタデータ・health・whereamiも
+Workerが返す。`wrangler.jsonc` の `assets.run_worker_first` にその経路を並べている。
+
+`npm run build:ui` はMCP用の単一HTMLを埋め込んだ後、`index.html` と
+`src/web.tsx` を `dist/web/` にビルドする。CIと通常のデプロイも同じコマンドを使う。
+Static Assetsはこのディレクトリだけを配信するので、MCPの埋め込みHTMLやソースは配信しない。
+未定義のURLには404を返し、MCPや認可の誤ったURLにWebのHTMLを返さない。
+本番は#41の決定に従い `https://iekeiramen.com/`。workers.devは再開しない。
+
 ### MCP Apps の 2 部構成
 
 tool と resource を `_meta.ui.resourceUri` で結び付けるのが MCP Apps の基本形。

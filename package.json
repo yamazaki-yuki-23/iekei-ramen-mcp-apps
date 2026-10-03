@@ -14,7 +14,7 @@
     "data:rescore": "node scripts/rescore.mjs",
     "data:areas": "node scripts/fill-areas.mjs",
     "data:build": "node scripts/build-dataset.mjs",
-    "build:ui": "cross-env NODE_ENV=production vite build && node scripts/embed-html.mjs",
+    "build:ui": "cross-env NODE_ENV=production vite build && node scripts/embed-html.mjs && cross-env NODE_ENV=production vite build --mode web",
     "build": "npm run build:ui && tsc --noEmit",
     "dev": "cross-env NODE_ENV=development npm run build:ui && tsx main.ts",
     "dev:worker": "npm run build:ui && wrangler dev",
