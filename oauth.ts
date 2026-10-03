@@ -16,7 +16,8 @@
  *
  * 人の身元確認は Google に委ねる。**パスワードは受け取らないし保存もしない。**
  */
-import type { OAuthAuthorizationServer } from "@cloudflare/workers-oauth-provider";
+import type { ClientInfo, OAuthAuthorizationServer } from "@cloudflare/workers-oauth-provider";
+import { CONSENT_CSS } from "./src/generated/app-html";
 
 /**
  * 認可サーバーは**使うときに初めて読み込む**。
@@ -165,10 +166,8 @@ export function signInChallenge(origin: string, headers: Record<string, string> 
 }
 
 /**
- * `/authorize`。ホストから来た認可要求を預けて、Google のサインインへ送る。
- *
- * 同意画面は出さない。**ここで聞けることが無いため**——渡す権限は「スタンプを
- * 付ける」1 つだけで、選択肢の無い画面はクリックを 1 回増やすだけになる。
+ * `/authorize`。本人確認の前に、どのクライアントへ記録の操作を許すか確認する。
+ * 同意は毎回求める。Googleでの本人確認とクライアントへの許可は別の判断。
  */
 export async function startSignIn(
   request: Request,
@@ -176,12 +175,48 @@ export async function startSignIn(
   origin: string,
 ): Promise<Response> {
   const api = (await loadAuthServer(origin)).getOAuthApi(env);
-  const headers = new Headers();
   try {
-    // 受け付けから Google へ送り出すまでを一続きで囲う。KV の読み書きで
-    // つまずいたときも、ホストには理由の分かる返事が届く。
-    const authRequest = await api.parseAuthRequest(request);
-    const upstream = await api.beginUpstream(authRequest, { headers });
+    if (request.method === "GET") {
+      const authRequest = await api.parseAuthRequest(request);
+      const client = await api.lookupClient(authRequest.clientId);
+      if (!client) return new Response("クライアントを確認できませんでした", { status: 400 });
+      const consent = await api.beginConsent(authRequest);
+      const nonce = crypto.randomUUID();
+      consent.headers.set("Content-Type", "text/html; charset=utf-8");
+      consent.headers.set(
+        "Content-Security-Policy",
+        `default-src 'none'; style-src 'nonce-${nonce}'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
+      );
+      const host = new URL(authRequest.redirectUri).hostname;
+      return new Response(
+        consentPage(client, host, publisherHostOf(client.clientId), consent.handle, nonce),
+        {
+          headers: consent.headers,
+        },
+      );
+    }
+    if (request.method !== "POST") {
+      return new Response("GET または POST を使ってください", {
+        status: 405,
+        headers: { Allow: "GET, POST" },
+      });
+    }
+    // Cookieによるブラウザ束縛に加え、別originからのフォーム送信も拒否する。
+    const requestOrigin = request.headers.get("Origin");
+    if (requestOrigin && requestOrigin !== origin)
+      return new Response("許可画面から操作してください", { status: 403 });
+    const form = await request.formData().catch(() => null);
+    if (!form) return new Response("許可画面のフォームから操作してください", { status: 400 });
+    const handle = String(form.get("handle") ?? "");
+    const decision = form.get("decision");
+    if (decision === "deny") {
+      const denied = await api.denyConsent(request, handle);
+      return new Response(null, { status: 302, headers: denied.headers });
+    }
+    if (decision !== "approve") return new Response("許可か拒否を選んでください", { status: 400 });
+    // client・戻り先・stateはフォームから受け取らず、検証済みの要求を復元する。
+    const approved = await api.approveConsent(request, handle, { scope: [STAMP_SCOPE] });
+    const upstream = await api.beginUpstream(approved.request, { headers: approved.headers });
 
     const to = new URL(GOOGLE_AUTH);
     to.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
@@ -190,11 +225,47 @@ export async function startSignIn(
     // 欲しいのは「同じ人か」だけ。メールも名前も保存しないが、sub を得るのに要る。
     to.searchParams.set("scope", "openid");
     to.searchParams.set("state", upstream.state);
-    headers.set("Location", to.toString());
-    return new Response(null, { status: 302, headers });
+    upstream.headers.set("Location", to.toString());
+    return new Response(null, { status: 302, headers: upstream.headers });
   } catch (error) {
     return authorizeFailure(error);
   }
+}
+
+/** 自己申告のクライアント名やhandleをHTMLとして解釈させない。 */
+const escapeHtml = (value: string) =>
+  value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+
+function publisherHostOf(clientId: string): string | null {
+  try {
+    const url = new URL(clientId);
+    return url.protocol === "https:" ? url.hostname : null;
+  } catch {
+    // 動的登録のIDはURLではない。名前は接続元の自己申告として表示する。
+    return null;
+  }
+}
+
+function consentPage(
+  client: ClientInfo,
+  host: string,
+  publisherHost: string | null,
+  handle: string,
+  nonce: string,
+): string {
+  const name = escapeHtml(client.clientName ?? client.clientId);
+  const local = /^(localhost|127(\.\d{1,3}){3}|\[::1\])$/.test(host);
+  const publisher = publisherHost
+    ? `公開元: ${escapeHtml(publisherHost)}`
+    : "クライアント名は接続元の自己申告で、運営者の確認を意味しません。";
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>訪問記録へのアクセスを許可</title><style nonce="${nonce}">${CONSENT_CSS}</style></head><body><main>
+<h1>「${name}」に訪問記録へのアクセスを許可しますか？</h1>
+<p>${publisher}</p><p>戻り先のホスト: <strong>${escapeHtml(host)}</strong></p>
+${local ? "<p>この端末上のアプリに権限を渡します。そのアプリからサインインを始めた場合だけ許可してください。</p>" : ""}
+<p>許可すると、このクライアントは次の操作ができます。</p><ul><li>訪問記録と制覇率の閲覧</li><li>訪問印の追加・変更・取り消し</li><li>訪問記録の全削除</li></ul>
+<p>次のGoogleへのサインインは本人確認のためです。匿名での店舗検索には許可は不要です。</p>
+<form method="post" action="/authorize"><input type="hidden" name="handle" value="${escapeHtml(handle)}"><button name="decision" value="approve">許可してGoogleへ進む</button> <button name="decision" value="deny">拒否する</button></form>
+</main></body></html>`;
 }
 
 /**
@@ -262,7 +333,11 @@ export async function finishSignIn(
   origin: string,
 ): Promise<Response> {
   const api = (await loadAuthServer(origin)).getOAuthApi(env);
-  const resumed = await api.finishUpstream(request);
+  const resumed = await api.finishUpstream(request).catch((error: unknown) => {
+    // 不正なstateや別ブラウザのcallbackはローカルのエラーとして扱う。
+    return authorizeFailure(error);
+  });
+  if (resumed instanceof Response) return resumed;
 
   /*
    * **ここから先の失敗は、ホストへ返す。**

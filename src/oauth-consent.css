@@ -1,0 +1,69 @@
+/* ホスト外で開く認可画面。global.cssのトークンをビルド時に同梱する。 */
+body {
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+main {
+  max-width: 40rem;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+h1 {
+  font-size: var(--font-heading-lg-size);
+  line-height: var(--font-heading-lg-line-height);
+}
+
+h1,
+p,
+ul {
+  margin: 0;
+}
+
+ul {
+  padding-inline-start: var(--space-6);
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+button {
+  min-height: var(--control-min-size);
+  min-width: var(--control-min-size);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width-regular) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: var(--font-heading-sm-size);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--color-surface-muted);
+}
+
+button[value="approve"] {
+  border-color: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
+  background: var(--color-accent-fill);
+}
+
+button[value="approve"]:hover {
+  background: var(--color-accent-fill-hover);
+}
+
+button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--color-focus-edge);
+}
