@@ -30,7 +30,7 @@ gh issue view <番号> --comments
 - **本文が仕様の正本。** 全文とコメントを読む。決まったこと（「残さない」など）がコメントに足されていることがある
 - 依頼の文に追加の条件があれば、本文より優先する（例:「スクリーンショットは issue のコメントに残す」）
 - 依存関係で止められていないか見る（`blocked by` が開いていれば、先にそちらを片付けるか聞く）
-- CLAUDE.md のうち、触る領域の節を読み直す
+- AGENTS.md と、その参照先 docs/development.md のうち、触る領域の節を読み直す
 
 ### 2. オーナーの操作が要るかを先に洗い出す
 
@@ -57,7 +57,7 @@ git checkout main && git pull && git checkout -b <短い英語のブランチ名
 
 ### 4. 検証一式
 
-CLAUDE.md の「コマンド」にあるものを全部。結果は最後の行まで読む（oxlint は警告でも 0 を返したことがある）。
+AGENTS.md の「コマンド」にあるものを全部。結果は最後の行まで読む（oxlint は警告でも 0 を返したことがある）。
 
 ```bash
 npm run format && npm run lint && npm run typecheck && npm run knip && npm test

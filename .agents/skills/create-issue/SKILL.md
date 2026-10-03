@@ -7,7 +7,7 @@ description: "このリポジトリの GitHub issue を、テンプレートの�
 
 issue を、**テンプレートの型で、種類 1 つ・領域 1 つ以上のラベル付きで、段階（マイルストーン）を付けて**作るスキル。
 
-issue を作るのは Claude Code だけ。ここを通らずに `gh issue create` を直接叩くと、
+Claude Code と Codex のどちらでも、このスキルを使う。ここを通らずに `gh issue create` を直接叩くと、
 ラベルの無い issue がたまる（実際に 11 本たまり、全 28 本を付け直した）。
 
 ## 決まりはここに書かない
@@ -27,7 +27,7 @@ cat .github/LABELS.md
 gh api 'repos/{owner}/{repo}/milestones?state=open' --jq 'sort_by(.number)[] | "\(.title): \(.description)"'
 ```
 
-対応順の持たせ方（マイルストーン・依存関係・サブ issue）は CLAUDE.md の
+対応順の持たせ方（マイルストーン・依存関係・サブ issue）は AGENTS.md の
 「次にやる issue の探し方」にある。
 
 ## 手順

@@ -4,16 +4,16 @@ dist/
 data/osm-raw.json
 src/generated/
 .dev.vars
-# Claude Code の手元の設定は残さない。ただしこのリポジトリ用のスキルはリポジトリに置く
-# ——ほかの作業場所（git worktree）からも同じ手順で作れるように。ディレクトリごと
-# 外すと中のファイルを戻せないので、中身を外してから戻す。
+# 個人設定は残さず、共通スキルの正本とClaude向けの相対リンクを追跡する。
 .claude/*
 !.claude/skills/
 .claude/skills/*
-!.claude/skills/create-issue/
-!.claude/skills/codex-review-loop/
-!.claude/skills/squash-and-merge/
-!.claude/skills/ship-issue/
+!.claude/skills/create-issue
+!.claude/skills/codex-review-loop
+!.claude/skills/squash-and-merge
+!.claude/skills/ship-issue
+!.claude/skills/react-doctor
+.codex/
 e2e-host/
 test-results/
 playwright-report/

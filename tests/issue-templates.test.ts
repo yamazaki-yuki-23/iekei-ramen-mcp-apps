@@ -5,7 +5,8 @@
  * エラーはどこにも出ないので、ここで形を確かめる。種類ラベルは LABELS.md の
  * 「種類」の表にあるものに限る（/create-issue が両方を読んで突き合わせるため）。
  */
-import { readdirSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import YAML from "yaml";
 
@@ -93,7 +94,7 @@ describe("issue のテンプレート", () => {
 describe("/create-issue スキル", () => {
   it("先頭の設定が YAML として読める", () => {
     const skill = readFileSync(
-      new URL("../.claude/skills/create-issue/SKILL.md", import.meta.url),
+      new URL("../.agents/skills/create-issue/SKILL.md", import.meta.url),
       "utf8",
     );
     const frontmatter = skill.split(/^---$/m)[1] ?? "";
@@ -105,7 +106,7 @@ describe("/create-issue スキル", () => {
 
 describe("/create-issue の手順", () => {
   const skill = readFileSync(
-    new URL("../.claude/skills/create-issue/SKILL.md", import.meta.url),
+    new URL("../.agents/skills/create-issue/SKILL.md", import.meta.url),
     "utf8",
   );
 
@@ -156,7 +157,7 @@ describe("リポジトリに置くスキル", () => {
   it.each(names)("%s は位置引数（ドル記号と数字）を書かない", (name) => {
     // 引数付きで呼ぶと本文の `$1` が置き換わる（上の create-issue で踏んだ）。
     const skill = readFileSync(
-      new URL(`../.claude/skills/${name}/SKILL.md`, import.meta.url),
+      new URL(`../.agents/skills/${name}/SKILL.md`, import.meta.url),
       "utf8",
     );
     expect(skill).not.toMatch(/\$(?:\d|ARGUMENTS\b)/);
@@ -165,16 +166,27 @@ describe("リポジトリに置くスキル", () => {
   it.each(names)("%s は先頭の設定が YAML として読め、名前が合っている", (name) => {
     // 引用符なしの `Use when: …` は厳密な YAML で読めず、スキルとして見つからなくなる。
     const skill = readFileSync(
-      new URL(`../.claude/skills/${name}/SKILL.md`, import.meta.url),
+      new URL(`../.agents/skills/${name}/SKILL.md`, import.meta.url),
       "utf8",
     );
     const parsed = YAML.parse(skill.split(/^---$/m)[1] ?? "") as { name?: string };
     expect(parsed.name).toBe(name);
   });
 
-  it.each(names)("%s は .gitignore から外してある", (name) => {
-    // 外し忘れると手元にだけ残り、直した手順がほかの作業場所に届かない。
-    const ignore = readFileSync(new URL("../.gitignore", import.meta.url), "utf8");
-    expect(ignore).toContain(`!.claude/skills/${name}/`);
+  it.each([...names, "react-doctor"])("%s は両方の入口から同じ正本を読む", (name) => {
+    const entry = new URL(`../.claude/skills/${name}`, import.meta.url);
+    const canonical = new URL(`../.agents/skills/${name}`, import.meta.url);
+    expect(lstatSync(entry).isSymbolicLink()).toBe(true);
+    expect(realpathSync(entry)).toBe(realpathSync(canonical));
+  });
+
+  it.each([...names, "react-doctor"])("%s の正本と入口はGitに追跡できる", (name) => {
+    // 設定の文字列ではなく、Gitが適用するignore規則を確かめる。
+    for (const path of [`.agents/skills/${name}/SKILL.md`, `.claude/skills/${name}`]) {
+      const result = spawnSync("git", ["check-ignore", "--no-index", "--quiet", path], {
+        cwd: new URL("../", import.meta.url),
+      });
+      expect(result.status, `${path}: ${result.stderr?.toString()}`).toBe(1);
+    }
   });
 });

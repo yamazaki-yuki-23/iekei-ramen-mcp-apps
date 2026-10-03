@@ -258,17 +258,19 @@ npm run deploy
 
 ChatGPT では一連の流れを実機で確認しています。Claude は Claude Desktop に手元のサーバー（`main.ts --stdio`）を登録して、画面・モデルへの受け渡し・全画面・会員の画面まで確認しています。本番の URL をコネクタとして追加することと、本物のサインインは未検証です（#63）。
 
-## 作り方（Claude Code）
+## 作り方（Claude Code・Codex）
 
-このリポジトリは **[Claude Code](https://claude.com/claude-code) で作っています。**
-設計の判断とその理由は [CLAUDE.md](CLAUDE.md) と [DESIGN.md](DESIGN.md) に書いてあり、
-**Claude Code はまずそこを読んでから手を動かします。**
+開発には **[Claude Code](https://claude.com/claude-code) と Codex** を使えます。
+設計の判断とその理由は [AGENTS.md](AGENTS.md) と [DESIGN.md](DESIGN.md) に書いてあり、
+どちらも共通ルールを読んでから作業します。詳細は [開発ガイド](docs/development.md) を参照してください。
+
+共通スキルの正本は `.agents/skills/`、Claude Code向けの入口は `.claude/skills/` の相対シンボリックリンクです。Claude Codeは `CLAUDE.md` の `@AGENTS.md` から共通ルールを読み、Codexは `AGENTS.md` を読みます。Claude Codeでは `/ship-issue 71`、Codexでは `$ship-issue` を指定して対象issueを伝えます。既存の個人設定を変更する必要はありません。
 
 進め方は 1 本道です。
 
 ```mermaid
 flowchart LR
-  issue["issue<br/>（困りごとを数字で書く）"] --> impl["実装<br/>Claude Code"]
+  issue["issue<br/>（困りごとを数字で書く）"] --> impl["実装<br/>Claude Code / Codex"]
   impl --> verify["検証<br/>lint / format / types / knip<br/>unit + 結合 / E2E<br/>react-doctor"]
   verify --> pr["PR"]
   pr --> review["Codex レビュー<br/>指摘ゼロまで回す"]
