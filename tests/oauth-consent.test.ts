@@ -102,6 +102,20 @@ describe("workerdでのクライアントごとの同意", () => {
     expect((await decide(page.handle, page.cookie)).status).toBe(400);
   });
 
+  it.each([
+    ["https://client.test;script-src/callback", "https://client.test%3Bscript-src"],
+    ["https://client.test,other.test/callback", "https://client.test%2Cother.test"],
+    ["https://*.client.test/callback", "https://%2A.client.test"],
+  ])("戻り先 %s の区切り文字や星でCSPの許可を広げない", async (redirect, source) => {
+    const page = await open(await register("区切り文字の検証", redirect), redirect);
+    const policy = page.response.headers.get("Content-Security-Policy")!;
+    expect(policy).toContain(source);
+    expect(policy).not.toContain(";script-src");
+    expect(policy).not.toContain(",");
+    expect(policy).not.toContain("*");
+    expect(policy).toContain("default-src 'none'");
+  });
+
   it("cookieなし・不正handle・別ブラウザ・別originの承認ではGoogleへ進まない", async () => {
     const page = await open(await register());
     const other = await open(await register());

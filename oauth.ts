@@ -182,12 +182,18 @@ export async function startSignIn(
       if (!client) return new Response("クライアントを確認できませんでした", { status: 400 });
       const consent = await api.beginConsent(authRequest);
       const nonce = crypto.randomUUID();
+      const redirect = new URL(authRequest.redirectUri);
+      // Chromiumはフォーム後の転送先も検査する。検証済みの戻り先だけを追加する。
+      // URL内の区切り文字や星をCSPの別の指令・ポリシー・ワイルドカードにしない。
+      const returnSource = (
+        redirect.origin === "null" ? redirect.protocol : redirect.origin
+      ).replace(/[;,*]/g, (char) => (char === "*" ? "%2A" : encodeURIComponent(char)));
       consent.headers.set("Content-Type", "text/html; charset=utf-8");
       consent.headers.set(
         "Content-Security-Policy",
-        `default-src 'none'; style-src 'nonce-${nonce}'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'`,
+        `default-src 'none'; style-src 'nonce-${nonce}'; form-action 'self' ${new URL(GOOGLE_AUTH).origin} ${returnSource}; base-uri 'none'; frame-ancestors 'none'`,
       );
-      const host = new URL(authRequest.redirectUri).hostname;
+      const host = redirect.hostname;
       return new Response(
         consentPage(client, host, publisherHostOf(client.clientId), consent.handle, nonce),
         {

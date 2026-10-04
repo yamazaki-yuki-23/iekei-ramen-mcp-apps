@@ -209,6 +209,10 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
   権限を示し、毎回明示的な許可を求める。Googleの本人確認とは別の判断。
   `beginConsent` / `approveConsent` / `denyConsent` に検証済み要求とCookieの管理を
   任せる。フォームのclient_idやredirect_uriは使わない。許可画面はiframeを拒否する。
+  許可画面のCSPの `form-action` は自身・Googleの認証先・検証済みの戻り先を許可する。
+  ChromiumはフォームPOST後のリダイレクトも検査するため、`'self'` だけでは
+  同意Cookieを消費した後にGoogleへの転送が遮断される。
+  `e2e/oauth-redirect.spec.ts` が許可と拒否の実フォーム操作を検証する。
 - **`/.well-known/oauth-protected-resource` は自分で返す**（[oauth.ts](../oauth.ts)）。
   ライブラリは認可サーバー側の文書しか出さず、任せると 401 の指す先が 404 になる
 - ライブラリは `cloudflare:workers` を取り込むので**動的 import**。KV の無い環境
