@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { ALL_PREFECTURES } from "../src/lib/prefectures.ts";
 
 const text = (value) => typeof value === "string" && value.trim().length > 0;
 const locationKey = (shop) => `${shop.name.trim()}@${shop.lat.toFixed(4)},${shop.lon.toFixed(4)}`;
@@ -22,6 +23,7 @@ export function applyCorrections(shops, corrections) {
       if (!/^(node|way|relation)\/\d+$/.test(correction.id)) fail("id");
     } else if (correction.action === "add") {
       for (const field of ["name", "prefecture"]) if (!text(correction[field])) fail(field);
+      if (!ALL_PREFECTURES.includes(correction.prefecture.trim())) fail("prefecture");
       if (!Number.isFinite(correction.lat) || Math.abs(correction.lat) > 90) fail("lat");
       if (!Number.isFinite(correction.lon) || Math.abs(correction.lon) > 180) fail("lon");
       for (const field of ["city", "address"]) {

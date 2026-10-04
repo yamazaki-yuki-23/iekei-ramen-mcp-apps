@@ -28,12 +28,16 @@ describe("個別補正", () => {
       applyCorrections([], [{ action: "add", ...shop, ...evidence, [field]: undefined }]),
     ).toThrow(field);
   });
-  it.each([{ date: "2026-02-30" }, { lat: NaN }, { lon: 181 }, { name: " " }, { action: "typo" }])(
-    "不正な補正を公開しない: %j",
-    (invalid) => {
-      expect(() =>
-        applyCorrections([], [{ action: "add", ...shop, ...evidence, ...invalid }]),
-      ).toThrow();
-    },
-  );
+  it.each([
+    { date: "2026-02-30" },
+    { lat: NaN },
+    { lon: 181 },
+    { name: " " },
+    { action: "typo" },
+    { prefecture: "神奈川" },
+  ])("不正な補正を公開しない: %j", (invalid) => {
+    expect(() =>
+      applyCorrections([], [{ action: "add", ...shop, ...evidence, ...invalid }]),
+    ).toThrow();
+  });
 });
