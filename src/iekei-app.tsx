@@ -25,6 +25,7 @@ import {
   type SetStateAction,
   type ReactNode,
 } from "react";
+import { BrandMark } from "./components/BrandMark";
 import { ModeControls } from "./components/ModeControls";
 import { ModeTabs } from "./components/ModeTabs";
 import type { FormValues } from "./components/SearchForm";
@@ -724,9 +725,9 @@ function IekeiAppInner({
     >
       <div className={styles.header}>
         <div className={styles.headerMain}>
-          {/* 丼は飾りなので、見出しの読み上げには載せない。 */}
-          <span className={styles.brandMark} aria-hidden="true">
-            🍜
+          {/* ロゴは飾りなので、見出しの読み上げには載せない。 */}
+          <span className={styles.brandMark}>
+            <BrandMark size={36} />
           </span>
           <h1 className={styles.title}>{heading}</h1>
         </div>

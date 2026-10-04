@@ -37,16 +37,10 @@
 /*
  * 丼は見出しの一部ではなく標識。面と丸で囲って、文字と役割を分けて見せる。
  */
+/* ロゴ（BrandMark）。輪郭を自分で持つので、下敷きの面は敷かない。 */
 .brandMark {
   display: grid;
-  place-items: center;
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  background: var(--color-accent-soft-strong);
-  font-size: var(--font-heading-md-size);
-  line-height: 1;
 }
 
 .title {

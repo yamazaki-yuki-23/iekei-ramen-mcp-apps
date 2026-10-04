@@ -7,6 +7,7 @@
 土台は[デジタル庁デザインシステム（DADS）](https://design.digital.go.jp/dads/)の
 基礎（foundations）に倣っている。DADS の青とフォントは使わず、
 **組み立て方だけを借りて、色は家系（醤油豚骨の茶赤）に置き換えている。**
+その上に、家系の店先から借りたブランドを載せる（0 節）。
 
 実体は次の3ファイル。
 
@@ -15,6 +16,30 @@
 | [src/global.css](src/global.css)                 | トークンの定義。色・余白・角丸・影・文字             |
 | [src/mcp-app.module.css](src/mcp-app.module.css) | 部品のスタイル。トークンを組み合わせるだけ           |
 | [src/oauth-consent.css](src/oauth-consent.css)   | ホスト外の認可画面。同じトークンでボタンと焦点を描く |
+
+---
+
+## 0. ブランドの方向: 店先の記号を借りる
+
+約束は「知らなかった家系に、出会える」（一言:「近くに、まだ知らない家系がある。」）。
+口調は熱いけれど誠実。**写真は使えない**（地図データに店の写真は無く、他所の写真は使えない）ので、
+家系の店に行ったことがある人なら知っている記号で熱気を出す。2026-10-05 にオーナーが確認した（#123）。
+
+![方向の見本](docs/brand/direction-sample.png)
+
+| 何     | 借りるもの               | 決まり                                                                                         |
+| ------ | ------------------------ | ---------------------------------------------------------------------------------------------- |
+| 色     | 黄色い看板・醤油の黒     | 黄は看板帯と食券の半券だけ。**押せる部品の塗りに使わない**。押すのは茶赤                       |
+| 文字   | 屋号の太さ               | 約束の一言と「迷ったら」の見出しだけ `--font-weight-display`（900）で大きく                    |
+| ロゴ   | 地図のピン＋上から見た丼 | 海苔 3 枚＝「迷ったら 3 軒」。[BrandMark](src/components/BrandMark.tsx)                        |
+| 3 軒   | 食券                     | 半券に番号。番号は表示順。並べた根拠を見出しの横に書き、「1 位」と言わない                     |
+| 区切り | 太い線                   | 看板・食券は `--border-width-strong`（2px）の `--color-ink` で輪郭を出す。影とぼかしは使わない |
+
+**判定の段階は形でも分ける。** 「家系」は塗り（■）、「家系の可能性」は枠だけ（□）。
+色が見えにくい人にも違いが届く。「家系か未判定」の形は #128 で決める。
+
+**ロゴは画像にしない。** 単一 HTML に固めるため、SVG を JSX で描き、色はトークンから取る。
+16px の favicon で読めるかは #130 で確かめる。
 
 ---
 
@@ -62,28 +87,45 @@ DADS に倣って、値は 3 段に分けてある。
                          --gray-950  #141312
 ```
 
+看板の黄と醤油の黒（0 節）。**明暗で変えない。**
+
+```
+--kanban-300  #ffd84d    --shoyu-900  #22150e
+--kanban-400  #ffc81a    --shoyu-950  #150c07
+```
+
+**黄は焦点リング（`#ffd43d`）とのコントラストが 1.1 しかない。** 押せる部品を黄で塗ると、
+焦点が当たっても見分けが付かない。だから黄は押せない面（看板帯・半券）にだけ敷く。
+
 灰を純灰（`#808080` 系）にすると、茶赤と並んだときに色が濁って見える。
 **灰は必ずこの暖色寄りの段から取ること。**
 
 ### セマンティック
 
-| トークン                     | 明                | 暗                | 使う場所                       |
-| ---------------------------- | ----------------- | ----------------- | ------------------------------ |
-| `--color-accent`             | ramen-600         | ramen-400         | 線・アイコン・18px 以上の文字  |
-| `--color-accent-strong`      | ramen-700         | ramen-300         | **本文サイズの文字**           |
-| `--color-accent-fill`        | ramen-600（固定） | ramen-600（固定） | 塗り（ボタン・選択中のチップ） |
-| `--color-accent-fill-hover`  | ramen-700（固定） | ramen-700（固定） | その hover                     |
-| `--color-accent-soft`        | ramen-50          | #2a1510           | 選択中の面・hover の面         |
-| `--color-accent-soft-strong` | ramen-100         | #3d1f16           | バッジの面                     |
-| `--color-accent-border`      | ramen-200         | ramen-800         | 選択中の枠                     |
-| `--color-surface`            | gray-0            | gray-900          | カード・入力欄の面             |
-| `--color-surface-muted`      | gray-50           | gray-950          | 溝・空状態・muted バッジ       |
-| `--color-border`             | gray-200          | #3a3733           | 通常の枠線                     |
-| `--color-border-strong`      | gray-300          | gray-600          | 入力欄・第 2 ボタンの枠線      |
-| `--color-text-muted`         | gray-600          | gray-400          | 補足文・ラベル                 |
-| `--color-error`              | #ce0000           | #ff9b9b           | 失敗の文字                     |
-| `--color-error-soft`         | #fdecec           | #3a1414           | 失敗の面                       |
-| `--color-error-border`       | #f0b4b4           | #7a2424           | 失敗の枠                       |
+| トークン                     | 明                 | 暗                 | 使う場所                         |
+| ---------------------------- | ------------------ | ------------------ | -------------------------------- |
+| `--color-accent`             | ramen-600          | ramen-400          | 線・アイコン・18px 以上の文字    |
+| `--color-accent-strong`      | ramen-700          | ramen-300          | **本文サイズの文字**             |
+| `--color-accent-fill`        | ramen-600（固定）  | ramen-600（固定）  | 塗り（ボタン・選択中のチップ）   |
+| `--color-accent-fill-hover`  | ramen-700（固定）  | ramen-700（固定）  | その hover                       |
+| `--color-accent-soft`        | ramen-50           | #2a1510            | 選択中の面・hover の面           |
+| `--color-accent-soft-strong` | ramen-100          | #3d1f16            | バッジの面                       |
+| `--color-accent-border`      | ramen-200          | ramen-800          | 選択中の枠                       |
+| `--color-surface`            | gray-0             | gray-900           | カード・入力欄の面               |
+| `--color-surface-muted`      | gray-50            | gray-950           | 溝・空状態・muted バッジ         |
+| `--color-border`             | gray-200           | #3a3733            | 通常の枠線                       |
+| `--color-border-strong`      | gray-300           | gray-600           | 入力欄・第 2 ボタンの枠線        |
+| `--color-text-muted`         | gray-600           | gray-400           | 補足文・ラベル                   |
+| `--color-sign`               | kanban-400（固定） | kanban-400（固定） | 看板帯・食券の半券（押せない面） |
+| `--color-on-sign`            | shoyu-950（固定）  | shoyu-950（固定）  | 看板の上の文字・ロゴの輪郭       |
+| `--color-ink`                | shoyu-900          | #f6efe6            | 看板・食券の太い輪郭             |
+| `--color-stage`              | shoyu-900          | shoyu-950          | 最初の画面の舞台（暗い面）       |
+| `--color-on-stage`           | #fff8e8            | #fff8e8            | 舞台の上の見出し                 |
+| `--color-on-stage-muted`     | #e9dccb            | #e9dccb            | 舞台の上の本文                   |
+| `--color-on-stage-em`        | kanban-400         | kanban-300         | 舞台の上で強める語               |
+| `--color-error`              | #ce0000            | #ff9b9b            | 失敗の文字                       |
+| `--color-error-soft`         | #fdecec            | #3a1414            | 失敗の面                         |
+| `--color-error-border`       | #f0b4b4            | #7a2424            | 失敗の枠                         |
 
 ### 色の落とし穴（踏んだもの）
 
@@ -104,14 +146,18 @@ DADS に倣って、値は 3 段に分けてある。
 
 新しい組み合わせを足すときは、ここに追記できる比が出ることを先に確かめる。
 
-| 組み合わせ                                   | 明  | 暗  |
-| -------------------------------------------- | --- | --- |
-| `--color-accent-fill` に白抜き文字           | 5.4 | 5.4 |
-| `--color-accent-strong` を面の上に           | 7.2 | 7.6 |
-| `--color-text-muted` を `--color-surface` に | 6.5 | 6.0 |
-| バッジ（strong を soft-strong の上に）       | 5.9 | 6.8 |
-| 行ったバッジ（白抜きを accent-fill に）      | 5.4 | 5.4 |
-| `.buttonOn`（strong を accent-soft に）      | 6.6 | 7.9 |
+| 組み合わせ                                        | 明   | 暗   |
+| ------------------------------------------------- | ---- | ---- |
+| `--color-accent-fill` に白抜き文字                | 5.4  | 5.4  |
+| `--color-accent-strong` を面の上に                | 7.2  | 7.6  |
+| `--color-text-muted` を `--color-surface` に      | 6.5  | 6.0  |
+| バッジ（strong を soft-strong の上に）            | 5.9  | 6.8  |
+| 行ったバッジ（白抜きを accent-fill に）           | 5.4  | 5.4  |
+| `.buttonOn`（strong を accent-soft に）           | 6.6  | 7.9  |
+| `--color-on-sign` を `--color-sign` に            | 12.4 | 12.4 |
+| `--color-on-stage-em` を `--color-stage` に       | 11.4 | 14.0 |
+| `--color-on-stage-muted` を `--color-stage` に    | 13.2 | 14.3 |
+| `--color-sign` と焦点リング（使ってはいけない組） | 1.1  | 1.1  |
 
 ---
 
@@ -152,6 +198,8 @@ DADS に倣って、値は 3 段に分けてある。
 **平常時は枠線だけ。影は「浮いている＝いま触っている」の合図に取っておく。**
 最初から全部に影を付けると、何が操作できるのか分からなくなる。
 
+看板と食券（0 節）は影ではなく `--border-width-strong`（2px）の線で形を出す。
+
 ```
 --elevation-1   カードの hover、選択中の項目、選択中のタブ
 --elevation-2   予備（モーダルなど、面の上に面を重ねるとき）
@@ -165,12 +213,13 @@ DADS に倣って、値は 3 段に分けてある。
 
 ホストから来る段（`--font-heading-*`）をそのまま使う。
 
-| 用途         | トークン                 | 値   |
-| ------------ | ------------------------ | ---- |
-| 見出し       | `--font-heading-lg-size` | 20px |
-| 本文         | `--font-text-md-size`    | 16px |
-| ボタン・タブ | `--font-heading-sm-size` | 14px |
-| 注記・バッジ | `--font-size-note`       | 14px |
+| 用途         | トークン                 | 値                                       |
+| ------------ | ------------------------ | ---------------------------------------- |
+| 約束の一言   | `--font-display-size`    | 34px（太さ `--font-weight-display` 900） |
+| 見出し       | `--font-heading-lg-size` | 20px                                     |
+| 本文         | `--font-text-md-size`    | 16px                                     |
+| ボタン・タブ | `--font-heading-sm-size` | 14px                                     |
+| 注記・バッジ | `--font-size-note`       | 14px                                     |
 
 **14px より小さくしない。** DADS が認めていない。
 以前この UI は注記とバッジを 12px で出していたが、全部 14px に上げてある。
