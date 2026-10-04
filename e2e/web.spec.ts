@@ -182,4 +182,11 @@ test("0件でも未掲載店を報告でき、連打の理由と再送の結果�
   await expect(page.locator("details b")).toHaveCount(0);
   await page.getByRole("button", { name: "報告を送信", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "受け取りました" })).toBeVisible();
+  await page.getByRole("button", { name: "別の店舗を報告する", exact: true }).click();
+  await expect(page.getByLabel("店名", { exact: true })).toHaveValue("");
+  await page.getByLabel("店名", { exact: true }).fill("2件目の試験家");
+  await page.getByLabel("場所（駅名や住所）").fill("新横浜駅");
+  await page.getByRole("button", { name: "報告を送信", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "受け取りました" })).toBeVisible();
+  expect(sent[2]).toEqual({ kind: "missing", name: "2件目の試験家", location: "新横浜駅" });
 });

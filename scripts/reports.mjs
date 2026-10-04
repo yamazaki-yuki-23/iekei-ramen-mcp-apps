@@ -1,12 +1,17 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { reportListQuery, reportPage } from "./report-pages.mjs";
 
 // 公開HTTPの読み取り口は作らず、Wranglerの認証済みD1操作だけを使う。
 const [action, ...ids] = process.argv.slice(2);
 let sql;
-if (action === "list" && ids.length === 0) {
-  sql =
-    "SELECT id, kind, shop_id, name, location, received_at FROM reports ORDER BY received_at, id LIMIT 100";
+if (action === "list" && ids.length <= 1) {
+  try {
+    sql = reportListQuery(ids[0]);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
 } else if (
   action === "delete" &&
   ids.length > 0 &&
@@ -15,7 +20,9 @@ if (action === "list" && ids.length === 0) {
   // IDの形式を固定してからSQLに入れる。自由記述をSQLへ補間しない。
   sql = `DELETE FROM reports WHERE id IN (${ids.map((id) => `'${id}'`).join(",")}) RETURNING id`;
 } else {
-  console.error("使い方: npm run reports -- list | npm run reports -- delete <処理済み報告ID...>");
+  console.error(
+    "使い方: npm run reports -- list [nextCursor] | npm run reports -- delete <処理済み報告ID...>",
+  );
   process.exit(1);
 }
 try {
@@ -43,7 +50,9 @@ try {
     throw new Error("D1操作が成功していません");
   console.log(
     JSON.stringify(
-      results.flatMap((result) => result.results),
+      action === "list"
+        ? reportPage(results.flatMap((result) => result.results))
+        : results.flatMap((result) => result.results),
       null,
       2,
     ),

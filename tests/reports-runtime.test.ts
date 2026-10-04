@@ -141,3 +141,44 @@ it("別originの書き込みやJSON以外を拒否する", async () => {
     ).status,
   ).toBe(415);
 });
+
+it("100件を超えた報告を同じ受付日時でも重複・欠落なく取得し、前のページ削除後も進める", async () => {
+  const { reportListQuery, reportPage } = await import("../scripts/report-pages.mjs");
+  const ids = Array.from(
+    { length: 101 },
+    (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+  );
+  await db.batch(
+    ids.map((id) =>
+      db
+        .prepare(
+          "INSERT INTO reports (id, kind, shop_id, received_at) VALUES (?, 'closed', 'node/1', ?)",
+        )
+        .bind(id, "2026-10-04T00:00:00.000Z"),
+    ),
+  );
+  const first = (await db.prepare(reportListQuery()).all<{ id: string; received_at: string }>())
+    .results;
+  expect(first).toHaveLength(100);
+  const cursor = reportPage(first).nextCursor;
+  expect(cursor).toBeTruthy();
+  const nextBeforeDelete = (
+    await db.prepare(reportListQuery(cursor)).all<{ id: string; received_at: string }>()
+  ).results;
+  expect(nextBeforeDelete.map((row) => row.id)).toEqual([ids[100]]);
+  // カーソルの行も削除する。消した行の再読込を前提にしたページ送りは壊れる。
+  await db.prepare("DELETE FROM reports WHERE id <= ?").bind(first.at(-1)!.id).run();
+  const second = (
+    await db.prepare(reportListQuery(cursor)).all<{ id: string; received_at: string }>()
+  ).results;
+  expect(second.map((row) => row.id)).toEqual([ids[100]]);
+  expect(new Set([...first, ...second].map((row) => row.id)).size).toBe(101);
+  expect(reportPage(second).nextCursor).toBeNull();
+  expect(() =>
+    reportListQuery(
+      Buffer.from(JSON.stringify(["2026-10-04T00:00:00.000Z", "' OR 1=1 --"])).toString(
+        "base64url",
+      ),
+    ),
+  ).toThrow("カーソル");
+});

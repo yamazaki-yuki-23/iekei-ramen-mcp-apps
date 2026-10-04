@@ -59,7 +59,19 @@ function ReportForm({ shopId }: { shopId?: string }) {
         {shopId ? "店舗情報を報告する" : "お探しの家系が見つからないときは"}
       </summary>
       {state === "sent" ? (
-        <p role="status">{REPORT_ACCEPTED}</p>
+        <div className={styles.reportForm}>
+          <p role="status">{REPORT_ACCEPTED}</p>
+          <button
+            type="button"
+            className={styles.buttonSecondary}
+            onClick={() => {
+              setState("idle");
+              setError("");
+            }}
+          >
+            {shopId ? "別の内容を報告する" : "別の店舗を報告する"}
+          </button>
+        </div>
       ) : (
         <form className={styles.reportForm} onSubmit={(event) => void submit(event)}>
           <p className={styles.selectedNote}>
