@@ -13,6 +13,7 @@ import { PayloadSchema } from "../src/lib/schema";
 
 // 実店舗データの結合・smoke検証。件数分布に依存する境界は server-boundaries.test.ts。
 let client: Client;
+let wireTools: Array<Record<string, unknown>> = [];
 
 describe("判定と味の但し書き", () => {
   it("今回の候補が confirmed だけでも母集団の likely の注意書きを渡す", async () => {
@@ -65,6 +66,13 @@ describe("判定と味の但し書き", () => {
 
 beforeAll(async () => {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const send = serverTransport.send.bind(serverTransport);
+  serverTransport.send = (message, options) => {
+    if ("result" in message && Array.isArray(message.result.tools)) {
+      wireTools = message.result.tools as Array<Record<string, unknown>>;
+    }
+    return send(message, options);
+  };
   client = new Client({ name: "test", version: "1.0.0" });
   await Promise.all([createServer().connect(serverTransport), client.connect(clientTransport)]);
 
@@ -121,14 +129,27 @@ describe("tool の登録", () => {
     expect(tools).toHaveLength(8);
     for (const tool of tools) {
       const member = (MEMBER_TOOLS as readonly string[]).includes(tool.name);
-      expect(tool._meta?.securitySchemes).toEqual(
-        member ? [{ type: "oauth2", scopes: ["stamp"] }] : [{ type: "noauth" }],
-      );
+      const schemes = member
+        ? [{ type: "oauth2", scopes: ["stamp"] }]
+        : tool.name === "geocode-place"
+          ? [{ type: "noauth" }]
+          : [{ type: "noauth" }, { type: "oauth2", scopes: ["stamp"] }];
+      expect(tool._meta?.securitySchemes).toEqual(schemes);
+
       expect(tool.annotations).toMatchObject({
         readOnlyHint: !["stamp-iekei-ramen", "forget-my-iekei-ramen-visits"].includes(tool.name),
         destructiveHint: ["stamp-iekei-ramen", "forget-my-iekei-ramen-visits"].includes(tool.name),
         openWorldHint: tool.name === "geocode-place",
       });
+    }
+  });
+
+  it("tools/listはトップレベルにも認証方式を配信する", async () => {
+    await client.listTools(undefined, { cacheMode: "refresh" });
+    expect(wireTools).toHaveLength(8);
+    for (const tool of wireTools) {
+      const meta = tool._meta as Record<string, unknown>;
+      expect(tool.securitySchemes).toEqual(meta.securitySchemes);
     }
   });
 

@@ -17,6 +17,9 @@ import {
   McpServer,
   type CallToolResult,
   type ReadResourceResult,
+  type ListToolsRequest,
+  type ListToolsResult,
+  type ServerContext,
 } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import shopsData from "./data/shops.json" with { type: "json" };
@@ -442,6 +445,12 @@ export const MEMBER_TOOLS = [
 /** SDKが保持する_metaで認証方式を宣言し、HTTPの認証対象と同じ集合から導く。 */
 function toolMetadata(name: string, withUi = true) {
   const member = (MEMBER_TOOLS as readonly string[]).includes(name);
+  const oauth = { type: "oauth2", scopes: ["stamp"] };
+  const securitySchemes = member
+    ? [oauth]
+    : name === "geocode-place"
+      ? [{ type: "noauth" }]
+      : [{ type: "noauth" }, oauth];
   const modifiesVisits = name === "stamp-iekei-ramen" || name === "forget-my-iekei-ramen-visits";
   return {
     annotations: {
@@ -452,7 +461,7 @@ function toolMetadata(name: string, withUi = true) {
       idempotentHint: true,
     },
     _meta: {
-      securitySchemes: member ? [{ type: "oauth2", scopes: ["stamp"] }] : [{ type: "noauth" }],
+      securitySchemes,
       ...(withUi ? { ui: { resourceUri } } : {}),
     },
   };
@@ -570,6 +579,33 @@ export function createServer(deps: ServerDeps = {}): McpServer {
     name: process.env.IEKEI_SERVER_NAME ?? "Iekei Ramen Finder",
     version: "0.1.0",
   });
+
+  /*
+   * SDKのtools/listが独自のトップレベルキーを落とすため、SDK自身の一覧ハンドラの
+   * 戻り値だけを拡張する。スキーマ変換・有効/無効・通知はSDKに任せる。
+   * 初期登録中だけ捕捉し、登録後は公開APIを元に戻す。
+   */
+  const setRequestHandler = server.server.setRequestHandler.bind(server.server);
+  type ListToolsHandler = (
+    request: ListToolsRequest,
+    ctx: ServerContext,
+  ) => ListToolsResult | Promise<ListToolsResult>;
+  server.server.setRequestHandler = ((method: string, handler: ListToolsHandler) => {
+    if (method === "tools/list") {
+      setRequestHandler("tools/list", async (request, ctx) => {
+        const result = await handler(request, ctx);
+        return {
+          ...result,
+          tools: result.tools.map((tool) => ({
+            ...tool,
+            securitySchemes: tool._meta?.securitySchemes,
+          })),
+        };
+      });
+    } else {
+      setRequestHandler(method as never, handler as never);
+    }
+  }) as typeof server.server.setRequestHandler;
 
   /*
    * 数える口は registerTool 1 か所に付ける。registerAppTool もここを通り、SDK は
@@ -1201,5 +1237,6 @@ export function createServer(deps: ServerDeps = {}): McpServer {
     },
   );
 
+  server.server.setRequestHandler = setRequestHandler;
   return server;
 }
