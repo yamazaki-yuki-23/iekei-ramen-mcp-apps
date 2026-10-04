@@ -15,6 +15,7 @@ export type UiHost = Pick<
   capabilities: {
     model: boolean;
     visitSignIn: boolean;
+    reports?: boolean;
   };
 };
 

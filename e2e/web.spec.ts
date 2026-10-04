@@ -122,3 +122,64 @@ test("Webは会話・記録の未対応操作を出さず、3候補と次の候�
   expect(next.shops.map((shop) => shop.id)).not.toEqual(first.shops.map((shop) => shop.id));
   await expect(page.locator("body")).not.toContainText("チャット");
 });
+
+test("Webの詳細から家系ではない・閉店の報告を匿名で送れる", async ({ page }) => {
+  const sent: unknown[] = [];
+  await page.route(`${WEB_URL}/reports`, async (route) => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "受け取りました。反映は確認してからなので時間がかかります" }),
+    });
+  });
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  const firstId = await cards(page).first().getAttribute("data-shop-id");
+  await cards(page).first().click();
+  await page.getByText("店舗情報を報告する", { exact: true }).click();
+  await page.getByRole("button", { name: "報告を送信", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "受け取りました" })).toBeVisible();
+  expect(sent).toEqual([{ kind: "not-iekei", shopId: firstId }]);
+  const secondId = await cards(page).nth(1).getAttribute("data-shop-id");
+  await cards(page).nth(1).click();
+  await page.getByText("店舗情報を報告する", { exact: true }).click();
+  await page.getByLabel("報告の種類").selectOption("closed");
+  await page.getByRole("button", { name: "報告を送信", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "受け取りました" })).toBeVisible();
+  expect(sent[1]).toEqual({ kind: "closed", shopId: secondId });
+});
+
+test("0件でも未掲載店を報告でき、連打の理由と再送の結果を表示する", async ({ page }) => {
+  const sent: unknown[] = [];
+  await page.route(`${WEB_URL}/reports`, async (route) => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: sent.length === 1 ? 429 : 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        message:
+          sent.length === 1
+            ? "短時間に報告が集中しています。1分後にお試しください"
+            : "受け取りました。反映は確認してからなので時間がかかります",
+      }),
+    });
+  });
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  await expect(page.getByText("お探しの家系が見つからないときは", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "検索フォーム" }).click();
+  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
+  await page.getByLabel("キーワード").fill("存在しない試験店0123");
+  await page.getByRole("button", { name: "検索", exact: true }).click();
+  await expect(cards(page)).toHaveCount(0);
+  await page.getByText("お探しの家系が見つからないときは", { exact: true }).click();
+  await page.getByLabel("店名", { exact: true }).fill("<b>試験家</b>");
+  await page.getByLabel("場所（駅名や住所）").fill("横浜駅");
+  await page.getByRole("button", { name: "報告を送信", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("1分後");
+  expect(sent[0]).toEqual({ kind: "missing", name: "<b>試験家</b>", location: "横浜駅" });
+  await expect(page.locator("details b")).toHaveCount(0);
+  await page.getByRole("button", { name: "報告を送信", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "受け取りました" })).toBeVisible();
+});

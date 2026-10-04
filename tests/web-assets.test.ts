@@ -51,7 +51,11 @@ describe("workerdのWeb静的配信と既存API", () => {
     expect(paths.some((p) => p.endsWith(".js"))).toBe(true);
     expect(paths.some((p) => p.endsWith(".css"))).toBe(true);
     const responses = await Promise.all(paths.map((p) => request(p)));
-    for (const asset of responses) expect(asset.status).toBe(200);
+    for (const asset of responses) {
+      expect(asset.status).toBe(200);
+      // 本文を読み切り、配信中のストリームを残したままharnessを閉じない。
+      expect((await asset.arrayBuffer()).byteLength).toBeGreaterThan(0);
+    }
   });
 
   it.each(["facebookexternalhit/1.1", "Twitterbot/1.0"])(

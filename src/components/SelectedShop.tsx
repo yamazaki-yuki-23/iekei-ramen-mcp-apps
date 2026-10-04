@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import styles from "../mcp-app.module.css";
 import { OrderGuide } from "./OrderGuide";
 
@@ -21,6 +21,7 @@ const FULL_HINT = "「まわる店」は 3 軒までです。外してから追�
 const STAMP_SIGN_IN_HINT = "記録にはサインインが要ります。押すとチャットに依頼を送ります。";
 
 interface Props {
+  report?: ReactNode;
   /** 会話に「この店について聞く」を流す。 */
   onAsk?: () => void;
   /** 外部地図を開く。 */
@@ -51,6 +52,7 @@ interface Props {
  * モデルに渡すものが無かった。カードは選ぶだけにして、行き先はここに出す。
  */
 export function SelectedShop({
+  report,
   onAsk,
   onOpenMap,
   onClear,
@@ -114,6 +116,7 @@ export function SelectedShop({
       {routeFull && <p className={styles.selectedNote}>{FULL_HINT}</p>}
 
       <OrderGuide />
+      {report}
 
       {onAsk && <p className={styles.selectedNote}>{NOTE}</p>}
     </section>
