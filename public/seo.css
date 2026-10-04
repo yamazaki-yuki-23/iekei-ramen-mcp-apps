@@ -29,6 +29,11 @@
   flex-wrap: wrap;
   gap: var(--space-3);
 }
+.seo-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
 .seo-page nav a,
 .seo-navigation a,
 .seo-page li a,

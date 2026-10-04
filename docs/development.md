@@ -47,6 +47,15 @@ Search Consoleの所有権は2026-10-04に確認済み。DNSのTXTレコード�
 ページ公開後、オーナーがドメイン `iekeiramen.com` の「サイトマップ」で
 `https://iekeiramen.com/sitemap.xml` を送信し、送信日をissueに残す。
 
+### チャットへの接続案内
+
+チャットへの接続案内は `public/connect.html` を `/connect` で配信する。
+トップの静的ナビゲーションからリンクし、MCPの `/mcp` は変更しない。
+登録URLのコピーは `public/connect.js`。Clipboard APIを使えない場合は入力欄を
+選択して手動コピーを案内する。JavaScriptが無効でもURLと説明を読める。
+ホストへの追加手順は実機で確認してから載せ、確認日をissueに残す。
+Claudeの本番URL追加は未確認であることをページにも明記する。
+
 ### UI のホスト境界
 
 `src/iekei-app.tsx` は両方の入口が使う画面と状態を持つ。`src/hosts/types.ts` が

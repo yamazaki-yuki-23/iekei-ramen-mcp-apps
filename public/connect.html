@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>チャットで家系ラーメンを探す｜使い方</title>
+    <meta
+      name="description"
+      content="家系ラーメンを探すアプリのChatGPT・Claudeへの接続案内。登録URL、会話の例、行った店の記録に必要なサインインを説明します。"
+    />
+    <link rel="canonical" href="https://iekeiramen.com/connect" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+    <link rel="stylesheet" href="/seo-tokens.css" />
+    <link rel="stylesheet" href="/seo.css" />
+    <link rel="stylesheet" href="/connect.css" />
+    <script src="/connect.js" defer></script>
+  </head>
+  <body class="seo-page connect-page">
+    <header>
+      <nav aria-label="ページの移動"><a href="/">Webで家系ラーメンを探す</a></nav>
+    </header>
+    <main>
+      <h1>チャットで家系ラーメンを探す</h1>
+      <p>駅名や地域を伝えて店を探し、迷ったら3軒まで絞れます。</p>
+      <section aria-labelledby="connection-url">
+        <h2 id="connection-url">登録するURL</h2>
+        <label for="mcp-url">MCPサーバーのURL</label>
+        <div class="connect-copy">
+          <input
+            id="mcp-url"
+            type="text"
+            inputmode="url"
+            value="https://iekeiramen.com/mcp"
+            readonly
+          />
+          <button id="copy-url" type="button" hidden>URLをコピー</button>
+        </div>
+        <p id="copy-status" role="status" aria-live="polite"></p>
+      </section>
+      <section aria-labelledby="chatgpt">
+        <h2 id="chatgpt">ChatGPTで使う</h2>
+        <p class="seo-note">追加手順は実機で確認中です。確認できた手順をここに掲載します。</p>
+        <ol>
+          <li>ChatGPTの設定で「セキュリティとログイン」を開き、「開発者モード」を有効にします。</li>
+          <li>「Plugins」を開き、追加の「＋」を押します。</li>
+          <li>
+            名前を「家系ラーメンを探す」、説明を「地域や駅の近くで家系ラーメンの候補を探す」にして、接続先に上の登録URLを貼り付けます。
+          </li>
+          <li>接続を作成し、表示されたツールの一覧を確認します。</li>
+          <li>新しいチャットのツールメニューで接続を選び、下の会話例を送ります。</li>
+        </ol>
+        <p>
+          <a href="https://developers.openai.com/plugins/deploy/connect-chatgpt"
+            >OpenAI公式の接続案内</a
+          >
+        </p>
+        <p>開発者モードの利用可否は、アカウントやワークスペースの設定によって異なります。</p>
+      </section>
+      <section aria-labelledby="claude">
+        <h2 id="claude">Claudeで使う</h2>
+        <p>
+          Claudeへの本番URLの追加手順は、まだ確認できていません。確認できるまではWeb版をご利用ください。
+        </p>
+        <a class="seo-app-link" href="/">Web版を開く</a>
+      </section>
+      <section aria-labelledby="examples">
+        <h2 id="examples">チャットで聞いてみる</h2>
+        <ul>
+          <li>「横浜駅の近くで家系を3軒に絞って」</li>
+          <li>「神奈川県の家系ラーメンを地図で見せて」</li>
+          <li>「吉村家を訪問済みにして」</li>
+        </ul>
+        <p class="seo-note">
+          家系の判定と味の分類は地図データをもとにした推定です。距離は直線距離で、徒歩での移動時間ではありません。
+        </p>
+      </section>
+      <section aria-labelledby="stamps">
+        <h2 id="stamps">行った店を記録する</h2>
+        <p>
+          店を探すだけならサインインは不要です。訪問スタンプの登録・閲覧・削除には、チャットに表示される案内からサインインしてください。
+        </p>
+      </section>
+    </main>
+    <footer><a class="seo-app-link" href="/">Webで家系ラーメンを探す</a></footer>
+  </body>
+</html>

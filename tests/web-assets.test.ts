@@ -41,6 +41,21 @@ afterAll(async () => {
 }, 30_000);
 
 describe("workerdのWeb静的配信と既存API", () => {
+  it("トップから案内ページに進め、案内のスクリプトとCSSも配信する", async () => {
+    const root = await request("/");
+    expect(await root.text()).toContain('href="/connect"');
+    const response = await request("/connect");
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("https://iekeiramen.com/mcp");
+    expect(html).toContain("サインインは不要");
+    expect(html).toContain("Claudeへの本番URLの追加手順は、まだ確認できていません");
+    for (const path of ["/connect.js", "/connect.css", "/seo-tokens.css"]) {
+      const asset = await request(path);
+      expect(asset.status).toBe(200);
+      expect((await asset.arrayBuffer()).byteLength).toBeGreaterThan(0);
+    }
+  });
   it("SEOページ・sitemap・robots・faviconを静的に配信する", async () => {
     for (const path of [
       "/area/",
