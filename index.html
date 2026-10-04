@@ -10,6 +10,10 @@
       content="近くの家系ラーメンを、地図と一覧で探せます。決められないときは「迷ったら」で3軒まで絞り込み。家系かどうかは地図データをもとにした推定です。"
     />
     <link rel="canonical" href="https://iekeiramen.com/" />
+    <link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+    <link rel="stylesheet" href="/seo.css" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="ja_JP" />
     <meta property="og:title" content="家系ラーメンを地図で探す｜迷ったら3軒に絞れる" />
@@ -42,6 +46,9 @@
   </head>
   <body>
     <div id="root"></div>
+    <nav class="seo-navigation" aria-label="地域別の店舗一覧">
+      <a href="/area/">都道府県から家系ラーメンの候補を探す</a>
+    </nav>
     <script type="module" src="/src/web.tsx"></script>
   </body>
 </html>

@@ -7,6 +7,21 @@ const cards = (page: Page) => page.locator("ul > li > button[data-shop-id]");
 const ids = (page: Page) =>
   cards(page).evaluateAll((items) => items.map((el) => el.getAttribute("data-shop-id")));
 
+test("SEOの地域・店名リンクから同じ検索条件でWebが開く", async ({ page, request }) => {
+  for (const args of [
+    { prefecture: "神奈川県" },
+    { prefecture: "神奈川県", keyword: "横浜市" },
+    { prefecture: "神奈川県", keyword: "吉村家" },
+  ]) {
+    await page.goto(`${WEB_URL}/?${new URLSearchParams(args)}`);
+    await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+    await expect(page.locator("main")).toHaveAttribute("data-mode", "form");
+    const result = await tool(request, "search-iekei-ramen", args);
+    await expect.poll(() => ids(page)).toEqual(result.shops.map((shop) => shop.id));
+    await expect(page.getByLabel("都道府県")).toHaveValue("神奈川県");
+  }
+});
+
 /** 画面と同じMCPの結果を独立して取り、店IDと順序で比較する。 */
 async function tool(request: APIRequestContext, name: string, args: Record<string, unknown>) {
   const response = await request.post("http://localhost:3131/mcp", {
