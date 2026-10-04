@@ -42,7 +42,7 @@ describe("describeShop", () => {
 
   it("味が unknown なら推測を禁じる書き方にする", () => {
     const text = describeShop({ ...YOSHIMURAYA, taste: "unknown" });
-    expect(text).toContain("情報なし");
+    expect(text).toContain("未判定");
     expect(text).toContain("推測で補わないこと");
     expect(text).not.toContain("参考値");
   });

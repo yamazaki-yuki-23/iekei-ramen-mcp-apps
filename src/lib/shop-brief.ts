@@ -1,5 +1,6 @@
 import { formatDistance } from "./geo";
 import { dataCaveats, describeTaste } from "./data-caveats";
+import { openingHoursLabel } from "./opening-hours";
 import { CONFIDENCE, TASTES, type DecideInfo, type Shop } from "./types";
 
 /**
@@ -21,7 +22,9 @@ export function describeShop(shop: Shop): string {
 
   lines.push(`味の傾向: ${describeTaste(shop.taste)}`);
 
-  if (shop.openingHours) lines.push(`営業時間: ${shop.openingHours}（OSM 由来。変わることがある）`);
+  if (shop.openingHours) {
+    lines.push(`営業時間: ${openingHoursLabel(shop.openingHours)}（OSM 由来。変わることがある）`);
+  }
   if (shop.phone) lines.push(`電話: ${shop.phone}`);
   if (shop.website) lines.push(`サイト: ${shop.website}`);
   if (shop.distanceKm !== undefined) {
@@ -80,8 +83,10 @@ export function decideMessageText(
     const dist = s.distanceKm !== undefined ? ` / ${formatDistance(s.distanceKm)}` : "";
     const conf = s.confidence === "confirmed" ? "" : ` / ${CONFIDENCE[s.confidence].label}`;
     const taste =
-      s.taste === "unknown" ? "味の傾向は情報なし" : `味の傾向 ${TASTES[s.taste].label}`;
-    const hours = s.openingHours ? `営業 ${s.openingHours}` : "営業時間はデータなし";
+      s.taste === "unknown" ? TASTES.unknown.label : `味の傾向 ${TASTES[s.taste].label}`;
+    const hours = s.openingHours
+      ? `営業 ${openingHoursLabel(s.openingHours)}`
+      : "営業時間はデータなし";
     return `${i + 1}. ${s.name}（${taste}${conf}${dist}）／ ${where} ／ ${hours}`;
   });
 

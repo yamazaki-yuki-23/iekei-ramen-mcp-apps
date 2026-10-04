@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from "react";
 import { metaParts, sameNameLabels } from "../lib/same-name";
 import { CONFIDENCE, TASTES, type Shop } from "../lib/types";
 import { formatDistance } from "../lib/geo";
+import { openingHoursLabel } from "../lib/opening-hours";
 import styles from "../mcp-app.module.css";
 
 interface Props {
@@ -96,7 +97,9 @@ export function ShopList({
               >
                 {metaParts(shop, labels.get(shop.id)).join(" ")}
               </span>
-              {shop.openingHours && <span className={styles.meta}>営業: {shop.openingHours}</span>}
+              {shop.openingHours && (
+                <span className={styles.meta}>営業 {openingHoursLabel(shop.openingHours)}</span>
+              )}
               <span className={styles.badges}>
                 {visitedIds?.has(shop.id) && <span className={styles.badgeVisited}>行った</span>}
                 <span className={shop.taste === "unknown" ? styles.badgeMuted : styles.badge}>

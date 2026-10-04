@@ -132,5 +132,16 @@ export function describeBasis(
   // 効いている絞り込みは必ず書く。書かないと、候補が減っていても理由が
   // どこにも出ない（キーワード欄はこのモードに無い）。
   const filtered = keyword ? `「${keyword}」に合う` : "";
-  return `${scope}${filtered} ${info.poolTotal} 軒を${how}に並べ、${info.round + 1} 巡目の ${shown} 軒です。`;
+  return `${scope}${filtered} ${info.poolTotal} 軒を${how}に並べた、${pickRange(info, shown)}です。`;
+}
+
+/**
+ * 並べた中の何軒目か。「1〜3 軒目」。
+ *
+ * 「1 / 118 巡目」は作り手の言葉で、何の数か読めない。並べた順の位置で言う。
+ */
+export function pickRange(info: Pick<DecideInfo, "round">, shown: number): string {
+  const first = info.round * SHORTLIST_SIZE + 1;
+  const last = first + Math.max(shown, 1) - 1;
+  return first === last ? `${first} 軒目` : `${first}〜${last} 軒目`;
 }

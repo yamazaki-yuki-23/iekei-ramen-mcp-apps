@@ -27,7 +27,7 @@ export const TASTES = {
   rich: { label: "直系・濃厚", description: "豚骨醤油が強い、classic な家系" },
   creamy: { label: "クリーミー", description: "まろやかでとろみのあるスープ" },
   chain: { label: "チェーン・万人向け", description: "食べやすくどこでも入りやすい" },
-  unknown: { label: "情報なし", description: "傾向を判定できなかった店舗" },
+  unknown: { label: "味は未判定", description: "傾向を判定できなかった店舗" },
 } as const;
 
 export type TasteKey = keyof typeof TASTES;

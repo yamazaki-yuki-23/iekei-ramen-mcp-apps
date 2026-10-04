@@ -127,7 +127,7 @@ test("Webを直接開いて検索・現在地・地図・まわる店を使え�
   const map = await tool(request, "show-iekei-ramen-map", { prefecture: "神奈川県" });
   // 地図の一覧は既存の仕様どおり先頭20件。全件数は見出しでも確認する。
   await expect.poll(() => ids(page)).toEqual(map.shops.slice(0, 20).map((shop) => shop.id));
-  await expect(page.locator("main")).toContainText(`${map.total} 件`);
+  await expect(page.locator("main")).toContainText(`判定した結果の ${map.total} 軒`);
   await expect(page.getByRole("button", { name: "全画面" })).toHaveCount(0);
   await expect(route.getByRole("heading")).toHaveText("まわる店（2 / 3 軒）");
   expect(errors).toEqual([]);

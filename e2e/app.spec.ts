@@ -25,7 +25,7 @@ test.describe("検索フォーム", () => {
     await waitForApp(app);
 
     await expect(app.getByRole("heading", { name: /全国の家系ラーメン/ })).toBeVisible();
-    await expect(app.getByText(/\d+ 件/)).toBeVisible();
+    await expect(app.getByText(/判定した結果の \d+ 軒/)).toBeVisible();
     expect(await shopCards(app).count()).toBeGreaterThan(10);
   });
 
@@ -357,10 +357,10 @@ test.describe("迷ったら（3 軒に絞る）", () => {
      * 壱八家が 2 店入った途端に落ちた）。
      */
     const before = await Promise.all([0, 1, 2].map((i) => shopId(shopCards(app).nth(i))));
-    await expect(app.getByText("1 / ")).toBeVisible();
+    await expect(app.getByText(/ 1〜3 軒目$/)).toBeVisible();
 
     await app.getByRole("button", { name: "別の候補を見る" }).click();
-    await expect(app.getByText("2 / ")).toBeVisible();
+    await expect(app.getByText(/ 4〜6 軒目$/)).toBeVisible();
 
     const after = await Promise.all([0, 1, 2].map((i) => shopId(shopCards(app).nth(i))));
     expect(after).not.toEqual(before);
@@ -435,7 +435,7 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     expect(pool).toContain("「横浜」に合う");
 
     await app.getByRole("button", { name: "別の候補を見る" }).click();
-    await expect(app.getByText("2 / ")).toBeVisible();
+    await expect(app.getByText(/ 4〜6 軒目$/)).toBeVisible();
 
     const after = await app.locator("section p").first().innerText();
     expect(after).toContain("「横浜」に合う");
@@ -1561,7 +1561,7 @@ test.describe("塊の中身に行き着けること", () => {
     const pin = app.locator(".leaflet-overlay-pane path[role=button]").first();
     await expect(pin).toHaveAttribute("tabindex", "0");
     const label = await pin.getAttribute("aria-label");
-    expect(label).toMatch(/（(直系・濃厚|クリーミー|チェーン・万人向け|情報なし)）$/);
+    expect(label).toMatch(/（(直系・濃厚|クリーミー|チェーン・万人向け|味は未判定)）$/);
 
     await pin.focus();
     await page.keyboard.press("Enter");
@@ -1706,10 +1706,10 @@ test.describe("この範囲で探す", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/\d+ 件/)
+        .getByText(/判定した結果の \d+ 軒/)
         .first()
         .textContent();
-      return Number((text ?? "").replace(/\D/g, ""));
+      return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
     };
     const search = app.getByRole("button", { name: "この範囲で探す" });
 
@@ -1782,10 +1782,10 @@ test.describe("隣の世界まで動かしたとき", () => {
     await expect
       .poll(async () => {
         const text = await app
-          .getByText(/\d+ 件/)
+          .getByText(/判定した結果の \d+ 軒/)
           .first()
           .textContent();
-        return Number((text ?? "").replace(/\D/g, ""));
+        return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
       })
       .toBeGreaterThan(0);
   });
@@ -1841,10 +1841,10 @@ test.describe("範囲と他の条件の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/\d+ 件/)
+        .getByText(/判定した結果の \d+ 軒/)
         .first()
         .textContent();
-      return Number((text ?? "").replace(/\D/g, ""));
+      return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
     };
 
     // 件数はデータから出す。書き込むと、取り直しただけで落ちる。
@@ -1957,10 +1957,10 @@ test.describe("範囲と他の条件の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/\d+ 件/)
+        .getByText(/判定した結果の \d+ 軒/)
         .first()
         .textContent();
-      return Number((text ?? "").replace(/\D/g, ""));
+      return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
     };
 
     await (await smallestCluster(app)).pin.click();
@@ -2032,10 +2032,10 @@ test.describe("まわる店と範囲の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/\d+ 件/)
+        .getByText(/判定した結果の \d+ 軒/)
         .first()
         .textContent();
-      return Number((text ?? "").replace(/\D/g, ""));
+      return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
     };
 
     // 一覧の先頭（愛知県）を積む。ここで地図はその 1 軒へ寄る。
@@ -2062,10 +2062,10 @@ test.describe("まわる店と範囲の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/\d+ 件/)
+        .getByText(/判定した結果の \d+ 軒/)
         .first()
         .textContent();
-      return Number((text ?? "").replace(/\D/g, ""));
+      return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
     };
     const search = app.getByRole("button", { name: "この範囲で探す" });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeBasis, shortlist, SHORTLIST_SIZE } from "../src/lib/shortlist";
+import { describeBasis, pickRange, shortlist, SHORTLIST_SIZE } from "../src/lib/shortlist";
 import type { Origin, Shop } from "../src/lib/types";
 
 /** テスト用の店。指定しない項目は「情報が無い」側に倒す。 */
@@ -167,7 +167,7 @@ describe("describeBasis", () => {
     });
     const text = describeBasis(list, list.picks.length, ORIGIN);
     expect(text).toContain("横浜駅から近い順");
-    expect(text).toContain("1 巡目");
+    expect(text).toContain("1〜3 軒目");
   });
 
   it("広げたときは「家系か未判定」も含めたことを書く", () => {
@@ -178,5 +178,13 @@ describe("describeBasis", () => {
   it("広げていないときは、しぼったことを書く", () => {
     const list = shortlist([shop("a"), shop("b"), shop("c")]);
     expect(describeBasis(list, list.picks.length)).toContain("家系と分かっている店にしぼって");
+  });
+});
+
+describe("pickRange", () => {
+  it("並べた中の何軒目かを言う。最後の組が 1 軒なら範囲にしない", () => {
+    expect(pickRange({ round: 0 }, 3)).toBe("1〜3 軒目");
+    expect(pickRange({ round: 1 }, 3)).toBe("4〜6 軒目");
+    expect(pickRange({ round: 117 }, 1)).toBe("352 軒目");
   });
 });
