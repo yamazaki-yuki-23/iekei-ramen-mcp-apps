@@ -49,6 +49,11 @@ describe("workerdのWeb静的配信と既存API", () => {
     const html = await response.text();
     expect(html).toContain("https://iekeiramen.com/mcp");
     expect(html).toContain("サインインは不要");
+    // 検索だけの接続で訪問記録の権限を要求しない。OAuthは記録用の手順に限る。
+    const searchSetup = html.split('aria-labelledby="chatgpt"')[1]?.split("</section>")[0];
+    expect(searchSetup).toContain("認証は「認証なし」");
+    expect(searchSetup).not.toContain("許可してGoogleへ進む");
+    expect(html.split('aria-labelledby="stamps"')[1]).toContain("認証で「OAuth」");
     expect(html).toContain("Claudeへの本番URLの追加手順は、まだ確認できていません");
     for (const path of ["/connect.js", "/connect.css", "/seo-tokens.css"]) {
       const asset = await request(path);
