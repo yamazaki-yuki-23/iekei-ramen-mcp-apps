@@ -7,6 +7,46 @@ const cards = (page: Page) => page.locator("ul > li > button[data-shop-id]");
 const ids = (page: Page) =>
   cards(page).evaluateAll((items) => items.map((el) => el.getAttribute("data-shop-id")));
 
+test("トップからチャットの案内を開き、URLをコピーできる", async ({ page }) => {
+  await page.goto(WEB_URL);
+  await page.getByRole("link", { name: "チャットで使う方法" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("チャットで家系ラーメンを探す");
+  await expect(page.getByLabel("MCPサーバーのURL")).toHaveValue("https://iekeiramen.com/mcp");
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          document.documentElement.dataset.copied = value;
+        },
+      },
+    });
+  });
+  await page.getByRole("button", { name: "URLをコピー" }).click();
+  await expect(page.getByRole("status")).toHaveText("URLをコピーしました。");
+  await expect(page.locator("html")).toHaveAttribute("data-copied", "https://iekeiramen.com/mcp");
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async () => {
+          throw new Error("clipboard denied");
+        },
+      },
+    });
+  });
+  await page.getByRole("button", { name: "URLをコピー" }).click();
+  await expect(page.getByRole("status")).toContainText("手動でコピー");
+  await expect(page.getByLabel("MCPサーバーのURL")).toBeFocused();
+  expect(
+    await page
+      .getByLabel("MCPサーバーのURL")
+      .evaluate((input: HTMLInputElement) =>
+        input.value.slice(input.selectionStart ?? 0, input.selectionEnd ?? 0),
+      ),
+  ).toBe("https://iekeiramen.com/mcp");
+});
+
 test("SEOの地域・店名リンクから同じ検索条件でWebが開く", async ({ page, request }) => {
   for (const args of [
     { prefecture: "神奈川県" },
@@ -129,13 +169,14 @@ test("Webは会話・記録の未対応操作を出さず、3候補と次の候�
   await cards(page).first().click();
   await expect(page.getByRole("button", { name: "この店について聞く" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "行った", exact: true })).toHaveCount(0);
-  await expect(page.locator("body")).not.toContainText("チャット");
+  // 接続案内へのリンクはWebにも出す。未対応の会話操作はアプリ本体に出さない。
+  await expect(page.locator("main")).not.toContainText("チャット");
   await expect(page.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
   await page.getByRole("button", { name: "別の候補を見る" }).click();
   const next = await tool(request, "decide-iekei-ramen", { round: 1 });
   await expect.poll(() => ids(page)).toEqual(next.shops.map((shop) => shop.id));
   expect(next.shops.map((shop) => shop.id)).not.toEqual(first.shops.map((shop) => shop.id));
-  await expect(page.locator("body")).not.toContainText("チャット");
+  await expect(page.locator("main")).not.toContainText("チャット");
 });
 
 test("Webの詳細から家系ではない・閉店の報告を匿名で送れる", async ({ page }) => {
