@@ -28,6 +28,16 @@ describe("個別補正", () => {
       applyCorrections([], [{ action: "add", ...shop, ...evidence, [field]: undefined }]),
     ).toThrow(field);
   });
+  it.each(["closed", "exclude"])("手動追加の履歴を維持して後の%sを適用する", (action) => {
+    const add = { action: "add", ...shop, ...evidence };
+    const added = applyCorrections([], [add]);
+    const removal = { action, id: added[0].id, ...evidence };
+    expect(applyCorrections([], [add, removal])).toEqual([]);
+    expect(applyCorrections(added, [add, removal])).toEqual([]);
+    // 同じ店が後のOSM取得で入っても、手動IDへの閉店・除外は維持する。
+    expect(applyCorrections([shop], [add, removal])).toEqual([]);
+    expect(applyCorrections([], [add, removal, add])).toEqual(added);
+  });
   it.each([
     { date: "2026-02-30" },
     { lat: NaN },

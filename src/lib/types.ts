@@ -1,6 +1,6 @@
-/** 家系ラーメン店の 1 件分のデータ。OSM のタグから生成する。 */
+/** 家系ラーメン店の1件分。OSMのタグと確認済みの個別補正から生成する。 */
 export interface Shop {
-  /** OSM 由来の安定 ID。例: "node/604269583" */
+  /** OSMまたは手動追加の安定ID。例: "node/604269583", "manual/<hash>" */
   id: string;
   name: string;
   nameEn?: string;

@@ -20,7 +20,7 @@ export function applyCorrections(shops, corrections) {
     )
       fail("date");
     if (["exclude", "closed"].includes(correction.action)) {
-      if (!/^(node|way|relation)\/\d+$/.test(correction.id)) fail("id");
+      if (!/^(?:(node|way|relation)\/\d+|manual\/[0-9a-f]{20})$/.test(correction.id)) fail("id");
     } else if (correction.action === "add") {
       for (const field of ["name", "prefecture"]) if (!text(correction[field])) fail(field);
       if (!ALL_PREFECTURES.includes(correction.prefecture.trim())) fail("prefecture");
@@ -31,16 +31,24 @@ export function applyCorrections(shops, corrections) {
       }
     } else fail("action");
   }
-  const removed = new Set(corrections.filter((c) => c.action !== "add").map((c) => c.id));
-  const result = shops.filter((shop) => !removed.has(shop.id));
-  const seen = new Set(result.map(locationKey));
-  for (const c of corrections.filter((entry) => entry.action === "add")) {
+  let result = shops.slice();
+  const aliases = new Map();
+  // 履歴を消さずに追記できるよう、ファイルの順に適用する。
+  for (const c of corrections) {
+    if (c.action !== "add") {
+      const target = aliases.get(c.id) ?? c.id;
+      result = result.filter((shop) => shop.id !== c.id && shop.id !== target);
+      continue;
+    }
     const key = locationKey(c);
+    const id = `manual/${createHash("sha256").update(key).digest("hex").slice(0, 20)}`;
+    const existing = result.find((shop) => locationKey(shop) === key);
+    // OSMに入った後でも、以前の手動IDへの閉店・除外を同じ店に効かせる。
+    aliases.set(id, existing?.id ?? id);
     // 後のOSM取得で同じ店が載った場合はOSMのIDを維持する。
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (existing) continue;
     result.push({
-      id: `manual/${createHash("sha256").update(key).digest("hex").slice(0, 20)}`,
+      id,
       name: c.name.trim(),
       prefecture: c.prefecture.trim(),
       lat: c.lat,
