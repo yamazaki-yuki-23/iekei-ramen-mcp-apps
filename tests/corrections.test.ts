@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { summarize } from "../src/lib/progress";
 // @ts-expect-error データ作成スクリプトはJavaScript。
 import { applyCorrections } from "../scripts/corrections.mjs";
 const evidence = { reason: "公式情報で確認", source: "公式サイト", date: "2026-10-04" };
@@ -20,8 +21,27 @@ describe("個別補正", () => {
     expect(added[0]).toMatchObject({ name: shop.name, taste: "unknown", confidence: "confirmed" });
     expect(added[0].id).toMatch(/^manual\/[0-9a-f]{20}$/);
     expect(applyCorrections([], [correction, correction])).toEqual(added);
-    expect(applyCorrections([shop], [correction])).toEqual([shop]);
+    expect(applyCorrections([shop], [correction])).toEqual([{ ...shop, id: added[0].id }]);
     expect(applyCorrections(added, [correction])).toEqual(added);
+  });
+  it("OSMに同じ店が入った後も手動IDの訪問済み表示・制覇率を維持する", () => {
+    const add = { action: "add", ...shop, ...evidence };
+    const before = applyCorrections([], [add]);
+    const visitedId = before[0].id;
+    const osm = {
+      ...shop,
+      taste: "unknown",
+      confidence: "confirmed",
+      website: "https://example.com",
+      osmUrl: "https://www.openstreetmap.org/node/1",
+    };
+    const after = applyCorrections([osm], [add]);
+    expect(summarize(before, [visitedId]).overall.visited).toBe(1);
+    expect(summarize(after, [visitedId]).overall.visited).toBe(1);
+    expect(after).toEqual([{ ...osm, id: visitedId }]);
+    expect(applyCorrections([osm], [add, { action: "closed", id: osm.id, ...evidence }])).toEqual(
+      [],
+    );
   });
   it.each(["reason", "source", "date"])("監査用の%sが欠けたら失敗する", (field) => {
     expect(() =>

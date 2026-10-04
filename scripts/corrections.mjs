@@ -42,11 +42,15 @@ export function applyCorrections(shops, corrections) {
     }
     const key = locationKey(c);
     const id = `manual/${createHash("sha256").update(key).digest("hex").slice(0, 20)}`;
-    const existing = result.find((shop) => locationKey(shop) === key);
-    // OSMに入った後でも、以前の手動IDへの閉店・除外を同じ店に効かせる。
-    aliases.set(id, existing?.id ?? id);
-    // 後のOSM取得で同じ店が載った場合はOSMのIDを維持する。
-    if (existing) continue;
+    const index = result.findIndex((shop) => locationKey(shop) === key);
+    const existing = result[index];
+    aliases.set(id, id);
+    if (existing) {
+      // 訪問記録は最初に公開した手動IDを使う。OSMの情報だけ取り込む。
+      aliases.set(existing.id, id);
+      result[index] = { ...existing, id };
+      continue;
+    }
     result.push({
       id,
       name: c.name.trim(),
