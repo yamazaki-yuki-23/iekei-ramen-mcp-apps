@@ -115,6 +115,7 @@ const resourceUri = "ui://iekei-ramen/mcp-app.html";
  */
 const uiResourceMeta = {
   ui: {
+    domain: "https://iekeiramen.com",
     csp: {
       connectDomains: ["https://*.openstreetmap.org"],
       resourceDomains: ["https://*.openstreetmap.org", "https://*.tile.openstreetmap.org"],
@@ -438,6 +439,25 @@ export const MEMBER_TOOLS = [
   "forget-my-iekei-ramen-visits",
 ] as const;
 
+/** SDKが保持する_metaで認証方式を宣言し、HTTPの認証対象と同じ集合から導く。 */
+function toolMetadata(name: string, withUi = true) {
+  const member = (MEMBER_TOOLS as readonly string[]).includes(name);
+  const modifiesVisits = name === "stamp-iekei-ramen" || name === "forget-my-iekei-ramen-visits";
+  return {
+    annotations: {
+      readOnlyHint: !modifiesVisits,
+      // スタンプも visited=false なら既存の印を削除する。
+      destructiveHint: modifiesVisits,
+      openWorldHint: name === "geocode-place",
+      idempotentHint: true,
+    },
+    _meta: {
+      securitySchemes: member ? [{ type: "oauth2", scopes: ["stamp"] }] : [{ type: "noauth" }],
+      ...(withUi ? { ui: { resourceUri } } : {}),
+    },
+  };
+}
+
 export interface ServerDeps {
   /** データ供給境界。省略時は同梱の実店舗データ。本番 Worker は差し替えない。 */
   shops?: Shop[];
@@ -593,7 +613,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
         "都道府県・味の傾向・キーワードで全国の家系ラーメン店を絞り込み、検索フォーム付きの一覧 UI を表示する。条件を指定しなければ全国の一覧を返す。",
       inputSchema: z.object(conditionFields),
       outputSchema: PayloadSchema,
-      _meta: { ui: { resourceUri } },
+      ...toolMetadata("search-iekei-ramen"),
     },
     async ({ prefecture, taste, keyword }): Promise<CallToolResult> => {
       const kw = blankToUndefined(keyword);
@@ -633,13 +653,13 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           .min(-90)
           .max(90)
           .optional()
-          .describe("基準地点の緯度。省略するとホストの現在地を使う"),
+          .describe("利用者が地名や地図で指定した地点の緯度。省略するとホストの現在地を使う"),
         lon: z
           .number()
           .min(-180)
           .max(180)
           .optional()
-          .describe("基準地点の経度。省略するとホストの現在地を使う"),
+          .describe("利用者が地名や地図で指定した地点の経度。省略するとホストの現在地を使う"),
         limit: z.number().int().min(1).max(20).default(5).describe("提案する店舗数"),
         label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
         /*
@@ -656,7 +676,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           ),
       }),
       outputSchema: PayloadSchema,
-      _meta: { ui: { resourceUri } },
+      ...toolMetadata("find-nearby-iekei-ramen"),
     },
     async ({ lat, lon, limit, label, source }, ctx): Promise<CallToolResult> => {
       const incomplete = incompleteCoordinates(lat, lon);
@@ -743,8 +763,18 @@ export function createServer(deps: ServerDeps = {}): McpServer {
          * 基準地点は絞り込みではなく、地図に印と同心円を出すためのもの。
          * 現在地モードから地図へ移ったときに引き継ぐ。
          */
-        lat: z.number().min(-90).max(90).optional().describe("基準地点の緯度（印と同心円を出す）"),
-        lon: z.number().min(-180).max(180).optional().describe("基準地点の経度"),
+        lat: z
+          .number()
+          .min(-90)
+          .max(90)
+          .optional()
+          .describe("利用者が地名や地図で指定した地点の緯度（印と同心円を出す）"),
+        lon: z
+          .number()
+          .min(-180)
+          .max(180)
+          .optional()
+          .describe("利用者が地名や地図で指定した地点の経度"),
         label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
         source: z
           .enum(["precise", "host", "edge", "place"])
@@ -752,7 +782,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           .describe("緯度経度の出どころ。省略すると precise 扱い"),
       }),
       outputSchema: PayloadSchema,
-      _meta: { ui: { resourceUri } },
+      ...toolMetadata("show-iekei-ramen-map"),
     },
     async ({ prefecture, taste, bounds, lat, lon, label, source }): Promise<CallToolResult> => {
       const shops = filterShops(dataset, { prefecture, taste, bounds });
@@ -786,8 +816,18 @@ export function createServer(deps: ServerDeps = {}): McpServer {
         "条件に合う家系ラーメン店を 3 軒まで絞り込み、その中から 1 軒を理由つきで推すための UI を表示する。一覧を見せても決められないとき、または「どこにする？」「おすすめは？」と聞かれたときに使う。round を 1 つ増やすと次の 3 軒に入れ替わる。",
       inputSchema: z.object({
         ...conditionFields,
-        lat: z.number().min(-90).max(90).optional().describe("基準地点の緯度。あれば近い順に絞る"),
-        lon: z.number().min(-180).max(180).optional().describe("基準地点の経度"),
+        lat: z
+          .number()
+          .min(-90)
+          .max(90)
+          .optional()
+          .describe("利用者が地名や地図で指定した地点の緯度。あれば近い順に絞る"),
+        lon: z
+          .number()
+          .min(-180)
+          .max(180)
+          .optional()
+          .describe("利用者が地名や地図で指定した地点の経度"),
         label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
         source: z
           .enum(["precise", "host", "edge", "place"])
@@ -804,7 +844,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           .describe("何巡目か（0 始まり）。増やすと次の 3 軒。末尾まで行くと先頭へ戻る"),
       }),
       outputSchema: PayloadSchema,
-      _meta: { ui: { resourceUri } },
+      ...toolMetadata("decide-iekei-ramen"),
     },
     async ({
       prefecture,
@@ -878,6 +918,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
   server.registerTool(
     "geocode-place",
     {
+      ...toolMetadata("geocode-place", false),
       title: "地名から緯度経度を調べる",
       description:
         "地名や住所を OpenStreetMap Nominatim で緯度経度に変換する。find-nearby-iekei-ramen の前段として使う。",
@@ -1026,7 +1067,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           .describe("通常はtrue。検索・地図UIが訪問IDと制覇率だけを更新するときはfalse"),
       }),
       outputSchema: StampResultSchema,
-      _meta: { ui: { resourceUri } },
+      ...toolMetadata("stamp-iekei-ramen"),
     },
     async ({ shopId, visited, includeShops }): Promise<CallToolResult> => {
       const { visitor, visits } = requireVisitor();
@@ -1084,7 +1125,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
         "訪問済みの家系ラーメン店の一覧と、県ごと・全国の制覇率を表示する。サインインした人だけが使える。",
       inputSchema: z.object({}),
       outputSchema: PayloadSchema,
-      _meta: { ui: { resourceUri } },
+      ...toolMetadata("show-visited-iekei-ramen"),
     },
     async (): Promise<CallToolResult> => {
       requireVisitor();
@@ -1137,7 +1178,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       description: "その人の訪問記録をすべて削除する。元に戻せない。",
       inputSchema: z.object({}),
       outputSchema: PayloadSchema,
-      _meta: { ui: { resourceUri } },
+      ...toolMetadata("forget-my-iekei-ramen-visits"),
     },
     async (): Promise<CallToolResult> => {
       const { visitor, visits } = requireVisitor();

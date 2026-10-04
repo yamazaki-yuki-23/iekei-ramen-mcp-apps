@@ -163,6 +163,11 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
 だけが、トークンの無い呼び出しに 401 を返す。ホストはこの 401 を見て
 「アクセス権を更新」を出す（ChatGPT で実測）。
 
+- ディレクトリ向けの認証宣言は各toolの `_meta.securitySchemes`。現在のMCP SDKは
+  `registerTool` の標準フィールドだけを返すため、保持されないトップレベルの独自キーを足さず、
+  [OpenAIの公式互換キー](https://developers.openai.com/plugins/reference#_meta-fields-on-tool-descriptor)を使う。
+  `MEMBER_TOOLS` から匿名/会員を導き、`tools/list` を読む結合テストで検証する。
+  スタンプは `visited=false` で印を削除するので、全削除と同じく `destructiveHint: true`。
 - 身元は Google に委ねる（`openid` だけ。**審査不要の範囲**）。受け取った `sub` は
   専用の鍵で HMAC してから保存し、**生の sub は持たない**。この鍵
   （`VISITOR_ID_PEPPER`）は二度と変えられない——変えると全員の記録が迷子になる
