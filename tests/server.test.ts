@@ -55,7 +55,7 @@ describe("判定と味の但し書き", () => {
     },
   );
 
-  it("モデル向け検索にも実食ではない参考値と、情報なしを補わない指示を添える", async () => {
+  it("モデル向け検索にも実食ではない参考値と、未判定を補わない指示を添える", async () => {
     const known = await callApp("search-iekei-ramen", { keyword: "町田商店" });
     expect(known.text).toContain("既知ブランドからの参考値");
     expect(known.text).toContain("実食に基づくものではありません");
@@ -696,7 +696,7 @@ describe("decide-iekei-ramen", () => {
       label: "横浜駅",
     });
     expect(text).toContain("横浜駅から近い順");
-    expect(text).toContain("1 巡目");
+    expect(text).toContain("1〜3 軒目");
   });
 
   it("基準地点の出どころを受け取ったまま返す", async () => {

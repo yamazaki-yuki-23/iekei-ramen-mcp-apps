@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test";
 import { test } from "./fixtures";
-import { CONFIDENCE } from "../src/lib/types";
-import { TASTE_REFERENCE_NOTE, TASTE_UNKNOWN_NOTE } from "../src/lib/data-caveats";
+import { CONFIDENCE, TASTES } from "../src/lib/types";
+import { DATA_FOOTNOTE, TASTE_REFERENCE_NOTE } from "../src/lib/data-caveats";
 import { callTool, waitForApp } from "./helpers";
 
 test("今回の 3 軒が確定店だけでも、UI から母集団の可能性の注意書きをモデルへ送る", async ({
@@ -23,10 +23,14 @@ for (const theme of ["light", "dark"] as const) {
     const app = await callTool(page, "decide-iekei-ramen", { keyword: "横濱家" });
     await waitForApp(app);
     await expect(app.getByText(/家系の可能性.*軒を/)).toBeVisible();
-    const note = app.getByText(TASTE_REFERENCE_NOTE, { exact: false });
+    // 常に出す注記は短く、推定と直線距離だけは必ず残す。
+    await expect(app.getByText(DATA_FOOTNOTE)).toBeVisible();
+    await app.getByText("判定の段階と味の傾向について", { exact: true }).click();
+    const note = app.locator("details").filter({ hasText: "判定の段階と味の傾向について" });
     await expect(note).toContainText(CONFIDENCE.likely.description);
     await expect(note).toContainText(CONFIDENCE.candidate.description);
-    await expect(note).toContainText(TASTE_UNKNOWN_NOTE);
+    await expect(note).toContainText(TASTE_REFERENCE_NOTE);
+    await expect(note).toContainText(TASTES.unknown.description);
     expect(await app.locator("body").evaluate((body) => body.scrollWidth - body.clientWidth)).toBe(
       0,
     );

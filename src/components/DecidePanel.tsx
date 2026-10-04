@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { describeBasis } from "../lib/shortlist";
+import { describeBasis, pickRange } from "../lib/shortlist";
 import type { DecideInfo, Origin, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import { ShopList } from "./ShopList";
@@ -120,7 +120,7 @@ export function DecidePanel({
         </button>
         {info && info.rounds > 1 && (
           <span className={styles.decideRound}>
-            {info.round + 1} / {info.rounds} 巡目
+            {`${info.poolTotal} 軒中 ${pickRange(info, shops.length)}`}
           </span>
         )}
       </div>

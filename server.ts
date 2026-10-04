@@ -1,4 +1,5 @@
 import { ALL_PREFECTURES } from "./src/lib/prefectures.ts";
+import { openingHoursLabel } from "./src/lib/opening-hours.ts";
 /**
  * 家系ラーメンを探す MCP Apps サーバー。
  *
@@ -87,7 +88,7 @@ function summarize(shops: Shop[], heading: string, withDistance = false): string
     const where = [s.prefecture, s.city, s.address].filter(Boolean).join(" ");
     // 家系と確定していない店をモデルが断定しないよう、段階を必ず添える。
     const conf = s.confidence === "confirmed" ? "" : ` / ${CONFIDENCE[s.confidence].label}`;
-    return `${i + 1}. ${s.name} (${TASTES[s.taste].label}${conf}${dist})\n   ${where}${s.openingHours ? `\n   営業: ${s.openingHours}` : ""}`;
+    return `${i + 1}. ${s.name} (${TASTES[s.taste].label}${conf}${dist})\n   ${where}${s.openingHours ? `\n   営業: ${openingHoursLabel(s.openingHours)}` : ""}`;
   });
   const notes = dataCaveats(shops);
   const caveat = notes ? `\n\n${notes}` : "";
@@ -142,12 +143,12 @@ function decidePrompt(shops: Shop[], basis: string, cond: string, info: DecideIn
     const dist = s.distanceKm !== undefined ? ` / ${formatDistance(s.distanceKm)}` : "";
     const conf = s.confidence === "confirmed" ? "" : ` / ${CONFIDENCE[s.confidence].label}`;
     const taste =
-      s.taste === "unknown" ? "味の傾向は情報なし" : `味の傾向 ${TASTES[s.taste].label}`;
+      s.taste === "unknown" ? TASTES.unknown.label : `味の傾向 ${TASTES[s.taste].label}`;
     return [
       `${i + 1}. ${s.name}（${taste}${conf}${dist}）`,
       `   ${where}`,
       s.openingHours
-        ? `   営業: ${s.openingHours}（OSM 由来。変わることがある）`
+        ? `   営業: ${openingHoursLabel(s.openingHours)}（OSM 由来。変わることがある）`
         : "   営業時間: データなし",
       s.brand ? `   ブランド: ${s.brand}` : undefined,
     ]

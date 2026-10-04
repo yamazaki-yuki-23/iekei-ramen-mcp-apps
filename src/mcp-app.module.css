@@ -617,7 +617,7 @@
   align-items: center;
 }
 
-/* 何巡目か。桁が変わっても幅が動かないよう等幅数字。 */
+/* 並べた中の何軒目か。桁が変わっても幅が動かないよう等幅数字。 */
 .decideRound {
   color: var(--color-text-muted);
   font-size: var(--font-size-note);
@@ -834,6 +834,21 @@
 
 .footnote a {
   color: inherit;
+}
+
+/* 短い注記と、開いて読む定義。間は「かたまりの中」の広さ。 */
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.definitions {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-4) calc(var(--space-4) + 1.25em);
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+  line-height: 1.6;
 }
 
 /* --- まわる店（順路） --- */

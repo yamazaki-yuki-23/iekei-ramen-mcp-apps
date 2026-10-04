@@ -22,9 +22,9 @@ export function mapListShops(shops: Shop[], selectedId?: string): Shop[] {
   return selected ? [selected, ...head.slice(0, LIST_LIMIT - 1)] : head;
 }
 
-/** 「この地点の 3 軒」。上限で切れているときだけ内訳を出す。 */
+/** 「この地点の 3 軒」。上限で切れているときだけ、何軒を出したかを添える。 */
 export function focusLabel(count: number): string {
   return count > LIST_LIMIT
-    ? `この地点の ${count} 軒（${LIST_LIMIT} 件表示）`
+    ? `この地点の ${count} 軒（${LIST_LIMIT} 軒を表示）`
     : `この地点の ${count} 軒`;
 }

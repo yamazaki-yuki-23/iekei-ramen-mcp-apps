@@ -39,7 +39,7 @@ import { originLabel } from "./lib/geo";
 import { createDeliveryQueue } from "./lib/model-context";
 import { EMPTY_PAYLOAD } from "./lib/payload";
 import { safeAreaStyle } from "./lib/safe-area";
-import { DATA_FOOTNOTE } from "./lib/data-caveats";
+import { DATA_DEFINITIONS, DATA_FOOTNOTE } from "./lib/data-caveats";
 import { scopeLabel } from "./lib/scope";
 import { MAX_STOPS, planRoute } from "./lib/route";
 import type { AppPayload, Origin, SearchMode, Shop, VisitResult } from "./lib/types";
@@ -430,7 +430,6 @@ function IekeiAppConnected({
   );
 }
 
-/** 「558 件（200 件表示）」。上限で切られているときだけ内訳を出す。 */
 /** tool の引数を、検索フォームの初期値に写す。 */
 function initialForm(query: AppPayload["query"]): FormValues {
   return {
@@ -478,8 +477,18 @@ function buildHeading(mode: SearchMode, payload: AppPayload, ready: boolean): st
   return `${where}の家系ラーメン`;
 }
 
-function formatCount(total: number, shown: number): string {
-  return total > shown ? `${total} 件（${shown} 件表示）` : `${total} 件`;
+/**
+ * 見出しの横の件数。「判定した結果の 558 軒（200 軒を表示）」。
+ *
+ * 全国の総数ではなく、地図データを判定した結果の軒数なので、そう書く。
+ * 「迷ったら」は並べた中の位置を 3 軒の下に出すので、ここでは出さない
+ * （「352 件（3 件表示）」が何の件数か読めなかった）。行った店は記録の軒数。
+ */
+function formatCount(mode: SearchMode, total: number, shown: number): string | null {
+  if (mode === "decide") return null;
+  if (mode === "visited") return `${total} 軒`;
+  const counted = `判定した結果の ${total} 軒`;
+  return total > shown ? `${counted}（${shown} 軒を表示）` : counted;
 }
 
 interface InnerProps extends PresentationProps {
@@ -666,7 +675,7 @@ function IekeiAppInner({
 
   const showResults = payloadReady && !awaitingOrigin;
   const shops = showResults ? payload.shops : [];
-  const count = showResults ? formatCount(payload.total, shops.length) : null;
+  const count = showResults ? formatCount(mode, payload.total, shops.length) : null;
 
   const inRoute = selected !== null && stops.some((s) => s.id === selected.id);
 
@@ -790,7 +799,17 @@ function IekeiAppInner({
         onOpenLink={openExternal}
       />
 
-      <p className={styles.footnote}>{DATA_FOOTNOTE}</p>
+      <footer className={styles.footer}>
+        <p className={styles.footnote}>{DATA_FOOTNOTE}</p>
+        <details className={styles.guide}>
+          <summary className={styles.guideSummary}>判定の段階と味の傾向について</summary>
+          <ul className={styles.definitions}>
+            {DATA_DEFINITIONS.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </details>
+      </footer>
     </main>
   );
 }
