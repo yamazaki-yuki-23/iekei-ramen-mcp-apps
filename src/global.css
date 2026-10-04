@@ -13,6 +13,9 @@
  *   字     本文 16px、最小 14px、行高 1.5 以上、小さい文字は字間 0.02em
  *   焦点   黄（#ffd43d）＋黒の縁。背景が明でも暗でも見える組み合わせ
  * 色だけは DADS の青ではなく家系（醤油豚骨の茶赤）を使う。
+ *
+ * ブランドの方向は「店先の記号を借りる」（#123）。写真が使えないので、
+ * 黄色い看板・醤油の黒・食券・海苔 3 枚で熱気を出す。詳しくは DESIGN.md。
  */
 
 :root {
@@ -71,6 +74,16 @@
   --ramen-900: #5e2216;
   --ramen-950: #33150f;
 
+  /* --- プリミティブ: 看板の黄・醤油の黒 -------------------------------- */
+  /*
+   * 黄は店先の看板、黒は醤油と海苔。どちらも明暗で変えない。
+   * 黄は焦点リング（#ffd43d）と 1.1 しか差が無いので、押せる部品の塗りに使わない。
+   */
+  --kanban-300: #ffd84d;
+  --kanban-400: #ffc81a;
+  --shoyu-900: #22150e;
+  --shoyu-950: #150c07;
+
   /* --- プリミティブ: ニュートラル -------------------------------------- */
   /* 家系色に合わせて僅かに暖色へ寄せた灰。純灰と混ぜると色が濁って見える。 */
   --gray-0: #ffffff;
@@ -102,6 +115,20 @@
   --color-accent-soft-strong: light-dark(var(--ramen-100), #3d1f16);
   --color-accent-border: light-dark(var(--ramen-200), var(--ramen-800));
   --color-text-on-accent: #ffffff;
+
+  /*
+   * 看板。見出しの帯と食券の半券にだけ敷く面。明暗で変えず、上の文字は黒（12.4）。
+   * 押せる部品に使わない（焦点リングの黄と見分けが付かない）。
+   */
+  --color-sign: var(--kanban-400);
+  --color-on-sign: var(--shoyu-950);
+  /* 看板・食券の太い輪郭。影の代わりに線で形を出す。 */
+  --color-ink: light-dark(var(--shoyu-900), #f6efe6);
+  /* 最初の画面の舞台（醤油の黒）と、その上の文字。明暗どちらでも暗い面。 */
+  --color-stage: light-dark(var(--shoyu-900), var(--shoyu-950));
+  --color-on-stage: #fff8e8;
+  --color-on-stage-muted: #e9dccb;
+  --color-on-stage-em: light-dark(var(--kanban-400), var(--kanban-300));
 
   --color-surface: light-dark(var(--gray-0), var(--gray-900));
   --color-surface-muted: light-dark(var(--gray-50), var(--gray-950));
@@ -140,6 +167,8 @@
   --radius-lg: 16px;
   --radius-full: 999px;
   --control-min-size: 44px;
+  /* 看板・食券の輪郭。通常の枠（1px）と分けて持つ。 */
+  --border-width-strong: 2px;
 
   /* --- セマンティック: 影 ----------------------------------------------- */
   /* 平常時は枠線だけ。影は「浮いている＝操作中」の合図に取っておく。 */
@@ -149,6 +178,13 @@
   /* --- セマンティック: 文字 --------------------------------------------- */
   /* DADS は 14px 未満を認めない。注記もここまでしか落とさない。 */
   --font-size-note: 0.875rem;
+  /*
+   * 屋号の太さ。約束の一言と「迷ったら」の見出しにだけ使う。外部フォントは
+   * 読み込まない（単一 HTML と CSP）。900 が無い環境では 700 に落ちる。
+   */
+  --font-weight-display: 900;
+  --font-display-size: 2.125rem;
+  --font-display-line-height: 1.25;
   /* 小さい和文は字間を空けた方が読める（DADS: 2%）。 */
   --letter-spacing-tight: -0.01em;
   --letter-spacing-normal: 0.02em;

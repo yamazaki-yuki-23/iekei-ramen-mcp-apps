@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ブランド見本</title>
+    <style>
+      :root {
+        /* 新プリミティブ: 看板の黄・醤油の黒（既存の茶赤 ramen と暖灰はそのまま） */
+        --kanban-300: #ffd84d;
+        --kanban-400: #ffc81a;
+        --shoyu-900: #22150e;
+        --shoyu-950: #150c07;
+        --ramen-50: #fdf4f1;
+        --ramen-100: #fae4dc;
+        --ramen-300: #e89d87;
+        --ramen-400: #da7256;
+        --ramen-600: #b8442c;
+        --ramen-700: #9a3623;
+        --gray-0: #fff;
+        --gray-50: #f8f7f5;
+        --gray-100: #efedea;
+        --gray-200: #dedbd6;
+        --gray-400: #a09b93;
+        --gray-600: #635e57;
+        --gray-900: #201e1b;
+        --gray-950: #141312;
+      }
+      .light {
+        --bg: var(--gray-50);
+        --surface: var(--gray-0);
+        --text: var(--shoyu-900);
+        --muted: var(--gray-600);
+        --border: var(--gray-200);
+        --accent-strong: var(--ramen-700);
+        --accent-soft: var(--ramen-50);
+        --sign-bg: var(--kanban-400);
+        --sign-text: var(--shoyu-950);
+        --hero-bg: var(--shoyu-900);
+        --hero-text: #fff8e8;
+        --hero-em: var(--kanban-400);
+        --nori: var(--shoyu-950);
+        --map: #ece6dc;
+        --road: #fff;
+      }
+      .dark {
+        --bg: var(--gray-950);
+        --surface: var(--gray-900);
+        --text: #f6efe6;
+        --muted: var(--gray-400);
+        --border: #3a3733;
+        --accent-strong: var(--ramen-300);
+        --accent-soft: #2a1510;
+        --sign-bg: var(--kanban-400);
+        --sign-text: var(--shoyu-950);
+        --hero-bg: var(--shoyu-950);
+        --hero-text: #fff8e8;
+        --hero-em: var(--kanban-300);
+        --nori: #f6efe6;
+        --map: #24201c;
+        --road: #34302b;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #d9d4cc;
+        font-family: system-ui, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+        font-feature-settings: "palt" 1;
+        letter-spacing: 0.02em;
+        display: flex;
+        gap: 32px;
+        padding: 32px;
+        align-items: flex-start;
+      }
+      .phone {
+        width: 375px;
+        background: var(--bg);
+        color: var(--text);
+        border-radius: 20px;
+        overflow: hidden;
+      }
+      .cap {
+        font: 700 14px system-ui;
+        color: #33302c;
+        margin: 0 0 8px;
+      }
+
+      /* ヘッダ: 黄の看板帯。屋号のように太く */
+      .sign {
+        background: var(--sign-bg);
+        color: var(--sign-text);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        border-bottom: 4px solid var(--shoyu-950);
+      }
+      .sign b {
+        font-weight: 900;
+        font-size: 18px;
+        letter-spacing: 0.04em;
+      }
+      .sign small {
+        margin-left: auto;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      /* 最初の画面: 醤油の黒に、約束の一言を太く大きく */
+      .hero {
+        background: var(--hero-bg);
+        color: var(--hero-text);
+        padding: 28px 16px 24px;
+        position: relative;
+      }
+      .hero h1 {
+        margin: 0;
+        font-size: 34px;
+        line-height: 1.25;
+        font-weight: 900;
+        letter-spacing: -0.01em;
+      }
+      .hero h1 em {
+        font-style: normal;
+        color: var(--hero-em);
+      }
+      .hero p {
+        margin: 12px 0 0;
+        font-size: 16px;
+        line-height: 1.6;
+        color: #e9dccb;
+      }
+      .nori {
+        position: absolute;
+        right: 16px;
+        top: 24px;
+        display: flex;
+        gap: 5px;
+      }
+      .nori i {
+        width: 12px;
+        height: 40px;
+        background: var(--kanban-400);
+        border-radius: 2px;
+      }
+      .nori i:nth-child(2) {
+        height: 48px;
+        margin-top: -4px;
+      }
+      .nori i:nth-child(3) {
+        height: 44px;
+        margin-top: -2px;
+      }
+
+      /* 地図のちら見せ */
+      .map {
+        height: 150px;
+        background: var(--map);
+        position: relative;
+        overflow: hidden;
+      }
+      .map svg {
+        position: absolute;
+        inset: 0;
+      }
+      .map .count {
+        position: absolute;
+        left: 16px;
+        bottom: 12px;
+        background: var(--surface);
+        color: var(--text);
+        border: 2px solid var(--shoyu-950);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .map .count strong {
+        font-size: 20px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .body {
+        padding: 20px 16px 24px;
+        display: grid;
+        gap: 12px;
+      }
+      .h2 {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin: 0;
+        font-size: 22px;
+        font-weight: 900;
+      }
+      .h2 span {
+        font-size: 14px;
+        font-weight: 400;
+        color: var(--muted);
+      }
+
+      /* 3 軒は食券。左の半券に番号、右に屋号 */
+      .ticket {
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        background: var(--surface);
+        border: 2px solid var(--text);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .stub {
+        background: var(--sign-bg);
+        color: var(--sign-text);
+        display: grid;
+        place-items: center;
+        font-size: 28px;
+        font-weight: 900;
+        border-right: 2px dashed var(--shoyu-950);
+        font-variant-numeric: tabular-nums;
+      }
+      .tbody {
+        padding: 10px 12px;
+        display: grid;
+        gap: 4px;
+      }
+      .name {
+        font-size: 18px;
+        font-weight: 800;
+      }
+      .meta {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .badge {
+        font-size: 14px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+      }
+      .b-iekei {
+        background: var(--text);
+        color: var(--bg);
+      }
+      .b-iekei::before {
+        content: "■ ";
+      }
+      .b-maybe {
+        border: 2px solid var(--text);
+      }
+      .b-maybe::before {
+        content: "□ ";
+      }
+      .dist {
+        margin-left: auto;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .note {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.6;
+        margin: 0;
+      }
+      .btn {
+        min-height: 44px;
+        border-radius: 12px;
+        border: 2px solid var(--text);
+        background: var(--surface);
+        color: var(--text);
+        font: 700 16px system-ui;
+        padding: 0 16px;
+      }
+      .btn-primary {
+        background: var(--ramen-600);
+        color: #fff;
+        border-color: var(--ramen-600);
+      }
+
+      /* MCP の画面（ホストの中）: 看板帯は細く、ヒーローは出さない */
+      .host {
+        width: 375px;
+      }
+      .chat {
+        background: var(--bg);
+        color: var(--text);
+        border-radius: 16px;
+        padding: 12px;
+        border: 1px solid var(--border);
+      }
+      .chatbar {
+        font-size: 14px;
+        color: var(--muted);
+        padding: 4px 4px 10px;
+      }
+      .mini-sign {
+        background: var(--sign-bg);
+        color: var(--sign-text);
+        border-radius: 10px 10px 0 0;
+        padding: 8px 12px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        font-weight: 900;
+        border-bottom: 3px solid var(--shoyu-950);
+      }
+      .mini-body {
+        border: 1px solid var(--border);
+        border-top: 0;
+        border-radius: 0 0 10px 10px;
+        padding: 12px;
+        display: grid;
+        gap: 10px;
+        background: var(--bg);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ロゴ: ピンの頭が丼。海苔 3 枚 = 迷ったら 3 軒 -->
+    <svg width="0" height="0" style="position: absolute">
+      <symbol id="logo" viewBox="0 0 48 48">
+        <path
+          d="M24 46C24 46 6 30 6 19a18 18 0 0 1 36 0c0 11-18 27-18 27z"
+          fill="#b8442c"
+          stroke="#150c07"
+          stroke-width="2.5"
+        />
+        <circle cx="24" cy="19" r="11" fill="#f2b84b" stroke="#150c07" stroke-width="2" />
+        <rect
+          x="13.5"
+          y="6"
+          width="5"
+          height="12"
+          rx="1"
+          fill="#150c07"
+          transform="rotate(-12 16 12)"
+        />
+        <rect x="19.5" y="4.5" width="5" height="12" rx="1" fill="#150c07" />
+        <rect
+          x="25.5"
+          y="6"
+          width="5"
+          height="12"
+          rx="1"
+          fill="#150c07"
+          transform="rotate(12 28 12)"
+        />
+        <circle cx="27" cy="23" r="2" fill="#fff4cf" />
+        <circle cx="21" cy="25" r="1.4" fill="#fff4cf" />
+      </symbol>
+    </svg>
+
+    <div>
+      <p class="cap">見本 1: Web の最初の画面（スマホ幅・明）</p>
+      <div class="phone light">
+        <div class="sign">
+          <svg width="32" height="32"><use href="#logo" /></svg><b>家系ラーメンを探す</b
+          ><small>iekeiramen.com</small>
+        </div>
+        <div class="hero">
+          <div class="nori" aria-hidden="true"><i></i><i></i><i></i></div>
+          <h1>近くに、<br /><em>まだ知らない</em><br />家系がある。</h1>
+          <p>地図に家系を並べました。迷ったら、3 軒まで絞ります。</p>
+        </div>
+        <div class="map" aria-label="地図の見本">
+          <svg viewBox="0 0 375 150" preserveAspectRatio="none">
+            <path
+              d="M0 40 L375 70 M0 110 L375 95 M80 0 L120 150 M250 0 L230 150"
+              stroke="var(--road)"
+              stroke-width="10"
+              fill="none"
+            />
+            <g stroke="#150c07" stroke-width="2">
+              <circle cx="60" cy="60" r="7" fill="#b8442c" />
+              <circle cx="150" cy="50" r="7" fill="#b8442c" />
+              <circle cx="200" cy="105" r="7" fill="#e0a04a" />
+              <circle cx="300" cy="75" r="7" fill="#b8442c" />
+              <circle cx="330" cy="120" r="7" fill="#7d776e" />
+              <circle cx="110" cy="120" r="7" fill="#e0a04a" />
+            </g>
+            <circle cx="185" cy="72" r="9" fill="#1f6f4a" stroke="#fff" stroke-width="3" />
+          </svg>
+          <div class="count">半径 3km に <strong>12</strong> 軒</div>
+        </div>
+        <div class="body">
+          <h2 class="h2">迷ったら、この 3 軒 <span>近い順</span></h2>
+          <div class="ticket">
+            <div class="stub">1</div>
+            <div class="tbody">
+              <div class="name">ラーメン 杉田家</div>
+              <div class="meta">千葉市中央区中央2丁目 ・ 11:00〜21:30・月曜定休</div>
+              <div class="row">
+                <span class="badge b-iekei">家系</span><span class="dist">850m</span>
+              </div>
+            </div>
+          </div>
+          <div class="ticket">
+            <div class="stub">2</div>
+            <div class="tbody">
+              <div class="name">ラーメン 千葉家</div>
+              <div class="meta">千葉市若葉区みつわ台4丁目 ・ 11:00〜20:00・月曜定休</div>
+              <div class="row">
+                <span class="badge b-maybe">家系の可能性</span><span class="dist">2.1km</span>
+              </div>
+            </div>
+          </div>
+          <div class="row" style="gap: 8px">
+            <button class="btn btn-primary">地図アプリで開く</button
+            ><button class="btn">ほかの 3 軒</button>
+          </div>
+          <p class="note">
+            距離は直線距離です。家系の判定は地図の記載と既知のブランドからの推定、味の傾向は既知ブランドからの参考値です。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="cap">見本 2: チャットの中（MCP）・明</p>
+      <div class="host light">
+        <div class="chat">
+          <div class="chatbar">あなた: 千葉駅の近くで家系ある？</div>
+          <div class="mini-sign">
+            <svg width="24" height="24"><use href="#logo" /></svg>迷ったら、この 3 軒
+          </div>
+          <div class="mini-body">
+            <div class="ticket">
+              <div class="stub">1</div>
+              <div class="tbody">
+                <div class="name">ラーメン 杉田家</div>
+                <div class="meta">11:00〜21:30・月曜定休</div>
+                <div class="row">
+                  <span class="badge b-iekei">家系</span><span class="dist">850m</span>
+                </div>
+              </div>
+            </div>
+            <p class="note">距離は直線距離。判定は推定です。</p>
+          </div>
+        </div>
+      </div>
+      <p class="cap" style="margin-top: 24px">見本 3: チャットの中（MCP）・暗</p>
+      <div class="host dark">
+        <div class="chat">
+          <div class="chatbar">あなた: 千葉駅の近くで家系ある？</div>
+          <div class="mini-sign">
+            <svg width="24" height="24"><use href="#logo" /></svg>迷ったら、この 3 軒
+          </div>
+          <div class="mini-body">
+            <div class="ticket">
+              <div class="stub">1</div>
+              <div class="tbody">
+                <div class="name">ラーメン 杉田家</div>
+                <div class="meta">11:00〜21:30・月曜定休</div>
+                <div class="row">
+                  <span class="badge b-iekei">家系</span><span class="dist">850m</span>
+                </div>
+              </div>
+            </div>
+            <div class="ticket">
+              <div class="stub">2</div>
+              <div class="tbody">
+                <div class="name">ラーメン 千葉家</div>
+                <div class="meta">11:00〜20:00・月曜定休</div>
+                <div class="row">
+                  <span class="badge b-maybe">家系の可能性</span><span class="dist">2.1km</span>
+                </div>
+              </div>
+            </div>
+            <p class="note">距離は直線距離。判定は推定です。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
