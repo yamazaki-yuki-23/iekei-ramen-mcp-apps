@@ -12,6 +12,7 @@ src/generated/
 !.claude/skills/codex-review-loop
 !.claude/skills/squash-and-merge
 !.claude/skills/ship-issue
+!.claude/skills/design-engineer
 !.claude/skills/react-doctor
 .codex/
 e2e-host/
