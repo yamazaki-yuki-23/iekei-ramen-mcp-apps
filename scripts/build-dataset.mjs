@@ -8,6 +8,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { findAmbiguous } from "./labels.mjs";
 import { readJson } from "./read-json.mjs";
+import { applyCorrections } from "./corrections.mjs";
 import {
   nearbyPairs,
   pairFingerprint,
@@ -144,7 +145,8 @@ for (const el of raw) {
 
 // 確度の高い順、その中は都道府県・店名順。
 const ORDER = { confirmed: 0, likely: 1, candidate: 2 };
-const sorted = shops.toSorted(
+const corrections = JSON.parse(await fs.readFile(path.join(DIR, "corrections.json"), "utf-8"));
+const sorted = applyCorrections(shops, corrections).toSorted(
   (a, b) =>
     ORDER[a.confidence] - ORDER[b.confidence] ||
     a.prefecture.localeCompare(b.prefecture, "ja") ||

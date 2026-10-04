@@ -1136,6 +1136,30 @@
   overflow-wrap: anywhere;
 }
 
+.report {
+  padding: var(--space-3) 0;
+}
+
+.reportSummary {
+  min-height: 44px;
+  padding: var(--space-3);
+  cursor: pointer;
+  color: var(--color-accent-strong);
+  border-radius: var(--radius-md);
+}
+
+.reportForm,
+.reportField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.reportForm {
+  padding: var(--space-3);
+  gap: var(--space-3);
+}
+
 /* --- 焦点（フォーカス） --- */
 
 /*
@@ -1157,7 +1181,8 @@
 .card:focus-visible,
 .clusterPin:focus-visible,
 .focusHeadLabel:focus-visible,
-.guideSummary:focus-visible {
+.guideSummary:focus-visible,
+.reportSummary:focus-visible {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 1px;
   box-shadow: 0 0 0 5px var(--color-focus-edge);

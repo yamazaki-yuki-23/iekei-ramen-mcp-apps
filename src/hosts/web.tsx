@@ -20,7 +20,7 @@ function createWebHost(client: Client): UiHost {
       return { mode: "inline" };
     },
     getHostContext: () => ({ availableDisplayModes: ["inline"] }),
-    capabilities: { model: false, visitSignIn: false },
+    capabilities: { model: false, visitSignIn: false, reports: true },
   };
 }
 

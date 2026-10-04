@@ -31,6 +31,7 @@ import type { FormValues } from "./components/SearchForm";
 import { Results } from "./components/Results";
 import { RoutePanel } from "./components/RoutePanel";
 import { SelectedShop } from "./components/SelectedShop";
+import { ReportEntry } from "./components/ReportForm";
 import { useFullscreen } from "./hooks/use-fullscreen";
 import { useModeSwitch } from "./hooks/use-mode-switch";
 import { useServerTools } from "./hooks/use-server-tools";
@@ -678,6 +679,9 @@ function IekeiAppInner({
 
   const detail = selected && (
     <SelectedShop
+      report={
+        <ReportEntry key={selected.id} enabled={app.capabilities.reports} shopId={selected.id} />
+      }
       onAsk={supportedAction(app.capabilities.model, () => void askAboutShop(selected))}
       onOpenMap={() => openInMaps(selected)}
       onClear={() => onSelect(null)}
@@ -777,6 +781,7 @@ function IekeiAppInner({
       />
 
       {/* 結果の下、注記の上。モードを切り替えても残るので、組み立てたものが消えない。 */}
+      <ReportEntry enabled={app.capabilities.reports} ready={showResults} />
       <RoutePanel
         route={route}
         origin={routeOrigin}

@@ -18,6 +18,7 @@ import { createServer, MEMBER_TOOLS, type ServerDeps } from "./server.ts";
 import { GeocodeGate } from "./src/lib/geocode-gate.ts";
 import { recordUsage, usageEvent } from "./src/lib/usage.ts";
 import { d1Visits } from "./src/lib/visits.ts";
+import { handleReport } from "./src/lib/report-endpoint.ts";
 
 // wrangler が Durable Object のクラスを探すのは、入口のモジュールの export。
 export { GeocodeGate };
@@ -26,6 +27,7 @@ interface Env extends AuthEnv {
   VISITS: D1Database;
   /** 地名検索（Nominatim）の連打止め。接続元ごとに数える。 */
   GEOCODE_LIMITER?: RateLimit;
+  REPORT_LIMITER?: RateLimit;
   /** Nominatim へ出ていく問い合わせの列。全体で 1 つ。 */
   GEOCODE_GATE?: DurableObjectNamespace;
   /** 使われているかを数える（Workers Analytics Engine）。手元の Node サーバーには無い。 */
@@ -77,6 +79,8 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const origin = url.origin;
+
+    if (url.pathname === "/reports") return handleReport(request, env);
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
