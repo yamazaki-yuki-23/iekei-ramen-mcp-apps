@@ -5,7 +5,7 @@
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
-import { createServer } from "../server";
+import { createServer, MEMBER_TOOLS } from "../server";
 import shopsData from "../data/shops.json" with { type: "json" };
 import type { AppPayload } from "../src/lib/types";
 import { CONFIDENCE } from "../src/lib/types";
@@ -13,6 +13,7 @@ import { PayloadSchema } from "../src/lib/schema";
 
 // 実店舗データの結合・smoke検証。件数分布に依存する境界は server-boundaries.test.ts。
 let client: Client;
+let wireTools: Array<Record<string, unknown>> = [];
 
 describe("判定と味の但し書き", () => {
   it("今回の候補が confirmed だけでも母集団の likely の注意書きを渡す", async () => {
@@ -65,6 +66,13 @@ describe("判定と味の但し書き", () => {
 
 beforeAll(async () => {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const send = serverTransport.send.bind(serverTransport);
+  serverTransport.send = (message, options) => {
+    if ("result" in message && Array.isArray(message.result.tools)) {
+      wireTools = message.result.tools as Array<Record<string, unknown>>;
+    }
+    return send(message, options);
+  };
   client = new Client({ name: "test", version: "1.0.0" });
   await Promise.all([createServer().connect(serverTransport), client.connect(clientTransport)]);
 
@@ -116,6 +124,46 @@ describe("tool の登録", () => {
     ]);
   });
 
+  it("全toolの注釈と認証宣言が実装の権限と一致する", async () => {
+    const { tools } = await client.listTools();
+    expect(tools).toHaveLength(8);
+    for (const tool of tools) {
+      const member = (MEMBER_TOOLS as readonly string[]).includes(tool.name);
+      const schemes = member
+        ? [{ type: "oauth2", scopes: ["stamp"] }]
+        : tool.name === "geocode-place"
+          ? [{ type: "noauth" }]
+          : [{ type: "noauth" }, { type: "oauth2", scopes: ["stamp"] }];
+      expect(tool._meta?.securitySchemes).toEqual(schemes);
+
+      expect(tool.annotations).toMatchObject({
+        readOnlyHint: !["stamp-iekei-ramen", "forget-my-iekei-ramen-visits"].includes(tool.name),
+        destructiveHint: ["stamp-iekei-ramen", "forget-my-iekei-ramen-visits"].includes(tool.name),
+        openWorldHint: tool.name === "geocode-place",
+      });
+    }
+  });
+
+  it("tools/listはトップレベルにも認証方式を配信する", async () => {
+    await client.listTools(undefined, { cacheMode: "refresh" });
+    expect(wireTools).toHaveLength(8);
+    for (const tool of wireTools) {
+      const meta = tool._meta as Record<string, unknown>;
+      expect(tool.securitySchemes).toEqual(meta.securitySchemes);
+    }
+  });
+
+  it("位置引数は利用者が指定した地点として説明する", async () => {
+    const { tools } = await client.listTools();
+    for (const name of ["find-nearby-iekei-ramen", "show-iekei-ramen-map", "decide-iekei-ramen"]) {
+      const tool = tools.find((t) => t.name === name)!;
+      const properties = tool.inputSchema.properties as Record<string, { description: string }>;
+      for (const axis of ["lat", "lon"]) {
+        expect(properties[axis].description).toContain("利用者が地名や地図で指定した地点");
+      }
+    }
+  });
+
   it("UI 付き tool は同じ UI リソースを指す", async () => {
     const { tools } = await client.listTools();
     const uiTools = tools.filter((t) => t.name !== "geocode-place");
@@ -139,10 +187,12 @@ describe("UI リソース", () => {
     const result = await client.readResource({ uri: "ui://iekei-ramen/mcp-app.html" });
     const meta = result.contents[0]._meta as {
       ui: {
+        domain: string;
         csp: { resourceDomains: string[]; connectDomains: string[] };
         permissions: Record<string, unknown>;
       };
     };
+    expect(meta.ui.domain).toBe("https://iekeiramen.com");
     expect(meta.ui.csp.resourceDomains).toContain("https://*.tile.openstreetmap.org");
     expect(meta.ui.permissions).toHaveProperty("geolocation");
   });
