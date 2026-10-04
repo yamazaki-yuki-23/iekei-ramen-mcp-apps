@@ -17,6 +17,36 @@ Static Assetsはこのディレクトリだけを配信するので、MCPの埋�
 未定義のURLには404を返し、MCPや認可の誤ったURLにWebのHTMLを返さない。
 本番は#41の決定に従い `https://iekeiramen.com/`。workers.devは再開しない。
 
+### 検索エンジン向けの静的ページ
+
+`npm run build:ui` の最後に `scripts/build-seo.mjs` が `data/shops.json` から
+都道府県・市区町村・店舗のHTML、`sitemap.xml`、`robots.txt`を `dist/web/` に生成する。
+生成物はGitに入れず、データの補正がマージされれば次のビルドで更新される。
+Web用Viteの出力を消す処理の後に生成し、WorkerのAPI経路は変更しない。
+
+都道府県は `/area/kanagawa/` のような固定の英字、市区町村はその下の日本語名を
+URLエンコードする。住所から区を推測せず、逆引きを反映した `shops.json` の `city` を使う。
+店舗は `/shop/node-1774529495/` のように安定IDの `/` を `-` にしたURLを使う。
+市区町村がない手動追加店も都道府県・店舗のページに載せる。
+
+`candidate` の店舗には `noindex` を付け、sitemapから除く。地域の一覧には
+「家系か未判定」の説明とともに載せる。RestaurantのJSON-LDは店名・住所・座標だけに
+限り、評価・価格・営業情報を追加しない。各ページに推定の但し書きとOSMの出典を出す。
+変更日時の根拠がないため、sitemapにビルド時刻を `lastmod` として載せない。
+
+アプリへのリンクは `/?prefecture=神奈川県&keyword=横浜市` のように既存の匿名検索を
+初回に呼ぶ。引数のないトップでは従来どおり3候補を開く。不正な県・100文字を超える
+キーワードは従来の入口へ戻す。市区町村・店名は既存の部分一致検索なので、同名の店舗も
+結果に含まれる場合がある。
+
+faviconは `public/favicon.svg` が正本。OGPと同じラーメンのマークを使い、
+`node scripts/render-favicon.mjs` で96pxのPNGと180pxのホーム画面用PNGを作る。
+再生成にはPlaywrightのChromiumが必要。通常のCIではコミット済み画像を配信する。
+
+Search Consoleの所有権は2026-10-04に確認済み。DNSのTXTレコードを消さない。
+ページ公開後、オーナーがドメイン `iekeiramen.com` の「サイトマップ」で
+`https://iekeiramen.com/sitemap.xml` を送信し、送信日をissueに残す。
+
 ### UI のホスト境界
 
 `src/iekei-app.tsx` は両方の入口が使う画面と状態を持つ。`src/hosts/types.ts` が

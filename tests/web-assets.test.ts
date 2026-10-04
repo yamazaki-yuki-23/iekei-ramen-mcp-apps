@@ -41,6 +41,38 @@ afterAll(async () => {
 }, 30_000);
 
 describe("workerdのWeb静的配信と既存API", () => {
+  it("SEOページ・sitemap・robots・faviconを静的に配信する", async () => {
+    for (const path of [
+      "/area/",
+      "/area/kanagawa/",
+      "/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/",
+      "/shop/node-1774529495/",
+    ]) {
+      const response = await request(path);
+      expect(response.status).toBe(200);
+      const html = await response.text();
+      expect(html).toContain('rel="canonical"');
+      expect(html).toContain('rel="icon"');
+    }
+    const sitemap = await request("/sitemap.xml");
+    expect(sitemap.status).toBe(200);
+    expect(await sitemap.text()).toContain("https://iekeiramen.com/shop/node-1774529495/");
+    const robots = await request("/robots.txt");
+    expect(await robots.text()).toContain("Sitemap: https://iekeiramen.com/sitemap.xml");
+    for (const [path, size] of [
+      ["/favicon-96.png", 96],
+      ["/apple-touch-icon.png", 180],
+    ] as const) {
+      const response = await request(path);
+      expect(response.status).toBe(200);
+      const data = new DataView(await response.arrayBuffer());
+      expect(data.getUint32(16)).toBe(size);
+      expect(data.getUint32(20)).toBe(size);
+    }
+    const svg = await request("/favicon.svg");
+    expect(svg.status).toBe(200);
+    expect(await svg.text()).toContain("<svg");
+  });
   it("ルートのHTMLと参照先JS・CSSを配信する", async () => {
     const response = await request("/");
     expect(response.status).toBe(200);

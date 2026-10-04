@@ -1,6 +1,7 @@
 import type { Client } from "@modelcontextprotocol/client";
 import { useEffect, useState } from "react";
 import { readPayload } from "../lib/payload";
+import { webEntry } from "../lib/web-entry";
 import type { HostConnectionProps, UiHost } from "./types";
 
 function createWebHost(client: Client): UiHost {
@@ -41,7 +42,7 @@ export function WebConnection({ onPayload, children }: HostConnectionProps) {
           new StreamableHTTPClientTransport(new URL("/mcp", window.location.href)),
         );
         if (!active) return;
-        const result = await client.callTool({ name: "decide-iekei-ramen", arguments: {} });
+        const result = await client.callTool(webEntry(window.location.search));
         if (!active) return;
         const payload = readPayload(result);
         if (result.isError || !payload) throw new Error("検索結果を読み込めませんでした。");

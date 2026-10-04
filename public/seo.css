@@ -1,0 +1,60 @@
+.seo-page main,
+.seo-page header,
+.seo-page footer,
+.seo-navigation {
+  max-width: 40rem;
+  margin: auto;
+  padding: var(--space-4);
+}
+.seo-page {
+  background: var(--color-surface);
+}
+.seo-page h1 {
+  font-size: var(--font-heading-lg-size);
+  text-wrap: balance;
+}
+.seo-page h2 {
+  font-size: var(--font-heading-md-size);
+}
+.seo-page p {
+  line-height: var(--font-text-md-line-height);
+}
+.seo-page a,
+.seo-navigation a {
+  color: var(--color-accent-strong);
+  overflow-wrap: anywhere;
+}
+.seo-page nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.seo-page nav a,
+.seo-navigation a,
+.seo-page li a,
+.seo-app-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-min-size);
+}
+.seo-page ul {
+  list-style: none;
+  padding: 0;
+}
+.seo-page li {
+  border-bottom: var(--border-width-regular) solid var(--color-border);
+  padding: var(--space-3) 0;
+}
+.seo-page li p {
+  margin: var(--space-1) 0;
+}
+.seo-note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+}
+.seo-page a:focus-visible,
+.seo-navigation a:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--color-focus-edge);
+}
