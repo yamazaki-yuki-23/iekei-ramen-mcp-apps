@@ -26,6 +26,7 @@ import {
   type ReactNode,
 } from "react";
 import { BrandMark } from "./components/BrandMark";
+import { APP_HEAD_ID } from "./components/PromiseHero";
 import { ModeControls } from "./components/ModeControls";
 import { ModeTabs } from "./components/ModeTabs";
 import type { FormValues } from "./components/SearchForm";
@@ -50,12 +51,18 @@ import type { HostConnectionProps, UiHost } from "./hosts/types";
 
 interface PresentationProps {
   introduction?: ReactNode;
+  /**
+   * 見出しの上に置く最初の画面（Web だけ）。入口のボタンからモードを切り替えるので、
+   * 切り替えの口を受け取る部品を渡す。
+   */
+  hero?: ComponentType<{ go?: (mode: SearchMode) => void }>;
   primaryMode?: SearchMode;
 }
 
 export function IekeiApp({
   Connection,
   introduction,
+  hero,
   primaryMode,
 }: { Connection: ComponentType<HostConnectionProps> } & PresentationProps) {
   const [payload, setPayload] = useState<AppPayload | null>(null);
@@ -186,13 +193,24 @@ export function IekeiApp({
   return (
     <Connection onPayload={applyPayload} onContextChange={onContextChange}>
       {({ host, error }) =>
+        /*
+         * 接続前・接続エラーも、接続後と同じ .main の中に描く。余白（セーフエリアを含む）が
+         * 揃わないと、つながった瞬間に舞台が画面の端から内側へ跳ぶ。
+         */
         error ? (
-          <p className={styles.error}>接続エラー: {error.message}</p>
+          <main className={styles.main}>
+            <HeroSlot Hero={hero} />
+            <p className={styles.error}>接続エラー: {error.message}</p>
+          </main>
         ) : !host ? (
-          <p className={styles.status}>読み込み中…</p>
+          <main className={styles.main}>
+            <HeroSlot Hero={hero} />
+            <p className={styles.status}>読み込み中…</p>
+          </main>
         ) : (
           <IekeiAppConnected
             introduction={introduction}
+            hero={hero}
             primaryMode={primaryMode}
             app={host}
             payload={payload}
@@ -246,6 +264,7 @@ interface ConnectedProps extends PresentationProps {
 
 function IekeiAppConnected({
   introduction,
+  hero,
   primaryMode,
   app,
   payload,
@@ -404,6 +423,7 @@ function IekeiAppConnected({
     <IekeiAppInner
       key={payloadVersion}
       introduction={introduction}
+      hero={hero}
       primaryMode={primaryMode}
       app={app}
       payload={payload ?? EMPTY_PAYLOAD}
@@ -542,11 +562,51 @@ function supportedAction<Action extends (...args: never[]) => unknown>(
 }
 
 /**
+ * 最初の画面の差し込み口。Web だけが部品を渡す。go が無い（接続前）ときは、
+ * 入口のボタンを押せない形で先に出す。約束は接続を待たずに見せる（#125）。
+ */
+function HeroSlot({
+  Hero,
+  go,
+}: {
+  Hero?: PresentationProps["hero"];
+  go?: (mode: SearchMode) => void;
+}) {
+  return Hero ? <Hero go={go} /> : null;
+}
+
+/**
+ * 最初の画面の入口から入る。**いま出ている画面なら取り直さない。** トップはすでに
+ * 地図なので、「地図で見る」で取り直すと、出ている地図が読み込み中（失敗なら
+ * エラー）に置き換わる。見出しへ送るだけでよい。
+ */
+function enterFrom(current: SearchMode, switchMode: (mode: SearchMode) => void) {
+  return (next: SearchMode) => {
+    if (next !== current) switchMode(next);
+  };
+}
+
+/**
+ * 絞り込みを置く場所。Web の地図だけ、地図と一覧の間に置く（#125）。
+ * 最初の画面で地図が先に見え、絞り込みは一覧の 20 件より前に来る。
+ * DOM の順で決める（CSS の order だと、読み上げと Tab の順が見た目とずれる）。
+ *
+ * 読み込み中・失敗のあいだも位置を変えない（ResultView が地図だけ状態に差し替える）。
+ * 置き場所を切り替えると、押していた選択肢が作り直されて焦点が消える。
+ */
+function placeControls(web: boolean, mode: SearchMode, controls: ReactNode) {
+  return web && mode === "map"
+    ? { top: null, belowMap: controls }
+    : { top: controls, belowMap: undefined };
+}
+
+/**
  * payload ごとに key で作り直されるので、状態は props からそのまま初期化できる。
  * tool 結果が届くたびにモードを揃え、フォームの下書きは外側で保持する。
  */
 function IekeiAppInner({
   introduction,
+  hero: Hero,
   primaryMode,
   app,
   payload,
@@ -722,51 +782,30 @@ function IekeiAppInner({
     />
   );
 
-  return (
-    <main
-      className={styles.main}
-      style={safeAreaStyle(hostContext?.safeAreaInsets)}
-      data-pending-calls={pendingCalls}
-      data-tool-result-ready={resultReceived}
-      data-mode={mode}
-    >
-      <div className={styles.header}>
-        <div className={styles.headerMain}>
-          {/* ロゴは飾りなので、見出しの読み上げには載せない。 */}
-          <span className={styles.brandMark}>
-            <BrandMark size={36} />
-          </span>
-          <h1 className={styles.title}>{heading}</h1>
-        </div>
-        {count ? <span className={styles.count}>{count}</span> : null}
-      </div>
-
-      {introduction}
-
-      <ModeTabs
-        mode={mode}
-        onChange={switchMode}
-        mutating={mutating}
-        visitsAvailable={visitsAvailable}
-        primaryMode={primaryMode}
-      />
-
-      <ModeControls
-        mode={mode}
-        prefectures={payload.prefectures}
-        form={form}
-        onForm={onForm}
-        onSubmit={runConditions}
-        origin={payload.query.origin}
-        onLocate={runNearby}
-        onLocateByHost={runNearbyByHost}
-        onSearchPlace={searchPlace}
-        notice={notice}
-        busy={busy}
-      />
-
+  const controls = (
+    <ModeControls
+      mode={mode}
+      prefectures={payload.prefectures}
+      form={form}
+      onForm={onForm}
+      onSubmit={runConditions}
+      origin={payload.query.origin}
+      onLocate={runNearby}
+      onLocateByHost={runNearbyByHost}
+      onSearchPlace={searchPlace}
+      notice={notice}
+      busy={busy}
+    />
+  );
+  /*
+   * Web の地図は、絞り込みより先に出す（#125）。最初の画面で「近くにこれだけある」が
+   * 見えるように。並びは DOM で入れ替える（CSS の order だと、読み上げと Tab の順が
+   * 見た目とずれる）。会話の中（MCP）は従来どおり条件が先。
+   */
+  const placed = placeControls(Hero !== undefined, mode, controls);
+  const results = (
+    <>
       {failure && <p className={styles.error}>{failure}</p>}
-
       {/* 詳細は選んだカードの直下に出す。一覧の上に置くと、選んだ瞬間に
           一覧が下にずれて、続けて別の店を押せない。 */}
       <Results
@@ -795,7 +834,48 @@ function IekeiAppInner({
         visitedIds={visitedIds}
         onForget={runForget}
         onSignIn={supportedAction(app.capabilities.visitSignIn, () => void askToSignIn())}
+        belowMap={placed.belowMap}
       />
+    </>
+  );
+
+  return (
+    <main
+      className={styles.main}
+      style={safeAreaStyle(hostContext?.safeAreaInsets)}
+      data-pending-calls={pendingCalls}
+      data-tool-result-ready={resultReceived}
+      data-mode={mode}
+    >
+      <HeroSlot Hero={Hero} go={enterFrom(mode, switchMode)} />
+
+      <div className={styles.header} id={APP_HEAD_ID}>
+        <div className={styles.headerMain}>
+          {/* ロゴは飾りなので、見出しの読み上げには載せない。 */}
+          <span className={styles.brandMark}>
+            <BrandMark size={36} />
+          </span>
+          <h1 className={styles.title}>{heading}</h1>
+        </div>
+        {count ? <span className={styles.count}>{count}</span> : null}
+      </div>
+
+      <ModeTabs
+        mode={mode}
+        onChange={switchMode}
+        mutating={mutating}
+        visitsAvailable={visitsAvailable}
+        primaryMode={primaryMode}
+      />
+
+      {placed.top}
+      {results}
+
+      {/*
+       * 「家系とは」は結果の下。最初の画面は約束と地図に譲り、初めての人が
+       * 開ける場所に置く（消さない）。
+       */}
+      {introduction}
 
       {/* 結果の下、注記の上。モードを切り替えても残るので、組み立てたものが消えない。 */}
       <ReportEntry enabled={app.capabilities.reports} ready={showResults} />

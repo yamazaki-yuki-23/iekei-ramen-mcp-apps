@@ -15,6 +15,13 @@ const escape = (value) =>
     (character) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character],
   );
+/*
+ * 判定の段階は形でも分ける（アプリのカードと同じ ■ □ ？。DESIGN.md「判定の段階のバッジ」）。
+ * 記号は飾りなので読み上げない。段階も推定なので、先に「推定」と添える。
+ */
+const STAGE_MARK = { confirmed: "■", likely: "□", candidate: "？" };
+const stage = (shop) =>
+  `<span class="seo-estimate">推定</span><span class="seo-stage seo-stage-${shop.confidence}" title="${escape(CONFIDENCE[shop.confidence].description)}"><span aria-hidden="true">${STAGE_MARK[shop.confidence]}</span>${escape(CONFIDENCE[shop.confidence].label)}</span>`;
 const region = (shop) => [shop.prefecture, shop.city].filter(Boolean).join(" ");
 const appLink = (prefecture, keyword) =>
   `/?${new URLSearchParams({ prefecture, ...(keyword ? { keyword } : {}) })}`;
@@ -23,11 +30,11 @@ const cityPath = (prefecture, city) => `${prefPath(prefecture)}${encodeURICompon
 const shopPath = (shop) => `/shop/${shop.id.replace("/", "-")}/`;
 
 function page({ title, description, path, content, noindex = false, structured, heading = title }) {
-  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}"><link rel="canonical" href="${origin}${path}">${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${structured ? `<script type="application/ld+json">${JSON.stringify(structured).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page"><header><nav aria-label="サイト内"><a href="/">家系ラーメンを探す</a><a href="/area/">都道府県から探す</a></nav></header><main><h1>${escape(heading)}</h1>${content}<p class="seo-note">${note}</p></main><footer><p class="seo-note">店舗の基礎データ・地域情報の出典：© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p></footer></body></html>`;
+  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}"><link rel="canonical" href="${origin}${path}">${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${structured ? `<script type="application/ld+json">${JSON.stringify(structured).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page"><header class="seo-sign"><nav aria-label="サイト内"><a class="seo-brand" href="/"><img src="/favicon.svg" alt="" width="28" height="28">家系ラーメンを探す</a><a href="/area/">都道府県から探す</a></nav></header><main><h1>${escape(heading)}</h1>${content}<p class="seo-note">${note}</p></main><footer><p class="seo-note">店舗の基礎データ・地域情報の出典：© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p></footer></body></html>`;
 }
 
 function shopList(shops) {
-  return `<ul>${shops.map((shop) => `<li><a href="${shopPath(shop)}">${escape(shop.name)}</a><p>${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p><p class="seo-note">${escape(CONFIDENCE[shop.confidence].label)}：${escape(CONFIDENCE[shop.confidence].description)}</p></li>`).join("")}</ul>`;
+  return `<ul>${shops.map((shop) => `<li><a class="seo-shop" href="${shopPath(shop)}">${escape(shop.name)}</a><p class="seo-badges">${stage(shop)}</p><p class="seo-note">${escape(CONFIDENCE[shop.confidence].description)}</p><p class="seo-note">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p></li>`).join("")}</ul>`;
 }
 
 /** WorkerのAPIへ変更を加えず、ビルド時にだけHTMLとsitemapを生成する。 */
@@ -138,7 +145,7 @@ export function seoPages(shops) {
         heading: shop.name,
         noindex: shop.confidence === "candidate",
         structured,
-        content: `<p><a href="${prefPath(shop.prefecture)}">${escape(shop.prefecture)}の一覧</a>${shop.city ? ` / <a href="${cityPath(shop.prefecture, shop.city)}">${escape(shop.city)}の一覧</a>` : ""}</p><p>${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p><p>家系判定：${escape(confidence.label)}。${escape(confidence.description)}</p><p>座標：${shop.lat}, ${shop.lon}</p><p><a class="seo-app-link" href="${escape(map)}" target="_blank" rel="noopener noreferrer">地図で位置を見る</a></p><a class="seo-app-link" href="${escape(appLink(shop.prefecture, shop.name))}">この店名の条件でアプリを開く</a>`,
+        content: `<p><a href="${prefPath(shop.prefecture)}">${escape(shop.prefecture)}の一覧</a>${shop.city ? ` / <a href="${cityPath(shop.prefecture, shop.city)}">${escape(shop.city)}の一覧</a>` : ""}</p><p>${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p><p class="seo-badges">${stage(shop)}</p><p>家系判定：${escape(confidence.label)}。${escape(confidence.description)}</p><p>座標：${shop.lat}, ${shop.lon}</p><p><a class="seo-app-link" href="${escape(map)}" target="_blank" rel="noopener noreferrer">地図で位置を見る</a></p><a class="seo-app-link" href="${escape(appLink(shop.prefecture, shop.name))}">この店名の条件でアプリを開く</a>`,
       }),
     );
     if (shop.confidence !== "candidate") indexed.push(path);

@@ -48,12 +48,18 @@ interface Props {
   busy?: boolean;
   /** 訪問済みの店舗 ID。カードのバッジと地図の印に使う。 */
   visitedIds?: ReadonlySet<string>;
+  /** 地図と一覧の間に置くもの（Web の地図では絞り込み、#125）。 */
+  belowMap?: ReactNode;
+  /** 読み込み中・失敗の文言。あれば地図と一覧の代わりに出す（絞り込みは残す）。 */
+  status?: string;
 }
 
 /**
  * 検索結果の表示。地図モードだけ地図と一覧を並べる。
  */
 export function ResultView({
+  belowMap,
+  status,
   mode,
   shops,
   selectedId,
@@ -99,70 +105,86 @@ export function ResultView({
   if (mode === "map") {
     return (
       <div className={styles.mapLayout}>
-        <MapToolbar
-          fullscreen={fullscreen}
-          busy={busy}
-          onSearchArea={
-            onSearchArea &&
-            (() => {
-              const shown = getBoundsRef.current?.();
-              if (shown) onSearchArea(shown);
-            })
-          }
-        />
-        <MapView
-          shops={shops}
-          selectedId={selectedId}
-          /*
-           * **塊の外を選んだら、その塊の一覧は畳む。** 出したままだと
-           * 「この地点の 3 軒」の下に 4 枚並び、見出しの数も「この地点」という
-           * まとまりも嘘になる。外を選んだ時点で、その塊の話は終わっている。
-           */
-          onSelect={(shop) => {
-            if (focused && !focused.some((s) => s.id === shop.id)) setFocused(null);
-            onSelect(shop);
-          }}
-          route={route}
-          routeOrigin={routeOrigin}
-          expanded={fullscreen?.expanded ?? false}
-          onClusterSelect={(group, viaKeyboard) => {
-            wantHeadFocus.current = viaKeyboard;
-            setFocused(group);
-          }}
-          onReady={(getBounds) => (getBoundsRef.current = getBounds)}
-          initialBounds={bounds}
-          refit={!bounds}
-          origin={origin}
-          visitedIds={visitedIds}
-        />
-        <p className={styles.mapNote}>{PIN_NOTE}</p>
-        {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}
-        {/* 出ている店に 1 軒でも記録があるときだけ書く。無いと読む意味が無い。 */}
-        {shops.some((s) => visitedIds?.has(s.id)) && (
-          <p className={styles.mapNote}>{VISITED_NOTE}</p>
+        {/*
+         * 読み込み中・失敗のあいだは、地図と一覧だけを状態の表示に差し替える。
+         * **絞り込み（belowMap）は同じ位置に残す。** 置き場所を変えると、押していた
+         * 選択肢ごと作り直されて焦点が消え、失敗したときは条件を変え直す口も消える。
+         */}
+        {status ? (
+          <p className={styles.status}>{status}</p>
+        ) : (
+          <>
+            <MapToolbar
+              fullscreen={fullscreen}
+              busy={busy}
+              onSearchArea={
+                onSearchArea &&
+                (() => {
+                  const shown = getBoundsRef.current?.();
+                  if (shown) onSearchArea(shown);
+                })
+              }
+            />
+            <MapView
+              shops={shops}
+              selectedId={selectedId}
+              /*
+               * **塊の外を選んだら、その塊の一覧は畳む。** 出したままだと
+               * 「この地点の 3 軒」の下に 4 枚並び、見出しの数も「この地点」という
+               * まとまりも嘘になる。外を選んだ時点で、その塊の話は終わっている。
+               */
+              onSelect={(shop) => {
+                if (focused && !focused.some((s) => s.id === shop.id)) setFocused(null);
+                onSelect(shop);
+              }}
+              route={route}
+              routeOrigin={routeOrigin}
+              expanded={fullscreen?.expanded ?? false}
+              onClusterSelect={(group, viaKeyboard) => {
+                wantHeadFocus.current = viaKeyboard;
+                setFocused(group);
+              }}
+              onReady={(getBounds) => (getBoundsRef.current = getBounds)}
+              initialBounds={bounds}
+              refit={!bounds}
+              origin={origin}
+              visitedIds={visitedIds}
+            />
+            <p className={styles.mapNote}>{PIN_NOTE}</p>
+            {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}
+            {/* 出ている店に 1 軒でも記録があるときだけ書く。無いと読む意味が無い。 */}
+            {shops.some((s) => visitedIds?.has(s.id)) && (
+              <p className={styles.mapNote}>{VISITED_NOTE}</p>
+            )}
+          </>
         )}
-        {focused && (
-          <div className={styles.focusHead}>
-            <span className={styles.focusHeadLabel} ref={focusHeadRef} tabIndex={-1}>
-              {focusLabel(focused.length)}
-            </span>
-            <button
-              type="button"
-              className={styles.buttonSecondary}
-              onClick={() => setFocused(null)}
-            >
-              すべて表示
-            </button>
-          </div>
+        {belowMap}
+        {status ? null : (
+          <>
+            {focused && (
+              <div className={styles.focusHead}>
+                <span className={styles.focusHeadLabel} ref={focusHeadRef} tabIndex={-1}>
+                  {focusLabel(focused.length)}
+                </span>
+                <button
+                  type="button"
+                  className={styles.buttonSecondary}
+                  onClick={() => setFocused(null)}
+                >
+                  すべて表示
+                </button>
+              </div>
+            )}
+            <ShopList
+              shops={mapListShops(focused ?? shops, selectedId)}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              detail={detail}
+              emptyMessage={EMPTY_MESSAGE.map}
+              visitedIds={visitedIds}
+            />
+          </>
         )}
-        <ShopList
-          shops={mapListShops(focused ?? shops, selectedId)}
-          selectedId={selectedId}
-          onSelect={onSelect}
-          detail={detail}
-          emptyMessage={EMPTY_MESSAGE.map}
-          visitedIds={visitedIds}
-        />
       </div>
     );
   }
