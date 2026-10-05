@@ -12,7 +12,10 @@ import { ShopList } from "./ShopList";
  */
 const RING_NOTE = "点線の円は基準地点からの直線距離 500m と 1km です。";
 /* 印の意味は画面に書く。色や形だけでは伝わらない。 */
-const VISITED_NOTE = "中心に白い点のあるピンは、行ったことのある店です。";
+const VISITED_NOTE = "中心に点のあるピンは、行ったことのある店です。";
+/* ピンの形は判定の段階、色は味の傾向。どちらも推定。 */
+const PIN_NOTE =
+  "塗りのピンは「家系」、白抜きで縁の太いピンは「家系の可能性」、小さく縁の細いピンは「家系か未判定」です。色は味の傾向です。";
 
 const EMPTY_MESSAGE: Record<SearchMode, string> = {
   form: "条件に合う店舗が見つかりませんでした。",
@@ -132,6 +135,7 @@ export function ResultView({
           origin={origin}
           visitedIds={visitedIds}
         />
+        <p className={styles.mapNote}>{PIN_NOTE}</p>
         {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}
         {/* 出ている店に 1 軒でも記録があるときだけ書く。無いと読む意味が無い。 */}
         {shops.some((s) => visitedIds?.has(s.id)) && (

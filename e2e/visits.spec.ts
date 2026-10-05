@@ -513,7 +513,7 @@ test.describe("サインイン済み", () => {
     await expect(app.getByRole("button", { name: new RegExp(`${name}.*行った`) })).toHaveCount(1, {
       timeout: 20_000,
     });
-    await expect(app.getByText("中心に白い点のあるピン")).toBeVisible();
+    await expect(app.getByText("中心に点のあるピン")).toBeVisible();
     await app.getByRole("button", { name: new RegExp(`${name}.*行った`) }).click();
     await app.getByRole("button", { name: "行ったを取り消す" }).click();
     await expect(app.getByRole("button", { name: "行った", exact: true })).toBeVisible();

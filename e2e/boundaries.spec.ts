@@ -51,3 +51,23 @@ for (const { prefecture, remaining } of [
     expect(await Promise.all((await shopCards(app).all()).map(shopId))).toEqual(first);
   });
 }
+
+test("選んだピンも、判定の段階の形を保つ", async ({ page }) => {
+  /*
+   * 選んだピンの縁を一律に黒くすると、「家系の可能性」と「家系か未判定」が
+   * 同じ形になる（形で段階を読ませる約束が、選んだ店でだけ崩れる）。
+   * 固定fixtureの山形県には「家系か未判定」が 1 軒だけあり、塊にならない。
+   */
+  const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "山形県" });
+  await waitForApp(app);
+  const candidate = app
+    .locator('.leaflet-overlay-pane path[role=button][aria-label*="（家系か未判定・"]')
+    .first();
+  await candidate.focus();
+  await page.keyboard.press("Enter");
+  const selected = app.locator(".leaflet-selectedShop-pane path[role=button]");
+  await expect(selected).toHaveAttribute("aria-label", /（家系か未判定・/);
+  // 未判定の細い灰の縁のまま、1px だけ太くなる。
+  await expect(selected).toHaveAttribute("stroke", "#635e57");
+  await expect(selected).toHaveAttribute("stroke-width", "2.5");
+});

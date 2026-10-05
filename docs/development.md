@@ -482,9 +482,9 @@ CSS より強いので、ホストが 0 を送ってくるだけで見た目が�
 - Leaflet に触る部分は [src/components/map-layers.ts](../src/components/map-layers.ts)
   に集める。MapView が持つのは「いつ描くか」だけ
 - **訪問印だけの更新ではピンと塊を作り直さない。** `drawShops()` の返す
-  `updateVisited()` で白い点・tooltip・読み上げラベルを更新する。同じ訪問状態なら
+  `updateVisited()` で行った印の点・tooltip・読み上げラベルを更新する。同じ訪問状態なら
   何も変えない。店舗・ズーム・選択では塊を描き直し、最新の訪問印を付ける。
-  選択ピンを前に出した後で白い点を描き、同じペインの下に隠れないようにする。
+  選択ピンを前に出した後で行った印の点を描き、同じペインの下に隠れないようにする。
   `e2e/map-visit-update.spec.ts` が実MapViewの再計算・再生成数と焦点・画角を検証する。
 - **「この範囲で探す」は押した瞬間の範囲を読む。** 直近の移動を覚えておく形に
   すると、寄せ終わる前に押されたときに古い範囲で探す（実測: 塊を押した直後に
@@ -533,7 +533,7 @@ Workerの中で本番の `d1Visits()` を呼ぶ。保存・一覧・削除・初
 APIの手順は [Cloudflareのテスト状態の準備](https://developers.cloudflare.com/workers/testing/test-harness/prepare-test-state/) を参照。
 
 **0件・1件・最終巡は実店舗データの分布から選ばない。**
-`e2e/fixtures/shops-boundaries.json` の固定データ（北海道1軒・青森県4軒・岩手県5軒・秋田県0軒）を
+`e2e/fixtures/shops-boundaries.json` の固定データ（北海道1軒・青森県4軒・岩手県5軒・秋田県0軒・山形県に「家系か未判定」1軒）を
 `tests/server-boundaries.test.ts` と `e2e/boundaries.spec.ts` で使う。
 サーバー結合テストでは `createServer({ shops })` で渡す。
 E2E は `main.ts` の `IEKEI_SHOP_FIXTURE` で3133に起動し、対象ページのPOSTだけを
