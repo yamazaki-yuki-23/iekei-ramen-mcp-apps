@@ -1525,7 +1525,8 @@ test.describe("選んだ店が塊に隠れないこと", () => {
     await waitForApp(app);
 
     await shopCards(app).first().click();
-    const pin = app.locator('path[stroke="#141312"]');
+    // 選んだピンは専用のペインに出る（縁の色は段階ごとに違うので、色では探さない）。
+    const pin = app.locator(".leaflet-selectedShop-pane path[role=button]");
     await expect(pin).toBeVisible();
 
     /** 選択中のピンの中心が塊に覆われているか、その位置で手前に出ているか。 */
@@ -1574,7 +1575,9 @@ test.describe("塊の中身に行き着けること", () => {
     const pin = app.locator(".leaflet-overlay-pane path[role=button]").first();
     await expect(pin).toHaveAttribute("tabindex", "0");
     const label = await pin.getAttribute("aria-label");
-    expect(label).toMatch(/（(直系・濃厚|クリーミー|チェーン・万人向け|味は未判定)）$/);
+    expect(label).toMatch(
+      /（(家系|家系の可能性|家系か未判定)・(直系・濃厚|クリーミー|チェーン・万人向け|味は未判定)）$/,
+    );
 
     await pin.focus();
     await page.keyboard.press("Enter");

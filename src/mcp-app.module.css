@@ -1079,7 +1079,7 @@
  * 塊のピン。
  *
  * **数を必ず出す。** 「ここに何かある」だけでは、押す前に何が起きるか
- * 分からない。順路の番号（.routePin）と紛れないよう、色は面ではなく縁で持つ。
+ * 分からない。順路の番号（.routePin、茶赤の面）と紛れないよう、塊は黒の面に黄の数字。
  * .leaflet-div-icon の白い四角とクラス 1 つ同士で競合するので 2 回書く。
  */
 .clusterPin.clusterPin {
@@ -1088,13 +1088,17 @@
   justify-content: center;
   border: none;
   border-radius: var(--radius-full);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
+  /*
+   * 醤油の黒の丸に、看板の黄の数字（DESIGN.md 0 節）。黄は押せる部品の塗りに
+   * 使わない決まりなので、文字にだけ使う。白い縁でどの地図タイルの上でも浮かせる。
+   */
+  background: var(--color-stage);
+  color: var(--color-on-stage-em);
   font-size: var(--font-size-note);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-display);
   font-variant-numeric: tabular-nums;
   box-shadow:
-    0 0 0 2px #b8442c,
+    0 0 0 2px #ffffff,
     var(--elevation-1);
   cursor: pointer;
 }

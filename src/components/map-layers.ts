@@ -1,7 +1,7 @@
 import L from "leaflet";
 import { normalizeBounds } from "../lib/bounds";
 import { clusterShops } from "../lib/cluster";
-import { TASTES, type Bounds, type Shop } from "../lib/types";
+import { CONFIDENCE, TASTES, type Bounds, type Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 
 /**
@@ -23,6 +23,12 @@ const TASTE_COLORS: Record<Shop["taste"], string> = {
 
 /** 選択中のピンの縁。地図タイルのどの色の上でも輪郭が出る濃さ。 */
 const SELECTED_STROKE = "#141312";
+/** 醤油の黒（--shoyu-950）。ピンの輪郭。 */
+const INK = "#150c07";
+/** 白抜きのピンの中。 */
+const HOLLOW = "#ffffff";
+/** 「家系か未判定」の細い縁（--gray-600）。言い切れない店ほど弱く見せる。 */
+const CANDIDATE_STROKE = "#635e57";
 
 /**
  * 選択中のピンを置くペイン。
@@ -54,9 +60,29 @@ export const ROUTE_PANE = "routeOrder";
  */
 export const ORIGIN_PANE = "originArea";
 
-/** 店 1 軒のピン。選択中だけ大きく、縁を濃くする。 */
-const PIN = { radius: 6, color: "#ffffff", weight: 1.5 } as const;
-const PIN_SELECTED = { radius: 10, color: SELECTED_STROKE, weight: 2 } as const;
+/**
+ * 店 1 軒のピン。**判定の段階を形で分ける**（カードの ■ □ ？ と同じ強さの順）。
+ * 色は味の傾向。色が見えにくくても、塗り・白抜きの太い縁・小さく細い縁で段階が読める。
+ * **点線は使わない。** 破線は順路の線（道のりではない）の印なので、意味が混ざる。
+ */
+function pinStyle(shop: Shop, selected: boolean): L.CircleMarkerOptions {
+  const taste = TASTE_COLORS[shop.taste];
+  const base: L.CircleMarkerOptions =
+    shop.confidence === "confirmed"
+      ? { radius: 7, color: INK, weight: 2, fillColor: taste, fillOpacity: 1 }
+      : shop.confidence === "likely"
+        ? { radius: 7, color: taste, weight: 3, fillColor: HOLLOW, fillOpacity: 1 }
+        : { radius: 4.5, color: CANDIDATE_STROKE, weight: 1.5, fillColor: HOLLOW, fillOpacity: 1 };
+  /*
+   * 選択中は大きくするだけで、**段階の形（塗り・縁の色と太さ）は残す。** 縁を
+   * 一律に黒くすると、選んだ「家系の可能性」と「家系か未判定」が同じ形になる。
+   * 小さい段階ほど小さいまま（未判定は 9、ほかは 11）で、強さの順も崩さない。
+   */
+  return selected
+    ? { ...base, radius: shop.confidence === "candidate" ? 9 : 11, weight: (base.weight ?? 1) + 1 }
+    : base;
+}
+
 /*
  * 行った店の印。**色を増やさず、中心に白い点を足す。**
  * 色で表すと味のパレットと衝突し、縁で表すと「選択中」と見分けが付かない。
@@ -65,11 +91,13 @@ const PIN_SELECTED = { radius: 10, color: SELECTED_STROKE, weight: 2 } as const;
 const VISITED_DOT = {
   radius: 2.5,
   weight: 0,
-  color: "#ffffff",
-  fillColor: "#ffffff",
   fillOpacity: 1,
   interactive: false,
 } as const;
+/** 点の色。塗りのピンには白、白抜きのピンには黒（白い中に白では見えない）。 */
+function visitedDotColor(shop: Shop): string {
+  return shop.confidence === "confirmed" ? HOLLOW : INK;
+}
 
 /**
  * 順路の線。
@@ -228,9 +256,8 @@ export function drawShops(
       // 印の意味は読み上げにも載せる。色と点は見えない人に届かない。
       const label = shopLabel(shop, false);
       const marker = L.circleMarker([shop.lat, shop.lon], {
-        ...(selected ? { ...PIN_SELECTED, pane: SELECTED_PANE } : PIN),
-        fillColor: TASTE_COLORS[shop.taste],
-        fillOpacity: 0.9,
+        ...pinStyle(shop, selected),
+        ...(selected ? { pane: SELECTED_PANE } : {}),
       })
         .bindTooltip(textTooltip(label))
         .on("click", () => opts.onSelect(shop, false));
@@ -327,6 +354,8 @@ export function drawShops(
           // 選択ピンを前に出したあとで描く。同じペインで白い点が上に残る。
           pin.dot = L.circleMarker(pin.marker.getLatLng(), {
             ...VISITED_DOT,
+            color: visitedDotColor(pin.shop),
+            fillColor: visitedDotColor(pin.shop),
             pane: pin.marker.options.pane,
           }).addTo(layer);
         } else if (pin.dot) {
@@ -339,7 +368,8 @@ export function drawShops(
 }
 
 function shopLabel(shop: Shop, visited: boolean): string {
-  return `${shop.name}（${TASTES[shop.taste].label}${visited ? "・行った" : ""}）`;
+  // 段階も読み上げに載せる。形は見えない人に届かない。
+  return `${shop.name}（${CONFIDENCE[shop.confidence].label}・${TASTES[shop.taste].label}${visited ? "・行った" : ""}）`;
 }
 
 /** 基準地点の印と同心円。**地図は動かさない。** */

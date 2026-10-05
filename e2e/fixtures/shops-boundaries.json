@@ -5,7 +5,7 @@
     "taste": "unknown",
     "confidence": "confirmed",
     "prefecture": "北海道",
-    "lat": 35.0,
+    "lat": 35,
     "lon": 139,
     "osmUrl": "https://example.test/shops/0"
   },
@@ -98,5 +98,15 @@
     "lat": 35.09,
     "lon": 139,
     "osmUrl": "https://example.test/shops/9"
+  },
+  {
+    "id": "fixture/10",
+    "name": "境界テスト店10",
+    "taste": "unknown",
+    "confidence": "candidate",
+    "prefecture": "山形県",
+    "lat": 38.24,
+    "lon": 140.36,
+    "osmUrl": "https://example.test/shops/10"
   }
 ]
