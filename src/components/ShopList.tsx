@@ -5,6 +5,17 @@ import { formatDistance } from "../lib/geo";
 import { openingHoursLabel } from "../lib/opening-hours";
 import styles from "../mcp-app.module.css";
 
+/*
+ * 判定の段階は形でも分ける（色が見えにくい人に届くように）。
+ * 塗り ■ ＞ 枠 □ ＞ 枠なし ？ の順に弱くなり、言い切れる度合いと揃う。
+ */
+const STAGE_CLASS = {
+  confirmed: styles.stageConfirmed,
+  likely: styles.stageLikely,
+  candidate: styles.stageCandidate,
+} as const;
+const STAGE_MARK = { confirmed: "■", likely: "□", candidate: "？" } as const;
+
 interface Props {
   shops: Shop[];
   /** 順位番号を出す（近い順のとき）。 */
@@ -78,6 +89,27 @@ export function ShopList({
                 )}
               </span>
               {/*
+               * 判定の段階は一目で分かる位置に、常に出す（「家系」も含めて）。
+               * 段階も味も推定なので、先頭に「推定」と添えてから並べる。
+               */}
+              <span className={styles.badges}>
+                <span className={styles.estimate}>推定</span>
+                <span
+                  className={STAGE_CLASS[shop.confidence]}
+                  title={CONFIDENCE[shop.confidence].description}
+                  data-shop-stage={shop.confidence}
+                >
+                  <span aria-hidden="true">{STAGE_MARK[shop.confidence]}</span>
+                  {CONFIDENCE[shop.confidence].label}
+                </span>
+                <span className={shop.taste === "unknown" ? styles.badgeMuted : styles.badge}>
+                  {TASTES[shop.taste].label}
+                </span>
+                {shop.brand && <span className={styles.badgeMuted}>{shop.brand}</span>}
+                {/* 行った印は特典の無いサブ機能なので、塗らずに控えめに添える。 */}
+                {visitedIds?.has(shop.id) && <span className={styles.badgeVisited}>行った</span>}
+              </span>
+              {/*
                * 名前の隣に出した分は、住所の行で繰り返さない（同じ文字列が
                * 2 つ並ぶと壊れて見える）。**ただし出していない分は残す**——
                * 市区町村だけで見分けが付く店から町名まで消すと、持っている
@@ -100,21 +132,6 @@ export function ShopList({
               {shop.openingHours && (
                 <span className={styles.meta}>営業 {openingHoursLabel(shop.openingHours)}</span>
               )}
-              <span className={styles.badges}>
-                {visitedIds?.has(shop.id) && <span className={styles.badgeVisited}>行った</span>}
-                <span className={shop.taste === "unknown" ? styles.badgeMuted : styles.badge}>
-                  {TASTES[shop.taste].label}
-                </span>
-                {shop.confidence !== "confirmed" && (
-                  <span
-                    className={styles.badgeMuted}
-                    title={CONFIDENCE[shop.confidence].description}
-                  >
-                    {CONFIDENCE[shop.confidence].label}
-                  </span>
-                )}
-                {shop.brand && <span className={styles.badgeMuted}>{shop.brand}</span>}
-              </span>
             </span>
             {shop.distanceKm !== undefined && (
               <span className={styles.distance}>{formatDistance(shop.distanceKm)}</span>

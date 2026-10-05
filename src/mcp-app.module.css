@@ -267,10 +267,21 @@
 }
 
 /*
+ * 枠も塗りも無いボタン。記録や解除のように、あっても目立たせないもの。
+ * 押せる大きさ（44px）は他のボタンと同じに保つ。
+ */
+.buttonQuiet {
+  composes: buttonSecondary;
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+/*
  * 入っている状態のボタン（「行った」）。
  *
- * **第 1 ボタンの塗りは使わない。** `.button` と同じ塗りにすると、その行で
- * 一番強い「この店について聞く」と同じ重さになり、どちらが主か読めなくなる。
+ * **第 1 ボタンの塗りは使わない。** `.button` と同じ塗りにすると、一番強い
+ * 「地図で開く」と同じ重さになり、どちらが主か読めなくなる。
  * 選択中の見せ方（accent-soft の面 ＋ アクセントの枠）に合わせる。
  */
 .buttonOn {
@@ -436,14 +447,20 @@
     white-space: nowrap;
   }
 
-  /* バッジは右端へ寄せ、折り返さない。 */
+  /*
+   * バッジは右端へ寄せ、折り返さない。狭い幅では店名のすぐ下（判定を一目で）、
+   * 広い幅では 1 行の末尾に置くので、並び順だけ入れ替える。
+   */
   .cardBody > .badges {
     flex: 0 0 auto;
     margin-left: auto;
+    order: 1;
   }
 }
 
+/* 店名が一番強い。一覧で店を見分ける手がかりは、まず名前。 */
 .shopName {
+  font-size: var(--font-heading-md-size);
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing-tight);
 }
@@ -488,11 +505,54 @@
   font-weight: var(--font-weight-normal);
 }
 
-/* 行った印。バッジの中では塗りで持つ（枠は他のバッジと高さを揃えるため透明）。 */
+/*
+ * 行った印。スタンプは特典の無いサブ機能なので、塗らずに控えめに置く。
+ * 色だけに頼らないよう、✓ と文字で持つ。
+ */
 .badgeVisited {
+  composes: badgeMuted;
+  color: var(--color-accent-strong);
+}
+
+/* 印は飾りなので CSS で付ける（読み上げと文字列は「行った」のまま）。 */
+.badgeVisited::before {
+  content: "✓\00a0" / "";
+}
+
+/* バッジの前に置く「推定」。段階と味のどちらも推定であることをカードでも示す。 */
+.estimate {
+  align-self: center;
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+/*
+ * 判定の段階（DESIGN.md 0 節）。形で分ける: 塗り ■ ＞ 枠 □ ＞ 枠なし ？。
+ * 輪郭は看板・食券と同じ --color-ink。暗では明るい色になるので、塗りの上の
+ * 文字は面の色で抜く。
+ */
+.stageConfirmed {
   composes: badge;
-  background: var(--color-accent-fill);
-  color: var(--color-text-on-accent);
+  gap: var(--space-1);
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+
+.stageLikely {
+  composes: badge;
+  gap: var(--space-1);
+  background: transparent;
+  border: var(--border-width-strong) solid var(--color-ink);
+  color: var(--color-text-primary);
+  padding: 0 var(--space-2);
+}
+
+.stageCandidate {
+  composes: badge;
+  gap: var(--space-1);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-normal);
 }
 
 /* 店名と同じ行に置く。縦中央に寄せると、どの店の距離か目で追えない。 */
@@ -551,6 +611,15 @@
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
+}
+
+/* 記録と解除。主な操作の行と離し、枠の無い控えめなボタンで並べる。 */
+.selectedSub {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding-top: var(--space-2);
+  border-top: var(--border-width-regular) solid var(--color-border);
 }
 
 .selectedNote {
@@ -1185,6 +1254,7 @@
 .tab:focus-visible,
 .button:focus-visible,
 .buttonOn:focus-visible,
+.buttonQuiet:focus-visible,
 .buttonDanger:focus-visible,
 .chip:focus-visible,
 .card:focus-visible,
