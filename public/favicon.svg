@@ -1,5 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <title>家系ラーメンを探す</title>
-  <rect width="64" height="64" rx="20" fill="#fae4dc" />
-  <text x="32" y="44" text-anchor="middle" font-size="36" font-family="system-ui, -apple-system, sans-serif">🍜</text>
+  <!--
+    タブ（16〜32px）用の小さい版。ロゴのピンと丼は 16px で潰れるので、
+    海苔 3 枚（＝迷ったら 3 軒）だけを看板の黄の地に太く置く（#130、#123 の確認事項）。
+    大きいアイコンは scripts/icons/logo-icon.svg（ロゴそのもの）から作る。
+  -->
+  <rect width="64" height="64" rx="14" fill="#ffc81a" />
+  <g fill="#150c07">
+    <rect x="12" y="14" width="10" height="36" rx="2" />
+    <rect x="27" y="10" width="10" height="44" rx="2" />
+    <rect x="42" y="14" width="10" height="36" rx="2" />
+  </g>
 </svg>
