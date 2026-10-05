@@ -347,7 +347,7 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     expect(overflow).toBe(0);
   });
 
-  test("「別の候補を見る」で中身が入れ替わる", async ({ page }) => {
+  test("「次の 3 軒を見る」で中身が入れ替わる", async ({ page }) => {
     const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
     await waitForApp(app);
 
@@ -357,9 +357,17 @@ test.describe("迷ったら（3 軒に絞る）", () => {
      * 壱八家が 2 店入った途端に落ちた）。
      */
     const before = await Promise.all([0, 1, 2].map((i) => shopId(shopCards(app).nth(i))));
+
+    // 選んだ食券は詳細と 1 つの枠になる。食券の輪郭が内側に残ると枠が 2 本に見える。
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await shopCards(app).first().click();
+    // hover の指定は別に枠を消すので、ポインタを外してから測る（乗せたままだと直す前も通る）。
+    await page.mouse.move(0, 0);
+    await expect(shopCards(app).first()).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
+    await app.getByRole("button", { name: "選択を解除" }).click();
     await expect(app.getByText(/ 1〜3 軒目$/)).toBeVisible();
 
-    await app.getByRole("button", { name: "別の候補を見る" }).click();
+    await app.getByRole("button", { name: "次の 3 軒を見る" }).click();
     await expect(app.getByText(/ 4〜6 軒目$/)).toBeVisible();
 
     const after = await Promise.all([0, 1, 2].map((i) => shopId(shopCards(app).nth(i))));
@@ -434,7 +442,7 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     const pool = await app.locator("section p").first().innerText();
     expect(pool).toContain("「横浜」に合う");
 
-    await app.getByRole("button", { name: "別の候補を見る" }).click();
+    await app.getByRole("button", { name: "次の 3 軒を見る" }).click();
     await expect(app.getByText(/ 4〜6 軒目$/)).toBeVisible();
 
     const after = await app.locator("section p").first().innerText();
@@ -576,7 +584,9 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     ).toBeVisible();
     await expect(shopCards(app)).toHaveCount(0);
     await expect(app.getByRole("button", { name: /軒から選ぶ/ })).toHaveCount(0);
-    await expect(app.getByRole("button", { name: "別の候補を見る" })).toHaveCount(0);
+    await expect(
+      app.getByRole("button", { name: /次の 3 軒を見る|最初の 3 軒に戻る/ }),
+    ).toHaveCount(0);
     // 見出しも前のモードの件数を名乗らない。
     await expect(app.getByRole("heading", { name: "迷ったら", exact: true })).toBeVisible();
   });
@@ -689,10 +699,13 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     await expect(app.getByText("キーワード「存在しない店名ZZZ」")).toBeVisible();
     await expect(app.getByText(/上のキーワードを外すか/)).toBeVisible();
     await expect(app.getByRole("heading", { name: "迷ったら", exact: true })).toBeVisible();
+    // 並べたものが無いので、並べた根拠も名乗らない。
+    await expect(app.getByText(/^(近い順|営業時間が分かる店から順)$/)).toHaveCount(0);
 
     await app.getByRole("button", { name: "このキーワードを外す" }).click();
 
     await expect(shopCards(app)).toHaveCount(3);
+    await expect(app.getByText(/^(近い順|営業時間が分かる店から順)$/)).toBeVisible();
     await expect(app.getByText("存在しない店名ZZZ")).toHaveCount(0);
   });
 

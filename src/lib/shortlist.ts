@@ -135,6 +135,11 @@ export function describeBasis(
   return `${scope}${filtered} ${info.poolTotal} 軒を${how}に並べた、${pickRange(info, shown)}です。`;
 }
 
+/** 見出しの横に出す、並べた根拠の短い言い方。「1 位」のような順位の言葉は使わない。 */
+export function basisLabel(info: Pick<DecideInfo, "basis">): string {
+  return info.basis === "distance" ? "近い順" : "営業時間が分かる店から順";
+}
+
 /**
  * 並べた中の何軒目か。「1〜3 軒目」。
  *

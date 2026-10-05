@@ -41,7 +41,7 @@ test("デモ", async ({ page }) => {
   await app.getByRole("tab", { name: "迷ったら" }).click();
   await expect(shopCards(app)).toHaveCount(3);
   await page.waitForTimeout(2500);
-  await app.getByRole("button", { name: "別の候補を見る" }).click();
+  await app.getByRole("button", { name: "次の 3 軒を見る" }).click();
   await page.waitForTimeout(2000);
 
   // まわる店 — 2 軒を積んで順路を出す

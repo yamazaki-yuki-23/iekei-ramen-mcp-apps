@@ -172,7 +172,7 @@ test("Webは会話・記録の未対応操作を出さず、3候補と次の候�
   // 接続案内へのリンクはWebにも出す。未対応の会話操作はアプリ本体に出さない。
   await expect(page.locator("main")).not.toContainText("チャット");
   await expect(page.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
-  await page.getByRole("button", { name: "別の候補を見る" }).click();
+  await page.getByRole("button", { name: "次の 3 軒を見る" }).click();
   const next = await tool(request, "decide-iekei-ramen", { round: 1 });
   await expect.poll(() => ids(page)).toEqual(next.shops.map((shop) => shop.id));
   expect(next.shops.map((shop) => shop.id)).not.toEqual(first.shops.map((shop) => shop.id));

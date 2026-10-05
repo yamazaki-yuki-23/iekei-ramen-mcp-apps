@@ -32,7 +32,7 @@ test("初回は家系の3行説明を開き、次回は畳む。候補を変え�
   await expect(intro).not.toHaveAttribute("open", "");
   await summary.press("Enter");
   await expect(intro).toHaveAttribute("open", "");
-  await page.getByRole("button", { name: "別の候補を見る" }).click();
+  await page.getByRole("button", { name: "次の 3 軒を見る" }).click();
   await expect(page.getByText(/^\d+ 軒中 4〜6 軒目$/)).toBeVisible();
   await expect(intro).toHaveAttribute("open", "");
   expect(
@@ -68,7 +68,7 @@ test("localStorageが使えなくても説明を畳み、候補を切り替え�
   await expect(intro).toHaveAttribute("open", "");
   await intro.locator(":scope > summary").click();
   await expect(intro).not.toHaveAttribute("open", "");
-  await page.getByRole("button", { name: "別の候補を見る" }).click();
+  await page.getByRole("button", { name: "次の 3 軒を見る" }).click();
   await expect(page.getByText(/^\d+ 軒中 4〜6 軒目$/)).toBeVisible();
   await expect(intro).not.toHaveAttribute("open", "");
   await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
