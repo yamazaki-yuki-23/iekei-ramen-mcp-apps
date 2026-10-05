@@ -39,8 +39,11 @@ URLエンコードする。住所から区を推測せず、逆引きを反映�
 キーワードは従来の入口へ戻す。市区町村・店名は既存の部分一致検索なので、同名の店舗も
 結果に含まれる場合がある。
 
-faviconは `public/favicon.svg` が正本。OGPと同じラーメンのマークを使い、
-`node scripts/render-favicon.mjs` で96pxのPNGと180pxのホーム画面用PNGを作る。
+アイコンは大きさで描き分ける（#130）。タブ・検索結果（16〜96px）は `public/favicon.svg`
+（看板の黄に海苔3枚。ロゴのピンと丼は16pxで潰れるため）、ホーム画面・ディレクトリ用は
+`scripts/icons/logo-icon.svg`（ロゴそのもの）が正本。`node scripts/render-favicon.mjs` で
+96pxのPNG・180pxのホーム画面用PNG・512pxのディレクトリ用PNG（`icon-512.png`）を作る。
+OGPは `scripts/og-card.svg` が正本で、`node scripts/render-og-card.mjs` で作る。
 再生成にはPlaywrightのChromiumが必要。通常のCIではコミット済み画像を配信する。
 
 Search Consoleの所有権は2026-10-04に確認済み。DNSのTXTレコードを消さない。

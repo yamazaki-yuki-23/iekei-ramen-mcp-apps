@@ -82,6 +82,7 @@ describe("workerdのWeb静的配信と既存API", () => {
     for (const [path, size] of [
       ["/favicon-96.png", 96],
       ["/apple-touch-icon.png", 180],
+      ["/icon-512.png", 512],
     ] as const) {
       const response = await request(path);
       expect(response.status).toBe(200);
