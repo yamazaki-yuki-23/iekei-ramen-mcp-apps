@@ -39,14 +39,14 @@ for (const { prefecture, remaining } of [
     await waitForApp(app);
     await expect(shopCards(app)).toHaveCount(3);
     const first = await Promise.all((await shopCards(app).all()).map(shopId));
-    await app.getByRole("button", { name: "別の候補を見る" }).click();
+    await app.getByRole("button", { name: "次の 3 軒を見る" }).click();
     await expect(shopCards(app)).toHaveCount(remaining);
     const last = await Promise.all((await shopCards(app).all()).map(shopId));
     expect(last.every((id) => !first.includes(id))).toBe(true);
     await expect(
       app.getByRole("heading", { name: new RegExp(`迷ったらこの ${remaining} 軒`) }),
     ).toBeVisible();
-    await app.getByRole("button", { name: "別の候補を見る" }).click();
+    await app.getByRole("button", { name: "最初の 3 軒に戻る" }).click();
     await expect(shopCards(app)).toHaveCount(3);
     expect(await Promise.all((await shopCards(app).all()).map(shopId))).toEqual(first);
   });

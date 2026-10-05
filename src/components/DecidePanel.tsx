@@ -13,6 +13,13 @@ const BASIS_NOTE =
 const NOTE = `${BASIS_NOTE}気になる店は押して選んでから、チャットで聞いてください。`;
 const BROWSE_NOTE = `${BASIS_NOTE}気になる店を選ぶと、店舗の情報や注文のカンペを確認できます。`;
 
+/** 末尾まで来たら先頭へ戻る。押す前に何が起きるかを言う。 */
+function rerollLabel(info: DecideInfo | undefined): string {
+  return info && info.rounds > 1 && info.round + 1 >= info.rounds
+    ? "最初の 3 軒に戻る"
+    : "次の 3 軒を見る";
+}
+
 interface Props {
   shops: Shop[];
   /** 3 軒をどう選んだか。サーバーが返す。 */
@@ -93,7 +100,14 @@ export function DecidePanel({
       {filter}
       {basis && <p className={styles.decideBasis}>{basis}</p>}
 
-      <ShopList shops={shops} ranked selectedId={selectedId} onSelect={onSelect} detail={detail} />
+      <ShopList
+        shops={shops}
+        ranked
+        ticket
+        selectedId={selectedId}
+        onSelect={onSelect}
+        detail={detail}
+      />
 
       <div className={styles.decideActions}>
         {onAsk && (
@@ -116,7 +130,7 @@ export function DecidePanel({
           onClick={onReroll}
           disabled={busy || (info?.rounds ?? 1) <= 1}
         >
-          別の候補を見る
+          {rerollLabel(info)}
         </button>
         {info && info.rounds > 1 && (
           <span className={styles.decideRound}>

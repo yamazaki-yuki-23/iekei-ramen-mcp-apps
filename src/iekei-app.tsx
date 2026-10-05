@@ -43,7 +43,8 @@ import { safeAreaStyle } from "./lib/safe-area";
 import { DATA_DEFINITIONS, DATA_FOOTNOTE } from "./lib/data-caveats";
 import { scopeLabel } from "./lib/scope";
 import { MAX_STOPS, planRoute } from "./lib/route";
-import type { AppPayload, Origin, SearchMode, Shop, VisitResult } from "./lib/types";
+import type { AppPayload, DecideInfo, Origin, SearchMode, Shop, VisitResult } from "./lib/types";
+import { basisLabel } from "./lib/shortlist";
 import styles from "./mcp-app.module.css";
 import type { HostConnectionProps, UiHost } from "./hosts/types";
 
@@ -482,11 +483,17 @@ function buildHeading(mode: SearchMode, payload: AppPayload, ready: boolean): st
  * 見出しの横の件数。「判定した結果の 558 軒（200 軒を表示）」。
  *
  * 全国の総数ではなく、地図データを判定した結果の軒数なので、そう書く。
- * 「迷ったら」は並べた中の位置を 3 軒の下に出すので、ここでは出さない
- * （「352 件（3 件表示）」が何の件数か読めなかった）。行った店は記録の軒数。
+ * 「迷ったら」は件数の代わりに並べた根拠（「近い順」など）を出す。位置は 3 軒の下に
+ * 出す（「352 件（3 件表示）」が何の件数か読めなかった）。行った店は記録の軒数。
  */
-function formatCount(mode: SearchMode, total: number, shown: number): string | null {
-  if (mode === "decide") return null;
+function formatCount(
+  mode: SearchMode,
+  total: number,
+  shown: number,
+  decide: DecideInfo | undefined,
+): string | null {
+  // 0 軒のときは並べたものが無いので、根拠も名乗らない。
+  if (mode === "decide") return decide && shown > 0 ? basisLabel(decide) : null;
   if (mode === "visited") return `${total} 軒`;
   const counted = `判定した結果の ${total} 軒`;
   return total > shown ? `${counted}（${shown} 軒を表示）` : counted;
@@ -613,7 +620,7 @@ function IekeiAppInner({
   const visitsAvailable = signedIn || app.capabilities.visitSignIn;
   const visitedIds = useMemo(() => new Set(payload.visited ?? []), [payload.visited]);
 
-  // 「迷ったら」は「別の候補を見る」で巡回する。payload に乗ってくる値を初期値にして、
+  // 「迷ったら」は「次の 3 軒を見る」で巡回する。payload に乗ってくる値を初期値にして、
   // ここで進める（サーバーが範囲外を丸めるので、増やし続けても壊れない）。
   const round = payload.decide?.round ?? 0;
   /*
@@ -676,7 +683,7 @@ function IekeiAppInner({
 
   const showResults = payloadReady && !awaitingOrigin;
   const shops = showResults ? payload.shops : [];
-  const count = showResults ? formatCount(mode, payload.total, shops.length) : null;
+  const count = showResults ? formatCount(mode, payload.total, shops.length, payload.decide) : null;
 
   const inRoute = selected !== null && stops.some((s) => s.id === selected.id);
 

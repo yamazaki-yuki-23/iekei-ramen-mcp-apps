@@ -12,8 +12,8 @@ const GLOBAL = readFileSync(new URL("../src/global.css", import.meta.url), "utf8
 const MODULE = readFileSync(new URL("../src/mcp-app.module.css", import.meta.url), "utf8");
 const CONSENT = readFileSync(new URL("../src/oauth-consent.css", import.meta.url), "utf8");
 
-/** 実行時に JS から差し込む変数。CSS には定義が無くてよい。 */
-const FROM_RUNTIME = /^--safe-area-/;
+/** 実行時に JS から差し込む変数。CSS には定義が無くてよい（--ticket-index は ShopList の style）。 */
+const FROM_RUNTIME = /^--(safe-area-|ticket-index$)/;
 
 function definedNames(css: string): Set<string> {
   return new Set([...css.matchAll(/^\s*(--[\w-]+)\s*:/gm)].map((m) => m[1]));

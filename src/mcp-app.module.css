@@ -647,10 +647,6 @@
  */
 .decideBasis {
   margin: 0;
-  padding: var(--space-3) var(--space-4);
-  border-left: 4px solid var(--color-accent);
-  border-radius: var(--radius-sm);
-  background: var(--color-accent-soft);
   color: var(--color-text-primary);
   font-size: var(--font-size-note);
   line-height: 1.6;
@@ -678,6 +674,60 @@
   gap: var(--space-2);
   flex-wrap: wrap;
   align-items: center;
+}
+
+/*
+ * 「迷ったら」の 3 軒は食券（DESIGN.md 0 節）。黄の半券に表示順の番号、
+ * 2px の黒い輪郭。番号は順位ではないので、大きさは揃えて差を付けない。
+ */
+.tickets .card {
+  border: var(--border-width-strong) solid var(--color-ink);
+  padding-left: 0;
+}
+
+/*
+ * 選んだ食券は、詳細と合わせて 1 つの枠にする（枠は 1 本だけ、DESIGN.md 8 節）。
+ * 上の指定と同じ強さなので、ここで食券の黒い輪郭を外す。
+ */
+.tickets .listItemSelected .card {
+  border-color: transparent;
+}
+
+.tickets .rank {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  min-width: 3.5rem;
+  margin: calc(var(--space-3) * -1) 0;
+  border-right: var(--border-width-strong) dashed var(--color-on-sign);
+  border-radius: calc(var(--radius-md) - var(--border-width-strong)) 0 0
+    calc(var(--radius-md) - var(--border-width-strong));
+  background: var(--color-sign);
+  color: var(--color-on-sign);
+  font-size: var(--font-heading-xl-size);
+  font-weight: var(--font-weight-display);
+}
+
+/*
+ * 3 軒が出る瞬間。1 軒ずつ順に浮かび上がらせ、決まる場面として残す。
+ * 動きは 1px の移動と濃さだけ（DESIGN.md 7 節）。動きを減らす設定では出さない。
+ */
+.tickets > li {
+  animation: ticket-in 240ms var(--easing-standard) both;
+  animation-delay: calc(var(--ticket-index, 0) * 90ms);
+}
+
+@keyframes ticket-in {
+  from {
+    opacity: 0;
+    transform: translateY(1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tickets > li {
+    animation: none;
+  }
 }
 
 /* 並べた中の何軒目か。桁が変わっても幅が動かないよう等幅数字。 */

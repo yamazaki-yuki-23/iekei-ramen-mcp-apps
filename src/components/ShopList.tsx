@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, type CSSProperties, type ReactNode } from "react";
 import { metaParts, sameNameLabels } from "../lib/same-name";
 import { CONFIDENCE, TASTES, type Shop } from "../lib/types";
 import { formatDistance } from "../lib/geo";
@@ -20,6 +20,11 @@ interface Props {
   shops: Shop[];
   /** 順位番号を出す（近い順のとき）。 */
   ranked?: boolean;
+  /**
+   * 「迷ったら」の 3 軒を食券の形で出す。番号は半券に載る表示順で、
+   * 順位ではない（おすすめ順に見せない）。
+   */
+  ticket?: boolean;
   selectedId?: string;
   onSelect?: (shop: Shop) => void;
   /**
@@ -40,6 +45,7 @@ interface Props {
 export function ShopList({
   shops,
   ranked,
+  ticket,
   selectedId,
   onSelect,
   detail,
@@ -59,9 +65,14 @@ export function ShopList({
   }
 
   return (
-    <ul className={styles.list}>
+    <ul className={ticket ? `${styles.list} ${styles.tickets}` : styles.list}>
       {shops.map((shop, i) => (
-        <li key={shop.id} className={selectedId === shop.id ? styles.listItemSelected : undefined}>
+        <li
+          key={shop.id}
+          className={selectedId === shop.id ? styles.listItemSelected : undefined}
+          // 3 軒が 1 軒ずつ出る順番。CSS の animation-delay が読む。
+          style={ticket ? ({ "--ticket-index": i } as CSSProperties) : undefined}
+        >
           <button
             type="button"
             className={`${styles.card} ${selectedId === shop.id ? styles.cardSelected : ""}`}
@@ -70,7 +81,7 @@ export function ShopList({
             /*
              * どの店かを名指しできるようにする。**店名は同一性ではない**——
              * 同じチェーンの別店舗は同じ名前で並ぶので、名前で突き合わせると
-             * 別の店を同じ店と数える（実測: 「別の候補を見る」の前後を店名で
+             * 別の店を同じ店と数える（実測: 「次の 3 軒を見る」の前後を店名で
              * 比べていて、壱八家が 2 店入った途端に重複と判定された）。
              */
             data-shop-id={shop.id}
