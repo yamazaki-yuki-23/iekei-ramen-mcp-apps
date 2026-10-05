@@ -75,21 +75,22 @@ export function SelectedShop({
 
   return (
     <section className={styles.selected} aria-label="選択中の店舗" ref={ref}>
+      {/*
+       * 並びは「行き先 → 初めての人向けの注文 → 控えめな記録と報告」。
+       * 一番強いのは地図アプリへの導線で、選んだ人の次の行動はそこにある。
+       */}
       <div className={styles.selectedActions}>
+        <button type="button" className={styles.button} onClick={onOpenMap}>
+          地図で開く
+        </button>
         {onAsk && (
-          <button type="button" className={styles.button} onClick={onAsk} disabled={asking}>
-            {asking ? "送信中…" : "この店について聞く"}
-          </button>
-        )}
-        {onToggleVisit && (
           <button
             type="button"
-            className={isVisited ? styles.buttonOn : styles.buttonSecondary}
-            onClick={onToggleVisit}
-            aria-pressed={signedIn ? isVisited : undefined}
+            className={styles.buttonSecondary}
+            onClick={onAsk}
             disabled={asking}
           >
-            {isVisited ? "行ったを取り消す" : "行った"}
+            {asking ? "送信中…" : "この店について聞く"}
           </button>
         )}
         <button
@@ -101,24 +102,38 @@ export function SelectedShop({
         >
           {inRoute ? "まわる店から外す" : "まわる店に追加"}
         </button>
-        <button type="button" className={styles.buttonSecondary} onClick={onOpenMap}>
-          地図で開く
-        </button>
-        <button type="button" className={styles.buttonSecondary} onClick={onClear}>
-          選択を解除
-        </button>
       </div>
-
-      {/* 匿名のときは、押すと何が起きるかを先に書く。 */}
-      {!signedIn && onToggleVisit && <p className={styles.selectedNote}>{STAMP_SIGN_IN_HINT}</p>}
 
       {/* 押せない理由は画面に出す。title だけだとタッチ端末で読めない。 */}
       {routeFull && <p className={styles.selectedNote}>{FULL_HINT}</p>}
+      {onAsk && <p className={styles.selectedNote}>{NOTE}</p>}
 
       <OrderGuide />
-      {report}
 
-      {onAsk && <p className={styles.selectedNote}>{NOTE}</p>}
+      {/*
+       * 記録（スタンプ）と解除は、特典の無いサブ操作なので控えめな行にまとめる。
+       * 報告は、その下に気付ける形で置く（目立たせすぎない）。
+       */}
+      <div className={styles.selectedSub}>
+        {onToggleVisit && (
+          <button
+            type="button"
+            className={isVisited ? styles.buttonOn : styles.buttonQuiet}
+            onClick={onToggleVisit}
+            aria-pressed={signedIn ? isVisited : undefined}
+            disabled={asking}
+          >
+            {isVisited ? "行ったを取り消す" : "行った"}
+          </button>
+        )}
+        <button type="button" className={styles.buttonQuiet} onClick={onClear}>
+          選択を解除
+        </button>
+      </div>
+      {/* 匿名のときは、押すと何が起きるかを先に書く。 */}
+      {!signedIn && onToggleVisit && <p className={styles.selectedNote}>{STAMP_SIGN_IN_HINT}</p>}
+
+      {report}
     </section>
   );
 }
