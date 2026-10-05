@@ -9,9 +9,65 @@
 .seo-page {
   background: var(--color-surface);
 }
+/*
+ * アプリと同じ部品で整える（#125）。見出しの帯は醤油の黒の舞台に黄の文字。
+ * 帯の中はリンクなので、黄は塗りではなく文字にだけ使う（焦点リングの黄と混ざらない）。
+ */
+.seo-page header.seo-sign {
+  max-width: none;
+  background: var(--color-stage);
+}
+.seo-sign nav {
+  max-width: 40rem;
+  margin: auto;
+  align-items: center;
+}
+.seo-page .seo-sign a {
+  color: var(--color-on-stage);
+}
+.seo-page .seo-sign a.seo-brand {
+  gap: var(--space-2);
+  color: var(--color-on-stage-em);
+  font-weight: var(--font-weight-display);
+}
 .seo-page h1 {
-  font-size: var(--font-heading-lg-size);
+  font-size: var(--font-heading-xl-size);
+  font-weight: var(--font-weight-display);
   text-wrap: balance;
+}
+.seo-shop {
+  font-weight: var(--font-weight-bold);
+}
+.seo-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.seo-estimate {
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+/* 判定の段階: 塗り ■ ＞ 枠 □ ＞ 枠なし ？（アプリの .stage* と同じ形）。 */
+.seo-stage {
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: 1px var(--space-2);
+  border: var(--border-width-strong) solid transparent;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-bold);
+}
+.seo-stage-confirmed {
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+.seo-stage-likely {
+  border-color: var(--color-ink);
+}
+.seo-stage-candidate {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-normal);
 }
 .seo-page h2 {
   font-size: var(--font-heading-md-size);

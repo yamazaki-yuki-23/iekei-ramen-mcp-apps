@@ -12,6 +12,8 @@ const NEEDS_SEARCH = "条件が変わりました。検索ボタンを押して�
 const UNAVAILABLE = "結果を取得できませんでした。もう一度お試しください。";
 
 interface Props {
+  /** 地図と一覧の間に置くもの。ResultView へそのまま渡す。 */
+  belowMap?: ReactNode;
   mode: SearchMode;
   payload: AppPayload;
   /** payload が今のモードのものか。揃うまで結果を出さない。 */
@@ -55,6 +57,7 @@ interface Props {
  * （react-doctor の複雑度でも落ちた）。条件入力欄を ModeControls に出したのと同じ扱い。
  */
 export function Results({
+  belowMap,
   mode,
   payload,
   ready,
@@ -107,10 +110,18 @@ export function Results({
    * 出してしまうと、地図の 558 件が「迷ったら」の候補として並び、
    * 「この 558 軒から選ぶ」ボタンまで押せてしまう。
    */
-  if (!ready) {
-    const status = busy ? LOADING : needsSearch && mode === "form" ? NEEDS_SEARCH : UNAVAILABLE;
-    return <p className={styles.status}>{status}</p>;
-  }
+  const status = ready
+    ? undefined
+    : busy
+      ? LOADING
+      : needsSearch && mode === "form"
+        ? NEEDS_SEARCH
+        : UNAVAILABLE;
+  /*
+   * Web の地図は絞り込みを地図の下に持つので、揃うまでの間も ResultView に描かせて
+   * 絞り込みの位置を変えない（焦点を保つ）。古い結果そのものは ResultView が出さない。
+   */
+  if (status && !(mode === "map" && belowMap)) return <p className={styles.status}>{status}</p>;
 
   if (mode === "visited") {
     return (
@@ -164,6 +175,8 @@ export function Results({
       origin={payload.query.origin}
       busy={busy}
       visitedIds={visitedIds}
+      belowMap={belowMap}
+      status={status}
     />
   );
 }

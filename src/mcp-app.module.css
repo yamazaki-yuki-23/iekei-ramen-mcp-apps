@@ -19,6 +19,11 @@
 
 /* --- 見出し --- */
 .header {
+  /*
+   * 最初の画面の入口から、ここまで送る（#125）。画面の上端のノッチに潜らないよう、
+   * .main と同じ余白とセーフエリアの分だけ上を空けて止める。Web は env() が効く。
+   */
+  scroll-margin-top: calc(var(--space-4) + var(--safe-area-top, env(safe-area-inset-top, 0px)));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -307,6 +312,106 @@
 .buttonDanger:hover:not(:disabled) {
   background: var(--color-error-soft);
   border-color: var(--color-error);
+}
+
+/* --- 最初の画面（Web） --- */
+
+/*
+ * 約束の一言を、醤油の黒の舞台に屋号の太さで置く（DESIGN.md 0 節、#125）。
+ * 舞台は明暗どちらでも暗い面なので、上の文字は明暗で振らない。
+ */
+.hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-stage);
+  color: var(--color-on-stage);
+}
+
+/* 狭い幅では一言を少し小さくし、地図を最初の画面に入れる（#125）。 */
+.heroCatch {
+  margin: 0;
+  font-size: var(--font-heading-2xl-size);
+  line-height: var(--font-display-line-height);
+  font-weight: var(--font-weight-display);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.heroCatch em {
+  font-style: normal;
+  color: var(--color-on-stage-em);
+}
+
+.heroLead {
+  margin: 0;
+  color: var(--color-on-stage-muted);
+  line-height: 1.6;
+}
+
+.heroActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* 舞台の上の第 2 ボタン。白抜きで、塗りの第 1 ボタン（地図）より弱く。 */
+.heroSecondary {
+  composes: button;
+  background: transparent;
+  border: var(--border-width-strong) solid var(--color-on-stage);
+  color: var(--color-on-stage);
+}
+
+.heroSecondary:hover:not(:disabled) {
+  background: transparent;
+  color: var(--color-on-stage-em);
+  border-color: var(--color-on-stage-em);
+}
+
+/* 但し書きは最初の画面でも見える場所に残す（推定・直線距離）。 */
+.heroCaveat {
+  margin: 0;
+  font-size: var(--font-size-note);
+  color: var(--color-on-stage-muted);
+}
+
+/* 海苔 3 枚。看板の黄で、右上に立てる。飾りなので押せない。 */
+.heroNori {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-4);
+  display: flex;
+  gap: var(--space-1);
+}
+
+.heroNori i {
+  width: 10px;
+  height: 36px;
+  border-radius: 2px;
+  background: var(--color-sign);
+}
+
+.heroNori i:nth-child(2) {
+  height: 44px;
+  margin-top: calc(var(--space-1) * -1);
+}
+
+@media (min-width: 40rem) {
+  .hero {
+    gap: var(--space-3);
+    padding: var(--space-8) var(--space-8) var(--space-6);
+  }
+
+  .heroCatch {
+    font-size: var(--font-display-size);
+  }
+
+  .heroCatch br:first-of-type {
+    display: none;
+  }
 }
 
 /* --- 店舗リスト --- */
@@ -1308,6 +1413,7 @@
 .tab:focus-visible,
 .button:focus-visible,
 .buttonOn:focus-visible,
+.heroSecondary:focus-visible,
 .buttonQuiet:focus-visible,
 .buttonDanger:focus-visible,
 .chip:focus-visible,

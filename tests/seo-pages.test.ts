@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { seoPages } from "../scripts/seo-pages.mjs";
-import type { Shop } from "../src/lib/types";
+import { CONFIDENCE, type Shop } from "../src/lib/types";
 import { webEntry } from "../src/lib/web-entry";
 
 const shop: Shop = {
@@ -29,6 +29,13 @@ describe("静的SEOページ", () => {
     expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/shop/node-123/");
     expect(files.get("/sitemap.xml")).not.toContain("way-456");
     expect(files.get("/robots.txt")).toContain("Sitemap: https://iekeiramen.com/sitemap.xml");
+  });
+  it("地域の一覧は、判定の段階を形と見える説明文の両方で出す", () => {
+    const html = seoPages(shops).files.get("/area/kanagawa/")!;
+    // title だけに置くと、タッチ端末や読み上げで説明が届かない。
+    expect(html).toContain(`<p class="seo-note">${CONFIDENCE.candidate.description}</p>`);
+    expect(html).toContain('<span aria-hidden="true">？</span>家系か未判定');
+    expect(html).toContain('<span aria-hidden="true">■</span>家系');
   });
   it("未信頼の文字列をHTMLとJSON-LDの両方で安全に扱い、評価や営業時間を付けない", () => {
     const hostile = {
@@ -121,13 +128,13 @@ describe("Webの検索条件リンク", () => {
       arguments: { keyword: "吉村家" },
     });
   });
-  it("URL無し・不正な県・長すぎるキーワードは既存の3候補で開く", () => {
+  it("URL無し・不正な県・長すぎるキーワードは地図で開く", () => {
     for (const query of [
       "",
       "?prefecture=神奈川",
       `?keyword=${"x".repeat(101)}`,
       "?tool=stamp-iekei-ramen",
     ])
-      expect(webEntry(query)).toEqual({ name: "decide-iekei-ramen", arguments: {} });
+      expect(webEntry(query)).toEqual({ name: "show-iekei-ramen-map", arguments: {} });
   });
 });
