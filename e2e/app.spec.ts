@@ -580,7 +580,7 @@ test.describe("迷ったら（3 軒に絞る）", () => {
      * 押せてしまう（実際にそうなっていた）。
      */
     await expect(
-      app.getByText("結果を取得できませんでした。もう一度お試しください。"),
+      app.getByText("結果を取得できませんでした。通信が切れたか、サーバーが応答しませんでした。"),
     ).toBeVisible();
     await expect(shopCards(app)).toHaveCount(0);
     await expect(app.getByRole("button", { name: /軒から選ぶ/ })).toHaveCount(0);
@@ -605,7 +605,7 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     await app.locator("#pref").selectOption("東京都");
 
     await expect(
-      app.getByText("結果を取得できませんでした。もう一度お試しください。"),
+      app.getByText("結果を取得できませんでした。通信が切れたか、サーバーが応答しませんでした。"),
     ).toBeVisible();
     await expect(app.locator("#pref")).toHaveValue("東京都");
     await expect(shopCards(app)).toHaveCount(0);
@@ -633,7 +633,7 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     await app.locator("#pref").selectOption("東京都");
 
     await expect(
-      app.getByText("結果を取得できませんでした。もう一度お試しください。"),
+      app.getByText("結果を取得できませんでした。通信が切れたか、サーバーが応答しませんでした。"),
     ).toBeVisible();
     await expect(app.getByRole("region", { name: "選択中の店舗" })).toHaveCount(0);
     await expect(inContext).toHaveCount(0);
@@ -698,6 +698,8 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     await expect(shopCards(app)).toHaveCount(0);
     await expect(app.getByText("キーワード「存在しない店名ZZZ」")).toBeVisible();
     await expect(app.getByText(/上のキーワードを外すか/)).toBeVisible();
+    // 会話の中には報告の口が無いので、「下から教えて」と案内しない。
+    await expect(app.getByText(/お探しの家系が見つからないときは」から/)).toHaveCount(0);
     await expect(app.getByRole("heading", { name: "迷ったら", exact: true })).toBeVisible();
     // 並べたものが無いので、並べた根拠も名乗らない。
     await expect(app.getByText(/^(近い順|営業時間が分かる店から順)$/)).toHaveCount(0);
@@ -775,7 +777,7 @@ test.describe("ホスト連携", () => {
     const app = appFrame(page);
 
     await expect(app.getByText("読み込み中…")).toHaveCount(0);
-    await expect(app.getByText(/接続エラー/)).toHaveCount(0);
+    await expect(app.getByText(/接続できませんでした/)).toHaveCount(0);
   });
 });
 

@@ -112,6 +112,13 @@ export function useServerTools({
   const [mutations, setMutations] = useState(0);
   const [failure, setFailure] = useState<string | null>(null);
   /**
+   * 「もう一度試す」で繰り返す操作。一覧を差し替える操作（run*）が、自分自身を同じ
+   * 引数で呼び直す形で残す。生の tool 呼び出しを繰り返すと、操作ごとの前後の処理
+   * （現在地の案内を消す・記録の削除中はタブを止める）を飛ばしてしまう。payload から
+   * 組み直すと、届かなかった条件（新しく取った現在地など）が失われる。
+   */
+  const lastAction = useRef<(() => unknown) | null>(null);
+  /**
    * 画面に出ている結果が、いまの操作より古いかどうか。
    *
    * 条件を変えて呼び直した瞬間に立てる。成功すれば payload が差し替わり、
@@ -209,7 +216,8 @@ export function useServerTools({
    * 画面から消えないようにする。
    */
   const runSearch = useCallback(
-    (next: SearchValues, targetMode: "form" | "map", origin?: Origin) => {
+    function runSearchOp(next: SearchValues, targetMode: "form" | "map", origin?: Origin) {
+      lastAction.current = () => runSearchOp(next, targetMode, origin);
       void call(TOOL_BY_MODE[targetMode], {
         prefecture: next.prefecture || undefined,
         taste: next.taste || undefined,
@@ -236,7 +244,8 @@ export function useServerTools({
    * だけで県全体に広がる（実測: 枠の中 4 件が県全体の 6 件になった）。
    */
   const runArea = useCallback(
-    (bounds: Bounds, next: SearchValues, origin?: Origin) => {
+    function runAreaOp(bounds: Bounds, next: SearchValues, origin?: Origin) {
+      lastAction.current = () => runAreaOp(bounds, next, origin);
       void call(TOOL_BY_MODE.map, {
         prefecture: next.prefecture || undefined,
         taste: next.taste || undefined,
@@ -265,7 +274,13 @@ export function useServerTools({
    * 現在地モードへ戻ったときに誤った精度が表示される。
    */
   const runDecide = useCallback(
-    (next: SearchValues, origin: Origin | undefined, round: number, keyword?: string) => {
+    function runDecideOp(
+      next: SearchValues,
+      origin: Origin | undefined,
+      round: number,
+      keyword?: string,
+    ) {
+      lastAction.current = () => runDecideOp(next, origin, round, keyword);
       void call(TOOL_BY_MODE.decide, {
         prefecture: next.prefecture || undefined,
         taste: next.taste || undefined,
@@ -344,15 +359,23 @@ export function useServerTools({
   );
 
   /** 行った店の一覧と制覇率を取り直す。こちらは画面ごと入れ替わる。 */
-  const runVisited = useCallback(() => {
-    void call(TOOL_BY_MODE.visited, {});
-  }, [call]);
+  const runVisited = useCallback(
+    function runVisitedOp() {
+      lastAction.current = () => runVisitedOp();
+      void call(TOOL_BY_MODE.visited, {});
+    },
+    [call],
+  );
 
   /** 記録を全部消す。戻せないので、呼ぶ側が確認を取ってから来ること。 */
-  const runForget = useCallback(() => {
-    setMutations((n) => n + 1);
-    void call("forget-my-iekei-ramen-visits", {}).finally(() => setMutations((n) => n - 1));
-  }, [call]);
+  const runForget = useCallback(
+    function runForgetOp() {
+      lastAction.current = () => runForgetOp();
+      setMutations((n) => n + 1);
+      void call("forget-my-iekei-ramen-visits", {}).finally(() => setMutations((n) => n - 1));
+    },
+    [call],
+  );
 
   /**
    * 会話へ一通送る。
@@ -394,7 +417,13 @@ export function useServerTools({
   const askToSignIn = useCallback(() => sendText(visitedSignInText), [sendText]);
 
   const runNearby = useCallback(
-    (lat: number, lon: number, label: string | undefined, source: OriginSource) => {
+    function runNearbyOp(
+      lat: number,
+      lon: number,
+      label: string | undefined,
+      source: OriginSource,
+    ) {
+      lastAction.current = () => runNearbyOp(lat, lon, label, source);
       onNotice(null);
       void call("find-nearby-iekei-ramen", {
         lat,
@@ -411,16 +440,20 @@ export function useServerTools({
    * 座標を渡さずに呼び、ホストが持つ大まかな現在地に任せる。
    * ChatGPT のように iframe の geolocation が塞がれたホスト向けの経路。
    */
-  const runNearbyByHost = useCallback(async () => {
-    const started = resultSeq.current + 1;
-    onNotice(null);
-    const result = await call("find-nearby-iekei-ramen", { limit: 5 });
-    // 結果を捨てるときは、再マウントをまたいで残る案内も更新しない。
-    if (resultSeq.current !== started) return false;
-    const located = Boolean((result && readPayload(result))?.query.origin);
-    onNotice(located ? null : "現在地を取得できませんでした。下の欄に地名を入力してください。");
-    return located;
-  }, [call, onNotice]);
+  const runNearbyByHost = useCallback(
+    async function runNearbyByHostOp() {
+      lastAction.current = () => runNearbyByHostOp();
+      const started = resultSeq.current + 1;
+      onNotice(null);
+      const result = await call("find-nearby-iekei-ramen", { limit: 5 });
+      // 結果を捨てるときは、再マウントをまたいで残る案内も更新しない。
+      if (resultSeq.current !== started) return false;
+      const located = Boolean((result && readPayload(result))?.query.origin);
+      onNotice(located ? null : "現在地を取得できませんでした。下の欄に地名を入力してください。");
+      return located;
+    },
+    [call, onNotice],
+  );
 
   const geocode = useCallback(
     async (query: string) => {
@@ -522,7 +555,13 @@ export function useServerTools({
     [releaseSelection, sendText],
   );
 
+  /** 最後に一覧を差し替えようとした操作を、同じ引数で前後の処理ごともう一度行う。 */
+  const retry = useCallback(() => {
+    void lastAction.current?.();
+  }, []);
+
   return {
+    retry,
     busy,
     /** 記録を書き換えている最中。タブを止めるのはこの間だけ。 */
     mutating: mutations > 0,

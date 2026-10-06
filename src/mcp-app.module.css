@@ -416,6 +416,11 @@
 
 /* --- 店舗リスト --- */
 .list {
+  /*
+   * カードを 1 行に並べるかは、画面ではなく一覧の幅で決める（#129）。広い画面で
+   * 地図の横に置くと一覧は狭くなり、画面幅で決めると住所・営業時間が削られすぎる。
+   */
+  container: shop-list / inline-size;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -496,7 +501,7 @@
  * 決まりを保つため。カードを多列に割ると詳細の置き場所が無くなり、枠を
  * 2 つにする作り（一度やって作り直した形）に戻ってしまう。
  */
-@media (min-width: 40rem) {
+@container shop-list (min-width: 40rem) {
   .cardBody {
     flex-direction: row;
     align-items: baseline;
@@ -1019,13 +1024,46 @@
   gap: var(--space-3);
 }
 
+/*
+ * 広い画面では、地図を左、絞り込みと一覧を右に並べる（#129）。横が空いたまま
+ * 縦にだけ伸びると間延びする。並びは DOM のまま（読み上げ・Tab の順は 地図 → 絞り込み → 一覧）。
+ */
+@media (min-width: 64rem) {
+  .mapLayout {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+    gap: var(--space-3) var(--space-5);
+  }
+
+  .mapMain {
+    grid-row: 1 / span 2;
+    position: sticky;
+    top: var(--space-4);
+  }
+}
+
+.mapMain,
+.mapSide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
 /* --- 状態表示 --- */
 
-/* 破線の枠は「まだ置かれていない場所」に見える。面の色で静かに示す。 */
-.empty,
-.status {
+/*
+ * 空・読み込み中・エラー（StateNote、#129）。同じ形で、面の色と印だけを変える。
+ * 破線の枠は「まだ置かれていない場所」に見えるので使わない。
+ */
+.stateEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
   margin: 0;
-  padding: var(--space-8) var(--space-4);
+  padding: var(--space-6) var(--space-4);
   text-align: center;
   color: var(--color-text-muted);
   background: var(--color-surface-muted);
@@ -1033,13 +1071,78 @@
   border-radius: var(--radius-lg);
 }
 
-.error {
-  composes: status;
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
+.stateLoading {
+  composes: stateEmpty;
+}
+
+/* 失敗だけ失敗の赤の 3 点セット（ブランドの茶赤と混ぜない）。 */
+.stateError {
+  composes: stateEmpty;
   color: var(--color-error);
   background: var(--color-error-soft);
   border-color: var(--color-error-border);
+}
+
+.stateText {
+  margin: 0;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.6;
+}
+
+.stateHint {
+  margin: 0;
+  font-size: var(--font-size-note);
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+/* 海苔 3 枚の印。色は文字と同じ（失敗なら赤）。 */
+.stateMark {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.stateMark i {
+  width: 6px;
+  height: 18px;
+  border-radius: 2px;
+  background: currentcolor;
+  opacity: 0.6;
+}
+
+/* 読み込み中は 1 枚ずつ濃くなる。動きは濃さだけ（DESIGN.md 7 節）。 */
+.stateLoading .stateMark i {
+  animation: state-nori 900ms var(--easing-standard) infinite;
+}
+
+.stateLoading .stateMark i:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.stateLoading .stateMark i:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+@keyframes state-nori {
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stateLoading .stateMark i {
+    animation: none;
+  }
+}
+
+/* 報告フォームの中の失敗。行の中に置くので、状態の枠より小さく。 */
+.error {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-error);
+  background: var(--color-error-soft);
+  border: var(--border-width-regular) solid var(--color-error-border);
+  border-radius: var(--radius-lg);
   font-weight: var(--font-weight-bold);
 }
 

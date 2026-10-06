@@ -176,3 +176,72 @@ test("いま出ている地図で「地図で見る」を押しても、取り�
   await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
   expect(calls.filter((body) => body.includes('"tools/call"'))).toEqual([]);
 });
+
+test("取得に失敗したら、原因と「もう一度試す」を出し、押すと取り直す", async ({ page }) => {
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  await page.getByRole("tab", { name: "検索フォーム" }).click();
+  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
+  // 次の検索を 1 回だけ落とす。
+  let failed = false;
+  await page.route("**/mcp", async (route) => {
+    const body = route.request().postData() ?? "";
+    if (!failed && body.includes('"search-iekei-ramen"')) {
+      failed = true;
+      return route.fulfill({ status: 500, body: "fail" });
+    }
+    return route.continue();
+  });
+  await page.getByRole("button", { name: "検索", exact: true }).click();
+  const error = page.getByRole("alert").filter({ hasText: "結果を取得できませんでした" });
+  await expect(error).toBeVisible();
+  await error.getByRole("button", { name: "もう一度試す" }).click();
+  await expect(page.locator("button[data-shop-id]").first()).toBeVisible();
+});
+
+for (const width of [390, 768, 1280]) {
+  test(`${width}px で横にはみ出さない（地図・迷ったら）`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(WEB_URL);
+    await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+    const overflow = () =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+    expect(await overflow()).toBe(0);
+    await page.getByRole("button", { name: "迷ったら 3 軒に絞る" }).click();
+    await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
+    expect(await overflow()).toBe(0);
+  });
+}
+
+test("現在地の取得に失敗したら、「もう一度試す」は同じ地点で取り直す", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"], { origin: WEB_URL });
+  await context.setGeolocation({ latitude: 35.466, longitude: 139.622 });
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  // 近くを探す最初の 1 回だけ落とす。届かなかった地点は payload に無いので、
+  // payload から組み直すと地点を失う（前の地点か、地点の入力へ戻る）。
+  const nearby: string[] = [];
+  await page.route("**/mcp", async (route) => {
+    const body = route.request().postData() ?? "";
+    if (body.includes('"find-nearby-iekei-ramen"')) {
+      nearby.push(body);
+      if (nearby.length === 1) return route.fulfill({ status: 500, body: "fail" });
+    }
+    return route.continue();
+  });
+  await page.getByRole("tab", { name: "現在地から探す" }).click();
+  await page.getByRole("button", { name: "現在地から探す", exact: true }).click();
+  const error = page.getByRole("alert").filter({ hasText: "結果を取得できませんでした" });
+  await expect(error).toBeVisible();
+  // 1 回の失敗で、読み上げる失敗は 1 つだけ。
+  await expect(page.getByRole("alert")).toHaveCount(1);
+  await error.getByRole("button", { name: "もう一度試す" }).click();
+  await expect(page.locator("button[data-shop-id]").first()).toBeVisible();
+  expect(nearby).toHaveLength(2);
+  expect(nearby[1]).toContain("35.466");
+});

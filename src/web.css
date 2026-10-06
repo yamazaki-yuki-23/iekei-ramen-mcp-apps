@@ -5,3 +5,12 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
 }
+
+/*
+ * Webは中央に寄せて幅を抑える（#129）。会話の中（MCP）は幅をホストが決めるので、
+ * ここ（Webだけが読む）で持つ。1280pxで横いっぱいに伸びると間延びした。
+ */
+main {
+  max-width: 72rem;
+  margin-inline: auto;
+}

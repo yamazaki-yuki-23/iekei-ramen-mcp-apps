@@ -26,6 +26,7 @@ import {
   type ReactNode,
 } from "react";
 import { BrandMark } from "./components/BrandMark";
+import { StateNote } from "./components/StateNote";
 import { APP_HEAD_ID } from "./components/PromiseHero";
 import { ModeControls } from "./components/ModeControls";
 import { ModeTabs } from "./components/ModeTabs";
@@ -200,12 +201,17 @@ export function IekeiApp({
         error ? (
           <main className={styles.main}>
             <HeroSlot Hero={hero} />
-            <p className={styles.error}>接続エラー: {error.message}</p>
+            <StateNote
+              kind="error"
+              action={{ label: "再読み込み", onClick: () => window.location.reload() }}
+            >
+              {`接続できませんでした。${error.message}`}
+            </StateNote>
           </main>
         ) : !host ? (
           <main className={styles.main}>
             <HeroSlot Hero={hero} />
-            <p className={styles.status}>読み込み中…</p>
+            <StateNote kind="loading">読み込み中…</StateNote>
           </main>
         ) : (
           <IekeiAppConnected
@@ -641,6 +647,7 @@ function IekeiAppInner({
     mutating,
     asking,
     failure,
+    retry,
     stale,
     needsSearch,
     runSearch,
@@ -805,7 +812,6 @@ function IekeiAppInner({
   const placed = placeControls(Hero !== undefined, mode, controls);
   const results = (
     <>
-      {failure && <p className={styles.error}>{failure}</p>}
       {/* 詳細は選んだカードの直下に出す。一覧の上に置くと、選んだ瞬間に
           一覧が下にずれて、続けて別の店を押せない。 */}
       <Results
@@ -835,6 +841,9 @@ function IekeiAppInner({
         onForget={runForget}
         onSignIn={supportedAction(app.capabilities.visitSignIn, () => void askToSignIn())}
         belowMap={placed.belowMap}
+        onRetry={retry}
+        failure={failure}
+        reports={app.capabilities.reports === true}
       />
     </>
   );
