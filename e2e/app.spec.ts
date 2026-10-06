@@ -1020,15 +1020,30 @@ test.describe("一覧の詰め方", () => {
     expect(list!.height / card!.height).toBeGreaterThan(6);
   });
 
+  test("会話の幅（760px）では縦に積み、住所と営業時間を省略しない", async ({ page }) => {
+    /*
+     * 40rem で 1 行にしていた頃、会話の幅では判定の段階・味・ブランドのバッジに押されて
+     * 「営業 毎日 11:0…」まで削られた（#131）。一覧が 48rem 未満なら縦に積む。
+     */
+    await page.setViewportSize({ width: 760, height: 900 });
+    const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    const clipped = await shopCards(app)
+      .first()
+      .locator("[data-shop-meta], span")
+      .evaluateAll((els) => els.filter((el) => el.scrollWidth > el.clientWidth + 1).length);
+    expect(clipped).toBe(0);
+  });
+
   test("横に並べ始めた直後の幅でも、長い店名を折り返さない", async ({ page }) => {
     /*
-     * 40rem を少し超えたあたりが一番きつい。順位番号・バッジ・距離も同じ行に
+     * 48rem を少し超えたあたりが一番きつい。順位番号・バッジ・距離も同じ行に
      * 並ぶので、店名に縮む指定（flex: 0 1 auto）を残していると真っ先に詰められ、
      * 20 文字超の店名が 2 行になってカードが 55px → 78px に戻る。
      *
      * 広い幅（1200px）で短い店名だけ見ていても、この状態は捕まえられない。
      */
-    await page.setViewportSize({ width: 720, height: 900 });
+    await page.setViewportSize({ width: 840, height: 900 });
     // 「横浜家系ラーメン 町田商店 柴田バイパス店」（21 文字）が 1 軒目に来る地点。
     const app = await callTool(page, "find-nearby-iekei-ramen", {
       lat: 38.0626,
@@ -1058,7 +1073,7 @@ test.describe("一覧の詰め方", () => {
      * 判別力があるというより、店舗データを取り直して長い店名が増えたときに
      * 気付くための網。
      */
-    await page.setViewportSize({ width: 680, height: 900 });
+    await page.setViewportSize({ width: 820, height: 900 });
     const app = await callTool(page, "find-nearby-iekei-ramen", {
       lat: 38.0626,
       lon: 140.7613,

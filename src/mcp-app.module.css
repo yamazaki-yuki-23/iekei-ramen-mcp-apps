@@ -501,7 +501,12 @@
  * 決まりを保つため。カードを多列に割ると詳細の置き場所が無くなり、枠を
  * 2 つにする作り（一度やって作り直した形）に戻ってしまう。
  */
-@container shop-list (min-width: 40rem) {
+/*
+ * 1 行にするのは一覧が 48rem 以上のときだけ（#131）。会話の中は 700px 前後で、
+ * 40rem で並べると判定の段階・味・ブランドのバッジに押されて住所と営業時間が
+ * 「営業 毎日 11:0…」まで削られた。縦に積んで読める方を取る。
+ */
+@container shop-list (min-width: 48rem) {
   .cardBody {
     flex-direction: row;
     align-items: baseline;
