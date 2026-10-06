@@ -4,6 +4,7 @@ import { CONFIDENCE, TASTES, type Shop } from "../lib/types";
 import { formatDistance } from "../lib/geo";
 import { openingHoursLabel } from "../lib/opening-hours";
 import styles from "../mcp-app.module.css";
+import { StateNote } from "./StateNote";
 
 /*
  * 判定の段階は形でも分ける（色が見えにくい人に届くように）。
@@ -33,6 +34,8 @@ interface Props {
    */
   detail?: ReactNode;
   emptyMessage?: string;
+  /** 空のときに添える案内。検索の空なら報告の口、行った店の空なら無し。 */
+  emptyHint?: string;
   /**
    * 訪問済みの店舗 ID。
    *
@@ -50,6 +53,7 @@ export function ShopList({
   onSelect,
   detail,
   emptyMessage,
+  emptyHint,
   visitedIds,
 }: Props) {
   /*
@@ -60,7 +64,9 @@ export function ShopList({
   const labels = useMemo(() => sameNameLabels(shops), [shops]);
   if (shops.length === 0) {
     return (
-      <p className={styles.empty}>{emptyMessage ?? "条件に合う店舗が見つかりませんでした。"}</p>
+      <StateNote kind="empty" hint={emptyHint}>
+        {emptyMessage ?? "条件に合う店舗が見つかりませんでした。"}
+      </StateNote>
     );
   }
 

@@ -393,6 +393,48 @@ test.describe("サインイン済み", () => {
     await expect(app.getByText("まだ記録がありません")).toBeVisible();
   });
 
+  test("消すのに失敗して「もう一度試す」を押しても、終わるまでタブを止める", async ({ page }) => {
+    /*
+     * 生の tool 呼び出しを繰り返すと、記録の削除中にタブを止める処理を飛ばし、
+     * 削除と検索が並んで走る（検索の古い記録が、削除の後に上書きする）。
+     */
+    const app = await callTool(
+      page,
+      "search-iekei-ramen",
+      { prefecture: "神奈川県" },
+      MEMBER_SERVER_NAME,
+    );
+    await waitForApp(app);
+    await selectFirst(app);
+    await app.getByRole("button", { name: "行った", exact: true }).click();
+    await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
+    await app.getByRole("tab", { name: "行った店" }).click();
+    await expect(shopCards(app)).toHaveCount(1);
+
+    let forgets = 0;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(`**/${MEMBER_SERVER_URL.split("//")[1]}`, async (route) => {
+      const body = route.request().postData() ?? "";
+      if (!body.includes("forget-my-iekei-ramen-visits")) return route.continue();
+      forgets += 1;
+      if (forgets === 1) return route.fulfill({ status: 500, body: "fail" });
+      await held;
+      return route.continue();
+    });
+    await app.getByRole("button", { name: "記録を全部消す" }).click();
+    await app.getByRole("button", { name: "本当に全部消す" }).click();
+    const error = app.getByRole("alert").filter({ hasText: "結果を取得できませんでした" });
+    await expect(error).toBeVisible();
+    await error.getByRole("button", { name: "もう一度試す" }).click();
+    await expect.poll(() => forgets).toBe(2);
+    // 取り直しの削除が終わるまで、別のタブへは移れない。
+    await expect(app.getByRole("tab", { name: "地図から探す" })).toBeDisabled();
+    release();
+    await expect(app.getByText("まだ記録がありません")).toBeVisible();
+    await expect(app.getByRole("tab", { name: "地図から探す" })).toBeEnabled();
+  });
+
   test("取り消しの返事を待つ間に別の店を選んでも、その選択は消えない", async ({ page }) => {
     /*
      * 返事が届いたときに「一覧から消えた店＝選択中の店」と決め打つと、

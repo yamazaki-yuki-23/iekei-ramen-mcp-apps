@@ -1,19 +1,53 @@
 import type { ReactNode } from "react";
 import type { AppPayload, Bounds, SearchMode, Shop } from "../lib/types";
-import styles from "../mcp-app.module.css";
 import { DecidePanel } from "./DecidePanel";
 import type { FullscreenControl } from "./MapToolbar";
 import { ResultView } from "./ResultView";
+import { REPORT_HINT, StateNote } from "./StateNote";
 import { VisitedPanel } from "./VisitedPanel";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
 const LOADING = "読み込み中…";
 const NEEDS_SEARCH = "条件が変わりました。検索ボタンを押してください。";
-const UNAVAILABLE = "結果を取得できませんでした。もう一度お試しください。";
+const UNAVAILABLE = "結果を取得できませんでした。通信が切れたか、サーバーが応答しませんでした。";
+
+/**
+ * 揃うまでの表示。読み込み中・検索待ち・失敗（もう一度試す）を StateNote でそろえる。
+ * 失敗の理由があれば、同じ表示の中に添える（別の欄に分けると、1 回の失敗で 2 つ読み上げる）。
+ */
+function notReadyState(
+  busy: boolean | undefined,
+  needsSearch: boolean,
+  failure: string | null,
+  onRetry: () => void,
+) {
+  if (busy) return <StateNote kind="loading">{LOADING}</StateNote>;
+  if (needsSearch) return <StateNote kind="empty">{NEEDS_SEARCH}</StateNote>;
+  return (
+    <StateNote
+      kind="error"
+      hint={failure ?? undefined}
+      action={{ label: "もう一度試す", onClick: onRetry }}
+    >
+      {UNAVAILABLE}
+    </StateNote>
+  );
+}
+
+/** 結果は出ているが、別の呼び出し（地名の解決など）が失敗したとき。 */
+function FailureNote({ failure }: { failure: string | null }) {
+  return failure ? <StateNote kind="error">{failure}</StateNote> : null;
+}
 
 interface Props {
   /** 地図と一覧の間に置くもの。ResultView へそのまま渡す。 */
   belowMap?: ReactNode;
+  /** 取得に失敗したとき、最後に送った条件のまま取り直す。 */
+  onRetry: () => void;
+  /** 呼び出しの失敗の理由。結果の代わりに出す失敗と 1 つにまとめる（読み上げを 2 回にしない）。 */
+  failure: string | null;
+  /** 報告の口があるか（Web だけ）。無いホストで「下から教えて」と案内しない。 */
+  reports: boolean;
   mode: SearchMode;
   payload: AppPayload;
   /** payload が今のモードのものか。揃うまで結果を出さない。 */
@@ -57,6 +91,9 @@ interface Props {
  * （react-doctor の複雑度でも落ちた）。条件入力欄を ModeControls に出したのと同じ扱い。
  */
 export function Results({
+  failure,
+  reports,
+  onRetry,
   belowMap,
   mode,
   payload,
@@ -89,18 +126,22 @@ export function Results({
    * 素直に待つと「結果を取得できませんでした」という嘘の失敗が出る。
    */
   if (mode === "visited" && !signedIn) {
+    // サインインの依頼（チャットへの送信）が失敗したときの理由は、この道でも出す。
     return (
-      <VisitedPanel
-        signedIn={false}
-        shops={[]}
-        recordCount={0}
-        selectedId={selected?.id}
-        onSelect={onSelect}
-        onForget={onForget}
-        onSignIn={onSignIn}
-        asking={asking}
-        busy={busy}
-      />
+      <>
+        <FailureNote failure={failure} />
+        <VisitedPanel
+          signedIn={false}
+          shops={[]}
+          recordCount={0}
+          selectedId={selected?.id}
+          onSelect={onSelect}
+          onForget={onForget}
+          onSignIn={onSignIn}
+          asking={asking}
+          busy={busy}
+        />
+      </>
     );
   }
 
@@ -112,71 +153,83 @@ export function Results({
    */
   const status = ready
     ? undefined
-    : busy
-      ? LOADING
-      : needsSearch && mode === "form"
-        ? NEEDS_SEARCH
-        : UNAVAILABLE;
+    : notReadyState(busy, needsSearch && mode === "form", failure, onRetry);
+  const reportHint = reports ? REPORT_HINT : undefined;
   /*
    * Web の地図は絞り込みを地図の下に持つので、揃うまでの間も ResultView に描かせて
    * 絞り込みの位置を変えない（焦点を保つ）。古い結果そのものは ResultView が出さない。
    */
-  if (status && !(mode === "map" && belowMap)) return <p className={styles.status}>{status}</p>;
+  if (status && !(mode === "map" && belowMap)) return status;
 
   if (mode === "visited") {
     return (
-      <VisitedPanel
-        signedIn
-        shops={shops}
-        recordCount={visitedIds.size}
-        progress={payload.progress}
-        selectedId={selected?.id}
-        onSelect={onSelect}
-        detail={detail}
-        onForget={onForget}
-        onSignIn={onSignIn}
-        asking={asking}
-        busy={busy}
-      />
+      <>
+        <FailureNote failure={failure} />
+        <VisitedPanel
+          signedIn
+          shops={shops}
+          recordCount={visitedIds.size}
+          progress={payload.progress}
+          selectedId={selected?.id}
+          onSelect={onSelect}
+          detail={detail}
+          onForget={onForget}
+          onSignIn={onSignIn}
+          asking={asking}
+          busy={busy}
+        />
+      </>
     );
   }
 
   if (mode === "decide") {
     return (
-      <DecidePanel
-        shops={shops}
-        info={payload.decide}
-        origin={payload.query.origin}
-        keyword={keyword}
-        onClearKeyword={onClearKeyword}
-        selectedId={selected?.id}
-        onSelect={onSelect}
-        onAsk={onAsk}
-        onReroll={onReroll}
-        asking={asking}
-        busy={busy}
-        detail={detail}
-      />
+      <>
+        <FailureNote failure={failure} />
+        <DecidePanel
+          shops={shops}
+          info={payload.decide}
+          origin={payload.query.origin}
+          keyword={keyword}
+          onClearKeyword={onClearKeyword}
+          selectedId={selected?.id}
+          onSelect={onSelect}
+          onAsk={onAsk}
+          onReroll={onReroll}
+          asking={asking}
+          busy={busy}
+          detail={detail}
+          reportHint={reportHint}
+        />
+      </>
     );
   }
 
+  /*
+   * 揃うまでの間（status あり）は、失敗の理由を status の中に出しているので重ねない。
+   * どちらでも同じ形（Fragment の中の ResultView）で返し、絞り込みを作り直さない。
+   */
   return (
-    <ResultView
-      mode={mode}
-      shops={shops}
-      selectedId={selected?.id}
-      onSelect={onSelect}
-      detail={detail}
-      route={route}
-      routeOrigin={routeOrigin}
-      fullscreen={fullscreen}
-      onSearchArea={onSearchArea}
-      bounds={payload.query.bounds}
-      origin={payload.query.origin}
-      busy={busy}
-      visitedIds={visitedIds}
-      belowMap={belowMap}
-      status={status}
-    />
+    <>
+      <FailureNote failure={status ? null : failure} />
+      <ResultView
+        mode={mode}
+        shops={shops}
+        selectedId={selected?.id}
+        onSelect={onSelect}
+        detail={detail}
+        route={route}
+        routeOrigin={routeOrigin}
+        fullscreen={fullscreen}
+        onSearchArea={onSearchArea}
+        bounds={payload.query.bounds}
+        origin={payload.query.origin}
+        busy={busy}
+        visitedIds={visitedIds}
+        belowMap={belowMap}
+        status={status}
+        reportHint={reportHint}
+      />
+    </>
   );
 }

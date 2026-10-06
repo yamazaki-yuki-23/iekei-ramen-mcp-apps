@@ -3,6 +3,7 @@ import { describeBasis, pickRange } from "../lib/shortlist";
 import type { DecideInfo, Origin, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import { ShopList } from "./ShopList";
+import { StateNote } from "./StateNote";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
 const EMPTY = "条件に合う店舗が見つかりませんでした。都道府県や味の条件を緩めてください。";
@@ -39,6 +40,8 @@ interface Props {
   busy: boolean;
   /** 選んだカードの直下に出すもの。 */
   detail?: ReactNode;
+  /** 0 件のときに添える、報告の口への案内。報告できないホストでは渡さない。 */
+  reportHint?: string;
 }
 
 /**
@@ -64,6 +67,7 @@ export function DecidePanel({
   asking,
   busy,
   detail,
+  reportHint,
 }: Props) {
   const basis = info ? describeBasis(info, shops.length, origin, keyword) : "";
 
@@ -90,7 +94,9 @@ export function DecidePanel({
     return (
       <section className={styles.decide} aria-label="迷ったら">
         {filter}
-        <p className={styles.empty}>{keyword ? EMPTY_WITH_KEYWORD : EMPTY}</p>
+        <StateNote kind="empty" hint={reportHint}>
+          {keyword ? EMPTY_WITH_KEYWORD : EMPTY}
+        </StateNote>
       </section>
     );
   }
