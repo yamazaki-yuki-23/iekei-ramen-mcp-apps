@@ -4,7 +4,7 @@ import type { DecideInfo, Origin, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import { ResultCaveat } from "./ResultCaveat";
 import { ShopList } from "./ShopList";
-import { StateNote } from "./StateNote";
+import { StateNote, ZERO_ANNOUNCE } from "./StateNote";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
 const EMPTY = "条件に合う店舗が見つかりませんでした。都道府県や味の条件を緩めてください。";
@@ -14,6 +14,8 @@ const EMPTY = "条件に合う店舗が見つかりませんでした。都道�
  */
 const NEEDS_ORIGIN =
   "現在地が分かりませんでした。券売機の「都道府県」か「地図で選ぶ」で探すか、「現在地から」で地名を入れてください。";
+/** 現在地が分からず絞れなかったときの読み上げ。画面の文と重ならない短い言い方。 */
+const NEEDS_ORIGIN_ANNOUNCE = "現在地が分からず、店を絞れませんでした";
 const EMPTY_WITH_KEYWORD =
   "条件に合う店舗が見つかりませんでした。上のキーワードを外すか、都道府県や味の条件を緩めてください。";
 /* 会話の中だけ。選んだ店をチャットで聞く道を言う（但し書きは ResultCaveat）。 */
@@ -24,7 +26,9 @@ function DecideHead({ title }: { title?: { heading: string; tag: string | null }
   if (!title) return null;
   return (
     <div className={styles.decideHead}>
-      <h2 className={styles.decideTitle}>{title.heading}</h2>
+      <h2 className={styles.decideTitle} data-announce>
+        {title.heading}
+      </h2>
       {title.tag && <span className={styles.count}>{title.tag}</span>}
     </div>
   );
@@ -41,9 +45,14 @@ function EmptyNote({
   keyword?: string;
   reportHint?: string;
 }) {
-  if (needsOrigin) return <StateNote kind="empty">{NEEDS_ORIGIN}</StateNote>;
+  if (needsOrigin)
+    return (
+      <StateNote kind="empty" announce={NEEDS_ORIGIN_ANNOUNCE}>
+        {NEEDS_ORIGIN}
+      </StateNote>
+    );
   return (
-    <StateNote kind="empty" hint={reportHint}>
+    <StateNote kind="empty" hint={reportHint} announce={ZERO_ANNOUNCE}>
       {keyword ? EMPTY_WITH_KEYWORD : EMPTY}
     </StateNote>
   );
@@ -192,11 +201,15 @@ export function DecidePanel({
           className={styles.buttonSecondary}
           onClick={onReroll}
           disabled={busy || (info?.rounds ?? 1) <= 1}
+          // 文言が変わっても、キーボードの焦点を戻せるように（use-result-handoff.ts）。
+          data-focus-key="decide-reroll"
         >
           {rerollLabel(info)}
         </button>
         {info && info.rounds > 1 && (
-          <span className={styles.decideRound}>{roundLabel(info, shops.length, prefecture)}</span>
+          <span className={styles.decideRound} data-announce>
+            {roundLabel(info, shops.length, prefecture)}
+          </span>
         )}
       </div>
 

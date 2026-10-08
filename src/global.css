@@ -189,6 +189,12 @@ body {
   line-height: var(--font-text-md-line-height);
   letter-spacing: var(--letter-spacing-normal);
   color: var(--color-text-primary);
+  /*
+   * 背景も明示する（#156）。透明のままだと、検査ツールや一部の環境が暗いモードでも白地と
+   * 見なし、文字のコントラストを誤って測る。**値は Canvas**（ブラウザが今描いている地の色）
+   * にして、見た目は変えない。トークンにすると、暗いモードで .main の外の色が変わった。
+   */
+  background-color: Canvas;
   /* 和文の約物が全角のまま並ぶと隙間だらけに見える。詰めて組む。 */
   font-feature-settings: "palt" 1;
 }
