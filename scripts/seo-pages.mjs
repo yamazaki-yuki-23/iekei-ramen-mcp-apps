@@ -21,8 +21,31 @@ const prefPath = (prefecture) => `/area/${prefectureSlugs.get(prefecture)}/`;
 const cityPath = (prefecture, city) => `${prefPath(prefecture)}${encodeURIComponent(city)}/`;
 const shopPath = (shop) => `/shop/${shop.id.replace("/", "-")}/`;
 
+/**
+ * 共有されたときのカード。トップ（index.html）と同じ画像を使い、文言はそのページの
+ * title と description に合わせる（新しい情報は足さない）。
+ */
+const ogp = ({ title, description, path }) =>
+  `<meta property="og:type" content="website"><meta property="og:locale" content="ja_JP"><meta property="og:title" content="${escape(title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${origin}${path}"><meta property="og:image" content="${origin}/og-card.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(title)}"><meta name="twitter:description" content="${escape(description)}"><meta name="twitter:image" content="${origin}/og-card.png">`;
+
+/** 見えているリンクと同じ階層。最後の 1 つはそのページ自身。 */
+const breadcrumbs = (items) => ({
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: items.map(([name, path], index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    name,
+    item: `${origin}${path}`,
+  })),
+});
+
+/** 店が全部未判定なら、そのページも未判定の店と同じく検索に載せない。 */
+const allCandidates = (list) => list.every((shop) => shop.confidence === "candidate");
+
 function page({ title, description, path, content, noindex = false, structured, heading = title }) {
-  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}"><link rel="canonical" href="${origin}${path}">${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${structured ? `<script type="application/ld+json">${JSON.stringify(structured).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page"><header class="seo-sign"><nav aria-label="サイト内"><a class="seo-brand" href="/"><img src="/favicon.svg" alt="" width="28" height="28">家系ラーメンを探す</a><a href="/area/">都道府県から探す</a></nav></header><main><h1>${escape(heading)}</h1>${content}<p class="seo-note">${note}</p></main><footer><p class="seo-note">店舗の基礎データ・地域情報の出典：© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p></footer></body></html>`;
+  const ld = [structured ?? []].flat();
+  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}"><link rel="canonical" href="${origin}${path}">${ogp({ title, description, path })}${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${ld.length ? `<script type="application/ld+json">${JSON.stringify(ld.length === 1 ? ld[0] : ld).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page"><header class="seo-sign"><nav aria-label="サイト内"><a class="seo-brand" href="/"><img src="/favicon.svg" alt="" width="28" height="28">家系ラーメンを探す</a><a href="/area/">都道府県から探す</a></nav></header><main><h1>${escape(heading)}</h1>${content}<p class="seo-note">${note}</p></main><footer><p class="seo-note">店舗の基礎データ・地域情報の出典：© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p></footer></body></html>`;
 }
 
 function shopList(shops) {
@@ -90,10 +113,11 @@ export function seoPages(shops) {
         title: `${prefecture}の家系ラーメンの候補一覧`,
         description: `${prefecture}で判定した結果の${list.length}軒。店舗情報・地域と地図を確認できます。家系ではない店が含まれている可能性があります。`,
         path,
+        noindex: allCandidates(list),
         content: `<p>判定した結果の${list.length}軒。家系ではない店が含まれている可能性があります。</p><a class="seo-app-link" href="${escape(appLink(prefecture))}">この都道府県の条件でアプリを開く</a><h2>市区町村から探す</h2><ul>${cityLinks}</ul><h2>店舗の候補</h2>${shopList(list)}`,
       }),
     );
-    indexed.push(path);
+    if (!allCandidates(list)) indexed.push(path);
   }
   for (const [path, list] of cities) {
     const { prefecture, city } = list[0];
@@ -104,10 +128,15 @@ export function seoPages(shops) {
         title: `${label}の家系ラーメンの候補一覧`,
         description: `${label}で判定した結果の${list.length}軒。店舗情報と地図を確認できます。家系ではない店が含まれている可能性があります。`,
         path,
+        noindex: allCandidates(list),
+        structured: breadcrumbs([
+          [prefecture, prefPath(prefecture)],
+          [city, path],
+        ]),
         content: `<p><a href="${prefPath(prefecture)}">${escape(prefecture)}の一覧</a></p><p>判定した結果の${list.length}軒。家系ではない店が含まれている可能性があります。</p><a class="seo-app-link" href="${escape(appLink(prefecture, city))}">この地域の条件でアプリを開く</a>${shopList(list)}`,
       }),
     );
-    indexed.push(path);
+    if (!allCandidates(list)) indexed.push(path);
   }
   for (const shop of shops) {
     const path = shopPath(shop);
@@ -118,6 +147,7 @@ export function seoPages(shops) {
       addressRegion: shop.prefecture,
       ...(shop.city ? { addressLocality: shop.city } : {}),
       ...(shop.address ? { streetAddress: shop.address } : {}),
+      addressCountry: "JP",
     };
     const structured = {
       "@context": "https://schema.org",
@@ -135,7 +165,14 @@ export function seoPages(shops) {
         path,
         heading: shop.name,
         noindex: shop.confidence === "candidate",
-        structured,
+        structured: [
+          structured,
+          breadcrumbs([
+            [shop.prefecture, prefPath(shop.prefecture)],
+            ...(shop.city ? [[shop.city, cityPath(shop.prefecture, shop.city)]] : []),
+            [shop.name, path],
+          ]),
+        ],
         content: `<p><a href="${prefPath(shop.prefecture)}">${escape(shop.prefecture)}の一覧</a>${shop.city ? ` / <a href="${cityPath(shop.prefecture, shop.city)}">${escape(shop.city)}の一覧</a>` : ""}</p><p>${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p><p>座標：${shop.lat}, ${shop.lon}</p><p><a class="seo-app-link" href="${escape(map)}" target="_blank" rel="noopener noreferrer">地図で位置を見る</a></p><a class="seo-app-link" href="${escape(appLink(shop.prefecture, shop.name))}">この店名の条件でアプリを開く</a>`,
       }),
     );
