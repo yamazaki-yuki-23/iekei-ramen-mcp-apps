@@ -24,3 +24,22 @@ nav.seo-navigation {
   padding: 0 calc(var(--space-4) + var(--safe-area-right, 0px)) var(--space-8)
     calc(var(--space-4) + var(--safe-area-left, 0px));
 }
+
+/*
+ * 起動前から画面 1 枚分を空けておく（#153）。index.html の nav は JS より先に描かれ、
+ * React の初回描画と結果の到着で 2 回押し下げられていた（CLS 0.33）。読み込み後の
+ * #root は画面より高い（モバイル 2283px / 727px）ので、最後の配置は今と変わらない。
+ */
+#root {
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+/*
+ * 接続できなかった画面は短いので、空けると下のリンクが画面の外へ押し出される。
+ * そこは空けず、今と同じ位置に出す。**つながった後の警告（結果の失敗・報告の失敗）
+ * では空けたままにする**——そこで詰めると、高い画面でリンクが上へ跳ぶ。
+ */
+#root:has(> main[data-connection="failed"]) {
+  min-height: 0;
+}

@@ -15,6 +15,10 @@ Workerが返す。`wrangler.jsonc` の `assets.run_worker_first` にその経路
 `src/web.tsx` を `dist/web/` にビルドする。CIと通常のデプロイも同じコマンドを使う。
 Static Assetsはこのディレクトリだけを配信するので、MCPの埋め込みHTMLやソースは配信しない。
 未定義のURLには404を返し、MCPや認可の誤ったURLにWebのHTMLを返さない。
+`/assets/*`（名前に中身のハッシュが入る）だけを `public/_headers` で1年・`immutable` にする。
+HTMLやハッシュの無いファイルは既定の `max-age=0` のまま（#153）。
+トップの `#root` は画面1枚分を空けておく（`src/web.css`）。JSより先に描かれる下のリンクが
+押し下げられて CLS が 0.33 になっていた。接続できなかった画面（`data-connection="failed"`）は短いので空けない。つながった後の警告では空けたまま。
 本番は#41の決定に従い `https://iekeiramen.com/`。workers.devは再開しない。
 
 ### 検索エンジン向けの静的ページ

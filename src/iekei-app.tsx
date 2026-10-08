@@ -207,7 +207,8 @@ export function IekeiApp({
          * 揃わないと、つながった瞬間に舞台が画面の端から内側へ跳ぶ。
          */
         error ? (
-          <main className={styles.main}>
+          // Web の下のリンクの位置を、この画面だけ詰める目印（src/web.css・#153）。
+          <main className={styles.main} data-connection="failed">
             <HeroSlot Hero={hero} />
             <StateNote
               kind="error"
