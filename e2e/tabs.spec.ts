@@ -84,13 +84,58 @@ test("券売機の「近くで」の位置取得が遅れて返っても、移�
   );
 });
 
-test("券売機の位置取得を待つ間に「次の 3 軒を見る」を押したら、先に届いた位置で上書きしない（#144）", async ({
+test("券売機の位置取得を待つ間は取得中として扱い、前の結果の「次の 3 軒を見る」を押せない（#146）", async ({
+  page,
+}) => {
+  /*
+   * 位置待ちの間に前の結果の操作を許すと、遅れて届いた位置との順番争いになる
+   * （#145 の 7 巡）。待つ間は取得中（busy）にして、押せないようにする。
+   */
+  await holdBrowserPosition(page);
+  const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+  await waitForApp(app);
+  await app.getByRole("button", { name: /^近くで/ }).click();
+  await app.getByRole("button", { name: /^発券する/ }).click();
+  await expect(app.getByRole("button", { name: "次の 3 軒を見る" })).toBeDisabled();
+  await afterDelivered(
+    app,
+    app.locator("body").evaluate(() => window.iekeiPositionFixture.release("success")),
+  );
+  await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
+  await expect(app.getByText(/現在地から近い順に並べ/)).toBeVisible();
+});
+
+test("位置待ちの間に呼び出しの無いモードへ移ったら、取得中をすぐ外す（#146）", async ({ page }) => {
+  await holdBrowserPosition(page);
+  const app = await callTool(page, "decide-iekei-ramen");
+  await waitForApp(app);
+  await app.getByRole("button", { name: /^近くで/ }).click();
+  await app.getByRole("button", { name: /^発券する/ }).click();
+  // 基準地点の無い「現在地から」は tool を呼ばずに移る。位置はまだ返さない。
+  await app.getByRole("tab", { name: "現在地から探す" }).click();
+  await expect(app.getByRole("button", { name: "現在地で発券", exact: true })).toBeEnabled();
+});
+
+test("位置待ちの間にキーを押し直したら、発券を取り消して取得中をすぐ外す（#146）", async ({
   page,
 }) => {
   await holdBrowserPosition(page);
   const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
   await waitForApp(app);
-  // 次の 3 軒の応答を止め、その間に位置を返す（位置が先、応答が後）。
+  await app.getByRole("button", { name: /^近くで/ }).click();
+  await app.getByRole("button", { name: /^発券する/ }).click();
+  await expect(app.getByRole("button", { name: "次の 3 軒を見る" })).toBeDisabled();
+  // 位置はまだ返さない。キーの押し直しで発券は古くなる。
+  await app.getByRole("button", { name: "クリーミー", exact: true }).click();
+  await expect(app.getByRole("button", { name: "次の 3 軒を見る" })).toBeEnabled();
+});
+
+test("位置待ちの発券をキーで取り消したら、追い越した前の操作の後も表示中の食券を残す（#146）", async ({
+  page,
+}) => {
+  await holdBrowserPosition(page);
+  const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+  await waitForApp(app);
   let release!: () => void;
   const gate = new Promise<void>((resolve) => (release = resolve));
   let signalStarted!: () => void;
@@ -108,13 +153,79 @@ test("券売機の位置取得を待つ間に「次の 3 軒を見る」を押�
     } else await route.continue();
   });
   await app.getByRole("button", { name: /^近くで/ }).click();
-  await app.getByRole("button", { name: /^発券する/ }).click();
   await app.getByRole("button", { name: "次の 3 軒を見る" }).click();
   await started;
-  await app.locator("body").evaluate(() => window.iekeiPositionFixture.release("success"));
+  await app.getByRole("button", { name: /^発券する/ }).click();
+  await app.getByRole("button", { name: "クリーミー", exact: true }).click();
   release();
   await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
-  await expect(app.getByText(/ 4〜6 軒目$/)).toBeVisible();
+  await expect(app.getByRole("button", { name: "もう一度試す" })).toHaveCount(0);
+  await expect(app.locator("button[data-shop-id]")).toHaveCount(3);
+});
+
+test("前から失敗の表示だったら、位置待ちの発券を取り消しても古い食券を戻さない（#146）", async ({
+  page,
+}) => {
+  await holdBrowserPosition(page);
+  const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+  await waitForApp(app);
+  let failed = false;
+  await page.route(E2E_SERVER_URL, async (route) => {
+    const body = route.request().postDataJSON();
+    if (!failed && body?.params?.name === "decide-iekei-ramen") {
+      failed = true;
+      await route.abort();
+    } else await route.continue();
+  });
+  await app.getByRole("button", { name: /^近くで/ }).click();
+  await app.getByRole("button", { name: "次の 3 軒を見る" }).click();
+  await expect(app.getByRole("button", { name: "もう一度試す" })).toBeVisible();
+  await app.getByRole("button", { name: /^発券する/ }).click();
+  await app.getByRole("button", { name: "クリーミー", exact: true }).click();
+  await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
+  await expect(app.getByRole("button", { name: "もう一度試す" })).toBeVisible();
+  await expect(app.locator("button[data-shop-id]")).toHaveCount(0);
+});
+
+test("位置の許可を待つ間に前の操作の応答が届いても、後から押した「近くで」の発券が勝つ（#146）", async ({
+  page,
+}) => {
+  await holdBrowserPosition(page);
+  const app = await callTool(page, "decide-iekei-ramen");
+  await waitForApp(app);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  let signalStarted!: () => void;
+  const started = new Promise<void>((resolve) => (signalStarted = resolve));
+  let held = false;
+  await page.route(E2E_SERVER_URL, async (route) => {
+    const body = route.request().postDataJSON();
+    if (!held && body?.params?.name === "decide-iekei-ramen") {
+      held = true;
+      const response = await route.fetch();
+      const text = await response.text();
+      signalStarted();
+      await gate;
+      await route.fulfill({ response, body: text });
+    } else await route.continue();
+  });
+  // 「近くで」を先に選び、そのあとに走らせた「次の 3 軒」の応答を位置待ちの間に返す
+  // （キーの押し直しなら下書きの変化で捨てられるので、キーは先に選んでおく）。
+  await app.getByRole("button", { name: /^近くで/ }).click();
+  await app.getByRole("button", { name: "次の 3 軒を見る" }).click();
+  await started;
+  await app.getByRole("button", { name: /^発券する/ }).click();
+  release();
+  await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
+  // 捨てた応答の店を、位置待ちの間に選べない（取得中のまま）。
+  await expect(app.getByText("読み込み中…", { exact: true })).toBeVisible();
+  await expect(app.locator("button[data-shop-id]")).toHaveCount(0);
+  await afterDelivered(
+    app,
+    app.locator("body").evaluate(() => window.iekeiPositionFixture.release("success")),
+  );
+  await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
+  await expect(app.getByText(/現在地から近い順に並べ/)).toBeVisible();
 });
 
 test("食券が出る動きは最初の 3 枚だけ（#144）", async ({ page }) => {

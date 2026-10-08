@@ -25,8 +25,10 @@ interface Props {
   /**
    * 発券。選んだ「どこで」と条件で 3 軒を出す。isCurrent は、この発券がまだ最新か
    * （後から別の発券・地図へ移動・画面の切り替えが無いか）。位置取得を待つ間に使う。
+   * 返す関数は発券の取り消し。キー・地図・アンマウントで発券が古くなったら呼ぶ
+   * （位置待ちの取得中を、位置の時間切れまで残さないため。#146）。
    */
-  onIssue: (where: Where, values: FormValues, isCurrent: () => boolean) => void;
+  onIssue: (where: Where, values: FormValues, isCurrent: () => boolean) => () => void;
   /** 地図で範囲を選ぶ画面へ。 */
   onOpenMap: () => void;
   busy: boolean;
@@ -64,9 +66,17 @@ export function TicketMachine({
    * 地図へ移動・画面の切り替え（アンマウント）で番号を進め、遅れて届いた位置を捨てる。
    */
   const operation = useRef(0);
+  const cancelIssue = useRef<(() => void) | undefined>(undefined);
+  /** 走っている発券を古くする。番号を進め、位置待ちなら取得中も外す。 */
+  const invalidate = () => {
+    operation.current += 1;
+    cancelIssue.current?.();
+    cancelIssue.current = undefined;
+  };
   useEffect(
     () => () => {
       operation.current += 1;
+      cancelIssue.current?.();
     },
     [],
   );
@@ -76,7 +86,7 @@ export function TicketMachine({
    * 親は古い発券の応答を捨て、位置取得の途中なら操作番号で捨てる（#144）。
    */
   const choose = (next: Where, prefecture = next === "pref" ? form.prefecture : "") => {
-    operation.current += 1;
+    invalidate();
     setWhere(next);
     onForm({ ...form, prefecture });
   };
@@ -129,7 +139,7 @@ export function TicketMachine({
             type="button"
             className={styles.keyLink}
             onClick={() => {
-              operation.current += 1;
+              invalidate();
               onOpenMap();
             }}
           >
@@ -149,7 +159,7 @@ export function TicketMachine({
               className={styles.key}
               aria-pressed={form.taste === value}
               onClick={() => {
-                operation.current += 1;
+                invalidate();
                 onForm({ ...form, taste: value });
               }}
             >
@@ -162,8 +172,9 @@ export function TicketMachine({
         type="button"
         className={styles.issue}
         onClick={() => {
-          const started = ++operation.current;
-          onIssue(where, form, () => operation.current === started);
+          invalidate();
+          const started = operation.current;
+          cancelIssue.current = onIssue(where, form, () => operation.current === started);
         }}
         /*
          * 取得中も押せる。押し直した発券が最後に効く（追い越した古い応答は
