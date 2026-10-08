@@ -1,5 +1,6 @@
 import { ALL_PREFECTURES } from "./src/lib/prefectures.ts";
 import { topBrands, type BrandCount } from "./src/lib/brands.ts";
+import { localizeOrigin } from "./src/lib/place-label.ts";
 import { openingHoursLabel } from "./src/lib/opening-hours.ts";
 /**
  * 家系ラーメンを探す MCP Apps サーバー。
@@ -523,6 +524,18 @@ export function createServer(deps: ServerDeps = {}): McpServer {
   const dataset = deps.shops ?? DEFAULT_SHOPS;
   // 店名の券売機に並べるブランド（#144）。判定した結果の軒数が多い順。
   const brands = topBrands(dataset);
+  /**
+   * 座標を渡されなかったときの現在地。ホストが渡す位置 → 接続元からの推定の順
+   * （後者は HTTP なら request.cf、stdio なら照会エンドポイント）。どちらも名前が
+   * ローマ字で来るので、近い店の地名で日本語に置き換える（#150）。
+   */
+  const locateCaller = async (
+    meta: Record<string, unknown> | undefined,
+    req: Request | undefined,
+  ): Promise<Origin | undefined> => {
+    const found = readHostLocation(meta) ?? readEdgeLocation(req) ?? (await fetchEdgeLocation());
+    return found && localizeOrigin(found, dataset);
+  };
   const prefectures =
     dataset === DEFAULT_SHOPS
       ? DEFAULT_PREFECTURES
@@ -680,9 +693,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       // 最後のものは HTTP なら request.cf から、stdio なら照会エンドポイントから取る。
       const origin: Origin | undefined =
         originFrom({ lat, lon, label, source }, "precise") ??
-        readHostLocation(ctx.mcpReq._meta) ??
-        readEdgeLocation(ctx.http?.req) ??
-        (await fetchEdgeLocation());
+        (await locateCaller(ctx.mcpReq._meta, ctx.http?.req));
 
       if (!origin) {
         // ホストが位置情報を渡さない環境。UI は地名入力へ誘導する。
@@ -865,11 +876,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
        */
       const origin =
         originFrom({ lat, lon, label, source }, "place") ??
-        (near
-          ? (readHostLocation(ctx.mcpReq._meta) ??
-            readEdgeLocation(ctx.http?.req) ??
-            (await fetchEdgeLocation()))
-          : undefined);
+        (near ? await locateCaller(ctx.mcpReq._meta, ctx.http?.req) : undefined);
       /*
        * 効かないキーワードを持ち回らない。filterShops は trim 後に空なら
        * 絞り込まないのに、生の値を payload と説明文に残すと、UI には外せる

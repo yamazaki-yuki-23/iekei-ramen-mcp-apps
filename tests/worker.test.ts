@@ -77,7 +77,8 @@ describe("worker.fetch", () => {
     const origin = JSON.parse(body.slice(body.indexOf("data: ") + 6).split("\n")[0]).result
       .structuredContent.query.origin;
 
-    expect(origin).toMatchObject({ source: "edge", label: "Yokohama Kanagawa" });
+    // 名前はローマ字のまま出さず、近い店の地名で日本語にする（#150）。
+    expect(origin).toMatchObject({ source: "edge", label: "横浜市付近" });
   });
 
   it("匿名でスタンプの tool を呼ぶと 401 とサインインの案内が返る", async () => {
