@@ -78,6 +78,8 @@ export function SearchForm({ prefectures, values, onChange, onSubmit, busy, hide
           </label>
           <input
             id="kw"
+            // Enter で結果が差し替わったあと、この欄へ焦点を戻す（use-result-handoff.ts）。
+            data-result-input="keyword"
             className={styles.input}
             type="search"
             placeholder="店名・ブランド・地名"

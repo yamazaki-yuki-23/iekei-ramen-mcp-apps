@@ -48,6 +48,11 @@ export function NearbyPanel({
 }: Props) {
   const [place, setPlace] = useState("");
   const [status, setStatus] = useState<string | null>(null);
+  /*
+   * 位置や地名を待っている間（サーバーを呼ぶ前）。呼び出しの数には入らないので、画面に
+   * data-busy で出し、キーボードの焦点を戻す見守りが「まだ待っている」と分かるようにする（#156）。
+   */
+  const [waiting, setWaiting] = useState(false);
   const operation = useRef(0);
   useEffect(
     () => () => {
@@ -57,12 +62,17 @@ export function NearbyPanel({
     [],
   );
 
+  // 待ちを外すのは、いちばん新しい操作が済んだときだけ（押し直すと前の取得が先に終わるため）。
+  const settle = (started: number) => {
+    if (operation.current === started) setWaiting(false);
+  };
+
   // use 始まりにするとフックと見分けが付かない。これはクリックで走るただの関数。
   const startFromCurrentPosition = async () => {
     const started = ++operation.current;
     setStatus("現在地を取得中…");
-
-    const pos = await requestBrowserPosition();
+    setWaiting(true);
+    const pos = await requestBrowserPosition().finally(() => settle(started));
     if (operation.current !== started) return;
     if (pos) {
       setStatus(null);
@@ -82,9 +92,10 @@ export function NearbyPanel({
     if (!q) return;
     const started = ++operation.current;
     setStatus(`「${q}」を検索中…`);
+    setWaiting(true);
     let hit;
     try {
-      hit = await onSearchPlace(q);
+      hit = await onSearchPlace(q).finally(() => settle(started));
     } catch (e) {
       if (operation.current !== started) return;
       // 理由（連打止め・Nominatim の不調）はサーバーの文をそのまま出す。
@@ -100,7 +111,7 @@ export function NearbyPanel({
   };
 
   return (
-    <div className={styles.form}>
+    <div className={styles.form} data-busy={waiting}>
       <div className={styles.row}>
         <button
           type="button"
@@ -125,6 +136,8 @@ export function NearbyPanel({
         </label>
         <input
           id="place"
+          // Enter で結果が差し替わったあと、この欄へ焦点を戻す（use-result-handoff.ts）。
+          data-result-input="place"
           className={styles.input}
           type="search"
           placeholder="横浜駅 / 新宿区 / 東京都港区…"
@@ -146,8 +159,13 @@ export function NearbyPanel({
           この場所で発券
         </button>
       </div>
-
-      {(status ?? notice) && <p className={styles.meta}>{status ?? notice}</p>}
+      {/*
+       * 途中経過と失敗の行。読み上げの領域にするため、文が無いときも置いておく（#156）。
+       * 空のときは .liveLine:empty が並びから外すので、間隔は増えない。
+       */}
+      <p role="status" className={`${styles.meta} ${styles.liveLine}`}>
+        {status ?? notice ?? ""}
+      </p>
     </div>
   );
 }

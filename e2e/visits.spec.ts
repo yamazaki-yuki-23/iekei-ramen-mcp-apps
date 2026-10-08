@@ -383,8 +383,14 @@ test.describe("サインイン済み", () => {
     await app.getByRole("button", { name: "行った", exact: true }).click();
     await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
 
+    // 記録を押しただけでは見出しも件数も変わらないので、探し直したように読み上げない（#156）。
+    await expect(app.getByRole("status").filter({ hasText: /判定した結果/ })).toHaveCount(0);
+
     await app.getByRole("tab", { name: "行った店" }).click();
-    await app.getByRole("button", { name: "記録を全部消す" }).click();
+    // キーボードで押しても、その場に出た「本当に全部消す」から焦点を見出しへ運ばない（#156）。
+    await app.getByRole("button", { name: "記録を全部消す" }).press("Enter");
+    await expect(app.getByRole("button", { name: "本当に全部消す" })).toBeVisible();
+    await expect(app.getByRole("heading", { level: 1 })).not.toBeFocused();
 
     // 1 回目では消えない。元に戻せない操作を 1 回の誤操作で通さない。
     await expect(app.getByText("元に戻せません")).toBeVisible();
@@ -394,6 +400,8 @@ test.describe("サインイン済み", () => {
     await app.getByRole("button", { name: "記録を全部消す" }).click();
     await app.getByRole("button", { name: "本当に全部消す" }).click();
     await expect(app.getByText("まだ記録がありません")).toBeVisible();
+    // その場で書き換えた結果も読み上げる（#156）。payload ごとの差し替えではない。
+    await expect(app.getByRole("status").filter({ hasText: /行った店.*0 軒。$/ })).toHaveCount(1);
   });
 
   test("消すのに失敗して「もう一度試す」を押しても、終わるまでタブを止める", async ({ page }) => {
@@ -538,6 +546,41 @@ test.describe("サインイン済み", () => {
     await expect(app.getByText("まだ記録がありません")).toBeVisible({
       timeout: 20_000,
     });
+  });
+
+  test("「行った」をキーボードで押したら、その場で済んだあとは焦点の見守りを回し続けない（#156）", async ({
+    page,
+  }) => {
+    // requestAnimationFrame の呼び出しを数える（アプリの iframe にも入る）。
+    await page.addInitScript(() => {
+      const raf = window.requestAnimationFrame.bind(window);
+      (window as unknown as { rafs: number }).rafs = 0;
+      window.requestAnimationFrame = (callback) => {
+        (window as unknown as { rafs: number }).rafs++;
+        return raf(callback);
+      };
+    });
+    const app = await callTool(
+      page,
+      "search-iekei-ramen",
+      { prefecture: "神奈川県" },
+      MEMBER_SERVER_NAME,
+    );
+    await waitForApp(app);
+    await selectFirst(app);
+    const stamp = app.getByRole("button", { name: "行った", exact: true });
+    await stamp.press("Enter");
+    await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
+    await expect(app.locator("main[data-pending-calls]")).toHaveAttribute(
+      "data-pending-calls",
+      "0",
+    );
+    const rafs = () =>
+      app.locator("body").evaluate(() => (window as unknown as { rafs: number }).rafs);
+    await page.waitForTimeout(500);
+    const before = await rafs();
+    await page.waitForTimeout(1000);
+    expect((await rafs()) - before).toBeLessThan(10);
   });
 
   test("地図では、行った店だと読み上げにも分かる", async ({ page }) => {

@@ -21,7 +21,18 @@ interface Props {
   hint?: string;
   /** 次にできること（もう一度試す、など）。 */
   action?: { label: string; onClick: () => void };
+  /**
+   * 結果が入れ替わったときに読み上げる文（use-result-handoff.ts）。画面の文をそのまま
+   * 複製すると、同じ文が 2 か所に並ぶので、短い別の言い方を渡す。
+   */
+  announce?: string;
 }
+
+/**
+ * 0 件の結果を読み上げるときの文。**見出しの横に件数を出さない「迷ったら」だけで使う。**
+ * ほかの探し方は見出しの件数（「判定した結果の 0 軒」）が読まれるので、渡すと 0 軒を 2 度読む。
+ */
+export const ZERO_ANNOUNCE = "見つかった店は 0 軒";
 
 /**
  * 空・読み込み中・エラーの見せ方を 1 つにそろえる（#129）。
@@ -31,10 +42,15 @@ interface Props {
  *
  * 読み上げ: 読み込み中は status（割り込まない）、エラーは alert（すぐ伝える）。
  */
-export function StateNote({ kind, children, hint, action }: Props) {
+export function StateNote({ kind, children, hint, action, announce }: Props) {
   const role = kind === "error" ? "alert" : kind === "loading" ? "status" : undefined;
   return (
-    <div className={KIND_CLASS[kind]} role={role}>
+    <div
+      className={KIND_CLASS[kind]}
+      role={role}
+      data-announce={announce ? true : undefined}
+      data-announce-text={announce}
+    >
       {/* 海苔 3 枚の印。読み込み中だけ順に濃くなる（動きを減らす設定では止まる）。 */}
       <span className={styles.stateMark} aria-hidden="true">
         <i />

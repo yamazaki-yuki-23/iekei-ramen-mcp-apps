@@ -31,7 +31,7 @@ import { requestBrowserPosition } from "./lib/browser-position";
 import type { Where } from "./components/TicketMachine";
 import { APP_HEAD_ID } from "./components/PromiseHero";
 import { ModeControls } from "./components/ModeControls";
-import { ModeTabs } from "./components/ModeTabs";
+import { ModePanel, ModeTabs } from "./components/ModeTabs";
 import type { FormValues } from "./components/SearchForm";
 import { Results } from "./components/Results";
 import { RoutePanel } from "./components/RoutePanel";
@@ -40,6 +40,7 @@ import { ReportEntry } from "./components/ReportForm";
 import { useFullscreen } from "./hooks/use-fullscreen";
 import { useModeSwitch } from "./hooks/use-mode-switch";
 import { useServerTools } from "./hooks/use-server-tools";
+import { useKeyboardFocusReturn, useResultAnnouncement } from "./hooks/use-result-handoff";
 import { originLabel } from "./lib/geo";
 import { createDeliveryQueue } from "./lib/model-context";
 import { EMPTY_PAYLOAD } from "./lib/payload";
@@ -199,6 +200,10 @@ export function IekeiApp({
     setHostContextPatch((prev) => ({ ...prev, ...params }));
   }, []);
 
+  // 作り直しのあとの焦点と読み上げ。作り直されないここで持つ（src/hooks/use-result-handoff.ts）。
+  useKeyboardFocusReturn();
+  const announcer = useResultAnnouncement(payloadVersion, payload);
+
   return (
     <Connection onPayload={applyPayload} onContextChange={onContextChange}>
       {({ host, error }) =>
@@ -223,31 +228,34 @@ export function IekeiApp({
             <StateNote kind="loading">読み込み中…</StateNote>
           </main>
         ) : (
-          <IekeiAppConnected
-            introduction={introduction}
-            hero={hero}
-            primaryMode={primaryMode}
-            app={host}
-            payload={payload}
-            payloadVersion={payloadVersion}
-            setPayload={setPayload}
-            notice={notice}
-            setNotice={setNotice}
-            selected={selected}
-            setSelected={setSelected}
-            stops={stops}
-            routeOrigin={routeOrigin}
-            addStop={addStop}
-            removeStop={removeStop}
-            clearStops={clearStops}
-            form={form}
-            onForm={onForm}
-            capturePayload={capturePayload}
-            pendingCalls={pendingCalls}
-            trackCall={trackCall}
-            hostContextPatch={hostContextPatch}
-            onContextChange={onContextChange}
-          />
+          <>
+            <IekeiAppConnected
+              introduction={introduction}
+              hero={hero}
+              primaryMode={primaryMode}
+              app={host}
+              payload={payload}
+              payloadVersion={payloadVersion}
+              setPayload={setPayload}
+              notice={notice}
+              setNotice={setNotice}
+              selected={selected}
+              setSelected={setSelected}
+              stops={stops}
+              routeOrigin={routeOrigin}
+              addStop={addStop}
+              removeStop={removeStop}
+              clearStops={clearStops}
+              form={form}
+              onForm={onForm}
+              capturePayload={capturePayload}
+              pendingCalls={pendingCalls}
+              trackCall={trackCall}
+              hostContextPatch={hostContextPatch}
+              onContextChange={onContextChange}
+            />
+            <p role="status" className={styles.visuallyHidden} ref={announcer} />
+          </>
         )
       }
     </Connection>
@@ -699,9 +707,15 @@ function AppHeader({ h1, count }: { h1: string; count: string | null }) {
         <span className={styles.brandMark}>
           <BrandMark size={36} />
         </span>
-        <h1 className={styles.title}>{h1}</h1>
+        <h1 className={styles.title} data-announce>
+          {h1}
+        </h1>
       </div>
-      {count ? <span className={styles.count}>{count}</span> : null}
+      {count ? (
+        <span className={styles.count} data-announce>
+          {count}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -980,6 +994,7 @@ function IekeiAppInner({
       className={styles.main}
       style={safeAreaStyle(hostContext?.safeAreaInsets)}
       data-pending-calls={pendingCalls}
+      data-busy={busy}
       data-tool-result-ready={resultReceived}
       data-mode={mode}
     >
@@ -993,10 +1008,11 @@ function IekeiAppInner({
         primaryMode={primaryMode}
         variant={Hero ? "links" : "tabs"}
       />
-
-      {placed.hero}
-      {placed.top}
-      {results}
+      <ModePanel mode={mode} tabs={!Hero}>
+        {placed.hero}
+        {placed.top}
+        {results}
+      </ModePanel>
 
       {/*
        * 「家系とは」は結果の下。最初の画面は約束と地図に譲り、初めての人が
