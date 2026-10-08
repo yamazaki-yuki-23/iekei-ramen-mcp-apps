@@ -200,6 +200,34 @@ describe("worker.fetch", () => {
     expect(local.status).toBe(200);
   });
 
+  it("存在しないページをブラウザで開いたら Web の 404 ページ、MCP や認可の道は素の 404（#169）", async () => {
+    const assets = {
+      fetch: async (url: URL) =>
+        url.pathname === "/404.html"
+          ? new Response("<h1>ページが見つかりません</h1>", {
+              headers: { "Content-Type": "text/html" },
+            })
+          : new Response("", { status: 404 }),
+    };
+    const withAssets = { ...(env as object), ASSETS: assets } as never;
+    const open = (path: string, accept: string) =>
+      worker.fetch(
+        new Request(`${ORIGIN}${path}`, { headers: { Accept: accept } }),
+        withAssets,
+        ctx,
+      );
+    const page = await open("/area/kanagawa/nope/", "text/html,application/xhtml+xml");
+    expect(page.status).toBe(404);
+    expect(await page.text()).toContain("ページが見つかりません");
+    for (const response of [
+      await open("/.well-known/nope", "text/html"),
+      await open("/no-such", "application/json"),
+    ]) {
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe("Not Found. MCP endpoint is /mcp");
+    }
+  });
+
   it("KV の無い環境では、サインインの道が落ちずに 501 を返す", async () => {
     // 認可サーバーは `cloudflare:workers` を取り込む。**読み込むとプロセスが落ちる**
     // ので、手前で断る。ここが通らないと手元の開発サーバーが死ぬ。

@@ -17,7 +17,9 @@ Static Assetsはこのディレクトリだけを配信するので、MCPの埋�
 **Webの最初のJSに入れないもの**（#154）: Leaflet（地図を開くまで要らない。`ResultView.tsx` の
 `React.lazy` で分け、結果を出した後の空き時間に先読みする）、zod（画面は報告の受付文
 `src/lib/report-accepted.ts` だけを読む）。MCPクライアントは `src/hosts/web.tsx` の読み込み時に取りに行く。
-未定義のURLには404を返し、MCPや認可の誤ったURLにWebのHTMLを返さない。
+未定義のURLには404を返し、MCPや認可の誤ったURLにWebのHTMLを返さない。ブラウザで開いた
+（`Accept: text/html` の GET）存在しないページにだけ、`worker.ts` が `ASSETS` から `404.html` を
+状態 404 で返す（#169。Worker があると `not_found_handling` は効かない）。`/.well-known/*` は除く。
 `/assets/*`（名前に中身のハッシュが入る）だけを `public/_headers` で1年・`immutable` にする。
 HTMLやハッシュの無いファイルは既定の `max-age=0` のまま（#153）。
 トップの `#root` は画面1枚分を空けておく（`src/web.css`）。JSより先に描かれる下のリンクが
@@ -47,6 +49,9 @@ URLエンコードする。住所から区を推測せず、逆引きを反映�
 変更日時の根拠がないため、sitemapにビルド時刻を `lastmod` として載せない。
 **店が全部 `candidate` の県・市区町村ページも `noindex` にし、sitemapから外す**（#155）。
 未判定の店しか無い一覧は、検索に載せない店へのリンクだけの薄いページになる（実測: 61ページ）。
+**市区町村ページは、未判定でない店が 2 軒未満なら `noindex` にし、sitemapから外す**（#169）。
+1 軒だけのページは中身がその店のページとほぼ同じになる（実測: index する市区町村 149 → 53）。
+県ページからのリンクは残す。
 市区町村と店舗のページには、見えている「◯◯の一覧」のリンクと同じ階層の `BreadcrumbList` を
 付ける。全ページの OGP はトップと同じ `og-card.png` を使い、文言は title と description に合わせる。
 
