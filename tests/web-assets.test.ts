@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -184,5 +184,18 @@ describe("workerdのWeb静的配信と既存API", () => {
       expect(response.status).toBe(404);
       expect(await response.text()).not.toContain('<div id="root">');
     }
+  });
+});
+
+describe("キャッシュの指定（#153）", () => {
+  it("名前にハッシュが入る /assets/* だけを長く持ち、HTML は毎回確かめる", () => {
+    const headers = readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
+    const rules = headers
+      .split(/\n(?=\S)/)
+      .filter((block) => !block.startsWith("#") && block.trim())
+      .map((block) => block.trim().split("\n")[0]);
+    // ハッシュの無いパス（/・/*・*.html）に長いキャッシュが付くと、更新が届かなくなる。
+    expect(rules).toEqual(["/assets/*"]);
+    expect(headers).toContain("Cache-Control: public, max-age=31536000, immutable");
   });
 });

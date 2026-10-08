@@ -1,0 +1,5 @@
+# 名前に中身のハッシュが入ったファイルだけ、1 年キャッシュする（#153）。
+# 中身が変わればファイル名が変わるので、古いものは出ない。HTML・seo.css・favicon など
+# ハッシュの無いものは既定（max-age=0, must-revalidate）のまま。
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
