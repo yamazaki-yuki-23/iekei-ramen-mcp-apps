@@ -41,9 +41,21 @@ export function dataCaveats(
  */
 export const DATA_FOOTNOTE = `店舗データは OpenStreetMap（ODbL）由来です。家系の判定は地図の記載と既知のブランドからの推定です。${TASTE_REFERENCE_NOTE}距離は直線距離です。営業時間は変わることがあるため、訪問前にご確認ください。`;
 
-/** 判定の段階と味の傾向の定義。個別のバッジと同じ定義を読む。 */
+/**
+ * 判定の誤りの但し書き（#144）。判定の段階は画面に出さないので、どのモードでも
+ * 「家系でない店が混ざりうる」ことをこの 1 文で伝え、報告の道まで書く。報告の口が
+ * 無いホスト（会話の中）では Web 版の報告へ案内する。
+ */
+export function misjudgeNote(reports: boolean): string {
+  const note = "家系ではない店が、家系として表示されている可能性があります。";
+  // 会話の中（報告の口が無いホスト）では、Web 版の報告へ案内する。誤りを直す道を残す。
+  return reports
+    ? `${note}見つけたら、店を開いて「店舗情報を報告する」から教えてください。`
+    : `${note}見つけたら、Web 版（iekeiramen.com）で店を開き「店舗情報を報告する」から教えてください。`;
+}
+
+/** 味の傾向の定義。 */
 export const DATA_DEFINITIONS = [
-  ...Object.values(CONFIDENCE).map(({ label, description }) => `「${label}」は${description}。`),
   TASTE_REFERENCE_NOTE,
   `「${TASTES.unknown.label}」は${TASTES.unknown.description}です。`,
 ];

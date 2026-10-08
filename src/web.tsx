@@ -12,7 +12,9 @@ function WebApp() {
   return (
     <IekeiApp
       Connection={WebConnection}
-      primaryMode={webEntry(window.location.search).name === "search-iekei-ramen" ? "form" : "map"}
+      primaryMode={
+        webEntry(window.location.search).name === "search-iekei-ramen" ? "form" : "decide"
+      }
       hero={PromiseHero}
       introduction={<IekeiIntro open={introOpen} onToggle={setIntroOpen} />}
     />

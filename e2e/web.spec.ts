@@ -1,6 +1,8 @@
 import { test } from "./fixtures";
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import type { AppPayload } from "../src/lib/types";
+import { openMode } from "./helpers";
+import { misjudgeNote } from "../src/lib/data-caveats";
 
 const WEB_URL = "http://localhost:3134";
 const cards = (page: Page) => page.locator("ul > li > button[data-shop-id]");
@@ -84,10 +86,10 @@ test("Webを直接開いて検索・現在地・地図・まわる店を使え�
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
   expect(page.frames()).toHaveLength(1);
 
-  await page.getByRole("tab", { name: "検索フォーム" }).click();
+  await openMode(page, "form");
   await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
   await page.getByLabel("キーワード").fill("吉村");
-  await page.getByRole("button", { name: "検索", exact: true }).click();
+  await page.getByRole("button", { name: "発券する", exact: true }).click();
   const search = await tool(request, "search-iekei-ramen", { keyword: "吉村" });
   await expect.poll(() => ids(page)).toEqual(search.shops.map((shop) => shop.id));
   await cards(page).first().click();
@@ -95,8 +97,8 @@ test("Webを直接開いて検索・現在地・地図・まわる店を使え�
   const route = page.getByRole("region", { name: "まわる店", exact: true });
   await expect(route).toContainText(search.shops[0].name);
 
-  await page.getByRole("tab", { name: "現在地から探す" }).click();
-  await page.getByRole("button", { name: "現在地から探す", exact: true }).click();
+  await openMode(page, "nearby");
+  await page.getByRole("button", { name: "現在地で発券", exact: true }).click();
   const nearby = await tool(request, "find-nearby-iekei-ramen", {
     lat: 35.466,
     lon: 139.622,
@@ -121,7 +123,7 @@ test("Webを直接開いて検索・現在地・地図・まわる店を使え�
     .poll(() => page.locator("html").getAttribute("data-opened-url"))
     .toContain("https://www.google.com/maps/dir/");
 
-  await page.getByRole("tab", { name: "地図から探す" }).click();
+  await openMode(page, "map");
   await expect(page.locator(".leaflet-container")).toBeVisible();
   await page.getByLabel("都道府県").selectOption("神奈川県");
   const map = await tool(request, "show-iekei-ramen-map", { prefecture: "神奈川県" });
@@ -150,9 +152,9 @@ test("Webの接続失敗を表示し、再読み込みで検索へ戻れる", as
 test("Webの地名検索は公開Nominatimへ出ず既存fixtureで解決する", async ({ page }) => {
   await page.goto(WEB_URL);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
-  await page.getByRole("tab", { name: "現在地から探す" }).click();
+  await openMode(page, "nearby");
   await page.getByLabel("地名で指定").fill("横浜駅");
-  await page.getByRole("button", { name: "この場所で探す" }).click();
+  await page.getByRole("button", { name: "この場所で発券" }).click();
   await expect(cards(page)).toHaveCount(5);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("横浜駅");
 });
@@ -160,8 +162,10 @@ test("Webの地名検索は公開Nominatimへ出ず既存fixtureで解決する"
 test("Webは会話・記録の未対応操作を出さず、3候補と次の候補を使える", async ({ page, request }) => {
   await page.goto(WEB_URL);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
-  await expect(page.getByRole("tab", { name: "行った店" })).toHaveCount(0);
-  await page.getByRole("tab", { name: "迷ったら", exact: true }).click();
+  await expect(
+    page.getByRole("navigation", { name: "探し方" }).getByRole("button", { name: "行った店" }),
+  ).toHaveCount(0);
+  await openMode(page, "decide");
   const first = await tool(request, "decide-iekei-ramen", {});
   await expect.poll(() => ids(page)).toEqual(first.shops.map((shop) => shop.id));
   await expect(cards(page)).toHaveCount(3);
@@ -191,6 +195,8 @@ test("Webの詳細から家系ではない・閉店の報告を匿名で送れ�
   });
   await page.goto(WEB_URL);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  // 段階を出さない代わりに、誤りの可能性と報告の口を案内する（#144）。
+  await expect(page.getByText(misjudgeNote(true))).toBeVisible();
   const firstId = await cards(page).first().getAttribute("data-shop-id");
   await cards(page).first().click();
   await page.getByText("店舗情報を報告する", { exact: true }).click();
@@ -224,10 +230,10 @@ test("0件でも未掲載店を報告でき、連打の理由と再送の結果�
   await page.goto(WEB_URL);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
   await expect(page.getByText("お探しの家系が見つからないときは", { exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: "検索フォーム" }).click();
+  await openMode(page, "form");
   await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
   await page.getByLabel("キーワード").fill("存在しない試験店0123");
-  await page.getByRole("button", { name: "検索", exact: true }).click();
+  await page.getByRole("button", { name: "発券する", exact: true }).click();
   await expect(cards(page)).toHaveCount(0);
   await page.getByText("お探しの家系が見つからないときは", { exact: true }).click();
   await page.getByLabel("店名", { exact: true }).fill("<b>試験家</b>");

@@ -51,7 +51,10 @@ export const CONFIDENCE = {
     label: "家系",
     description: "地図の記載が家系を名乗っている、または既知の家系ブランド",
   },
-  likely: { label: "家系の可能性", description: "名乗ってはいないが、記載から家系と推定できる" },
+  likely: {
+    label: "家系の可能性",
+    description: "名乗ってはいないが、記載から家系と推定できる",
+  },
   candidate: {
     label: "家系か未判定",
     description: "ラーメン店で屋号が「〜家」だが、家系かどうかは記載から判断できない",
@@ -121,6 +124,8 @@ export interface AppPayload {
   };
   /** 選択可能な都道府県（データに実在するものだけ）。 */
   prefectures: string[];
+  /** 店名の券売機に並べるブランドと、判定した結果の軒数（多い順、#144）。 */
+  brands?: Array<{ name: string; count: number }>;
   /**
    * サインインしている人の訪問済み店舗 ID。
    *

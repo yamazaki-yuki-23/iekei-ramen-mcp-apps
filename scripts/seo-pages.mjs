@@ -1,5 +1,4 @@
 import { ALL_PREFECTURES } from "../src/lib/prefectures.ts";
-import { CONFIDENCE } from "../src/lib/types.ts";
 
 const origin = "https://iekeiramen.com";
 const slugs =
@@ -8,20 +7,13 @@ const slugs =
   );
 const prefectureSlugs = new Map(ALL_PREFECTURES.map((name, index) => [name, slugs[index]]));
 const note =
-  "家系判定と味の傾向は地図データやブランドをもとにした推定です。味・営業状況の最新情報は店舗の公式情報で確認してください。「家系か未判定」は家系であると判断できていない店です。";
+  '家系判定と味の傾向は地図データやブランドをもとにした推定です。味・営業状況の最新情報は店舗の公式情報で確認してください。家系ではない店が、家系として表示されている可能性があります。見つけたら、<a href="/">アプリ</a>でその店を開き「店舗情報を報告する」から教えてください。';
 const escape = (value) =>
   String(value).replace(
     /[&<>"']/g,
     (character) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character],
   );
-/*
- * 判定の段階は形でも分ける（アプリのカードと同じ ■ □ ？。DESIGN.md「判定の段階のバッジ」）。
- * 記号は飾りなので読み上げない。段階も推定なので、先に「推定」と添える。
- */
-const STAGE_MARK = { confirmed: "■", likely: "□", candidate: "？" };
-const stage = (shop) =>
-  `<span class="seo-estimate">推定</span><span class="seo-stage seo-stage-${shop.confidence}" title="${escape(CONFIDENCE[shop.confidence].description)}"><span aria-hidden="true">${STAGE_MARK[shop.confidence]}</span>${escape(CONFIDENCE[shop.confidence].label)}</span>`;
 const region = (shop) => [shop.prefecture, shop.city].filter(Boolean).join(" ");
 const appLink = (prefecture, keyword) =>
   `/?${new URLSearchParams({ prefecture, ...(keyword ? { keyword } : {}) })}`;
@@ -34,7 +26,7 @@ function page({ title, description, path, content, noindex = false, structured, 
 }
 
 function shopList(shops) {
-  return `<ul>${shops.map((shop) => `<li><a class="seo-shop" href="${shopPath(shop)}">${escape(shop.name)}</a><p class="seo-badges">${stage(shop)}</p><p class="seo-note">${escape(CONFIDENCE[shop.confidence].description)}</p><p class="seo-note">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p></li>`).join("")}</ul>`;
+  return `<ul>${shops.map((shop) => `<li><a class="seo-shop" href="${shopPath(shop)}">${escape(shop.name)}</a><p class="seo-note">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p></li>`).join("")}</ul>`;
 }
 
 /** WorkerのAPIへ変更を加えず、ビルド時にだけHTMLとsitemapを生成する。 */
@@ -64,7 +56,7 @@ export function seoPages(shops) {
       group.push(shop);
       cities.set(key, group);
     }
-    const title = `${shop.name}｜${[region(shop), shop.address].filter(Boolean).join(" ")}｜店舗情報と家系判定`;
+    const title = `${shop.name}｜${[region(shop), shop.address].filter(Boolean).join(" ")}｜家系ラーメンの店舗情報`;
     titles.set(title, (titles.get(title) ?? 0) + 1);
   }
   const prefLinks = [...prefs]
@@ -78,9 +70,9 @@ export function seoPages(shops) {
     "/area/",
     page({
       title: "都道府県から家系ラーメンの候補を探す",
-      description: `判定した結果の${shops.length}軒を都道府県から探せます。家系か未判定の店を含みます。`,
+      description: `判定した結果の${shops.length}軒を都道府県から探せます。家系ではない店が含まれている可能性があります。`,
       path: "/area/",
-      content: `<p>判定した結果の${shops.length}軒。家系か未判定の店を含みます。</p><ul>${prefLinks}</ul>`,
+      content: `<p>判定した結果の${shops.length}軒。家系ではない店が含まれている可能性があります。</p><ul>${prefLinks}</ul>`,
     }),
   );
   for (const [prefecture, list] of prefs) {
@@ -96,9 +88,9 @@ export function seoPages(shops) {
       path,
       page({
         title: `${prefecture}の家系ラーメンの候補一覧`,
-        description: `${prefecture}で判定した結果の${list.length}軒。店舗情報・地域・家系判定と地図を確認できます。家系か未判定の店を含みます。`,
+        description: `${prefecture}で判定した結果の${list.length}軒。店舗情報・地域と地図を確認できます。家系ではない店が含まれている可能性があります。`,
         path,
-        content: `<p>判定した結果の${list.length}軒。家系か未判定の店を含みます。</p><a class="seo-app-link" href="${escape(appLink(prefecture))}">この都道府県の条件でアプリを開く</a><h2>市区町村から探す</h2><ul>${cityLinks}</ul><h2>店舗の候補</h2>${shopList(list)}`,
+        content: `<p>判定した結果の${list.length}軒。家系ではない店が含まれている可能性があります。</p><a class="seo-app-link" href="${escape(appLink(prefecture))}">この都道府県の条件でアプリを開く</a><h2>市区町村から探す</h2><ul>${cityLinks}</ul><h2>店舗の候補</h2>${shopList(list)}`,
       }),
     );
     indexed.push(path);
@@ -110,17 +102,16 @@ export function seoPages(shops) {
       path,
       page({
         title: `${label}の家系ラーメンの候補一覧`,
-        description: `${label}で判定した結果の${list.length}軒。店舗情報・家系判定と地図を確認できます。家系か未判定の店を含みます。`,
+        description: `${label}で判定した結果の${list.length}軒。店舗情報と地図を確認できます。家系ではない店が含まれている可能性があります。`,
         path,
-        content: `<p><a href="${prefPath(prefecture)}">${escape(prefecture)}の一覧</a></p><p>判定した結果の${list.length}軒。家系か未判定の店を含みます。</p><a class="seo-app-link" href="${escape(appLink(prefecture, city))}">この地域の条件でアプリを開く</a>${shopList(list)}`,
+        content: `<p><a href="${prefPath(prefecture)}">${escape(prefecture)}の一覧</a></p><p>判定した結果の${list.length}軒。家系ではない店が含まれている可能性があります。</p><a class="seo-app-link" href="${escape(appLink(prefecture, city))}">この地域の条件でアプリを開く</a>${shopList(list)}`,
       }),
     );
     indexed.push(path);
   }
   for (const shop of shops) {
     const path = shopPath(shop);
-    const confidence = CONFIDENCE[shop.confidence];
-    const baseTitle = `${shop.name}｜${[region(shop), shop.address].filter(Boolean).join(" ")}｜店舗情報と家系判定`;
+    const baseTitle = `${shop.name}｜${[region(shop), shop.address].filter(Boolean).join(" ")}｜家系ラーメンの店舗情報`;
     const title = `${baseTitle}${titles.get(baseTitle) > 1 ? `（${shop.lat}, ${shop.lon}）` : ""}`;
     const address = {
       "@type": "PostalAddress",
@@ -140,12 +131,12 @@ export function seoPages(shops) {
       path,
       page({
         title,
-        description: `${shop.name}の店舗情報。地域は${[region(shop), shop.address].filter(Boolean).join(" ")}。家系判定は「${confidence.label}」。地図の位置を確認できます。`,
+        description: `${shop.name}の店舗情報。地域は${[region(shop), shop.address].filter(Boolean).join(" ")}。地図の位置を確認できます。`,
         path,
         heading: shop.name,
         noindex: shop.confidence === "candidate",
         structured,
-        content: `<p><a href="${prefPath(shop.prefecture)}">${escape(shop.prefecture)}の一覧</a>${shop.city ? ` / <a href="${cityPath(shop.prefecture, shop.city)}">${escape(shop.city)}の一覧</a>` : ""}</p><p>${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p><p class="seo-badges">${stage(shop)}</p><p>家系判定：${escape(confidence.label)}。${escape(confidence.description)}</p><p>座標：${shop.lat}, ${shop.lon}</p><p><a class="seo-app-link" href="${escape(map)}" target="_blank" rel="noopener noreferrer">地図で位置を見る</a></p><a class="seo-app-link" href="${escape(appLink(shop.prefecture, shop.name))}">この店名の条件でアプリを開く</a>`,
+        content: `<p><a href="${prefPath(shop.prefecture)}">${escape(shop.prefecture)}の一覧</a>${shop.city ? ` / <a href="${cityPath(shop.prefecture, shop.city)}">${escape(shop.city)}の一覧</a>` : ""}</p><p>${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p><p>座標：${shop.lat}, ${shop.lon}</p><p><a class="seo-app-link" href="${escape(map)}" target="_blank" rel="noopener noreferrer">地図で位置を見る</a></p><a class="seo-app-link" href="${escape(appLink(shop.prefecture, shop.name))}">この店名の条件でアプリを開く</a>`,
       }),
     );
     if (shop.confidence !== "candidate") indexed.push(path);

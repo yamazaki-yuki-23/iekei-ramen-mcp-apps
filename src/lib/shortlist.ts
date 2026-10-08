@@ -108,10 +108,24 @@ export function shortlist(
 }
 
 /**
+ * どの判定の段階まで含めたか。**モデルにだけ渡す**（#144）。画面には判定の段階を
+ * 出さないが、モデルが「家系か未判定」の店を家系と断定しないように伝える。
+ * describeBasis の前に続けて 1 文になる形にしてある。
+ */
+export function describeScope(info: Pick<DecideInfo, "widened" | "includesLikely">): string {
+  // 旧結果は母集団の内訳が無いので、全件 confirmed と断定しない。
+  return info.widened
+    ? `「${CONFIDENCE.candidate.label}」も含めて`
+    : info.includesLikely !== false
+      ? `「${CONFIDENCE.confirmed.label}」「${CONFIDENCE.likely.label}」の店にしぼって`
+      : "家系と分かっている店にしぼって";
+}
+
+/**
  * なぜこの 3 軒なのかを 1 文で。
  *
  * **UI とモデルに同じ文を見せる。** 別々に書くと、画面の説明と会話の説明が
- * ずれて、どちらが本当か分からなくなる。
+ * ずれて、どちらが本当か分からなくなる。モデルにはこの前に describeScope を足す。
  */
 export function describeBasis(
   info: DecideInfo,
@@ -123,16 +137,10 @@ export function describeBasis(
     info.basis === "distance"
       ? `${origin ? originLabel(origin) : "基準地点"}から近い順`
       : "営業時間が分かる店から順";
-  // 旧結果は母集団の内訳が無いので、全件 confirmed と断定しない。
-  const scope = info.widened
-    ? `「${CONFIDENCE.candidate.label}」も含めて`
-    : info.includesLikely !== false
-      ? `「${CONFIDENCE.confirmed.label}」「${CONFIDENCE.likely.label}」の店にしぼって`
-      : "家系と分かっている店にしぼって";
   // 効いている絞り込みは必ず書く。書かないと、候補が減っていても理由が
   // どこにも出ない（キーワード欄はこのモードに無い）。
   const filtered = keyword ? `「${keyword}」に合う` : "";
-  return `${scope}${filtered} ${info.poolTotal} 軒を${how}に並べた、${pickRange(info, shown)}です。`;
+  return `${filtered}${info.poolTotal} 軒を${how}に並べた、${pickRange(info, shown)}です。`;
 }
 
 /** 見出しの横に出す、並べた根拠の短い言い方。「1 位」のような順位の言葉は使わない。 */

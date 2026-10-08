@@ -24,7 +24,7 @@ test("デモ", async ({ page }) => {
   await page.waitForTimeout(600);
   await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
   await page.waitForTimeout(400);
-  await app.getByRole("button", { name: "検索" }).click();
+  await app.getByRole("button", { name: "発券する", exact: true }).click();
   await expect(app.getByRole("heading", { name: /神奈川県の家系ラーメン/ })).toBeVisible();
   await page.waitForTimeout(2000);
 
@@ -33,7 +33,7 @@ test("デモ", async ({ page }) => {
   await page.waitForTimeout(1000);
   await app.locator("#place").fill("横浜駅");
   await page.waitForTimeout(600);
-  await app.getByRole("button", { name: "この場所で探す" }).click();
+  await app.getByRole("button", { name: "この場所で発券" }).click();
   await expect(shopCards(app)).toHaveCount(5);
   await page.waitForTimeout(2500);
 

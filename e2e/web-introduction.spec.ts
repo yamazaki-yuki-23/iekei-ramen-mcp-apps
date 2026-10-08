@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { test } from "./fixtures";
-import { callTool, waitForApp } from "./helpers";
+import { callTool, waitForApp, openMode } from "./helpers";
 
 const WEB_URL = "http://localhost:3134";
 
@@ -14,16 +14,14 @@ test("初回は家系の3行説明を開き、次回は畳む。候補を変え�
   await expect(intro.getByText("豚骨醤油と太めの麺が定番です。", { exact: true })).toBeVisible();
   await expect(intro.getByText("迷ったら、まず3軒から見てみよう。", { exact: true })).toBeVisible();
   await expect(intro.getByText("家系判定と味の分類は推定です。", { exact: true })).toBeVisible();
-  // 最初の画面は約束と地図（#125）。位置を許可しなくても、店（塊）が地図に出る。
+  // 最初の画面は約束と券売機（#144）。位置を求めずに、全国の 3 軒の食券が出ている。
   await expect(page.getByText("家系がある。")).toBeVisible();
   await expect(page.getByText("家系の判定と味の傾向は推定、距離は直線距離です。")).toBeVisible();
-  await expect(page.locator("main")).toHaveAttribute("data-mode", "map");
-  await expect(page.getByRole("tab").first()).toHaveText("地図から探す");
-  await expect(page.getByRole("tab").first()).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator(".cluster-pin").first()).toBeVisible();
-  // 「迷ったら」へは最初の画面の入口から入れる。
-  await page.getByRole("button", { name: "迷ったら 3 軒に絞る" }).click();
   await expect(page.locator("main")).toHaveAttribute("data-mode", "decide");
+  const nav = page.getByRole("navigation", { name: "探し方" });
+  await expect(nav.getByRole("button").first()).toHaveText("迷ったら");
+  await expect(nav.getByRole("button").first()).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("button", { name: /発券する/ })).toBeVisible();
   await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
 
   await intro.getByText("直系・資本系・インスパイア系とは", { exact: true }).click();
@@ -75,7 +73,6 @@ test("localStorageが使えなくても説明を畳み、候補を切り替え�
   await expect(intro).toHaveAttribute("open", "");
   await intro.locator(":scope > summary").click();
   await expect(intro).not.toHaveAttribute("open", "");
-  await page.getByRole("button", { name: "迷ったら 3 軒に絞る" }).click();
   await page.getByRole("button", { name: "次の 3 軒を見る" }).click();
   await expect(page.getByText(/^\d+ 軒中 4〜6 軒目$/)).toBeVisible();
   await expect(intro).not.toHaveAttribute("open", "");
@@ -91,7 +88,7 @@ test("MCP Appsは説明を追加せず、検索フォームから始まる", asy
   await expect(app.getByRole("tab").first()).toHaveAttribute("aria-selected", "true");
 });
 
-test("接続を待つ間も約束を先に見せ、入口は押せない形で出す", async ({ page }) => {
+test("接続を待つ間も約束を先に見せる", async ({ page }) => {
   // /mcp の応答を遅らせる。約束はデータに依らないので、待たずに出す（#125）。
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
@@ -103,16 +100,16 @@ test("接続を待つ間も約束を先に見せ、入口は押せない形で�
   await expect(page.getByText("読み込み中…")).toBeVisible();
   // 接続後と同じ main の中に描く（余白が揃わないと、つながった瞬間に跳ぶ）。
   await expect(page.locator("main").getByText("家系がある。")).toBeVisible();
-  await expect(page.getByRole("button", { name: "地図で見る" })).toBeDisabled();
   release();
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
-  await expect(page.getByRole("button", { name: "地図で見る" })).toBeEnabled();
 });
 
 test("Webの地図では、絞り込みを地図と一覧の間に置く", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto(WEB_URL);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  await openMode(page, "map");
+  await expect(page.locator(".leaflet-container")).toBeVisible();
   const order = await page.evaluate(() => {
     const map = document.querySelector(".leaflet-container")!;
     const select = document.querySelector("select")!;
@@ -130,6 +127,8 @@ test("Webの地図では、絞り込みを地図と一覧の間に置く", async
 test("Webの地図で条件の取得に失敗しても、絞り込みは消さない", async ({ page }) => {
   await page.goto(WEB_URL);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  await openMode(page, "map");
+  await expect(page.locator(".leaflet-container")).toBeVisible();
   // ここから先の検索だけ落とす。失敗した条件を変え直す口が残っていること。
   await page.route("**/mcp", async (route) => {
     const body = route.request().postData() ?? "";
@@ -146,41 +145,10 @@ test("Webの地図で条件の取得に失敗しても、絞り込みは消さ�
   await expect(page.getByRole("button", { name: "こだわらない" })).toBeVisible();
 });
 
-test("最初の画面の入口から送った見出しは、上端に余白を残して止まる", async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto(WEB_URL);
-  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
-  await page.getByRole("button", { name: "迷ったら 3 軒に絞る" }).click();
-  await expect(page.locator("main")).toHaveAttribute("data-mode", "decide");
-  // 画面の端（ノッチの下）に貼り付けない。.main と同じ余白（16px）を上に残して止まる。
-  // 送るのは描き直しの後（次のフレーム）なので、止まるまで待って測る。
-  await expect
-    .poll(() =>
-      page.locator("#app-head").evaluate((el) => Math.round(el.getBoundingClientRect().top)),
-    )
-    .toBe(16);
-});
-
-test("いま出ている地図で「地図で見る」を押しても、取り直さない", async ({ page }) => {
-  await page.goto(WEB_URL);
-  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
-  await expect(page.locator("main")).toHaveAttribute("data-mode", "map");
-  const calls: string[] = [];
-  page.on("request", (request) => {
-    if (request.url().endsWith("/mcp") && request.method() === "POST")
-      calls.push(request.postData() ?? "");
-  });
-  await page.getByRole("button", { name: "地図で見る" }).click();
-  // 取り直すと、出ている地図が読み込み中に置き換わる。
-  await expect(page.locator(".leaflet-container")).toBeVisible();
-  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
-  expect(calls.filter((body) => body.includes('"tools/call"'))).toEqual([]);
-});
-
 test("取得に失敗したら、原因と「もう一度試す」を出し、押すと取り直す", async ({ page }) => {
   await page.goto(WEB_URL);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
-  await page.getByRole("tab", { name: "検索フォーム" }).click();
+  await openMode(page, "form");
   await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
   // 次の検索を 1 回だけ落とす。
   let failed = false;
@@ -192,7 +160,7 @@ test("取得に失敗したら、原因と「もう一度試す」を出し、�
     }
     return route.continue();
   });
-  await page.getByRole("button", { name: "検索", exact: true }).click();
+  await page.getByRole("button", { name: "発券する", exact: true }).click();
   const error = page.getByRole("alert").filter({ hasText: "結果を取得できませんでした" });
   await expect(error).toBeVisible();
   await error.getByRole("button", { name: "もう一度試す" }).click();
@@ -200,7 +168,7 @@ test("取得に失敗したら、原因と「もう一度試す」を出し、�
 });
 
 for (const width of [390, 768, 1280]) {
-  test(`${width}px で横にはみ出さない（地図・迷ったら）`, async ({ page }) => {
+  test(`${width}px で横にはみ出さない（券売機・地図）`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(WEB_URL);
     await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
@@ -208,9 +176,13 @@ for (const width of [390, 768, 1280]) {
       page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
-    expect(await overflow()).toBe(0);
-    await page.getByRole("button", { name: "迷ったら 3 軒に絞る" }).click();
     await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
+    expect(await overflow()).toBe(0);
+    // 券売機の都道府県の選択欄も、ほかのキーと同じく指で押せる 44px 以上。
+    const select = await page.getByRole("combobox", { name: "都道府県" }).boundingBox();
+    expect(select?.height).toBeGreaterThanOrEqual(44);
+    await openMode(page, "map");
+    await expect(page.locator(".leaflet-container")).toBeVisible();
     expect(await overflow()).toBe(0);
   });
 }
@@ -234,8 +206,8 @@ test("現在地の取得に失敗したら、「もう一度試す」は同じ�
     }
     return route.continue();
   });
-  await page.getByRole("tab", { name: "現在地から探す" }).click();
-  await page.getByRole("button", { name: "現在地から探す", exact: true }).click();
+  await openMode(page, "nearby");
+  await page.getByRole("button", { name: "現在地で発券", exact: true }).click();
   const error = page.getByRole("alert").filter({ hasText: "結果を取得できませんでした" });
   await expect(error).toBeVisible();
   // 1 回の失敗で、読み上げる失敗は 1 つだけ。
@@ -244,4 +216,31 @@ test("現在地の取得に失敗したら、「もう一度試す」は同じ�
   await expect(page.locator("button[data-shop-id]").first()).toBeVisible();
   expect(nearby).toHaveLength(2);
   expect(nearby[1]).toContain("35.466");
+});
+
+test("キーボードだけで、券売機で選んで発券し、食券を開いて地図で開ける", async ({ page }) => {
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  const before = await page.locator("button[data-shop-id]").first().getAttribute("data-shop-id");
+  // 味のキーを Space で押す。押されたキーは aria-pressed で分かる（色だけにしない）。
+  const creamy = page.getByRole("button", { name: "クリーミー", exact: true });
+  await creamy.focus();
+  await page.keyboard.press("Space");
+  await expect(creamy).toHaveAttribute("aria-pressed", "true");
+  // キーは選ぶだけで、取りに行かない。
+  await expect(page.locator("button[data-shop-id]").first()).toHaveAttribute(
+    "data-shop-id",
+    before!,
+  );
+  await page.getByRole("button", { name: /発券する/ }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
+  await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
+  await expect(page.locator("button[data-shop-id]").first()).toContainText("クリーミー");
+  // 食券を Enter で開き、地図で開くへ進める。
+  await page.locator("button[data-shop-id]").first().focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "地図で開く" })).toBeVisible();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "地図で開く" })).toBeFocused();
 });

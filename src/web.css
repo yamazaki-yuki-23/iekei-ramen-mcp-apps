@@ -14,3 +14,13 @@ main {
   max-width: 72rem;
   margin-inline: auto;
 }
+
+/*
+ * 画面の下のリンク（index.html の nav）。都道府県ページ用の 40rem・中央寄せのままだと、
+ * 左揃えの本文の下でここだけ中央に寄って視線が飛んだ。本文と同じ幅・左揃えにする。
+ */
+nav.seo-navigation {
+  max-width: 72rem;
+  padding: 0 calc(var(--space-4) + var(--safe-area-right, 0px)) var(--space-8)
+    calc(var(--space-4) + var(--safe-area-left, 0px));
+}

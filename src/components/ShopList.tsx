@@ -1,21 +1,10 @@
 import { useMemo, type CSSProperties, type ReactNode } from "react";
 import { metaParts, sameNameLabels } from "../lib/same-name";
-import { CONFIDENCE, TASTES, type Shop } from "../lib/types";
+import { TASTES, type Shop } from "../lib/types";
 import { formatDistance } from "../lib/geo";
 import { openingHoursLabel } from "../lib/opening-hours";
 import styles from "../mcp-app.module.css";
 import { StateNote } from "./StateNote";
-
-/*
- * 判定の段階は形でも分ける（色が見えにくい人に届くように）。
- * 塗り ■ ＞ 枠 □ ＞ 枠なし ？ の順に弱くなり、言い切れる度合いと揃う。
- */
-const STAGE_CLASS = {
-  confirmed: styles.stageConfirmed,
-  likely: styles.stageLikely,
-  candidate: styles.stageCandidate,
-} as const;
-const STAGE_MARK = { confirmed: "■", likely: "□", candidate: "？" } as const;
 
 interface Props {
   shops: Shop[];
@@ -26,6 +15,11 @@ interface Props {
    * 順位ではない（おすすめ順に見せない）。
    */
   ticket?: boolean;
+  /**
+   * 半券に書くもの。番号（表示順）か、基準地点からの直線距離（現在地から、#144）。
+   * 距離のときは右端の距離を出さない（半券と 2 か所に同じ数字が並ぶ）。
+   */
+  stub?: "number" | "distance";
   selectedId?: string;
   onSelect?: (shop: Shop) => void;
   /**
@@ -45,10 +39,32 @@ interface Props {
   visitedIds?: ReadonlySet<string>;
 }
 
+/** 半券（または順位）の中身。距離のときは「直線」と添えて、道のりと読ませない。 */
+function RankStub({
+  shop,
+  index,
+  stub,
+}: {
+  shop: Shop;
+  index: number;
+  stub: "number" | "distance";
+}) {
+  if (stub === "distance" && shop.distanceKm !== undefined) {
+    return (
+      <span className={styles.rankDistance}>
+        {formatDistance(shop.distanceKm)}
+        <small>直線</small>
+      </span>
+    );
+  }
+  return <span className={styles.rank}>{index + 1}</span>;
+}
+
 export function ShopList({
   shops,
   ranked,
   ticket,
+  stub = "number",
   selectedId,
   onSelect,
   detail,
@@ -77,7 +93,8 @@ export function ShopList({
           key={shop.id}
           className={selectedId === shop.id ? styles.listItemSelected : undefined}
           // 3 軒が 1 軒ずつ出る順番。CSS の animation-delay が読む。
-          style={ticket ? ({ "--ticket-index": i } as CSSProperties) : undefined}
+          // 最初の 3 枚だけずらして出す（200 枚目が 24 秒後に出ないように）。
+          style={ticket && i < 3 ? ({ "--ticket-index": i } as CSSProperties) : undefined}
         >
           <button
             type="button"
@@ -92,7 +109,7 @@ export function ShopList({
              */
             data-shop-id={shop.id}
           >
-            {ranked && <span className={styles.rank}>{i + 1}</span>}
+            {ranked && <RankStub shop={shop} index={i} stub={stub} />}
             <span className={styles.cardBody}>
               <span className={styles.shopHead}>
                 {/* 取り出す対象を名指しできるようにしておく（テストが店名だけを読む）。 */}
@@ -106,23 +123,18 @@ export function ShopList({
                 )}
               </span>
               {/*
-               * 判定の段階は一目で分かる位置に、常に出す（「家系」も含めて）。
-               * 段階も味も推定なので、先頭に「推定」と添えてから並べる。
+               * 判定の段階（家系か・可能性か・未判定か）はカードに出さない（#144）。
+               * 家系のアプリで「家系」と並べても情報にならない。誤りの可能性は画面下の
+               * 但し書きで全モード共通に伝え、報告で直す。
                */}
               <span className={styles.badges}>
-                <span className={styles.estimate}>推定</span>
-                <span
-                  className={STAGE_CLASS[shop.confidence]}
-                  title={CONFIDENCE[shop.confidence].description}
-                  data-shop-stage={shop.confidence}
-                >
-                  <span aria-hidden="true">{STAGE_MARK[shop.confidence]}</span>
-                  {CONFIDENCE[shop.confidence].label}
+                {/*
+                 * 味とブランドはバッジにせず、控えめな文字で添える。黒・茶赤・灰のバッジが
+                 * 並ぶと、意味の違わないものが違う色に見えて読みにくかった。
+                 */}
+                <span className={styles.shopFacts}>
+                  {[TASTES[shop.taste].label, shop.brand].filter(Boolean).join("・")}
                 </span>
-                <span className={shop.taste === "unknown" ? styles.badgeMuted : styles.badge}>
-                  {TASTES[shop.taste].label}
-                </span>
-                {shop.brand && <span className={styles.badgeMuted}>{shop.brand}</span>}
                 {/* 行った印は特典の無いサブ機能なので、塗らずに控えめに添える。 */}
                 {visitedIds?.has(shop.id) && <span className={styles.badgeVisited}>行った</span>}
               </span>
@@ -150,7 +162,7 @@ export function ShopList({
                 <span className={styles.meta}>営業 {openingHoursLabel(shop.openingHours)}</span>
               )}
             </span>
-            {shop.distanceKm !== undefined && (
+            {stub === "number" && shop.distanceKm !== undefined && (
               <span className={styles.distance}>{formatDistance(shop.distanceKm)}</span>
             )}
           </button>

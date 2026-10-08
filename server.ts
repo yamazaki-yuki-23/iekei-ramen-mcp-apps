@@ -1,4 +1,5 @@
 import { ALL_PREFECTURES } from "./src/lib/prefectures.ts";
+import { topBrands, type BrandCount } from "./src/lib/brands.ts";
 import { openingHoursLabel } from "./src/lib/opening-hours.ts";
 /**
  * 家系ラーメンを探す MCP Apps サーバー。
@@ -39,7 +40,7 @@ import { RECORDS_WITHOUT_SHOPS } from "./src/lib/visited-view.ts";
 import { BoundsSchema, PayloadSchema, StampResultSchema } from "./src/lib/schema.ts";
 import { scopeLabel } from "./src/lib/scope.ts";
 import type { VisitStore } from "./src/lib/visits.ts";
-import { describeBasis, shortlist } from "./src/lib/shortlist.ts";
+import { describeBasis, describeScope, shortlist } from "./src/lib/shortlist.ts";
 import {
   CONFIDENCE,
   ORIGIN_NOTES,
@@ -365,8 +366,12 @@ function originFrom(
   };
 }
 
-function structured(payload: Omit<AppPayload, "prefectures">, prefectures: string[]) {
-  return { ...payload, prefectures };
+function structured(
+  payload: Omit<AppPayload, "prefectures">,
+  prefectures: string[],
+  brands: BrandCount[],
+) {
+  return { ...payload, prefectures, brands };
 }
 
 /**
@@ -516,6 +521,8 @@ async function geocodeCacheKey(q: string): Promise<string> {
 
 export function createServer(deps: ServerDeps = {}): McpServer {
   const dataset = deps.shops ?? DEFAULT_SHOPS;
+  // 店名の券売機に並べるブランド（#144）。判定した結果の軒数が多い順。
+  const brands = topBrands(dataset);
   const prefectures =
     dataset === DEFAULT_SHOPS
       ? DEFAULT_PREFECTURES
@@ -890,7 +897,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
             type: "text",
             text: decidePrompt(
               list.picks,
-              describeBasis(list, list.picks.length, origin, kw),
+              `${describeScope(list)}${describeBasis(list, list.picks.length, origin, kw)}`,
               cond,
               list,
             ),
@@ -1030,7 +1037,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
     payload: Omit<AppPayload, "prefectures">,
     extras?: Partial<AppPayload>,
   ) => ({
-    ...structured(payload, prefectures),
+    ...structured(payload, prefectures, brands),
     ...(extras ?? (await visitorExtras(deps, dataset))),
   });
 
@@ -1084,6 +1091,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
               query: {},
             },
             prefectures,
+            brands,
           ),
           ...snapshot,
         };

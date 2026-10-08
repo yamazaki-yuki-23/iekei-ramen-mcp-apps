@@ -34,7 +34,7 @@ test.describe("検索フォーム", () => {
     await waitForApp(app);
 
     await app.locator("#pref").selectOption("神奈川県");
-    await app.getByRole("button", { name: "検索" }).click();
+    await app.getByRole("button", { name: "発券する", exact: true }).click();
 
     await expect(app.getByRole("heading", { name: /神奈川県の家系ラーメン/ })).toBeVisible();
     await expect(shopCards(app).first()).toContainText("神奈川県");
@@ -46,7 +46,7 @@ test.describe("検索フォーム", () => {
 
     // フォームモードは条件を選んでから「検索」を押して確定する
     await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
-    await app.getByRole("button", { name: "検索" }).click();
+    await app.getByRole("button", { name: "発券する", exact: true }).click();
 
     // 絞り込み後はすべてのカードに「直系・濃厚」バッジが付く
     const cards = shopCards(app);
@@ -62,7 +62,7 @@ test.describe("検索フォーム", () => {
     await waitForApp(app);
 
     await app.locator("#kw").fill("吉村家");
-    await app.getByRole("button", { name: "検索" }).click();
+    await app.getByRole("button", { name: "発券する", exact: true }).click();
 
     await expect(shopCards(app).first()).toContainText("吉村家");
   });
@@ -72,7 +72,7 @@ test.describe("検索フォーム", () => {
     await waitForApp(app);
 
     await app.locator("#kw").fill("存在しない店名ZZZ");
-    await app.getByRole("button", { name: "検索" }).click();
+    await app.getByRole("button", { name: "発券する", exact: true }).click();
 
     await expect(app.getByText("条件に合う店舗が見つかりませんでした。")).toBeVisible();
     await expect(shopCards(app)).toHaveCount(0);
@@ -97,7 +97,7 @@ test.describe("現在地から探す", () => {
     await app.getByRole("tab", { name: "現在地から探す" }).click();
 
     await app.locator("#place").fill("横浜駅");
-    await app.getByRole("button", { name: "この場所で探す" }).click();
+    await app.getByRole("button", { name: "この場所で発券" }).click();
 
     await expect(app.getByRole("heading", { name: /の近くの家系ラーメン/ })).toBeVisible();
     await expect(shopCards(app)).toHaveCount(5);
@@ -132,7 +132,7 @@ test.describe("現在地から探す", () => {
     await waitForApp(app);
     await app.getByRole("tab", { name: "現在地から探す" }).click();
     await app.locator("#place").fill("横浜駅");
-    await app.getByRole("button", { name: "この場所で探す" }).click();
+    await app.getByRole("button", { name: "この場所で発券" }).click();
 
     await expect(app.getByText(reason)).toBeVisible();
     await expect(app.getByText("「横浜駅」が見つかりませんでした。")).toHaveCount(0);
@@ -151,7 +151,7 @@ test.describe("現在地から探す", () => {
     await waitForApp(app);
     await app.getByRole("tab", { name: "現在地から探す" }).click();
     await app.locator("#place").fill("横浜駅");
-    await app.getByRole("button", { name: "この場所で探す" }).click();
+    await app.getByRole("button", { name: "この場所で発券" }).click();
 
     await expect(app.getByText(/地名の検索に失敗しました/)).toBeVisible();
     await expect(app.getByText("「横浜駅」が見つかりませんでした。")).toHaveCount(0);
@@ -168,7 +168,7 @@ test.describe("現在地から探す", () => {
     const app = await callTool(page, "search-iekei-ramen");
     await waitForApp(app);
     await app.getByRole("tab", { name: "現在地から探す" }).click();
-    await app.getByRole("button", { name: "現在地から探す", exact: true }).click();
+    await app.getByRole("button", { name: "現在地で発券", exact: true }).click();
 
     await expect(shopCards(app)).toHaveCount(5);
     await expect(app.getByText("基準: 現在地")).toBeVisible();
@@ -182,13 +182,13 @@ test.describe("現在地から探す", () => {
     const app = await callTool(page, "search-iekei-ramen");
     await waitForApp(app);
     await app.getByRole("tab", { name: "現在地から探す" }).click();
-    await app.getByRole("button", { name: "現在地から探す", exact: true }).click();
+    await app.getByRole("button", { name: "現在地で発券", exact: true }).click();
 
     await expect(
       app.getByText("現在地を取得できませんでした。下の欄に地名を入力してください。"),
     ).toBeVisible();
     // ボタンは押せる状態のまま残す
-    await expect(app.getByRole("button", { name: "現在地から探す", exact: true })).toBeEnabled();
+    await expect(app.getByRole("button", { name: "現在地で発券", exact: true })).toBeEnabled();
   });
 
   test("距離が近い順に並ぶ", async ({ page }) => {
@@ -275,7 +275,7 @@ test.describe("モード切り替え", () => {
     await expect(app.getByRole("application", { name: "家系ラーメン店の地図" })).toBeVisible();
 
     await app.getByRole("tab", { name: "現在地から探す" }).click();
-    await expect(app.getByRole("button", { name: "現在地から探す", exact: true })).toBeVisible();
+    await expect(app.getByRole("button", { name: "現在地で発券", exact: true })).toBeVisible();
 
     await app.getByRole("tab", { name: "検索フォーム" }).click();
     await expect(app.locator("#kw")).toBeVisible();
@@ -310,6 +310,22 @@ function poolSize(basis: string): string | undefined {
 }
 
 test.describe("迷ったら（3 軒に絞る）", () => {
+  test("県と基準地点の両方で開いたら、何も変えずに発券しても近い順のまま（#144）", async ({
+    page,
+  }) => {
+    const app = await callTool(page, "decide-iekei-ramen", {
+      prefecture: "神奈川県",
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+    });
+    await waitForApp(app);
+    await expect(app.getByText(/横浜駅から近い順に並べ/)).toBeVisible();
+    await app.getByRole("button", { name: /^発券する/ }).click();
+    await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
+    await expect(app.getByText(/横浜駅から近い順に並べ/)).toBeVisible();
+  });
+
   test("3 軒まで絞り、なぜこの 3 軒かを画面に出す", async ({ page }) => {
     const app = await callTool(page, "decide-iekei-ramen", {
       lat: 35.4657,
@@ -602,7 +618,9 @@ test.describe("迷ったら（3 軒に絞る）", () => {
      * 神奈川県のまま残り、そのままモデルへ送れてしまっていた。
      */
     await page.route("**/mcp", (route) => route.abort());
+    // 券売機はキーで選ぶだけで、「発券する」で取りに行く（#144）。
     await app.locator("#pref").selectOption("東京都");
+    await app.getByRole("button", { name: /発券する/ }).click();
 
     await expect(
       app.getByText("結果を取得できませんでした。通信が切れたか、サーバーが応答しませんでした。"),
@@ -630,7 +648,9 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     await expect(inContext).toHaveCount(1);
 
     await page.route("**/mcp", (route) => route.abort());
+    // 券売機はキーで選ぶだけで、「発券する」で取りに行く（#144）。
     await app.locator("#pref").selectOption("東京都");
+    await app.getByRole("button", { name: /発券する/ }).click();
 
     await expect(
       app.getByText("結果を取得できませんでした。通信が切れたか、サーバーが応答しませんでした。"),
@@ -662,8 +682,12 @@ test.describe("迷ったら（3 軒に絞る）", () => {
       const body = res.request().postData() ?? "";
       return body.includes("tools/call") && body.includes("東京都");
     });
+    // 券売機はキーで選ぶだけで、「発券する」で取りに行く（#144）。
     await app.locator("#pref").selectOption("東京都");
+    await app.getByRole("button", { name: /発券する/ }).click();
+    // 券売機はキーで選ぶだけで、「発券する」で取りに行く（#144）。
     await app.locator("#pref").selectOption("大阪府");
+    await app.getByRole("button", { name: /発券する/ }).click();
 
     await expect(app.locator("#pref")).toHaveValue("大阪府");
     await expect(shopCards(app)).toHaveCount(3);
@@ -850,7 +874,7 @@ test.describe("モデルへの受け渡し", () => {
     await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
 
     await app.locator("#pref").selectOption("東京都");
-    await app.getByRole("button", { name: "検索" }).click();
+    await app.getByRole("button", { name: "発券する", exact: true }).click();
 
     await expect(app.getByRole("heading", { name: /東京都の家系ラーメン/ })).toBeVisible();
     await expect(app.getByRole("region", { name: "選択中の店舗" })).toHaveCount(0);
@@ -1207,7 +1231,7 @@ test.describe("まわる店（順路）", () => {
     // 基準地点のあるモードへ移り、そこで見つけた店を足す。
     await app.getByRole("tab", { name: "現在地から探す" }).click();
     await app.locator("#place").fill("横浜駅");
-    await app.getByRole("button", { name: "この場所で探す" }).click();
+    await app.getByRole("button", { name: "この場所で発券" }).click();
     await expect(app.getByText("基準: 横浜駅")).toBeVisible();
     await shopCards(app).nth(0).click();
     await app.getByRole("button", { name: "まわる店に追加" }).click();
@@ -1260,7 +1284,7 @@ test.describe("まわる店（順路）", () => {
     await app.getByRole("button", { name: "まわる店に追加" }).click();
 
     await app.locator("#pref").selectOption("東京都");
-    await app.getByRole("button", { name: "検索" }).click();
+    await app.getByRole("button", { name: "発券する", exact: true }).click();
     await expect(app.getByRole("heading", { name: "東京都の家系ラーメン" })).toBeVisible();
 
     const route = app.getByRole("region", { name: "まわる店" });
@@ -1592,9 +1616,7 @@ test.describe("塊の中身に行き着けること", () => {
     const pin = app.locator(".leaflet-overlay-pane path[role=button]").first();
     await expect(pin).toHaveAttribute("tabindex", "0");
     const label = await pin.getAttribute("aria-label");
-    expect(label).toMatch(
-      /（(家系|家系の可能性|家系か未判定)・(直系・濃厚|クリーミー|チェーン・万人向け|味は未判定)）$/,
-    );
+    expect(label).toMatch(/（(直系・濃厚|クリーミー|チェーン・万人向け|味は未判定)）$/);
 
     await pin.focus();
     await page.keyboard.press("Enter");
@@ -1729,7 +1751,7 @@ test.describe("塊の中身に行き着けること", () => {
   });
 });
 
-test.describe("この範囲で探す", () => {
+test.describe("この範囲で発券", () => {
   /**
    * 地図を別の街へ動かしても、出ている店は最初の検索結果のままだった。
    * 見ている範囲をサーバーへ渡して、そこにある店に入れ替える。
@@ -1744,7 +1766,7 @@ test.describe("この範囲で探す", () => {
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
     };
-    const search = app.getByRole("button", { name: "この範囲で探す" });
+    const search = app.getByRole("button", { name: "この範囲で発券" });
 
     const whole = await count();
     expect(whole).toBe(TOTAL);
@@ -1809,7 +1831,7 @@ test.describe("隣の世界まで動かしたとき", () => {
       await waitForMapSettled(app);
     }
 
-    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await app.getByRole("button", { name: "この範囲で発券" }).click();
 
     // 日本は見えているのだから、0 件にはならない。
     await expect
@@ -1926,7 +1948,7 @@ test.describe("範囲と他の条件の両立", () => {
     await waitForApp(app);
 
     await app.locator(".cluster-pin").first().click();
-    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await app.getByRole("button", { name: "この範囲で発券" }).click();
     // 応答を待たずに味を変える。
     await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
 
@@ -1953,7 +1975,7 @@ test.describe("範囲と他の条件の両立", () => {
     await expect(app.locator("#pref")).toHaveValue("神奈川県");
 
     await app.locator(".cluster-pin").first().click();
-    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await app.getByRole("button", { name: "この範囲で発券" }).click();
     await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
 
     await expect(
@@ -1973,7 +1995,7 @@ test.describe("範囲と他の条件の両立", () => {
     await waitForApp(app);
 
     await app.locator(".cluster-pin").first().click();
-    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await app.getByRole("button", { name: "この範囲で発券" }).click();
     await expect(
       app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
     ).toBeVisible();
@@ -1997,7 +2019,7 @@ test.describe("範囲と他の条件の両立", () => {
     };
 
     await (await smallestCluster(app)).pin.click();
-    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await app.getByRole("button", { name: "この範囲で発券" }).click();
     // 押した直後は前の件数が出ている。入れ替わってから読む。
     await expect.poll(count).toBeLessThan(TOTAL);
     const area = await count();
@@ -2086,7 +2108,7 @@ test.describe("まわる店と範囲の両立", () => {
      * 結果の全体が見えているなら、その範囲で探しても件数は変わらない。
      * 古い順路へ飛んでいると、見えているのは 1 軒の周りだけなので激減する。
      */
-    await app.getByRole("button", { name: "この範囲で探す" }).click();
+    await app.getByRole("button", { name: "この範囲で発券" }).click();
     await expect.poll(count).toBe(rich);
   });
 
@@ -2100,7 +2122,7 @@ test.describe("まわる店と範囲の両立", () => {
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
     };
-    const search = app.getByRole("button", { name: "この範囲で探す" });
+    const search = app.getByRole("button", { name: "この範囲で発券" });
 
     // 1 軒積む。ここで地図は順路（その 1 軒）へ寄る。
     await shopCards(app).first().click();

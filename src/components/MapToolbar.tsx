@@ -14,7 +14,7 @@ export interface FullscreenControl {
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
 const EXPAND = "地図を広げる";
 const SHRINK = "元の大きさに戻す";
-const SEARCH_AREA = "この範囲で探す";
+const SEARCH_AREA = "この範囲で発券";
 
 interface Props {
   fullscreen?: FullscreenControl;

@@ -555,6 +555,13 @@ export function useServerTools({
     [releaseSelection, sendText],
   );
 
+  /**
+   * 一覧を差し替える呼び出しの通し番号のいまの値。呼び出しより前に待つ処理（券売機の
+   * 位置取得）が、待つ間に別の操作（次の 3 軒・キーワードを外す・タブ）が走ったかを
+   * 見るのに使う。どの操作もここを通るので、操作ごとに番号を持たなくて済む（#144）。
+   */
+  const resultMark = useCallback(() => resultSeq.current, []);
+
   /** 最後に一覧を差し替えようとした操作を、同じ引数で前後の処理ごともう一度行う。 */
   const retry = useCallback(() => {
     void lastAction.current?.();
@@ -562,6 +569,7 @@ export function useServerTools({
 
   return {
     retry,
+    resultMark,
     busy,
     /** 記録を書き換えている最中。タブを止めるのはこの間だけ。 */
     mutating: mutations > 0,
