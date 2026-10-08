@@ -331,7 +331,8 @@ describe("find-nearby-iekei-ramen", () => {
     expect(payload.query.origin).toMatchObject({
       lat: 35.4658,
       lon: 139.6222,
-      label: "横浜市 神奈川県",
+      // ホストの city / region は言語がまちまちなので、近い店の地名で呼ぶ（#150）。
+      label: "横浜市付近",
       source: "host",
     });
     expect(payload.shops).toHaveLength(5);
@@ -639,6 +640,24 @@ describe("show-iekei-ramen-map", () => {
 });
 
 describe("decide-iekei-ramen", () => {
+  it("ホストの位置の名前が英語でも、近い店の地名で日本語にする（#150）", async () => {
+    const { payload, text } = await callApp(
+      "decide-iekei-ramen",
+      { near: true },
+      {
+        "openai/userLocation": {
+          latitude: 35.4658,
+          longitude: 139.6222,
+          city: "Yokohama",
+          region: "Kanagawa",
+        },
+      },
+    );
+    expect(payload.query.origin?.label).toMatch(/付近$/);
+    expect(payload.query.origin?.label).not.toMatch(/[A-Za-z]/);
+    expect(text).not.toContain("Yokohama");
+  });
+
   it("near で座標が無ければ、ホストが渡す現在地から近い順に 3 軒を出す（#147）", async () => {
     const { payload, text } = await callApp(
       "decide-iekei-ramen",
