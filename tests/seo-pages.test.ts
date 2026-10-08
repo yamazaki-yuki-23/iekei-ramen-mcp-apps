@@ -18,6 +18,17 @@ const shop: Shop = {
 };
 const shops = [shop, { ...shop, id: "way/456", name: "未判定家", confidence: "candidate" }];
 
+/** 1 軒でも未判定以外があれば、その一覧ページは検索に載せる。 */
+const indexedPages = (list: Shop[]) => list.some((s) => s.confidence !== "candidate");
+
+/** ページの JSON-LD を全部読む（1 つでも配列でも）。 */
+function jsonLd(html: string): Record<string, unknown>[] {
+  const raw = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+  if (!raw) return [];
+  const parsed = JSON.parse(raw) as Record<string, unknown> | Record<string, unknown>[];
+  return Array.isArray(parsed) ? parsed : [parsed];
+}
+
 describe("静的SEOページ", () => {
   it("県・市・店を生成し、未判定だけnoindexとsitemap除外にする", () => {
     const { files, counts } = seoPages(shops);
@@ -53,9 +64,7 @@ describe("静的SEOページ", () => {
     const html = seoPages([hostile]).files.get("/shop/node-123/")!;
     expect(html).not.toContain('</script><script>alert("x")');
     expect(html).toContain("&lt;/script&gt;");
-    const structured = JSON.parse(
-      html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)![1],
-    );
+    const structured = jsonLd(html).find((item) => item["@type"] === "Restaurant");
     expect(structured).toEqual({
       "@context": "https://schema.org",
       "@type": "Restaurant",
@@ -65,6 +74,7 @@ describe("静的SEOページ", () => {
         addressRegion: "神奈川県",
         addressLocality: "横浜市",
         streetAddress: "西区岡野",
+        addressCountry: "JP",
       },
       geo: { "@type": "GeoCoordinates", latitude: 35.46, longitude: 139.62 },
     });
@@ -114,10 +124,15 @@ describe("静的SEOページ", () => {
     expect(new Set(descriptions).size).toBe(descriptions.length);
     expect(new Set(canonicals).size).toBe(canonicals.length);
     expect(counts.shops).toBe(data.length);
+    const byPref = Map.groupBy(data, (s) => s.prefecture);
+    const byCity = Map.groupBy(
+      data.filter((s) => s.city),
+      (s) => `${s.prefecture}/${s.city}`,
+    );
     expect(counts.indexed).toBe(
       2 +
-        counts.prefectures +
-        counts.municipalities +
+        [...byPref.values()].filter(indexedPages).length +
+        [...byCity.values()].filter(indexedPages).length +
         data.filter((s) => s.confidence !== "candidate").length,
     );
   });
@@ -147,5 +162,65 @@ describe("Webの検索条件リンク", () => {
       "?tool=stamp-iekei-ramen",
     ])
       expect(webEntry(query)).toEqual({ name: "decide-iekei-ramen", arguments: { near: "auto" } });
+  });
+});
+
+describe("検索結果と共有のための追加（#155）", () => {
+  it("店が全部未判定の県・市区町村ページは noindex にし、sitemap から外す", () => {
+    const only = { ...shop, id: "way/9", name: "未判定だけ家", confidence: "candidate" as const };
+    const { files, counts } = seoPages([only]);
+    expect(files.get("/area/kanagawa/")).toContain('name="robots" content="noindex"');
+    expect(files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toContain(
+      'name="robots" content="noindex"',
+    );
+    expect(files.get("/sitemap.xml")).not.toContain("/area/kanagawa/");
+    expect(counts.indexed).toBe(2);
+    // 1 軒でも未判定以外があれば今どおり index する。
+    expect(seoPages(shops).files.get("/area/kanagawa/")).not.toContain("noindex");
+  });
+
+  it("市区町村と店のページに、見えているリンクと同じ階層のパンくずを付ける", () => {
+    const { files } = seoPages(shops);
+    const crumbs = (path: string) =>
+      (
+        jsonLd(files.get(path)!).find((item) => item["@type"] === "BreadcrumbList")!
+          .itemListElement as { position: number; name: string; item: string }[]
+      ).map(({ position, name, item }) => [position, name, item]);
+    expect(crumbs("/shop/node-123/")).toEqual([
+      [1, "神奈川県", "https://iekeiramen.com/area/kanagawa/"],
+      [2, "横浜市", "https://iekeiramen.com/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/"],
+      [3, "試験家", "https://iekeiramen.com/shop/node-123/"],
+    ]);
+    expect(crumbs("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toEqual([
+      [1, "神奈川県", "https://iekeiramen.com/area/kanagawa/"],
+      [2, "横浜市", "https://iekeiramen.com/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/"],
+    ]);
+  });
+
+  it("生成するページに、title・description と同じ内容の OGP と twitter のタグを付ける", () => {
+    for (const [path, html] of seoPages(shops).files) {
+      if (!path.endsWith("/")) continue;
+      const title = html.match(/<title>(.*?)<\/title>/)![1];
+      expect(html).toContain(`<meta property="og:title" content="${title}">`);
+      expect(html).toContain(`<meta property="og:url" content="https://iekeiramen.com${path}">`);
+      expect(html).toContain(
+        '<meta property="og:image" content="https://iekeiramen.com/og-card.png">',
+      );
+      expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+    }
+  });
+
+  it("トップに WebSite の JSON-LD、/connect に OGP がある", () => {
+    const top = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+    expect(jsonLd(top)).toContainEqual({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "家系ラーメンを探す",
+      url: "https://iekeiramen.com/",
+    });
+    const connect = readFileSync(new URL("../public/connect.html", import.meta.url), "utf8");
+    expect(connect).toContain('property="og:url" content="https://iekeiramen.com/connect"');
+    expect(connect).toContain('property="og:image" content="https://iekeiramen.com/og-card.png"');
+    expect(connect).toContain('name="twitter:card" content="summary_large_image"');
   });
 });

@@ -15,6 +15,10 @@ Workerが返す。`wrangler.jsonc` の `assets.run_worker_first` にその経路
 `src/web.tsx` を `dist/web/` にビルドする。CIと通常のデプロイも同じコマンドを使う。
 Static Assetsはこのディレクトリだけを配信するので、MCPの埋め込みHTMLやソースは配信しない。
 未定義のURLには404を返し、MCPや認可の誤ったURLにWebのHTMLを返さない。
+`/assets/*`（名前に中身のハッシュが入る）だけを `public/_headers` で1年・`immutable` にする。
+HTMLやハッシュの無いファイルは既定の `max-age=0` のまま（#153）。
+トップの `#root` は画面1枚分を空けておく（`src/web.css`）。JSより先に描かれる下のリンクが
+押し下げられて CLS が 0.33 になっていた。接続できなかった画面（`data-connection="failed"`）は短いので空けない。つながった後の警告では空けたまま。
 本番は#41の決定に従い `https://iekeiramen.com/`。workers.devは再開しない。
 
 ### 検索エンジン向けの静的ページ
@@ -34,6 +38,10 @@ URLエンコードする。住所から区を推測せず、逆引きを反映�
 「店舗情報を報告する」への道を案内する。RestaurantのJSON-LDは店名・住所・座標だけに
 限り、評価・価格・営業情報を追加しない。各ページに推定の但し書きとOSMの出典を出す。
 変更日時の根拠がないため、sitemapにビルド時刻を `lastmod` として載せない。
+**店が全部 `candidate` の県・市区町村ページも `noindex` にし、sitemapから外す**（#155）。
+未判定の店しか無い一覧は、検索に載せない店へのリンクだけの薄いページになる（実測: 61ページ）。
+市区町村と店舗のページには、見えている「◯◯の一覧」のリンクと同じ階層の `BreadcrumbList` を
+付ける。全ページの OGP はトップと同じ `og-card.png` を使い、文言は title と description に合わせる。
 
 アプリへのリンクは `/?prefecture=神奈川県&keyword=横浜市` のように既存の匿名検索を
 初回に呼ぶ。引数のないトップでは「迷ったら」（`decide-iekei-ramen`）を開く（#144）。不正な県・
