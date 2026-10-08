@@ -84,8 +84,9 @@ export function SearchForm({ prefectures, values, onChange, onSubmit, busy, hide
             value={values.keyword}
             onChange={(e) => onChange({ ...values, keyword: e.target.value })}
           />
+          {/* 店名の券売機の一部なので、押すと食券が出る（#144）。 */}
           <button type="submit" className={styles.button} disabled={busy}>
-            {busy ? "検索中…" : "検索"}
+            {busy ? "発券中…" : "発券する"}
           </button>
         </div>
       )}

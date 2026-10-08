@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <title>家系ラーメンを探す</title>
   <!--
-    ホーム画面・ディレクトリ用（48px 以上）。看板の黄の地にロゴ（ピン＋上から見た丼＋海苔 3 枚）。
+    ホーム画面・ディレクトリ用（48px 以上）。暖かい灰の地に、favicon と同じラーメン丼。
     角は丸めない（iOS やディレクトリが自分で丸める）。色は global.css のプリミティブと同じ値。
-    16〜32px のタブは public/favicon.svg（海苔だけの小さい版）を使う。
   -->
-  <rect width="64" height="64" fill="#ffc81a" />
-  <g transform="translate(8 7)">
-    <path d="M24 46C24 46 6 30 6 19a18 18 0 0 1 36 0c0 11-18 27-18 27z" fill="#b8442c" stroke="#150c07" stroke-width="3" />
-    <circle cx="24" cy="19" r="11" fill="#ffd84d" stroke="#150c07" stroke-width="2.5" />
-    <g fill="#150c07">
-      <rect x="13.5" y="6" width="5" height="12" rx="1" transform="rotate(-12 16 12)" />
-      <rect x="19.5" y="4.5" width="5" height="12" rx="1" />
-      <rect x="25.5" y="6" width="5" height="12" rx="1" transform="rotate(12 28 12)" />
+  <rect width="64" height="64" fill="#f8f7f5" />
+  <g transform="translate(8 8) scale(0.75)">
+    <g stroke="#22150e" stroke-width="4" stroke-linecap="round">
+      <line x1="47" y1="5" x2="30" y2="29" />
+      <line x1="55" y1="9" x2="36" y2="29" />
     </g>
+    <rect x="13" y="12" width="11" height="19" rx="1.5" fill="#22150e" />
+    <rect x="4" y="27" width="56" height="7" rx="3.5" fill="#22150e" />
+    <path d="M7 33H57C57 48 46 57 32 57C18 57 7 48 7 33Z" fill="#b8442c" />
+    <rect x="21" y="56" width="22" height="5" rx="2" fill="#b8442c" />
   </g>
 </svg>

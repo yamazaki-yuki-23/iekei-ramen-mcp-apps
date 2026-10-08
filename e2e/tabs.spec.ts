@@ -63,13 +63,79 @@ async function holdBrowserPosition(page: Page) {
   return nearbyCalls;
 }
 
+test("券売機の「近くで」の位置取得が遅れて返っても、移った地図から戻さない（#144）", async ({
+  page,
+}) => {
+  const calls = await holdBrowserPosition(page);
+  const app = await callTool(page, "decide-iekei-ramen");
+  await waitForApp(app);
+  await app.getByRole("button", { name: /^近くで/ }).click();
+  await app.getByRole("button", { name: /^発券する/ }).click();
+  await app.getByRole("tab", { name: "地図から探す" }).click();
+  await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
+  await afterDelivered(
+    app,
+    app.locator("body").evaluate(() => window.iekeiPositionFixture.release("success")),
+  );
+  expect(calls).toEqual([]);
+  await expect(app.getByRole("tab", { name: "地図から探す" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+});
+
+test("券売機の位置取得を待つ間に「次の 3 軒を見る」を押したら、先に届いた位置で上書きしない（#144）", async ({
+  page,
+}) => {
+  await holdBrowserPosition(page);
+  const app = await callTool(page, "decide-iekei-ramen", { prefecture: "神奈川県" });
+  await waitForApp(app);
+  // 次の 3 軒の応答を止め、その間に位置を返す（位置が先、応答が後）。
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  let signalStarted!: () => void;
+  const started = new Promise<void>((resolve) => (signalStarted = resolve));
+  let held = false;
+  await page.route(E2E_SERVER_URL, async (route) => {
+    const body = route.request().postDataJSON();
+    if (!held && body?.params?.name === "decide-iekei-ramen") {
+      held = true;
+      const response = await route.fetch();
+      const text = await response.text();
+      signalStarted();
+      await gate;
+      await route.fulfill({ response, body: text });
+    } else await route.continue();
+  });
+  await app.getByRole("button", { name: /^近くで/ }).click();
+  await app.getByRole("button", { name: /^発券する/ }).click();
+  await app.getByRole("button", { name: "次の 3 軒を見る" }).click();
+  await started;
+  await app.locator("body").evaluate(() => window.iekeiPositionFixture.release("success"));
+  release();
+  await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
+  await expect(app.getByText(/ 4〜6 軒目$/)).toBeVisible();
+});
+
+test("食券が出る動きは最初の 3 枚だけ（#144）", async ({ page }) => {
+  const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+  await waitForApp(app);
+  const items = app.locator("ul:has(> li > button[data-shop-id]) > li");
+  await expect(items.nth(3)).toBeVisible();
+  const animation = (i: number) =>
+    items.nth(i).evaluate((li) => getComputedStyle(li).animationName);
+  expect(await animation(0)).not.toBe("none");
+  expect(await animation(2)).not.toBe("none");
+  expect(await animation(3)).toBe("none");
+});
+
 for (const outcome of ["success", "denied", "timeout"] as const) {
   test(`ブラウザ位置取得の${outcome}が遅れて返っても地図タブから戻らない`, async ({ page }) => {
     const calls = await holdBrowserPosition(page);
     const app = await callTool(page, "search-iekei-ramen");
     await waitForApp(app);
     await app.getByRole("tab", { name: "現在地から探す" }).click();
-    await app.getByRole("button", { name: "現在地から探す", exact: true }).click();
+    await app.getByRole("button", { name: "現在地で発券", exact: true }).click();
     await expect(app.getByText("現在地を取得中…", { exact: true })).toBeVisible();
     await app.getByRole("tab", { name: "地図から探す" }).click();
     await expect(app.locator("main[data-pending-calls]")).toHaveAttribute(
@@ -98,7 +164,7 @@ for (const outcome of ["success", "denied", "timeout"] as const) {
     const app = await callTool(page, "search-iekei-ramen");
     await waitForApp(app);
     await app.getByRole("tab", { name: "現在地から探す" }).click();
-    await app.getByRole("button", { name: "現在地から探す", exact: true }).click();
+    await app.getByRole("button", { name: "現在地で発券", exact: true }).click();
     await expect(app.getByText("現在地を取得中…", { exact: true })).toBeVisible();
     await app.getByRole("tab", { name: "地図から探す" }).click();
     await expect(app.locator("main[data-pending-calls]")).toHaveAttribute(
@@ -106,7 +172,7 @@ for (const outcome of ["success", "denied", "timeout"] as const) {
       "0",
     );
     await app.getByRole("tab", { name: "現在地から探す" }).click();
-    await app.getByRole("button", { name: "現在地から探す", exact: true }).click();
+    await app.getByRole("button", { name: "現在地で発券", exact: true }).click();
     await expect
       .poll(() => app.locator("body").evaluate(() => window.iekeiPositionFixture.pending.length))
       .toBe(2);
@@ -142,7 +208,7 @@ test("現在地タブに留まればブラウザの拒否後もホスト位置�
   const app = await callTool(page, "search-iekei-ramen");
   await waitForApp(app);
   await app.getByRole("tab", { name: "現在地から探す" }).click();
-  await app.getByRole("button", { name: "現在地から探す", exact: true }).click();
+  await app.getByRole("button", { name: "現在地で発券", exact: true }).click();
   await afterDelivered(
     app,
     app.locator("body").evaluate(() => window.iekeiPositionFixture.release("denied")),
@@ -157,7 +223,7 @@ test("ホスト位置検索を待つ間にタブを移っても古い案内文�
   await waitForApp(app);
   const { delivered } = await delayResponse(page, "find-nearby-iekei-ramen", 2500);
   await app.getByRole("tab", { name: "現在地から探す" }).click();
-  await app.getByRole("button", { name: "現在地から探す", exact: true }).click();
+  await app.getByRole("button", { name: "現在地で発券", exact: true }).click();
   await app.locator("body").evaluate(() => window.iekeiPositionFixture.release("denied"));
   await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "1");
   await app.getByRole("tab", { name: "地図から探す" }).click();
@@ -263,7 +329,7 @@ test("地名の解決を待つ間にタブを移っても、現在地へ引き�
 
   const { delivered: lateGeocode } = await delayResponse(page, "geocode-place", 2500);
   await app.getByLabel("地名で指定").fill("横浜駅");
-  await app.getByRole("button", { name: "この場所で探す" }).click();
+  await app.getByRole("button", { name: "この場所で発券" }).click();
 
   // 解決を待っている間に別のタブへ移る。
   await app.getByRole("tab", { name: "検索フォーム" }).click();

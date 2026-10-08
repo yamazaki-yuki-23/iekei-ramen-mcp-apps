@@ -233,3 +233,31 @@ export async function waitForMapSettled(app: FrameLocator) {
       }),
   );
 }
+
+const MODE_TAB = {
+  form: "検索フォーム",
+  nearby: "現在地から探す",
+  map: "地図から探す",
+  decide: "迷ったら",
+  visited: "行った店",
+} as const;
+const MODE_LINK = {
+  form: "店名で",
+  nearby: "現在地から",
+  map: "地図で",
+  decide: "迷ったら",
+  visited: "行った店",
+} as const;
+
+/**
+ * 探し方を切り替える。会話の中（MCP）はタブ、Web は見出しの横のリンク（#144）。
+ * どちらの画面でも同じ書き方でテストを書けるようにする。
+ */
+export async function openMode(scope: Page | FrameLocator, mode: keyof typeof MODE_TAB) {
+  const tab = scope.getByRole("tab", { name: MODE_TAB[mode], exact: true });
+  if ((await tab.count()) > 0) return tab.click();
+  await scope
+    .getByRole("navigation", { name: "探し方" })
+    .getByRole("button", { name: MODE_LINK[mode], exact: true })
+    .click();
+}

@@ -3,6 +3,7 @@ import { originLabel } from "../lib/geo";
 import type { Origin, OriginSource } from "../lib/types";
 import { ORIGIN_NOTES } from "../lib/types";
 import styles from "../mcp-app.module.css";
+import { requestBrowserPosition } from "../lib/browser-position";
 
 interface Props {
   /** 現在の基準地点。未取得なら undefined。 */
@@ -25,19 +26,6 @@ interface Props {
   /** 親が保持する案内メッセージ。再マウントしても消えない。 */
   notice: string | null;
   busy: boolean;
-}
-
-/** ブラウザの位置情報を一度だけ試す。取れなければ null。 */
-function requestBrowserPosition(): Promise<GeolocationPosition | null> {
-  if (!navigator.geolocation) return Promise.resolve(null);
-  return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve(pos),
-      // 権限ポリシーによる遮断・ユーザー拒否・タイムアウトをまとめて「取れなかった」扱いにする
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 10_000 },
-    );
-  });
 }
 
 /**
@@ -120,7 +108,7 @@ export function NearbyPanel({
           onClick={() => void startFromCurrentPosition()}
           disabled={busy}
         >
-          現在地から探す
+          現在地で発券
         </button>
         <span className={styles.meta}>
           {origin
@@ -155,7 +143,7 @@ export function NearbyPanel({
           onClick={() => void searchPlace()}
           disabled={busy || place.trim() === ""}
         >
-          この場所で探す
+          この場所で発券
         </button>
       </div>
 

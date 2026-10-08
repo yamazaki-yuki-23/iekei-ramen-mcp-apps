@@ -13,9 +13,8 @@ import { ShopList } from "./ShopList";
 const RING_NOTE = "点線の円は基準地点からの直線距離 500m と 1km です。";
 /* 印の意味は画面に書く。色や形だけでは伝わらない。 */
 const VISITED_NOTE = "中心に点のあるピンは、行ったことのある店です。";
-/* ピンの形は判定の段階、色は味の傾向。どちらも推定。 */
-const PIN_NOTE =
-  "塗りのピンは「家系」、白抜きで縁の太いピンは「家系の可能性」、小さく縁の細いピンは「家系か未判定」です。色は味の傾向です。";
+/* ピンの色は味の傾向（推定）。形はどの店も同じ（#144）。 */
+const PIN_NOTE = "ピンの色は味の傾向です。";
 
 const EMPTY_MESSAGE: Record<SearchMode, string> = {
   form: "条件に合う店舗が見つかりませんでした。",
@@ -127,31 +126,33 @@ export function ResultView({
                   })
                 }
               />
-              <MapView
-                shops={shops}
-                selectedId={selectedId}
-                /*
-                 * **塊の外を選んだら、その塊の一覧は畳む。** 出したままだと
-                 * 「この地点の 3 軒」の下に 4 枚並び、見出しの数も「この地点」という
-                 * まとまりも嘘になる。外を選んだ時点で、その塊の話は終わっている。
-                 */
-                onSelect={(shop) => {
-                  if (focused && !focused.some((s) => s.id === shop.id)) setFocused(null);
-                  onSelect(shop);
-                }}
-                route={route}
-                routeOrigin={routeOrigin}
-                expanded={fullscreen?.expanded ?? false}
-                onClusterSelect={(group, viaKeyboard) => {
-                  wantHeadFocus.current = viaKeyboard;
-                  setFocused(group);
-                }}
-                onReady={(getBounds) => (getBoundsRef.current = getBounds)}
-                initialBounds={bounds}
-                refit={!bounds}
-                origin={origin}
-                visitedIds={visitedIds}
-              />
+              <div className={styles.mapStage}>
+                <MapView
+                  shops={shops}
+                  selectedId={selectedId}
+                  /*
+                   * **塊の外を選んだら、その塊の一覧は畳む。** 出したままだと
+                   * 「この地点の 3 軒」の下に 4 枚並び、見出しの数も「この地点」という
+                   * まとまりも嘘になる。外を選んだ時点で、その塊の話は終わっている。
+                   */
+                  onSelect={(shop) => {
+                    if (focused && !focused.some((s) => s.id === shop.id)) setFocused(null);
+                    onSelect(shop);
+                  }}
+                  route={route}
+                  routeOrigin={routeOrigin}
+                  expanded={fullscreen?.expanded ?? false}
+                  onClusterSelect={(group, viaKeyboard) => {
+                    wantHeadFocus.current = viaKeyboard;
+                    setFocused(group);
+                  }}
+                  onReady={(getBounds) => (getBoundsRef.current = getBounds)}
+                  initialBounds={bounds}
+                  refit={!bounds}
+                  origin={origin}
+                  visitedIds={visitedIds}
+                />
+              </div>
               <p className={styles.mapNote}>{PIN_NOTE}</p>
               {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}
               {/* 出ている店に 1 軒でも記録があるときだけ書く。無いと読む意味が無い。 */}
@@ -180,6 +181,8 @@ export function ResultView({
             )}
             <ShopList
               shops={mapListShops(focused ?? shops, selectedId)}
+              ranked
+              ticket
               selectedId={selectedId}
               onSelect={onSelect}
               detail={detail}
@@ -196,7 +199,10 @@ export function ResultView({
   return (
     <ShopList
       shops={shops}
-      ranked={mode === "nearby"}
+      // 店名・現在地の結果も食券で出す（#144）。現在地は半券に直線距離を書く。
+      ranked={mode !== "visited"}
+      ticket={mode !== "visited"}
+      stub={mode === "nearby" ? "distance" : "number"}
       selectedId={selectedId}
       onSelect={onSelect}
       detail={detail}

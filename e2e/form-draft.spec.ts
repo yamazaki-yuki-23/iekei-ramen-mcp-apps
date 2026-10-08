@@ -1,6 +1,6 @@
 import { expect, type Page, type FrameLocator } from "@playwright/test";
 import { test } from "./fixtures";
-import { callTool, waitForApp, E2E_SERVER_URL } from "./helpers";
+import { callTool, waitForApp, E2E_SERVER_URL, openMode } from "./helpers";
 
 const WEB_URL = "http://localhost:3134";
 type Surface = Page | FrameLocator;
@@ -17,7 +17,7 @@ async function openDecide(page: Page, web: boolean): Promise<Surface> {
 }
 
 /** 最初の検索応答を明示的に保留・解放し、固定時間に依存せず入力と応答を競合させる。 */
-async function holdSearch(page: Page, url: string) {
+async function holdSearch(page: Page, url: string, tool = "search-iekei-ramen") {
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -33,7 +33,7 @@ async function holdSearch(page: Page, url: string) {
   let held = false;
   await page.route(url, async (route) => {
     const body = route.request().postDataJSON();
-    if (!held && body?.method === "tools/call" && body.params?.name === "search-iekei-ramen") {
+    if (!held && body?.method === "tools/call" && body.params?.name === tool) {
       held = true;
       const response = await route.fetch();
       const text = await response.text();
@@ -50,11 +50,48 @@ for (const web of [true, false]) {
   const name = web ? "Web" : "MCP Apps";
   const url = web ? `${WEB_URL}/mcp` : E2E_SERVER_URL;
 
+  test(`${name}: 発券の途中で押し直したキーを、古い発券の結果で戻さない（#144）`, async ({
+    page,
+  }) => {
+    const app = await openDecide(page, web);
+    const held = await holdSearch(page, url, "decide-iekei-ramen");
+    try {
+      await app.getByRole("button", { name: /^発券する/ }).click();
+      await held.started;
+      await app.getByRole("button", { name: "クリーミー", exact: true }).click();
+      held.release();
+      await held.delivered;
+      await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
+      await expect(app.getByRole("button", { name: "クリーミー", exact: true })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      // 失敗ではない。古い発券をやり直す「もう一度試す」ではなく、発券へ案内する。
+      await expect(
+        app.getByText("条件が変わりました。「発券する」を押してください。", { exact: true }),
+      ).toBeVisible();
+      await expect(app.getByRole("button", { name: "もう一度試す" })).toHaveCount(0);
+      await app.getByRole("button", { name: /^発券する/ }).click();
+      await expect(app.locator("button[data-shop-id]").first()).toBeVisible();
+      await expect(app.getByRole("button", { name: "クリーミー", exact: true })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    } finally {
+      held.release();
+    }
+  });
+}
+
+for (const web of [true, false]) {
+  const name = web ? "Web" : "MCP Apps";
+  const url = web ? `${WEB_URL}/mcp` : E2E_SERVER_URL;
+
   test(`${name}: タブ切り替え中に入力した条件を保持し、その条件で検索できる`, async ({ page }) => {
     const app = await openDecide(page, web);
     const held = await holdSearch(page, url);
     try {
-      await app.getByRole("tab", { name: "検索フォーム" }).click();
+      await openMode(app, "form");
       await held.started;
       await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "1");
       await app.getByLabel("キーワード").fill("吉村");
@@ -71,9 +108,9 @@ for (const web of [true, false]) {
       // 下書きと条件が違う古い結果は、再検索するまで選べない。
       await expect(app.locator("button[data-shop-id]")).toHaveCount(0);
       await expect(
-        app.getByText("条件が変わりました。検索ボタンを押してください。", { exact: true }),
+        app.getByText("条件が変わりました。「発券する」を押してください。", { exact: true }),
       ).toBeVisible();
-      await app.getByRole("button", { name: "検索", exact: true }).click();
+      await app.getByRole("button", { name: "発券する", exact: true }).click();
       await expect(app.locator("button[data-shop-id]")).toHaveCount(1);
       await expect(app.locator("button[data-shop-id]").first()).toContainText("吉村家");
       await expect(app.getByLabel("キーワード")).toHaveValue("吉村");
@@ -84,12 +121,12 @@ for (const web of [true, false]) {
 
   test(`${name}: 送信後に消したキーワードを、古い検索応答で復元しない`, async ({ page }) => {
     const app = await openDecide(page, web);
-    await app.getByRole("tab", { name: "検索フォーム" }).click();
+    await openMode(app, "form");
     await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
     await app.getByLabel("キーワード").fill("吉村");
     const held = await holdSearch(page, url);
     try {
-      await app.getByRole("button", { name: "検索", exact: true }).click();
+      await app.getByRole("button", { name: "発券する", exact: true }).click();
       await held.started;
       await app.getByLabel("キーワード").fill("");
       held.release();
@@ -98,16 +135,16 @@ for (const web of [true, false]) {
       await expect(app.getByLabel("キーワード")).toHaveValue("");
       await expect(app.locator("button[data-shop-id]")).toHaveCount(0);
       await expect(
-        app.getByText("条件が変わりました。検索ボタンを押してください。", { exact: true }),
+        app.getByText("条件が変わりました。「発券する」を押してください。", { exact: true }),
       ).toBeVisible();
       // 再検索の案内は、検索ボタンがあるフォームにだけ表示する。
-      await app.getByRole("tab", { name: "現在地から" }).click();
+      await openMode(app, "nearby");
       await expect(
-        app.getByText("条件が変わりました。検索ボタンを押してください。", { exact: true }),
+        app.getByText("条件が変わりました。「発券する」を押してください。", { exact: true }),
       ).toHaveCount(0);
-      await app.getByRole("tab", { name: "検索フォーム" }).click();
+      await openMode(app, "form");
       await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
-      await app.getByRole("button", { name: "検索", exact: true }).click();
+      await app.getByRole("button", { name: "発券する", exact: true }).click();
       await expect(app.locator("button[data-shop-id]")).toHaveCount(200);
     } finally {
       held.release();
@@ -147,7 +184,7 @@ test("MCP Apps: モデルの新しいqueryを反映し、その後に届く旧UI
   await waitForApp(app);
   const held = await holdSearch(page, E2E_SERVER_URL);
   try {
-    await app.getByRole("tab", { name: "検索フォーム" }).click();
+    await openMode(app, "form");
     await held.started;
     await app.getByLabel("キーワード").fill("武蔵");
     const response = await request.post(E2E_SERVER_URL, {

@@ -27,6 +27,8 @@ import {
 } from "react";
 import { BrandMark } from "./components/BrandMark";
 import { StateNote } from "./components/StateNote";
+import { requestBrowserPosition } from "./lib/browser-position";
+import type { Where } from "./components/TicketMachine";
 import { APP_HEAD_ID } from "./components/PromiseHero";
 import { ModeControls } from "./components/ModeControls";
 import { ModeTabs } from "./components/ModeTabs";
@@ -42,7 +44,7 @@ import { originLabel } from "./lib/geo";
 import { createDeliveryQueue } from "./lib/model-context";
 import { EMPTY_PAYLOAD } from "./lib/payload";
 import { safeAreaStyle } from "./lib/safe-area";
-import { DATA_DEFINITIONS, DATA_FOOTNOTE } from "./lib/data-caveats";
+import { DATA_DEFINITIONS, DATA_FOOTNOTE, misjudgeNote } from "./lib/data-caveats";
 import { scopeLabel } from "./lib/scope";
 import { MAX_STOPS, planRoute } from "./lib/route";
 import type { AppPayload, DecideInfo, Origin, SearchMode, Shop, VisitResult } from "./lib/types";
@@ -56,7 +58,7 @@ interface PresentationProps {
    * 見出しの上に置く最初の画面（Web だけ）。入口のボタンからモードを切り替えるので、
    * 切り替えの口を受け取る部品を渡す。
    */
-  hero?: ComponentType<{ go?: (mode: SearchMode) => void }>;
+  hero?: ComponentType;
   primaryMode?: SearchMode;
 }
 
@@ -144,7 +146,13 @@ export function IekeiApp({
     return (next: AppPayload) => {
       if (hostRevision.current !== hostAtStart) return false;
       // 条件が違う結果を下書きの隣に出さず、再検索まで既存の stale を維持する。
-      if (next.mode === "form" && draftRevision.current !== draftAtStart) return false;
+      // 券売機（decide）も同じ。発券の後にキーを押し直したら、古い発券の結果で
+      // 選び直したキーを戻さない（#144。キーは次の発券の条件を選ぶだけ）。
+      if (
+        (next.mode === "form" || next.mode === "decide") &&
+        draftRevision.current !== draftAtStart
+      )
+        return false;
       setForm(initialForm(next.query));
       replacePayload(next);
       return true;
@@ -571,25 +579,70 @@ function supportedAction<Action extends (...args: never[]) => unknown>(
  * 最初の画面の差し込み口。Web だけが部品を渡す。go が無い（接続前）ときは、
  * 入口のボタンを押せない形で先に出す。約束は接続を待たずに見せる（#125）。
  */
-function HeroSlot({
-  Hero,
-  go,
-}: {
-  Hero?: PresentationProps["hero"];
-  go?: (mode: SearchMode) => void;
-}) {
-  return Hero ? <Hero go={go} /> : null;
+function HeroSlot({ Hero }: { Hero?: PresentationProps["hero"] }) {
+  return Hero ? <Hero /> : null;
 }
 
 /**
- * 最初の画面の入口から入る。**いま出ている画面なら取り直さない。** トップはすでに
- * 地図なので、「地図で見る」で取り直すと、出ている地図が読み込み中（失敗なら
- * エラー）に置き換わる。見出しへ送るだけでよい。
+ * 券売機の発券を、いまの基準地点とこの画面の操作に結び付ける。効いているキーワードは
+ * 持ち越す（外すのは「このキーワードを外す」だけ。「次の 3 軒」と同じ扱い）。
  */
-function enterFrom(current: SearchMode, switchMode: (mode: SearchMode) => void) {
-  return (next: SearchMode) => {
-    if (next !== current) switchMode(next);
-  };
+function issueWith(
+  origin: Origin | undefined,
+  keyword: string | undefined,
+  runDecide: (
+    next: FormValues,
+    origin: Origin | undefined,
+    round: number,
+    keyword?: string,
+  ) => void,
+  switchMode: (mode: SearchMode) => void,
+  resultMark: () => number,
+) {
+  return (where: Where, values: FormValues, isCurrent: () => boolean) =>
+    void issueTickets(where, values, origin, isCurrent, {
+      decide: (next, at) => runDecide(next, at, 0, keyword),
+      nearby: () => switchMode("nearby"),
+      mark: resultMark,
+    });
+}
+
+/**
+ * 券売機の「発券する」（#144）。選んだ「どこで」で 3 軒を出す。
+ *
+ * 近くでは基準地点を使う。まだ無ければブラウザの位置情報を 1 度だけ試し、
+ * 取れない（ChatGPT は iframe に許可しない）ときは現在地の画面へ回す。そこには
+ * ホストの大まかな位置と地名の入力がある。
+ */
+async function issueTickets(
+  where: Where,
+  values: FormValues,
+  origin: Origin | undefined,
+  isCurrent: () => boolean,
+  run: {
+    decide: (next: FormValues, origin?: Origin) => void;
+    nearby: () => void;
+    mark: () => number;
+  },
+) {
+  // 都道府県でも、基準地点があれば持ち越す（県の中を近い順に）。何も変えずに発券して
+  // 並びが近い順から営業時間順に変わらないように。
+  if (where === "pref") return run.decide(values, origin);
+  const anywhere = { ...values, prefecture: "" };
+  if (where === "all") return run.decide(anywhere);
+  if (origin) return run.decide(anywhere, origin);
+  const mark = run.mark();
+  const pos = await requestBrowserPosition();
+  // 待つ間に別の発券・キー・地図・タブ、または結果側の操作（次の 3 軒・キーワードを外す）
+  // が走っていたら、古い発券で新しい操作を上書きしない。
+  if (!isCurrent() || run.mark() !== mark) return;
+  if (!pos) return run.nearby();
+  run.decide(anywhere, {
+    lat: pos.coords.latitude,
+    lon: pos.coords.longitude,
+    label: "現在地",
+    source: "precise",
+  });
 }
 
 /**
@@ -600,10 +653,59 @@ function enterFrom(current: SearchMode, switchMode: (mode: SearchMode) => void) 
  * 読み込み中・失敗のあいだも位置を変えない（ResultView が地図だけ状態に差し替える）。
  * 置き場所を切り替えると、押していた選択肢が作り直されて焦点が消える。
  */
-function placeControls(web: boolean, mode: SearchMode, controls: ReactNode) {
-  return web && mode === "map"
-    ? { top: null, belowMap: controls }
-    : { top: controls, belowMap: undefined };
+/**
+ * 見出しの割り振り。Web の「迷ったら」は券売機が主役なので、ページの見出しはサイトの
+ * 名前にし、「迷ったら、この 3 軒（全国）」と並べた根拠は食券の列の見出しへ移す（#144）。
+ * 結果の見出しが券売機より先に来ると、読む順が逆になった。
+ */
+function pageHead(
+  Hero: PresentationProps["hero"],
+  mode: SearchMode,
+  heading: string,
+  count: string | null,
+) {
+  return Hero && mode === "decide"
+    ? { h1: SITE_NAME, count: null, decideTitle: { heading, tag: count } }
+    : { h1: heading, count, decideTitle: undefined };
+}
+
+const SITE_NAME = "家系ラーメンを探す";
+
+/** 見出しの行。ロゴ・ページの見出し・件数（または並べた根拠）の札。 */
+function AppHeader({ h1, count }: { h1: string; count: string | null }) {
+  return (
+    <div className={styles.header} id={APP_HEAD_ID}>
+      <div className={styles.headerMain}>
+        {/* ロゴは飾りなので、見出しの読み上げには載せない。 */}
+        <span className={styles.brandMark}>
+          <BrandMark size={36} />
+        </span>
+        <h1 className={styles.title}>{h1}</h1>
+      </div>
+      {count ? <span className={styles.count}>{count}</span> : null}
+    </div>
+  );
+}
+
+function placeControls(Hero: PresentationProps["hero"], mode: SearchMode, controls: ReactNode) {
+  /*
+   * 会話の中（MCP）の「迷ったら」は、答え（食券）を先に出し、券売機は「条件を変えて
+   * 発券し直す」場所として下に置く（#131 の「会話の中は控えめ」）。ほかは条件を上に。
+   */
+  if (!Hero && mode === "decide")
+    return { top: null, after: controls, belowMap: undefined, aside: undefined, hero: null };
+  if (!Hero)
+    return { top: controls, after: null, belowMap: undefined, aside: undefined, hero: null };
+  // Web の地図は、地図を先に見せ、絞り込みを地図と一覧の間に置く（#125）。
+  if (mode === "map")
+    return { top: null, after: null, belowMap: controls, aside: undefined, hero: null };
+  /*
+   * Web の「迷ったら」は券売機が主役（#144）。約束の一言の下で、券売機と食券を並べる。
+   * 券売機は食券の隣（aside）に置き、揃うまでの間も同じ位置に残す（焦点を保つ）。
+   */
+  if (mode === "decide")
+    return { top: null, after: null, belowMap: undefined, aside: controls, hero: <Hero /> };
+  return { top: controls, after: null, belowMap: undefined, aside: undefined, hero: null };
 }
 
 /**
@@ -648,6 +750,7 @@ function IekeiAppInner({
     asking,
     failure,
     retry,
+    resultMark,
     stale,
     needsSearch,
     runSearch,
@@ -777,10 +880,7 @@ function IekeiAppInner({
       }
       signedIn={signedIn}
       isVisited={visitedIds.has(selected.id)}
-      /*
-       * 匿名のときは記録ではなく、チャットへの依頼になる。UI から呼んでも
-       * 401 でホストは何も出さないので、モデルに呼んでもらう。
-       */
+      // 匿名のときは記録ではなく、チャットへの依頼（UI から呼ぶと 401 で何も出ない）。
       onToggleVisit={supportedAction(visitsAvailable, () =>
         signedIn
           ? void runStamp(selected.id, !visitedIds.has(selected.id))
@@ -802,6 +902,10 @@ function IekeiAppInner({
       onSearchPlace={searchPlace}
       notice={notice}
       busy={busy}
+      onIssue={issueWith(payload.query.origin, activeKeyword, runDecide, switchMode, resultMark)}
+      onOpenMap={() => switchMode("map")}
+      compact={Hero === undefined}
+      brands={payload.brands ?? []}
     />
   );
   /*
@@ -809,7 +913,8 @@ function IekeiAppInner({
    * 見えるように。並びは DOM で入れ替える（CSS の order だと、読み上げと Tab の順が
    * 見た目とずれる）。会話の中（MCP）は従来どおり条件が先。
    */
-  const placed = placeControls(Hero !== undefined, mode, controls);
+  const placed = placeControls(Hero, mode, controls);
+  const head = pageHead(Hero, mode, heading, count);
   const results = (
     <>
       {/* 詳細は選んだカードの直下に出す。一覧の上に置くと、選んだ瞬間に
@@ -841,10 +946,13 @@ function IekeiAppInner({
         onForget={runForget}
         onSignIn={supportedAction(app.capabilities.visitSignIn, () => void askToSignIn())}
         belowMap={placed.belowMap}
+        aside={placed.aside}
+        decideTitle={head.decideTitle}
         onRetry={retry}
         failure={failure}
         reports={app.capabilities.reports === true}
       />
+      {placed.after}
     </>
   );
 
@@ -856,18 +964,7 @@ function IekeiAppInner({
       data-tool-result-ready={resultReceived}
       data-mode={mode}
     >
-      <HeroSlot Hero={Hero} go={enterFrom(mode, switchMode)} />
-
-      <div className={styles.header} id={APP_HEAD_ID}>
-        <div className={styles.headerMain}>
-          {/* ロゴは飾りなので、見出しの読み上げには載せない。 */}
-          <span className={styles.brandMark}>
-            <BrandMark size={36} />
-          </span>
-          <h1 className={styles.title}>{heading}</h1>
-        </div>
-        {count ? <span className={styles.count}>{count}</span> : null}
-      </div>
+      <AppHeader h1={head.h1} count={head.count} />
 
       <ModeTabs
         mode={mode}
@@ -875,8 +972,10 @@ function IekeiAppInner({
         mutating={mutating}
         visitsAvailable={visitsAvailable}
         primaryMode={primaryMode}
+        variant={Hero ? "links" : "tabs"}
       />
 
+      {placed.hero}
       {placed.top}
       {results}
 
@@ -897,9 +996,10 @@ function IekeiAppInner({
       />
 
       <footer className={styles.footer}>
+        <p className={styles.footnote}>{misjudgeNote(app.capabilities.reports === true)}</p>
         <p className={styles.footnote}>{DATA_FOOTNOTE}</p>
         <details className={styles.guide}>
-          <summary className={styles.guideSummary}>判定の段階と味の傾向について</summary>
+          <summary className={styles.guideSummary}>味の傾向について</summary>
           <ul className={styles.definitions}>
             {DATA_DEFINITIONS.map((line) => (
               <li key={line}>{line}</li>

@@ -1,14 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
   <title>家系ラーメンを探す</title>
   <!--
-    タブ（16〜32px）用の小さい版。ロゴのピンと丼は 16px で潰れるので、
-    海苔 3 枚（＝迷ったら 3 軒）だけを看板の黄の地に太く置く（#130、#123 の確認事項）。
-    大きいアイコンは scripts/icons/logo-icon.svg（ロゴそのもの）から作る。
+    ラーメン丼を横から（#144）。茶赤の丼に黒い縁、海苔 1 枚（家系の記号）と箸 2 本。
+    16px でも丼と分かるよう、細かい模様は入れない。色は global.css のプリミティブと同じ値。
   -->
-  <rect width="64" height="64" rx="14" fill="#ffc81a" />
-  <g fill="#150c07">
-    <rect x="12" y="14" width="10" height="36" rx="2" />
-    <rect x="27" y="10" width="10" height="44" rx="2" />
-    <rect x="42" y="14" width="10" height="36" rx="2" />
+  <g stroke="#22150e" stroke-width="4" stroke-linecap="round">
+    <line x1="47" y1="5" x2="30" y2="29" />
+    <line x1="55" y1="9" x2="36" y2="29" />
   </g>
+  <rect x="13" y="12" width="11" height="19" rx="1.5" fill="#22150e" />
+  <rect x="4" y="27" width="56" height="7" rx="3.5" fill="#22150e" />
+  <path d="M7 33H57C57 48 46 57 32 57C18 57 7 48 7 33Z" fill="#b8442c" />
+  <rect x="21" y="56" width="22" height="5" rx="2" fill="#b8442c" />
 </svg>

@@ -26,7 +26,21 @@ interface Props {
   visitsAvailable?: boolean;
   /** 入口で前に出すモード。現在のタブに合わせて並べ直さない。 */
   primaryMode?: SearchMode;
+  /**
+   * Web は券売機が主役なので、ほかの探し方は見出しの横の小さなリンクにする（#144）。
+   * 会話の中（MCP）は従来どおりタブ。
+   */
+  variant?: "tabs" | "links";
 }
+
+/** リンクのときの言い方。券売機の画面から「ほかの探し方」として読めるように。 */
+const LINK_LABEL: Record<SearchMode, string> = {
+  decide: "迷ったら",
+  map: "地図で",
+  form: "店名で",
+  nearby: "現在地から",
+  visited: "行った店",
+};
 
 /**
  * モード切り替えのタブ。
@@ -42,11 +56,32 @@ export function ModeTabs({
   mutating,
   visitsAvailable = true,
   primaryMode = "form",
+  variant = "tabs",
 }: Props) {
   const modes = [
     ...MODES.filter(({ key }) => key === primaryMode),
     ...MODES.filter(({ key }) => key !== primaryMode),
   ];
+  if (variant === "links") {
+    return (
+      <nav className={styles.modeLinks} aria-label="探し方">
+        {modes
+          .filter(({ key }) => key !== "visited" || visitsAvailable)
+          .map(({ key }) => (
+            <button
+              key={key}
+              type="button"
+              aria-current={mode === key ? "page" : undefined}
+              className={styles.modeLink}
+              onClick={() => onChange(key)}
+              disabled={mutating}
+            >
+              {LINK_LABEL[key]}
+            </button>
+          ))}
+      </nav>
+    );
+  }
   return (
     <div className={styles.tabs} role="tablist">
       {modes

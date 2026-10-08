@@ -14,6 +14,17 @@ const BASIS_NOTE =
 const NOTE = `${BASIS_NOTE}気になる店は押して選んでから、チャットで聞いてください。`;
 const BROWSE_NOTE = `${BASIS_NOTE}気になる店を選ぶと、店舗の情報や注文のカンペを確認できます。`;
 
+/** 食券の列の見出し。並べた根拠（近い順など）を札で横に添える。 */
+function DecideHead({ title }: { title?: { heading: string; tag: string | null } }) {
+  if (!title) return null;
+  return (
+    <div className={styles.decideHead}>
+      <h2 className={styles.decideTitle}>{title.heading}</h2>
+      {title.tag && <span className={styles.count}>{title.tag}</span>}
+    </div>
+  );
+}
+
 /** 末尾まで来たら先頭へ戻る。押す前に何が起きるかを言う。 */
 function rerollLabel(info: DecideInfo | undefined): string {
   return info && info.rounds > 1 && info.round + 1 >= info.rounds
@@ -42,6 +53,8 @@ interface Props {
   detail?: ReactNode;
   /** 0 件のときに添える、報告の口への案内。報告できないホストでは渡さない。 */
   reportHint?: string;
+  /** 列の見出しと、並べた根拠の札（Web の「迷ったら」）。会話の中ではページの見出しが持つ。 */
+  title?: { heading: string; tag: string | null };
 }
 
 /**
@@ -68,6 +81,7 @@ export function DecidePanel({
   busy,
   detail,
   reportHint,
+  title,
 }: Props) {
   const basis = info ? describeBasis(info, shops.length, origin, keyword) : "";
 
@@ -104,6 +118,7 @@ export function DecidePanel({
   return (
     <section className={styles.decide} aria-label="迷ったら">
       {filter}
+      <DecideHead title={title} />
       {basis && <p className={styles.decideBasis}>{basis}</p>}
 
       <ShopList

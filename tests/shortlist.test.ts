@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { describeBasis, pickRange, shortlist, SHORTLIST_SIZE } from "../src/lib/shortlist";
+import {
+  describeBasis,
+  describeScope,
+  pickRange,
+  shortlist,
+  SHORTLIST_SIZE,
+} from "../src/lib/shortlist";
 import type { Origin, Shop } from "../src/lib/types";
 
 /** テスト用の店。指定しない項目は「情報が無い」側に倒す。 */
@@ -100,7 +106,7 @@ describe("shortlist", () => {
     const list = shortlist([shop("only")]);
     expect(list.picks.map((s) => s.id)).toEqual(["only"]);
     expect(list.widened).toBe(false);
-    expect(describeBasis(list, 1)).toContain("家系と分かっている店にしぼって");
+    expect(describeScope(list)).toContain("家系と分かっている店にしぼって");
   });
 
   it("round を増やすと次の 3 軒になる", () => {
@@ -136,16 +142,16 @@ describe("shortlist", () => {
   });
 });
 
-describe("describeBasis", () => {
+describe("describeScope と describeBasis", () => {
   it("母集団の内訳がない旧結果を全件 confirmed と断定しない", () => {
     const { includesLikely: _includesLikely, ...legacy } = shortlist([shop("a")]);
-    expect(describeBasis(legacy, 1)).toContain("家系の可能性");
-    expect(describeBasis(legacy, 1)).not.toContain("家系と分かっている");
+    expect(describeScope(legacy)).toContain("家系の可能性");
+    expect(describeScope(legacy)).not.toContain("家系と分かっている");
   });
 
   it("likely の 1 軒を確定扱いせず、可能性を含む母集団と伝える", () => {
     const list = shortlist([shop("likely", { confidence: "likely" })]);
-    const text = describeBasis(list, 1);
+    const text = describeScope(list);
     expect(text).toContain("家系の可能性");
     expect(text).not.toContain("家系と分かっている");
   });
@@ -158,7 +164,7 @@ describe("describeBasis", () => {
       shop("likely", { confidence: "likely" }),
     ]);
     expect(list.picks.every((s) => s.confidence === "confirmed")).toBe(true);
-    expect(describeBasis(list, 3)).toContain("家系の可能性");
+    expect(describeScope(list)).toContain("家系の可能性");
   });
 
   it("基準地点があれば、その名前と近い順であることを書く", () => {
@@ -168,16 +174,18 @@ describe("describeBasis", () => {
     const text = describeBasis(list, list.picks.length, ORIGIN);
     expect(text).toContain("横浜駅から近い順");
     expect(text).toContain("1〜3 軒目");
+    // 画面にも出す文なので、判定の段階は書かない（#144。段階は describeScope でモデルにだけ）。
+    expect(text).not.toContain("家系");
   });
 
   it("広げたときは「家系か未判定」も含めたことを書く", () => {
     const list = shortlist([shop("a"), shop("x", { confidence: "candidate" })]);
-    expect(describeBasis(list, list.picks.length)).toContain("「家系か未判定」も含めて");
+    expect(describeScope(list)).toContain("「家系か未判定」も含めて");
   });
 
   it("広げていないときは、しぼったことを書く", () => {
     const list = shortlist([shop("a"), shop("b"), shop("c")]);
-    expect(describeBasis(list, list.picks.length)).toContain("家系と分かっている店にしぼって");
+    expect(describeScope(list)).toContain("家系と分かっている店にしぼって");
   });
 });
 

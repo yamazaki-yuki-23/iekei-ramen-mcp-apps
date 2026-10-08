@@ -85,6 +85,8 @@ export const PayloadSchema = z.object({
   }),
   /** 選択肢を UI に渡す（都道府県リストはデータ由来なのでサーバーが持つ）。 */
   prefectures: z.array(z.string()),
+  /** 店名の券売機に並べるブランドと、判定した結果の軒数（多い順）。 */
+  brands: z.array(z.object({ name: z.string(), count: z.number() })).optional(),
   /** サインインしている人の訪問済み店舗 ID。匿名なら入らない。 */
   visited: z.array(z.string()).optional(),
   progress: VisitSummarySchema.optional(),
