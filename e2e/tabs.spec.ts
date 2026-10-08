@@ -228,6 +228,99 @@ test("位置の許可を待つ間に前の操作の応答が届いても、後�
   await expect(app.getByText(/現在地から近い順に並べ/)).toBeVisible();
 });
 
+test("位置が取れないとき「近くで」は現在地の画面へ移らず、条件ごと現在地を探してもらう（#147）", async ({
+  page,
+}) => {
+  await holdBrowserPosition(page);
+  const decideArgs: Array<Record<string, unknown>> = [];
+  page.on("request", (request) => {
+    if (request.url() !== E2E_SERVER_URL || request.method() !== "POST") return;
+    const body = request.postDataJSON();
+    if (body?.params?.name === "decide-iekei-ramen") decideArgs.push(body.params.arguments);
+  });
+  const app = await callTool(page, "decide-iekei-ramen");
+  await waitForApp(app);
+  await app.getByRole("button", { name: /^近くで/ }).click();
+  await app.getByRole("button", { name: "クリーミー", exact: true }).click();
+  await app.getByRole("button", { name: /^発券する/ }).click();
+  await afterDelivered(
+    app,
+    app.locator("body").evaluate(() => window.iekeiPositionFixture.release("denied")),
+  );
+  await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
+  // E2E のサーバーはホストの位置も接続元の推定も持たないので、現在地は決まらない。
+  expect(decideArgs.at(-1)).toMatchObject({ near: true, taste: "creamy" });
+  await expect(app.getByText(/現在地が分かりませんでした。/)).toBeVisible();
+  await expect(app.getByRole("tab", { name: "迷ったら" })).toHaveAttribute("aria-selected", "true");
+  await expect(app.getByRole("button", { name: "クリーミー", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // 「近くで」も点いたまま。もう一度発券しても全国にはならず、near で頼み直す。
+  await expect(app.getByRole("button", { name: /^近くで/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await app.getByRole("button", { name: /^発券する/ }).click();
+  await afterDelivered(
+    app,
+    app.locator("body").evaluate(() => window.iekeiPositionFixture.release("denied")),
+  );
+  await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
+  expect(decideArgs.at(-1)).toMatchObject({ near: true, taste: "creamy" });
+});
+
+test("現在地が分からなかった「迷ったら」でキーワードを外しても、近くのまま頼み直す（#147）", async ({
+  page,
+}) => {
+  const decideArgs: Array<Record<string, unknown>> = [];
+  page.on("request", (request) => {
+    if (request.url() !== E2E_SERVER_URL || request.method() !== "POST") return;
+    const body = request.postDataJSON();
+    if (body?.params?.name === "decide-iekei-ramen") decideArgs.push(body.params.arguments);
+  });
+  const app = await callTool(page, "decide-iekei-ramen", { near: true, keyword: "家" });
+  await waitForApp(app);
+  await expect(app.getByText(/現在地が分かりませんでした。/)).toBeVisible();
+  await app.getByRole("button", { name: "このキーワードを外す" }).click();
+  await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
+  expect(decideArgs.at(-1)).toMatchObject({ near: true });
+  await expect(app.getByText(/現在地が分かりませんでした。/)).toBeVisible();
+});
+
+test("現在地が分からなかった「迷ったら」のタブを押し直しても、近くのまま頼み直す（#147）", async ({
+  page,
+}) => {
+  const decideArgs: Array<Record<string, unknown>> = [];
+  page.on("request", (request) => {
+    if (request.url() !== E2E_SERVER_URL || request.method() !== "POST") return;
+    const body = request.postDataJSON();
+    if (body?.params?.name === "decide-iekei-ramen") decideArgs.push(body.params.arguments);
+  });
+  const app = await callTool(page, "decide-iekei-ramen", { near: true, taste: "creamy" });
+  await waitForApp(app);
+  await expect(app.getByText(/現在地が分かりませんでした。/)).toBeVisible();
+  await app.getByRole("tab", { name: "迷ったら" }).click();
+  await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
+  expect(decideArgs.at(-1)).toMatchObject({ near: true, taste: "creamy" });
+  await expect(app.getByRole("button", { name: /^近くで/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test("県と near を両方渡されて現在地が分からなかったら、券売機は「近くで」を点ける（#147）", async ({
+  page,
+}) => {
+  const app = await callTool(page, "decide-iekei-ramen", { near: true, prefecture: "神奈川県" });
+  await waitForApp(app);
+  await expect(app.getByText(/現在地が分かりませんでした。/)).toBeVisible();
+  await expect(app.getByRole("button", { name: /^近くで/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
 test("食券が出る動きは最初の 3 枚だけ（#144）", async ({ page }) => {
   const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
   await waitForApp(app);

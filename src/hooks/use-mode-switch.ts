@@ -1,24 +1,21 @@
 import { useCallback, useState } from "react";
 import type { FormValues } from "../components/SearchForm";
-import type { Bounds, Origin, OriginSource, SearchMode, Shop } from "../lib/types";
+import type { AppPayload, Bounds, Origin, OriginSource, SearchMode, Shop } from "../lib/types";
 
 interface Options {
   mode: SearchMode;
   setMode: (mode: SearchMode) => void;
   form: FormValues;
-  /** 現在の payload の基準地点。モードをまたいで引き継ぐ。 */
-  origin?: Origin;
+  /**
+   * 現在の payload。基準地点（query.origin）はモードをまたいで引き継ぐ。範囲（query.bounds）と
+   * 都道府県（query.prefecture）は初期値だけに使う（下の area を参照）。decide.needsOrigin は
+   * 「近くで」を頼んで現在地が分からなかった直後で、入り直しても近くのまま頼む（#147）。
+   */
+  payload: Pick<AppPayload, "query" | "decide">;
   /** いま効いているキーワード（「迷ったら」のみ）。 */
   activeKeyword?: string;
   onSelect: (shop: Shop | null) => void;
   runSearch: (values: FormValues, mode: "form" | "map", origin?: Origin) => void;
-  /**
-   * いま効いている範囲。地図モードで「この範囲で探す」を使ったときだけ入る。
-   * ここでは**初期値**としてだけ使い、以降はこのフックが持つ（下を参照）。
-   */
-  bounds?: Bounds;
-  /** いま効いている都道府県。これも初期値だけ。 */
-  prefecture?: string;
   /** 入力欄の値を書き換える。「この範囲で探す」で県を外すのに使う。 */
   onForm: (values: FormValues) => void;
   runArea: (bounds: Bounds, values: FormValues, origin?: Origin) => void;
@@ -27,6 +24,7 @@ interface Options {
     origin: Origin | undefined,
     round: number,
     keyword?: string,
+    near?: boolean,
   ) => void;
   runNearby: (lat: number, lon: number, label: string | undefined, source: OriginSource) => void;
   /** 行った店を取り直す。 */
@@ -47,12 +45,10 @@ export function useModeSwitch({
   mode,
   setMode,
   form,
-  origin,
+  payload,
   activeKeyword,
   onSelect,
   runSearch,
-  bounds,
-  prefecture,
   onForm,
   runArea,
   runDecide,
@@ -75,6 +71,8 @@ export function useModeSwitch({
    * 作り直されるので、初期値を props から写す形でよい。
    * react-doctor-disable-next-line react-doctor/no-derived-useState
    */
+  const { origin, bounds, prefecture } = payload.query;
+  const wantsNear = payload.decide?.needsOrigin;
   const [area, setArea] = useState<{ bounds?: Bounds; prefecture?: string }>({
     bounds,
     prefecture,
@@ -101,7 +99,7 @@ export function useModeSwitch({
   const runConditions = useCallback(
     (values: FormValues) => {
       if (mode === "decide") {
-        runDecide(values, origin, 0, activeKeyword);
+        runDecide(values, origin, 0, activeKeyword, wantsNear);
         return;
       }
       if (mode !== "map") {
@@ -128,7 +126,7 @@ export function useModeSwitch({
       setArea({ bounds: undefined, prefecture: nextPrefecture });
       runSearch(values, "map", origin);
     },
-    [activeKeyword, area, mode, origin, runArea, runDecide, runSearch],
+    [activeKeyword, area, mode, origin, runArea, runDecide, runSearch, wantsNear],
   );
 
   const switchMode = useCallback(
@@ -160,7 +158,13 @@ export function useModeSwitch({
        * 全国に広がり、チップも消えて理由が残らない。
        */
       if (next === "decide")
-        runDecide(form, origin, 0, mode === "decide" ? activeKeyword : undefined);
+        runDecide(
+          form,
+          origin,
+          0,
+          mode === "decide" ? activeKeyword : undefined,
+          mode === "decide" ? wantsNear : undefined,
+        );
       /*
        * 現在地モードも、基準地点が分かっているなら取り直す。
        * 呼ばずに戻ると、直前のモードの payload（「迷ったら」の 3 軒など）が
@@ -209,6 +213,7 @@ export function useModeSwitch({
       setMode,
       signedIn,
       discardPending,
+      wantsNear,
     ],
   );
 

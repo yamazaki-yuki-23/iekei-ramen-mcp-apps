@@ -24,6 +24,8 @@ interface Props {
   onIssue: ComponentProps<typeof TicketMachine>["onIssue"];
   /** 券売機の「地図で選ぶ」。 */
   onOpenMap: () => void;
+  /** 券売機の「近くで」を点けたままにする（現在地が分からなかった直後。#147）。 */
+  wantsNear?: boolean;
   /** 会話の中では券売機を小さく出す。 */
   compact: boolean;
   /** 店名の券売機に並べるブランド。 */
@@ -53,6 +55,7 @@ export function ModeControls({
   busy,
   onIssue,
   onOpenMap,
+  wantsNear,
   compact,
   brands,
 }: Props) {
@@ -94,6 +97,7 @@ export function ModeControls({
         origin={origin}
         onIssue={onIssue}
         onOpenMap={onOpenMap}
+        wantsNear={wantsNear}
         busy={busy}
         compact={compact}
       />

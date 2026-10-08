@@ -823,6 +823,13 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           .optional()
           .describe("利用者が地名や地図で指定した地点の経度"),
         label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
+        near: z
+          .boolean()
+          .optional()
+          .describe(
+            "true なら、lat / lon が無いときにホストが渡す位置・接続元からの推定位置を基準地点にして" +
+              "近い順に絞る（利用者の現在地の近く）。どれも取れなければ 0 軒で返す",
+          ),
         source: z
           .enum(["precise", "host", "edge", "place"])
           .optional()
@@ -840,16 +847,10 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       outputSchema: PayloadSchema,
       ...toolMetadata("decide-iekei-ramen"),
     },
-    async ({
-      prefecture,
-      taste,
-      keyword,
-      lat,
-      lon,
-      label,
-      source,
-      round,
-    }): Promise<CallToolResult> => {
+    async (
+      { prefecture, taste, keyword, lat, lon, label, near, source, round },
+      ctx,
+    ): Promise<CallToolResult> => {
       const incomplete = incompleteCoordinates(lat, lon);
       if (incomplete) return incomplete;
 
@@ -857,14 +858,53 @@ export function createServer(deps: ServerDeps = {}): McpServer {
        * 出どころは受け取ったものをそのまま持つ。ここで place に固定すると、
        * 端末の位置情報から来た座標まで「指定した地名」に化け、現在地モードへ
        * 戻ったときに誤った精度が表示される。
+       *
+       * near のときは、座標が無ければ find-nearby と同じ順で現在地を探す（#147）。
+       * ブラウザの位置が取れないホスト（ChatGPT）でも、券売機の「近くで」が条件ごと
+       * 3 軒を出せるように。
        */
-      const origin = originFrom({ lat, lon, label, source }, "place");
+      const origin =
+        originFrom({ lat, lon, label, source }, "place") ??
+        (near
+          ? (readHostLocation(ctx.mcpReq._meta) ??
+            readEdgeLocation(ctx.http?.req) ??
+            (await fetchEdgeLocation()))
+          : undefined);
       /*
        * 効かないキーワードを持ち回らない。filterShops は trim 後に空なら
        * 絞り込まないのに、生の値を payload と説明文に残すと、UI には外せる
        * チップが出て、モデルには「この語に合う 558 軒」と伝わる。
        */
       const kw = blankToUndefined(keyword);
+      if (near && !origin) {
+        // 現在地なしで全国から並べると「近く」を頼んだのに遠い店が出る。0 軒で返し、
+        // UI は都道府県・地図・地名へ案内する（条件は消さない）。
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                "現在地を特定できませんでした。" +
+                "ユーザーに地名や駅名を尋ね、geocode-place で座標に変換してから" +
+                "lat / lon を指定して呼び直してください。",
+            },
+          ],
+          structuredContent: await withVisitor({
+            mode: "decide",
+            shops: [],
+            total: 0,
+            query: { prefecture, taste, keyword: kw },
+            decide: {
+              round: 0,
+              rounds: 1,
+              poolTotal: 0,
+              basis: "distance",
+              widened: false,
+              needsOrigin: true,
+            },
+          }),
+        };
+      }
       const list = shortlist(filterShops(dataset, { prefecture, taste, keyword: kw }), {
         origin,
         round,

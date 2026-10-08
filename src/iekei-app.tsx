@@ -595,8 +595,8 @@ function issueWith(
     origin: Origin | undefined,
     round: number,
     keyword?: string,
+    near?: boolean,
   ) => void,
-  switchMode: (mode: SearchMode) => void,
   reserveResult: () => Reservation,
 ) {
   return (where: Where, values: FormValues, isCurrent: () => boolean) => {
@@ -604,7 +604,7 @@ function issueWith(
     let cancel: (() => void) | undefined;
     void issueTickets(where, values, origin, isCurrent, {
       decide: (next, at) => runDecide(next, at, 0, keyword),
-      nearby: () => switchMode("nearby"),
+      near: (next) => runDecide(next, undefined, 0, keyword, true),
       reserve: () => {
         const reservation = reserveResult();
         cancel = reservation.cancel;
@@ -622,8 +622,9 @@ type Reservation = { current: () => boolean; release: () => void; cancel: () => 
  * 券売機の「発券する」（#144）。選んだ「どこで」で 3 軒を出す。
  *
  * 近くでは基準地点を使う。まだ無ければブラウザの位置情報を 1 度だけ試し、
- * 取れない（ChatGPT は iframe に許可しない）ときは現在地の画面へ回す。そこには
- * ホストの大まかな位置と地名の入力がある。
+ * 取れない（ChatGPT は iframe に許可しない）ときは、サーバーにホストの位置・接続元の
+ * 推定で現在地を探してもらう（near）。現在地の画面へは移らない——そこの検索は味の
+ * 傾向を受け取らず、選んだ条件と 3 軒の約束が消えるため（#147）。
  */
 async function issueTickets(
   where: Where,
@@ -632,7 +633,7 @@ async function issueTickets(
   isCurrent: () => boolean,
   run: {
     decide: (next: FormValues, origin?: Origin) => void;
-    nearby: () => void;
+    near: (next: FormValues) => void;
     reserve: () => Reservation;
   },
 ) {
@@ -653,7 +654,7 @@ async function issueTickets(
   // 待つ間に別の発券・キー・地図・タブ、または結果側の操作（次の 3 軒・キーワードを外す）
   // が走っていたら、古い発券で新しい操作を上書きしない。
   if (!isCurrent() || !reservation.current()) return;
-  if (!pos) return run.nearby();
+  if (!pos) return run.near(anywhere);
   run.decide(anywhere, {
     lat: pos.coords.latitude,
     lon: pos.coords.longitude,
@@ -818,6 +819,7 @@ function IekeiAppInner({
    * 見えないまま効いてしまうため。
    */
   const activeKeyword = payload.mode === "decide" ? payload.query.keyword : undefined;
+  const wantsNear = payload.decide?.needsOrigin;
 
   // 広げられるのは地図だけ。他のモードでは畳む（釦がその画面に無いため）。
   const fullscreen = useFullscreen(hostContext, onDisplayMode, mode === "map");
@@ -826,12 +828,10 @@ function IekeiAppInner({
     mode,
     setMode,
     form,
-    origin: payload.query.origin,
+    payload,
     activeKeyword,
     onSelect,
     runSearch,
-    bounds: payload.query.bounds,
-    prefecture: payload.query.prefecture,
     onForm,
     runArea,
     runDecide,
@@ -919,8 +919,9 @@ function IekeiAppInner({
       onSearchPlace={searchPlace}
       notice={notice}
       busy={busy}
-      onIssue={issueWith(payload.query.origin, activeKeyword, runDecide, switchMode, reserveResult)}
+      onIssue={issueWith(payload.query.origin, activeKeyword, runDecide, reserveResult)}
       onOpenMap={() => switchMode("map")}
+      wantsNear={wantsNear}
       compact={Hero === undefined}
       brands={payload.brands ?? []}
     />
@@ -943,7 +944,7 @@ function IekeiAppInner({
         needsSearch={needsSearch}
         shops={shops}
         keyword={activeKeyword}
-        onClearKeyword={() => runDecide(form, payload.query.origin, 0)}
+        onClearKeyword={() => runDecide(form, payload.query.origin, 0, undefined, wantsNear)}
         selected={selected}
         onSelect={onSelect}
         onAsk={supportedAction(
