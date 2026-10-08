@@ -70,6 +70,25 @@ interface Options {
    * 中で数えると、作り直した直後に古い呼び出しが残っていても 0 になる。
    */
   trackCall: (delta: 1 | -1) => void;
+  /**
+   * 「行った」を 1 本ずつ送る列。**これも作り直されない外側が持つ**（#171）。中で持つと、
+   * 送っている間に結果が届いて作り直されたとき列が空に戻り、次の 1 本が前の 1 本を
+   * 待たずに出る。前の古い写しが後から届き、あとで押した店の印を消していた。
+   */
+  stampQueue: StampQueue;
+}
+
+/** 渡した仕事を 1 本ずつ順に走らせる。失敗しても列は止めない。 */
+type StampQueue = (task: () => Promise<void>) => Promise<void>;
+
+export function createStampQueue(): StampQueue {
+  let tail: Promise<void> = Promise.resolve();
+  return (task) => {
+    const done = tail.then(task);
+    // 失敗で列を止めない。1 本落ちても、次の操作は投げられる。
+    tail = done.catch(() => {});
+    return done;
+  };
 }
 
 /**
@@ -87,6 +106,7 @@ export function useServerTools({
   onVisits,
   includeVisitedShops,
   trackCall,
+  stampQueue,
 }: Options) {
   const stampFailed = app.capabilities.model
     ? STAMP_FAILED
@@ -351,26 +371,19 @@ export function useServerTools({
    * **釦を押せなくする形にはしない。** 押せるのに反応しない時間ができるより、
    * 押した順に効く方が読める。
    */
-  // null 始まりにするのは、毎レンダーで捨てる Promise を作らないため。
-  const stampQueue = useRef<Promise<void> | null>(null);
   const runStamp = useCallback(
     (shopId: string, visited: boolean) => {
       setInFlight((n) => n + 1);
       setMutations((n) => n + 1);
       trackCall(1);
       setFailure(null);
-      const done = (stampQueue.current ?? Promise.resolve())
-        .then(() => sendStamp(shopId, visited))
-        .finally(() => {
-          setInFlight((n) => n - 1);
-          setMutations((n) => n - 1);
-          trackCall(-1);
-        });
-      // 失敗で列を止めない。1 本落ちても、次の操作は投げられる。
-      stampQueue.current = done.catch(() => {});
-      return done;
+      return stampQueue(() => sendStamp(shopId, visited)).finally(() => {
+        setInFlight((n) => n - 1);
+        setMutations((n) => n - 1);
+        trackCall(-1);
+      });
     },
-    [sendStamp, trackCall],
+    [sendStamp, trackCall, stampQueue],
   );
 
   /** 行った店の一覧と制覇率を取り直す。こちらは画面ごと入れ替わる。 */
