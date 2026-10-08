@@ -272,3 +272,17 @@ test("地図を読み込む間は「この範囲で」を押せず、地図が�
   await expect(page.locator(".leaflet-container")).toBeVisible();
   await expect(searchArea).toBeEnabled();
 });
+
+test("地図のファイルを読めなくても、地図の場所で知らせ、ほかの探し方は使える（#154）", async ({
+  page,
+}) => {
+  // 先読みも含めて地図の chunk を落とす。通信の途切れを作る。
+  await page.route(/\/assets\/MapView-[^/]+\.js$/, (route) => route.abort());
+  await page.goto(WEB_URL);
+  await page.getByRole("button", { name: "地図で", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("地図を読み込めませんでした");
+  await expect(page.getByRole("button", { name: "再読み込み" })).toBeVisible();
+  // アプリ全体は残り、ほかの探し方へ移れる。
+  await page.getByRole("button", { name: "店名で", exact: true }).click();
+  await expect(page.locator("#kw")).toBeVisible();
+});
