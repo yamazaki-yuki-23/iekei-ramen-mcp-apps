@@ -24,17 +24,7 @@ test("タブだけの初期画面を完了扱いせず、tool結果を受け取�
       if (content) content.text = content.text.replace("<head>", "<head>" + delay);
       return message;
     };
-    const raw = await response.text();
-    const body = response.headers()["content-type"]?.includes("text/event-stream")
-      ? raw
-          .split("\n")
-          .map((line) =>
-            line.startsWith("data: ")
-              ? "data: " + JSON.stringify(replace(JSON.parse(line.slice(6))))
-              : line,
-          )
-          .join("\n")
-      : JSON.stringify(replace(JSON.parse(raw)));
+    const body = JSON.stringify(replace(await response.json()));
     await route.fulfill({ response, body });
   });
   const app = await callTool(page, "decide-iekei-ramen");

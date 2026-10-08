@@ -215,6 +215,12 @@ export async function serveMcp(request: Request, deps: ServerDeps): Promise<Resp
   const server = createServer(deps);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
+    /*
+     * **SSE ではなく JSON で返す（#170）。** Cloudflare は text/event-stream を圧縮しない。
+     * 会話の中の画面の HTML（約 730KB）が素のまま届いていた（JSON なら br で約 180KB）。
+     * 進捗・ログ・elicitation など、途中で流すものは送っていないので SSE は要らない。
+     */
+    enableJsonResponse: true,
   });
 
   try {

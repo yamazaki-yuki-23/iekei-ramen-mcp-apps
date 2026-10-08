@@ -80,10 +80,7 @@ async function tool(request: APIRequestContext, name: string, args: Record<strin
     data: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } },
   });
   expect(response.status()).toBe(200);
-  const body = await response.text();
-  const message = body.split("\n").find((line) => line.startsWith("data: "));
-  expect(message).toBeTruthy();
-  return JSON.parse(message!.slice(6)).result.structuredContent as AppPayload;
+  return (await response.json()).result.structuredContent as AppPayload;
 }
 
 test("Webを直接開いて検索・現在地・地図・まわる店を使える", async ({ page, context, request }) => {
