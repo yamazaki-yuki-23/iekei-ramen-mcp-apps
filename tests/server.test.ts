@@ -639,6 +639,48 @@ describe("show-iekei-ramen-map", () => {
 });
 
 describe("decide-iekei-ramen", () => {
+  it("near で座標が無ければ、ホストが渡す現在地から近い順に 3 軒を出す（#147）", async () => {
+    const { payload, text } = await callApp(
+      "decide-iekei-ramen",
+      { near: true, taste: "creamy" },
+      {
+        "openai/userLocation": {
+          latitude: 35.4658,
+          longitude: 139.6222,
+          city: "横浜市",
+          region: "神奈川県",
+        },
+      },
+    );
+    expect(payload.query.origin?.source).toBe("host");
+    expect(payload.decide?.basis).toBe("distance");
+    expect(payload.decide?.needsOrigin).toBeUndefined();
+    // 味の傾向は持ち越す（現在地の検索に回すと落ちていた）。
+    expect(payload.query.taste).toBe("creamy");
+    expect(payload.shops.length).toBeGreaterThan(0);
+    expect(payload.shops.every((shop) => shop.taste === "creamy")).toBe(true);
+    expect(text).toContain("横浜市");
+  });
+
+  it("near で現在地がどこからも取れなければ、全国から並べず 0 軒で返す（#147）", async () => {
+    const { payload, text } = await callApp("decide-iekei-ramen", { near: true, taste: "creamy" });
+    expect(payload.mode).toBe("decide");
+    expect(payload.shops).toEqual([]);
+    expect(payload.decide?.needsOrigin).toBe(true);
+    expect(payload.query.taste).toBe("creamy");
+    expect(text).toContain("現在地を特定できませんでした");
+  });
+
+  it("near が無ければ、座標が無くても現在地を探さない（従来どおり全国から）", async () => {
+    const { payload } = await callApp(
+      "decide-iekei-ramen",
+      {},
+      { "openai/userLocation": { latitude: 35.4658, longitude: 139.6222 } },
+    );
+    expect(payload.query.origin).toBeUndefined();
+    expect(payload.decide?.basis).toBe("hours");
+  });
+
   it("3 軒まで絞り、選び方を payload に入れる", async () => {
     const { payload } = await callApp("decide-iekei-ramen", { prefecture: "神奈川県" });
     expect(payload.mode).toBe("decide");

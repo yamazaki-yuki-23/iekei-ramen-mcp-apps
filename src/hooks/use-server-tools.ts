@@ -291,8 +291,9 @@ export function useServerTools({
       origin: Origin | undefined,
       round: number,
       keyword?: string,
+      near?: boolean,
     ) {
-      lastAction.current = () => runDecideOp(next, origin, round, keyword);
+      lastAction.current = () => runDecideOp(next, origin, round, keyword, near);
       void call(TOOL_BY_MODE.decide, {
         prefecture: next.prefecture || undefined,
         taste: next.taste || undefined,
@@ -301,6 +302,8 @@ export function useServerTools({
         lon: origin?.lon,
         label: origin?.label,
         source: origin?.source,
+        // 座標が無いときに、ホストの位置・接続元の推定で現在地を探してもらう（#147）。
+        near: near || undefined,
         round,
       });
     },

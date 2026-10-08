@@ -164,4 +164,6 @@ export interface DecideInfo {
   widened: boolean;
   /** 今回の表示分だけでなく、母集団に「家系の可能性」が入っている。旧結果では未指定。 */
   includesLikely?: boolean;
+  /** 「近くで」を頼まれたが現在地が分からず、0 軒で返した（#147）。 */
+  needsOrigin?: boolean;
 }

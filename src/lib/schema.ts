@@ -99,6 +99,7 @@ export const PayloadSchema = z.object({
       basis: z.enum(["distance", "hours"]),
       widened: z.boolean(),
       includesLikely: z.boolean().optional(),
+      needsOrigin: z.boolean().optional(),
     })
     .optional(),
 });

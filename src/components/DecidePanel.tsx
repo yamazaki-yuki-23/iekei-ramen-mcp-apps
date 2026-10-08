@@ -7,6 +7,12 @@ import { StateNote } from "./StateNote";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
 const EMPTY = "条件に合う店舗が見つかりませんでした。都道府県や味の条件を緩めてください。";
+/*
+ * 「近くで」を頼まれたが現在地が分からなかった（#147）。条件はそのまま残るので、
+ * 現在地の代わりになる口（都道府県・地図・地名）を案内する。「条件を緩めて」とは言わない。
+ */
+const NEEDS_ORIGIN =
+  "現在地が分かりませんでした。券売機の「都道府県」か「地図で選ぶ」で探すか、「現在地から」で地名を入れてください。";
 const EMPTY_WITH_KEYWORD =
   "条件に合う店舗が見つかりませんでした。上のキーワードを外すか、都道府県や味の条件を緩めてください。";
 const BASIS_NOTE =
@@ -26,6 +32,24 @@ function DecideHead({ title }: { title?: { heading: string; tag: string | null }
 }
 
 /** 末尾まで来たら先頭へ戻る。押す前に何が起きるかを言う。 */
+/** 0 軒のときの案内。現在地が分からなかったときは、条件を緩めてではなく代わりの口へ。 */
+function EmptyNote({
+  needsOrigin,
+  keyword,
+  reportHint,
+}: {
+  needsOrigin?: boolean;
+  keyword?: string;
+  reportHint?: string;
+}) {
+  if (needsOrigin) return <StateNote kind="empty">{NEEDS_ORIGIN}</StateNote>;
+  return (
+    <StateNote kind="empty" hint={reportHint}>
+      {keyword ? EMPTY_WITH_KEYWORD : EMPTY}
+    </StateNote>
+  );
+}
+
 function rerollLabel(info: DecideInfo | undefined): string {
   return info && info.rounds > 1 && info.round + 1 >= info.rounds
     ? "最初の 3 軒に戻る"
@@ -108,9 +132,7 @@ export function DecidePanel({
     return (
       <section className={styles.decide} aria-label="迷ったら">
         {filter}
-        <StateNote kind="empty" hint={reportHint}>
-          {keyword ? EMPTY_WITH_KEYWORD : EMPTY}
-        </StateNote>
+        <EmptyNote needsOrigin={info?.needsOrigin} keyword={keyword} reportHint={reportHint} />
       </section>
     );
   }

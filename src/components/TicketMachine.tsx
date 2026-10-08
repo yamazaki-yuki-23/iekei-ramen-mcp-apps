@@ -22,6 +22,8 @@ interface Props {
   form: FormValues;
   onForm: (values: FormValues) => void;
   origin?: Origin;
+  /** 前の発券が「近くで」を頼んで現在地が分からなかった（#147）。「近くで」を点けたままにする。 */
+  wantsNear?: boolean;
   /**
    * 発券。選んだ「どこで」と条件で 3 軒を出す。isCurrent は、この発券がまだ最新か
    * （後から別の発券・地図へ移動・画面の切り替えが無いか）。位置取得を待つ間に使う。
@@ -37,7 +39,10 @@ interface Props {
 }
 
 /** いまの条件から、最初に点けておく「どこで」を決める。 */
-function initialWhere(form: FormValues, origin?: Origin): Where {
+function initialWhere(form: FormValues, origin?: Origin, wantsNear?: boolean): Where {
+  // 「近くで」を頼んで現在地が分からなかった直後は、県が付いていても近くを優先する
+  // （モデルが県と near を両方渡すことがある。県を先に見ると、次の発券が県の営業時間順に変わる）。
+  if (wantsNear) return "near";
   if (form.prefecture) return "pref";
   return origin ? "near" : "all";
 }
@@ -54,12 +59,13 @@ export function TicketMachine({
   form,
   onForm,
   origin,
+  wantsNear,
   onIssue,
   onOpenMap,
   busy,
   compact,
 }: Props) {
-  const [where, setWhere] = useState<Where>(() => initialWhere(form, origin));
+  const [where, setWhere] = useState<Where>(() => initialWhere(form, origin, wantsNear));
   /*
    * 発券の操作番号。位置取得は MCP の呼び出しより前に始まるので、通信の通し番号では
    * 古い発券を捨てられない（NearbyPanel と同じ。docs/development.md）。別の発券・
