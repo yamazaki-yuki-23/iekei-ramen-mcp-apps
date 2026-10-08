@@ -24,8 +24,6 @@ interface Props {
   shops: Shop[];
   selectedId?: string;
   onSelect: (shop: Shop) => void;
-  /** この位置にズームする（都道府県で絞ったとき等）。 */
-  focus?: { lat: number; lon: number; zoom: number };
   /** 「まわる店」の順路。回る順に並んだ状態で受け取る。 */
   route?: Shop[];
   /** 順路の出発点。あれば線をここから引く。 */
@@ -73,7 +71,6 @@ export function MapView({
   shops,
   selectedId,
   onSelect,
-  focus,
   route,
   routeOrigin,
   origin,
@@ -95,14 +92,18 @@ export function MapView({
   const markersRef = useRef<Map<string, L.CircleMarker>>(new Map());
   const shopDrawingRef = useRef<ReturnType<typeof drawShops> | null>(null);
   /*
-   * 順路へ寄せたことがあるか。
+   * 最後に線を引いたときの順路と出発点。**変わったときだけ寄せる**ために比べる。
    *
-   * **作り直しの 1 回目は寄せない。** 範囲で探した直後は、ユーザーが決めた
+   * 初期値は作り直したときの値にしておく。**作り直しの 1 回目は寄せない。** 範囲で探した直後は、ユーザーが決めた
    * 画角が初期表示に入っている。そこへ順路が割り込むと、見出しと結果は範囲の
    * ものなのに地図だけ順路へ飛び、もう一度「この範囲で発券」を押すと見当違いの
    * 場所を探すことになる（実測: 同じ操作の 2 回目で 3 件 → 2 件）。
    */
-  const routeFitted = useRef(false);
+  /*
+   * 「1 回目か」の真偽値で持つと、開発版の StrictMode が effect を 2 回走らせたときに
+   * 2 回目を「順路が変わった」と見なして寄せてしまう（#157）。値を比べればそうならない。
+   */
+  const lastRoute = useRef({ route, routeOrigin });
   const { remember, restore } = useMarkerFocus(markersRef);
   /*
    * いまのズーム。塊の大きさはこれで決まるので、state で持って描き直す。
@@ -259,13 +260,6 @@ export function MapView({
     return () => observer.disconnect();
   }, []);
 
-  // 外から指定されたフォーカス位置へ移動する。
-  useEffect(() => {
-    if (focus && mapRef.current) {
-      mapRef.current.setView([focus.lat, focus.lon], focus.zoom);
-    }
-  }, [focus]);
-
   /*
    * 選んだ店へ 1 度だけ寄せる。
    *
@@ -329,15 +323,16 @@ export function MapView({
      * 1 軒を積んだときが「1 回目」と誤解され、寄せ直しが飛んでいた（実測:
      * 出発点が 250km 先にあるのに、選んだ店の周りのまま動かなかった）。
      */
-    const firstRunAfterMount = !routeFitted.current;
-    routeFitted.current = true;
+    const changed =
+      lastRoute.current.route !== route || lastRoute.current.routeOrigin !== routeOrigin;
+    lastRoute.current = { route, routeOrigin };
 
     if (!route || route.length === 0) return;
     const line = drawRoute(layer, route, routeOrigin);
     const clear = () => {
       layer.clearLayers();
     };
-    if (firstRunAfterMount) return clear;
+    if (!changed) return clear;
 
     /*
      * 順路の全体が入るように寄せる。直前に選んだ店へズームしたままだと、
