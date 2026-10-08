@@ -115,28 +115,41 @@ export function ResultView({
         <div className={styles.mapMain}>
           {status ?? (
             <>
-              <MapToolbar
-                fullscreen={fullscreen}
-                busy={busy}
-                onSearchArea={
-                  onSearchArea &&
-                  (() => {
-                    const shown = getBoundsRef.current?.();
-                    if (shown) onSearchArea(shown);
-                  })
-                }
-              />
-              <div className={styles.mapStage}>
-                {/* 読み込みを待つ間も、地図と同じ大きさの箱を置いて配置を動かさない。 */}
-                <Suspense
-                  fallback={
-                    <div
-                      className={
-                        fullscreen?.expanded ? `${styles.map} ${styles.mapExpanded}` : styles.map
-                      }
+              {/*
+               * **道具の帯（「この範囲で発券」）も地図と一緒に待つ。** 地図より先に出すと、
+               * 地図の範囲を読めないうちに押せてしまい、押しても何も起きない（#154）。
+               * 待つ間は同じ帯を押せない状態で出し、地図と同じ大きさの箱を置いて配置を動かさない。
+               */}
+              <Suspense
+                fallback={
+                  <>
+                    <MapToolbar
+                      fullscreen={fullscreen}
+                      busy
+                      onSearchArea={onSearchArea && (() => {})}
                     />
+                    <div className={styles.mapStage}>
+                      <div
+                        className={
+                          fullscreen?.expanded ? `${styles.map} ${styles.mapExpanded}` : styles.map
+                        }
+                      />
+                    </div>
+                  </>
+                }
+              >
+                <MapToolbar
+                  fullscreen={fullscreen}
+                  busy={busy}
+                  onSearchArea={
+                    onSearchArea &&
+                    (() => {
+                      const shown = getBoundsRef.current?.();
+                      if (shown) onSearchArea(shown);
+                    })
                   }
-                >
+                />
+                <div className={styles.mapStage}>
                   <MapView
                     shops={shops}
                     selectedId={selectedId}
@@ -162,8 +175,8 @@ export function ResultView({
                     origin={origin}
                     visitedIds={visitedIds}
                   />
-                </Suspense>
-              </div>
+                </div>
+              </Suspense>
               <p className={styles.mapNote}>{PIN_NOTE}</p>
               {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}
               {/* 出ている店に 1 軒でも記録があるときだけ書く。無いと読む意味が無い。 */}
