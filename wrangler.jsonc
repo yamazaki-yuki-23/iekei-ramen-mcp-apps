@@ -21,6 +21,10 @@
     ],
   },
   "observability": { "enabled": true },
+  // コードを縮めて上げる（#170。2,720KB → 1,970KB）。source map も上げるので、
+  // 本番のスタックトレースは元の名前と行で読める。
+  "minify": true,
+  "upload_source_maps": true,
   // 本番の URL。**公開した後では変えにくい**（登録されたコネクタ・掲載情報・貼られた
   // リンク・Google サインインの戻り先が全部壊れる）ので、公開前にここへ移した（#41）。
   // ゾーンは同じアカウントの Cloudflare Registrar で取ったもの。

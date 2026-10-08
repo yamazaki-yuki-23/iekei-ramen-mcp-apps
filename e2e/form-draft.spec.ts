@@ -168,16 +168,10 @@ test("MCP Apps: モデルの新しいqueryを反映し、その後に届く旧UI
         }));
       }, true);
     </script>`;
-    const body = (await response.text())
-      .split("\n")
-      .map((line) => {
-        if (!line.startsWith("data: ")) return line;
-        const message = JSON.parse(line.slice(6));
-        const content = message.result?.contents?.[0];
-        if (content) content.text = content.text.replace("<head>", "<head>" + fixture);
-        return "data: " + JSON.stringify(message);
-      })
-      .join("\n");
+    const message = await response.json();
+    const content = message.result?.contents?.[0];
+    if (content) content.text = content.text.replace("<head>", "<head>" + fixture);
+    const body = JSON.stringify(message);
     await route.fulfill({ response, body });
   });
   const app = await callTool(page, "decide-iekei-ramen");
@@ -200,10 +194,7 @@ test("MCP Apps: モデルの新しいqueryを反映し、その後に届く旧UI
       },
     });
     expect(response.status()).toBe(200);
-    const raw = await response.text();
-    const data = raw.split("\n").find((line) => line.startsWith("data: "));
-    expect(data).toBeTruthy();
-    const result = JSON.parse(data!.slice(6)).result;
+    const result = (await response.json()).result;
     expect(result.structuredContent.query.keyword).toBe("吉村");
     // 実MCPの結果を、ホストからの通知と同じSDK経路に渡す。
     await app.locator("body").evaluate((_body, notification) => {

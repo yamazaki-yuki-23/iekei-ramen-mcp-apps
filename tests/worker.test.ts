@@ -55,8 +55,7 @@ const decideNearAuto = (cf?: Record<string, string>) => {
   if (cf) Object.defineProperty(request, "cf", { value: cf });
   return worker.fetch(request, env, ctx).then(async (res) => {
     const body = await res.text();
-    return JSON.parse(body.slice(body.indexOf("data: ") + 6).split("\n")[0]).result
-      .structuredContent;
+    return JSON.parse(body).result.structuredContent;
   });
 };
 
@@ -70,6 +69,11 @@ describe("worker.fetch", () => {
   it("匿名でも検索の tool は呼べる", async () => {
     const response = await rpc("search-iekei-ramen");
     expect(response.status).toBe(200);
+  });
+
+  it("応答は SSE ではなく JSON で返し、Cloudflare が圧縮できる形にする（#170）", async () => {
+    const response = await rpc("search-iekei-ramen");
+    expect(response.headers.get("Content-Type")).toMatch(/^application\/json/);
   });
 
   it("Web の最初の 3 軒（near: auto）は、接続元から推定した地域で出す（#152）", async () => {
@@ -117,8 +121,7 @@ describe("worker.fetch", () => {
     });
 
     const body = await (await worker.fetch(request, env, ctx)).text();
-    const origin = JSON.parse(body.slice(body.indexOf("data: ") + 6).split("\n")[0]).result
-      .structuredContent.query.origin;
+    const origin = JSON.parse(body).result.structuredContent.query.origin;
 
     // 名前はローマ字のまま出さず、近い店の地名で日本語にする（#150）。
     expect(origin).toMatchObject({ source: "edge", label: "横浜市付近" });

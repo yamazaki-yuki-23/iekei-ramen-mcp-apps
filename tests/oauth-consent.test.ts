@@ -231,7 +231,7 @@ describe("workerdでのクライアントごとの同意", () => {
       });
       if (response.status !== 200) return { status: response.status, visited: [] };
       const body = await response.text();
-      const message = JSON.parse(body.slice(body.indexOf("data: ") + 6).split("\n")[0]);
+      const message = JSON.parse(body);
       expect(message.result.isError).not.toBe(true);
       return { status: response.status, visited: message.result.structuredContent.visited };
     };

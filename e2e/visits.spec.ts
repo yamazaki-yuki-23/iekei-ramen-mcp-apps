@@ -41,15 +41,9 @@ async function observeStamps(page: Page) {
     }
     const response = await route.fetch();
     const body = await response.text();
-    const json = body.startsWith("{")
-      ? body
-      : body
-          .split("\n")
-          .find((line) => line.startsWith("data: "))!
-          .slice(6);
     stamps.push({
       includeShops: request.params.arguments.includeShops,
-      payload: JSON.parse(json).result.structuredContent,
+      payload: JSON.parse(body).result.structuredContent,
     });
     await route.fulfill({ response, body });
   });
