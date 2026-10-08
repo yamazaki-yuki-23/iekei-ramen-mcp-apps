@@ -2,7 +2,7 @@ import { test } from "./fixtures";
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import type { AppPayload } from "../src/lib/types";
 import { openMode } from "./helpers";
-import { misjudgeNote } from "../src/lib/data-caveats";
+import { resultCaveat } from "../src/lib/data-caveats";
 
 const WEB_URL = "http://localhost:3134";
 const cards = (page: Page) => page.locator("ul > li > button[data-shop-id]");
@@ -49,9 +49,18 @@ test("トップからチャットの案内を開き、URLをコピーできる",
   ).toBe("https://iekeiramen.com/mcp");
 });
 
+test("SEOの県だけのリンクは、その県の券売機（迷ったら）で開く（#152）", async ({ page }) => {
+  await page.goto(`${WEB_URL}/?${new URLSearchParams({ prefecture: "神奈川県" })}`);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  await expect(page.locator("main")).toHaveAttribute("data-mode", "decide");
+  await expect(page.getByRole("combobox", { name: "都道府県" })).toHaveValue("神奈川県");
+  await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
+  // 母数がどこの数かを書く（県で絞ったら県名、#152）。
+  await expect(page.getByText(/^神奈川県 \d+ 軒中、.+に 1〜3 軒目$/)).toBeVisible();
+});
+
 test("SEOの地域・店名リンクから同じ検索条件でWebが開く", async ({ page, request }) => {
   for (const args of [
-    { prefecture: "神奈川県" },
     { prefecture: "神奈川県", keyword: "横浜市" },
     { prefecture: "神奈川県", keyword: "吉村家" },
   ]) {
@@ -196,7 +205,7 @@ test("Webの詳細から家系ではない・閉店の報告を匿名で送れ�
   await page.goto(WEB_URL);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
   // 段階を出さない代わりに、誤りの可能性と報告の口を案内する（#144）。
-  await expect(page.getByText(misjudgeNote(true))).toBeVisible();
+  await expect(page.getByText(resultCaveat(true))).toBeVisible();
   const firstId = await cards(page).first().getAttribute("data-shop-id");
   await cards(page).first().click();
   await page.getByText("店舗情報を報告する", { exact: true }).click();

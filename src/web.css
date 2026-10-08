@@ -21,6 +21,7 @@ main {
  */
 nav.seo-navigation {
   max-width: 72rem;
+  margin-inline: auto;
   padding: 0 calc(var(--space-4) + var(--safe-area-right, 0px)) var(--space-8)
     calc(var(--space-4) + var(--safe-area-left, 0px));
 }

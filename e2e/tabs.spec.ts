@@ -102,7 +102,7 @@ test("券売機の位置取得を待つ間は取得中として扱い、前の�
     app.locator("body").evaluate(() => window.iekeiPositionFixture.release("success")),
   );
   await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
-  await expect(app.getByText(/現在地から近い順に並べ/)).toBeVisible();
+  await expect(app.getByRole("heading", { name: /（現在地）/ })).toBeVisible();
 });
 
 test("位置待ちの間に呼び出しの無いモードへ移ったら、取得中をすぐ外す（#146）", async ({ page }) => {
@@ -225,7 +225,7 @@ test("位置の許可を待つ間に前の操作の応答が届いても、後�
     app.locator("body").evaluate(() => window.iekeiPositionFixture.release("success")),
   );
   await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
-  await expect(app.getByText(/現在地から近い順に並べ/)).toBeVisible();
+  await expect(app.getByRole("heading", { name: /（現在地）/ })).toBeVisible();
 });
 
 test("位置が取れないとき「近くで」は現在地の画面へ移らず、条件ごと現在地を探してもらう（#147）", async ({

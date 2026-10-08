@@ -835,11 +835,12 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           .describe("利用者が地名や地図で指定した地点の経度"),
         label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
         near: z
-          .boolean()
+          .union([z.boolean(), z.literal("auto")])
           .optional()
           .describe(
             "true なら、lat / lon が無いときにホストが渡す位置・接続元からの推定位置を基準地点にして" +
-              "近い順に絞る（利用者の現在地の近く）。どれも取れなければ 0 軒で返す",
+              "近い順に絞る（利用者の現在地の近く）。どれも取れなければ 0 軒で返す。" +
+              "auto は、取れれば近く・取れなければ全国から（Web の最初の画面用）",
           ),
         source: z
           .enum(["precise", "host", "edge", "place"])
@@ -877,13 +878,14 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       const origin =
         originFrom({ lat, lon, label, source }, "place") ??
         (near ? await locateCaller(ctx.mcpReq._meta, ctx.http?.req) : undefined);
+      // auto は「分かれば近く」。分からなければ案内せずに全国から並べる（#152）。
       /*
        * 効かないキーワードを持ち回らない。filterShops は trim 後に空なら
        * 絞り込まないのに、生の値を payload と説明文に残すと、UI には外せる
        * チップが出て、モデルには「この語に合う 558 軒」と伝わる。
        */
       const kw = blankToUndefined(keyword);
-      if (near && !origin) {
+      if (near === true && !origin) {
         // 現在地なしで全国から並べると「近く」を頼んだのに遠い店が出る。0 軒で返し、
         // UI は都道府県・地図・地名へ案内する（条件は消さない）。
         return {

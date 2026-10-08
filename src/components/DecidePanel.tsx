@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { describeBasis, pickRange } from "../lib/shortlist";
+import { basisLabel, describeBasis, pickRange } from "../lib/shortlist";
 import type { DecideInfo, Origin, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
+import { ResultCaveat } from "./ResultCaveat";
 import { ShopList } from "./ShopList";
 import { StateNote } from "./StateNote";
 
@@ -15,10 +16,8 @@ const NEEDS_ORIGIN =
   "現在地が分かりませんでした。券売機の「都道府県」か「地図で選ぶ」で探すか、「現在地から」で地名を入れてください。";
 const EMPTY_WITH_KEYWORD =
   "条件に合う店舗が見つかりませんでした。上のキーワードを外すか、都道府県や味の条件を緩めてください。";
-const BASIS_NOTE =
-  "並べる材料は家系判定の段階・距離・営業時間の有無だけです。味の濃さ・混雑・評判のデータは持っていないので、順位は「おすすめ度」ではありません。";
-const NOTE = `${BASIS_NOTE}気になる店は押して選んでから、チャットで聞いてください。`;
-const BROWSE_NOTE = `${BASIS_NOTE}気になる店を選ぶと、店舗の情報や注文のカンペを確認できます。`;
+/* 会話の中だけ。選んだ店をチャットで聞く道を言う（但し書きは ResultCaveat）。 */
+const ASK_HINT = "気になる店は押して選んでから、チャットで聞いてください。";
 
 /** 食券の列の見出し。並べた根拠（近い順など）を札で横に添える。 */
 function DecideHead({ title }: { title?: { heading: string; tag: string | null } }) {
@@ -50,6 +49,15 @@ function EmptyNote({
   );
 }
 
+/**
+ * 何軒の中の何軒目か（#152）。「全国 352 軒中、近い順に 1〜3 軒目」。
+ * 母数は地域で絞った数ではないので、どこの数かを必ず書く。見出しが「さいたま市付近」の
+ * ときに「352 軒中」だけだと、その近くに 352 軒あると読まれた。
+ */
+function roundLabel(info: DecideInfo, shown: number, prefecture?: string): string {
+  return `${prefecture || "全国"} ${info.poolTotal} 軒中、${basisLabel(info)}に ${pickRange(info, shown)}`;
+}
+
 function rerollLabel(info: DecideInfo | undefined): string {
   return info && info.rounds > 1 && info.round + 1 >= info.rounds
     ? "最初の 3 軒に戻る"
@@ -77,6 +85,10 @@ interface Props {
   detail?: ReactNode;
   /** 0 件のときに添える、報告の口への案内。報告できないホストでは渡さない。 */
   reportHint?: string;
+  /** 報告の口があるか（Web）。但し書きの報告の案内を変える。 */
+  reports: boolean;
+  /** 絞り込んだ都道府県。母数が全国か県かを書くのに使う。 */
+  prefecture?: string;
   /** 列の見出しと、並べた根拠の札（Web の「迷ったら」）。会話の中ではページの見出しが持つ。 */
   title?: { heading: string; tag: string | null };
 }
@@ -89,7 +101,7 @@ interface Props {
  *
  * **なぜこの 3 軒なのかを必ず画面に出す。** 出さないと、根拠の無い
  * 「おすすめ」を押し付けているように見える。実際には距離か営業時間の有無で
- * 並べているだけなので、そう書く。
+ * 並べているだけなので、そう書く。Web は見出しの札、会話の中は短い 1 行（#152）。
  */
 export function DecidePanel({
   shops,
@@ -105,6 +117,8 @@ export function DecidePanel({
   busy,
   detail,
   reportHint,
+  reports,
+  prefecture,
   title,
 }: Props) {
   const basis = info ? describeBasis(info, shops.length, origin, keyword) : "";
@@ -140,8 +154,14 @@ export function DecidePanel({
   return (
     <section className={styles.decide} aria-label="迷ったら">
       {filter}
+      {/*
+       * 並べた根拠の長い文（「352 軒を…に並べた、1〜3 軒目です。」）は画面に出さない（#152）。
+       * 見出し（どこから）・札（近い順など）・「全国 352 軒中、近い順に 1〜3 軒目」で足りる。文はモデルへ渡す。
+       */}
       <DecideHead title={title} />
-      {basis && <p className={styles.decideBasis}>{basis}</p>}
+      {!title && info && (
+        <p className={styles.decideBasis}>{`${basisLabel(info)}に並べています。`}</p>
+      )}
 
       <ShopList
         shops={shops}
@@ -176,13 +196,12 @@ export function DecidePanel({
           {rerollLabel(info)}
         </button>
         {info && info.rounds > 1 && (
-          <span className={styles.decideRound}>
-            {`${info.poolTotal} 軒中 ${pickRange(info, shops.length)}`}
-          </span>
+          <span className={styles.decideRound}>{roundLabel(info, shops.length, prefecture)}</span>
         )}
       </div>
 
-      <p className={styles.selectedNote}>{onAsk ? NOTE : BROWSE_NOTE}</p>
+      <ResultCaveat reports={reports} />
+      {onAsk && <p className={styles.selectedNote}>{ASK_HINT}</p>}
     </section>
   );
 }

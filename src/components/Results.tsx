@@ -4,6 +4,7 @@ import { DecidePanel } from "./DecidePanel";
 import type { FullscreenControl } from "./MapToolbar";
 import { preloadMapView } from "./lazy-map";
 import { ResultView } from "./ResultView";
+import { ResultCaveat } from "./ResultCaveat";
 import { REPORT_HINT, StateNote } from "./StateNote";
 import styles from "../mcp-app.module.css";
 import { VisitedPanel } from "./VisitedPanel";
@@ -230,6 +231,8 @@ export function Results({
           asking={asking}
           busy={busy}
         />
+        {/* 行った店も店の判定と味を出すので、但し書きを 1 回（#152）。 */}
+        {shops.length > 0 && <ResultCaveat reports={reports} />}
       </>
     );
   }
@@ -260,6 +263,8 @@ export function Results({
             busy={busy}
             detail={detail}
             reportHint={reportHint}
+            reports={reports}
+            prefecture={payload.query.prefecture}
           />
         }
       />
@@ -291,6 +296,8 @@ export function Results({
         status={status}
         reportHint={reportHint}
       />
+      {/* 但し書きは結果のすぐ下に 1 回（#152）。出す店が無いときは言うことが無い。 */}
+      {!status && shops.length > 0 && <ResultCaveat reports={reports} />}
     </>
   );
 }

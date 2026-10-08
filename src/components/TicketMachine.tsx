@@ -7,9 +7,6 @@ import { MachineShell } from "./MachineShell";
 /** どこで探すか。都道府県は form.prefecture、近くでは基準地点を使う。 */
 export type Where = "near" | "pref" | "all";
 
-/* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
-const CAVEAT = "家系の判定と味の傾向は推定、距離は直線距離です。";
-
 const TASTE_KEYS: Array<{ value: TasteKey | ""; label: string }> = [
   { value: "", label: "こだわらない" },
   { value: "rich", label: TASTES.rich.label },
@@ -98,7 +95,7 @@ export function TicketMachine({
   };
 
   return (
-    <MachineShell title="家系 券売機" hint="押して、発券" caveat={CAVEAT} compact={compact}>
+    <MachineShell title="家系 券売機" hint="押して、発券" compact={compact}>
       <div role="group" aria-labelledby="machine-where">
         <h3 className={styles.machineGroup} id="machine-where">
           ① どこで

@@ -588,13 +588,6 @@
   background: var(--color-ink);
 }
 
-.machineCaveat {
-  margin: 0;
-  padding: var(--space-3) var(--space-4) var(--space-4);
-  font-size: var(--font-size-note);
-  color: var(--color-text-muted);
-}
-
 /* 券売機と食券の舞台。狭い幅では縦に、広い幅では券売機を左に固定して食券を右に。 */
 .decideStage {
   display: flex;
@@ -964,6 +957,14 @@
   border-top: var(--border-width-regular) solid var(--color-border);
 }
 
+/* 結果のすぐ下の但し書き（#152）。1 画面に 1 回なので、読める濃さで置く。 */
+.resultCaveat {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
 .selectedNote {
   margin: 0;
   font-size: var(--font-size-note);
@@ -1145,7 +1146,9 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-note);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  /* 「全国 352 軒中、営業時間が分かる店から順に…」は狭い幅で 1 行に収まらない（#152）。 */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* --- 注文のカンペ --- */
