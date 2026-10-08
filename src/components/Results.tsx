@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import type { AppPayload, Bounds, SearchMode, Shop } from "../lib/types";
 import { DecidePanel } from "./DecidePanel";
 import type { FullscreenControl } from "./MapToolbar";
+import { preloadMapView } from "./lazy-map";
 import { ResultView } from "./ResultView";
 import { REPORT_HINT, StateNote } from "./StateNote";
 import styles from "../mcp-app.module.css";
@@ -162,6 +163,11 @@ export function Results({
   onForget,
   onSignIn,
 }: Props) {
+  /*
+   * 結果が出た後に、地図（Leaflet）を先に読んでおく（lazy-map.ts の preloadMapView・#154）。
+   * 「迷ったら」は ResultView を描かないので、どのモードでも描くここで始める。
+   */
+  useEffect(preloadMapView, []);
   /*
    * 「行った店」だけは ready を待たずに出す道がある。
    *

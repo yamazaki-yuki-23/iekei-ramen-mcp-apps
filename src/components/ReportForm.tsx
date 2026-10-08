@@ -1,5 +1,6 @@
 import { useId, useState, type SubmitEvent } from "react";
-import { REPORT_ACCEPTED, type ShopReport } from "../lib/reports";
+import { REPORT_ACCEPTED } from "../lib/report-accepted";
+import type { ShopReport } from "../lib/reports";
 import styles from "../mcp-app.module.css";
 
 export function ReportEntry({

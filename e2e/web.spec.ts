@@ -252,3 +252,37 @@ test("0件でも未掲載店を報告でき、連打の理由と再送の結果�
   await expect(page.getByRole("status").filter({ hasText: "受け取りました" })).toBeVisible();
   expect(sent[2]).toEqual({ kind: "missing", name: "2件目の試験家", location: "新横浜駅" });
 });
+
+test("地図を読み込む間は「この範囲で」を押せず、地図が出たら押せる（#154）", async ({ page }) => {
+  /*
+   * 地図（Leaflet）は後から読む。道具の帯だけ先に出ると、地図の範囲を読めないうちに
+   * 押せてしまい、押しても何も起きなかった。地図の chunk を遅らせて確かめる。
+   */
+  const { promise: held, resolve: release } = Promise.withResolvers<void>();
+  await page.route(/\/assets\/MapView-[^/]+\.js$/, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto(WEB_URL);
+  await page.getByRole("button", { name: "地図で", exact: true }).click();
+  const searchArea = page.getByRole("button", { name: /この範囲で/ });
+  await expect(searchArea).toBeDisabled();
+  await expect(page.locator(".leaflet-container")).toHaveCount(0);
+  release();
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await expect(searchArea).toBeEnabled();
+});
+
+test("地図のファイルを読めなくても、地図の場所で知らせ、ほかの探し方は使える（#154）", async ({
+  page,
+}) => {
+  // 先読みも含めて地図の chunk を落とす。通信の途切れを作る。
+  await page.route(/\/assets\/MapView-[^/]+\.js$/, (route) => route.abort());
+  await page.goto(WEB_URL);
+  await page.getByRole("button", { name: "地図で", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("地図を読み込めませんでした");
+  await expect(page.getByRole("button", { name: "再読み込み" })).toBeVisible();
+  // アプリ全体は残り、ほかの探し方へ移れる。
+  await page.getByRole("button", { name: "店名で", exact: true }).click();
+  await expect(page.locator("#kw")).toBeVisible();
+});
