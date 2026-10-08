@@ -597,15 +597,26 @@ function issueWith(
     keyword?: string,
   ) => void,
   switchMode: (mode: SearchMode) => void,
-  resultMark: () => number,
+  reserveResult: () => Reservation,
 ) {
-  return (where: Where, values: FormValues, isCurrent: () => boolean) =>
+  return (where: Where, values: FormValues, isCurrent: () => boolean) => {
+    // 位置待ちの予約は issueTickets の最初の await より前に取られるので、ここで掴める。
+    let cancel: (() => void) | undefined;
     void issueTickets(where, values, origin, isCurrent, {
       decide: (next, at) => runDecide(next, at, 0, keyword),
       nearby: () => switchMode("nearby"),
-      mark: resultMark,
+      reserve: () => {
+        const reservation = reserveResult();
+        cancel = reservation.cancel;
+        return reservation;
+      },
     });
+    return () => cancel?.();
+  };
 }
+
+/** 位置を待つ間の通し番号（use-server-tools の reserveResult）。 */
+type Reservation = { current: () => boolean; release: () => void; cancel: () => void };
 
 /**
  * 券売機の「発券する」（#144）。選んだ「どこで」で 3 軒を出す。
@@ -622,7 +633,7 @@ async function issueTickets(
   run: {
     decide: (next: FormValues, origin?: Origin) => void;
     nearby: () => void;
-    mark: () => number;
+    reserve: () => Reservation;
   },
 ) {
   // 都道府県でも、基準地点があれば持ち越す（県の中を近い順に）。何も変えずに発券して
@@ -631,11 +642,17 @@ async function issueTickets(
   const anywhere = { ...values, prefecture: "" };
   if (where === "all") return run.decide(anywhere);
   if (origin) return run.decide(anywhere, origin);
-  const mark = run.mark();
-  const pos = await requestBrowserPosition();
+  // 位置を待つ前に番号を取る。前から走っていた呼び出しの応答は、これで捨てられる（#146）。
+  const reservation = run.reserve();
+  let pos: GeolocationPosition | null;
+  try {
+    pos = await requestBrowserPosition();
+  } finally {
+    reservation.release();
+  }
   // 待つ間に別の発券・キー・地図・タブ、または結果側の操作（次の 3 軒・キーワードを外す）
   // が走っていたら、古い発券で新しい操作を上書きしない。
-  if (!isCurrent() || run.mark() !== mark) return;
+  if (!isCurrent() || !reservation.current()) return;
   if (!pos) return run.nearby();
   run.decide(anywhere, {
     lat: pos.coords.latitude,
@@ -750,7 +767,7 @@ function IekeiAppInner({
     asking,
     failure,
     retry,
-    resultMark,
+    reserveResult,
     stale,
     needsSearch,
     runSearch,
@@ -902,7 +919,7 @@ function IekeiAppInner({
       onSearchPlace={searchPlace}
       notice={notice}
       busy={busy}
-      onIssue={issueWith(payload.query.origin, activeKeyword, runDecide, switchMode, resultMark)}
+      onIssue={issueWith(payload.query.origin, activeKeyword, runDecide, switchMode, reserveResult)}
       onOpenMap={() => switchMode("map")}
       compact={Hero === undefined}
       brands={payload.brands ?? []}
