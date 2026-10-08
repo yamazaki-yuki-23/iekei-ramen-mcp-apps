@@ -391,6 +391,13 @@ test.describe("サインイン済み", () => {
     await app.getByRole("button", { name: "記録を全部消す" }).press("Enter");
     await expect(app.getByRole("button", { name: "本当に全部消す" })).toBeVisible();
     await expect(app.getByRole("heading", { level: 1 })).not.toBeFocused();
+    // 入れ替わった先の、消さない方の釦へ焦点が移る。「やめる」で元の釦へ戻る（#164）。
+    await expect(app.getByRole("button", { name: "やめる" })).toBeFocused();
+    await app.getByRole("button", { name: "やめる" }).press("Enter");
+    await expect(app.getByRole("button", { name: "記録を全部消す" })).toBeFocused();
+    await app.getByRole("button", { name: "記録を全部消す" }).click();
+    // マウスで押したときは動かさない（#156 の決まり）。
+    await expect(app.getByRole("button", { name: "やめる" })).not.toBeFocused();
 
     // 1 回目では消えない。元に戻せない操作を 1 回の誤操作で通さない。
     await expect(app.getByText("元に戻せません")).toBeVisible();

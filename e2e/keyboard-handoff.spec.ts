@@ -306,3 +306,31 @@ test("位置を待つ間に「現在地で発券」を押し直しても、新�
   await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
   await expect(locate).toBeFocused();
 });
+
+test("地図で都道府県をキーボードで選び直すと、結果のあと焦点はその選択欄に残る", async ({
+  page,
+}) => {
+  await page.goto(WEB_URL);
+  await settled(page);
+  await page.getByRole("button", { name: "地図で", exact: true }).click();
+  await settled(page);
+  const pref = page.locator("select#pref");
+  // キーで選ぶ（矢印キーの動きは OS で違うので、キーを押してから選ぶ）。
+  await pref.focus();
+  await pref.press("Shift");
+  await pref.selectOption("東京都");
+  await settled(page);
+  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
+  await expect(page.locator("select#pref")).toHaveValue("東京都");
+  await expect(page.locator("select#pref")).toBeFocused();
+
+  // マウスで選んだときは動かさない（#156 の決まり）。
+  await page.locator("select#pref").click();
+  await page.keyboard.press("Escape");
+  await page.locator("select#pref").dispatchEvent("pointerdown");
+  await page.locator("select#pref").selectOption("神奈川県");
+  await expect(page.locator("select#pref")).toHaveValue("神奈川県");
+  await settled(page);
+  await page.waitForTimeout(300);
+  expect(await focusedText(page)).toBe("BODY");
+});
