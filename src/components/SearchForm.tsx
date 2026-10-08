@@ -35,6 +35,8 @@ export function SearchForm({ prefectures, values, onChange, onSubmit, busy, hide
         <select
           id="pref"
           className={styles.select}
+          // 地図（hideKeyword）では選んだ時点で探し直す。結果のあとに焦点を戻す目印（#165）。
+          data-result-input={hideKeyword ? "prefecture" : undefined}
           value={values.prefecture}
           onChange={(e) => onChange({ ...values, prefecture: e.target.value })}
         >

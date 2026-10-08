@@ -9,7 +9,7 @@ import { useEffect, useRef } from "react";
  * どちらも作り直されない外側（IekeiApp）で受け持つ。
  */
 
-const CONTROL = "button, a[href], [role='tab'], input[id]";
+const CONTROL = "button, a[href], [role='tab'], input[id], select[id]";
 
 /**
  * 押したものを、作り直したあとの画面で見つけるための名前。**文言が変わるボタンには
@@ -18,7 +18,9 @@ const CONTROL = "button, a[href], [role='tab'], input[id]";
  */
 const controlKey = (el: Element) =>
   el.getAttribute("data-focus-key") ??
-  (el instanceof HTMLInputElement ? `input#${el.id}` : null) ??
+  (el instanceof HTMLInputElement || el instanceof HTMLSelectElement
+    ? `${el.tagName.toLowerCase()}#${el.id}`
+    : null) ??
   `${el.tagName}|${el.getAttribute("role") ?? ""}|${(el.getAttribute("aria-label") ?? el.textContent ?? "").trim()}`;
 
 /**
@@ -131,17 +133,34 @@ export function useKeyboardFocusReturn() {
      * **`data-result-input` を付けた欄だけ。** 報告の欄のように結果を差し替えない欄まで追うと、
      * 送信で欄が消えたときに、出たばかりの「受け取りました」ではなく見出しへ焦点を運んでいた。
      */
+    let byKey = false;
     const onKeyDown = (event: KeyboardEvent) => {
+      byKey = true;
       const field = event.target;
       if (event.key === "Enter" && field instanceof HTMLInputElement && field.dataset.resultInput)
         watchFrom(field);
     };
+    /*
+     * 選んだ時点で結果を差し替える選択欄（地図の都道府県。#165）。change には detail が
+     * 無いので、直前の入力がキーから来たかで見分ける。マウスで開いて選んだときは、
+     * 直前が pointerdown になる。
+     */
+    const onPointer = () => (byKey = false);
+    const onChange = (event: Event) => {
+      const field = event.target;
+      if (byKey && field instanceof Element && field.matches("select[data-result-input]"))
+        watchFrom(field);
+    };
     document.addEventListener("click", onClick, true);
     document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("pointerdown", onPointer, true);
+    document.addEventListener("change", onChange, true);
     return () => {
       stop();
       document.removeEventListener("click", onClick, true);
       document.removeEventListener("keydown", onKeyDown, true);
+      document.removeEventListener("pointerdown", onPointer, true);
+      document.removeEventListener("change", onChange, true);
     };
   }, []);
 }

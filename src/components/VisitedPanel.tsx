@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type MouseEvent, type ReactNode } from "react";
 import type { VisitSummary } from "../lib/progress";
 import { visitedView } from "../lib/visited-view";
 import type { Shop } from "../lib/types";
@@ -75,6 +75,22 @@ export function VisitedPanel({
    * 狭いホストでは枠の外に出てしまうため。
    */
   const [confirming, setConfirming] = useState(false);
+  /*
+   * 押した釦はその場で別の釦に入れ替わり、焦点が body に落ちる（#164）。キーボードで
+   * 押したとき（click の detail が 0）だけ、入れ替わった先へ焦点を送る。確認の段では
+   * 消さない方の「やめる」へ送り、Enter の押し続けで消してしまわないようにする。
+   */
+  const focusNext = useRef(false);
+  const toggle = (next: boolean) => (event: MouseEvent) => {
+    focusNext.current = event.detail === 0;
+    setConfirming(next);
+  };
+  const takeFocus = (el: HTMLButtonElement | null) => {
+    if (el && focusNext.current) {
+      focusNext.current = false;
+      el.focus();
+    }
+  };
   const view = visitedView(shops.length, recordCount);
 
   if (!signedIn) {
@@ -147,7 +163,8 @@ export function VisitedPanel({
                 <button
                   type="button"
                   className={styles.buttonSecondary}
-                  onClick={() => setConfirming(false)}
+                  ref={takeFocus}
+                  onClick={toggle(false)}
                 >
                   やめる
                 </button>
@@ -157,7 +174,8 @@ export function VisitedPanel({
             <button
               type="button"
               className={styles.buttonSecondary}
-              onClick={() => setConfirming(true)}
+              ref={takeFocus}
+              onClick={toggle(true)}
               disabled={busy}
             >
               記録を全部消す
