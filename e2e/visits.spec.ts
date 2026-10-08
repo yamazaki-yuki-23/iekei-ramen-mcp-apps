@@ -18,6 +18,17 @@ import {
   waitForApp,
 } from "./helpers";
 
+/** MCP の応答の本文を読む（JSON でも SSE でも）。 */
+const parse = (raw: string) =>
+  JSON.parse(
+    raw.startsWith("{")
+      ? raw
+      : raw
+          .split("\n")
+          .find((l) => l.startsWith("data: "))!
+          .slice(6),
+  );
+
 /** 1 軒目を選んで、詳細（操作の並び）が出るまで待つ。 */
 async function selectFirst(app: FrameLocator): Promise<string> {
   const first = shopCards(app).first();
@@ -293,6 +304,104 @@ test.describe("サインイン済み", () => {
     await afterDelivered(app, stale);
 
     // タブを移らずに数える（移ると取り直してしまい、画面の嘘が消える）。
+    await expect(
+      app.locator("ul > li button span span").filter({ hasText: /^行った$/ }),
+    ).toHaveCount(2);
+  });
+
+  test("送っている間にホストから結果が届いて画面が作り直されても、先に押した応答が後の記録を消さない（#171）", async ({
+    page,
+    request,
+  }) => {
+    /*
+     * 1 本目の「行った」を送っている間に、モデルが呼んだ結果がホストから届いて画面が
+     * 作り直される。列が作り直す側にあると空に戻り、2 本目が 1 本目を待たずに出る。
+     * 1 本目の古い写しが後から届き、2 本目の店の印を消していた。
+     */
+    let stamps = 0;
+    let staleDelivered!: () => void;
+    const stale = new Promise<void>((resolve) => {
+      staleDelivered = resolve;
+    });
+    await page.route(`**/${MEMBER_SERVER_URL.split("//")[1]}`, async (route) => {
+      const body = route.request().postData() ?? "";
+      if (body.includes('"resources/read"')) {
+        // ホストからの結果を、テストから同じ SDK の経路で渡せるようにする（form-draft と同じ）。
+        const response = await route.fetch();
+        const raw = await response.text();
+        const message = parse(raw);
+        const content = message.result?.contents?.[0];
+        if (content)
+          content.text = content.text.replace(
+            "<head>",
+            `<head><script>
+              window.addEventListener('message', event => {
+                if (event.data?.method !== 'ui/notifications/tool-result') return;
+                window.receiveHostResult = result => window.dispatchEvent(new MessageEvent('message', {
+                  source: event.source, origin: event.origin,
+                  data: {...event.data, params: result}
+                }));
+              }, true);
+            </script>`,
+          );
+        await route.fulfill({
+          response,
+          body: raw.startsWith("{")
+            ? JSON.stringify(message)
+            : `event: message\ndata: ${JSON.stringify(message)}\n\n`,
+        });
+        return;
+      }
+      if (body.includes("stamp-iekei-ramen") && stamps++ === 0) {
+        // サーバーには先に届かせ、返事だけを遅らせる（処理の順番は変えない）。
+        const response = await route.fetch();
+        const text = await response.text();
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await route.fulfill({ response, body: text });
+        staleDelivered();
+        return;
+      }
+      await route.continue();
+    });
+
+    const app = await callTool(
+      page,
+      "search-iekei-ramen",
+      { prefecture: "神奈川県" },
+      MEMBER_SERVER_NAME,
+    );
+    await waitForApp(app);
+    await shopCards(app).nth(0).click();
+    await app.getByRole("button", { name: "行った", exact: true }).click();
+    await expect.poll(() => stamps).toBe(1);
+
+    // モデルが同じ条件で呼び直した結果が、ホストから届く。
+    const response = await request.post(MEMBER_SERVER_URL, {
+      headers: { Accept: "application/json, text/event-stream" },
+      data: {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "search-iekei-ramen", arguments: { prefecture: "神奈川県" } },
+      },
+    });
+    const { result } = parse(await response.text());
+    const before = await app.locator("main").evaluate((main) => main.isConnected);
+    expect(before).toBe(true);
+    const oldMain = await app.locator("main").elementHandle();
+    await app.locator("body").evaluate((_body, notification) => {
+      (window as unknown as { receiveHostResult: (result: unknown) => void }).receiveHostResult(
+        notification,
+      );
+    }, result);
+    await expect.poll(() => oldMain!.evaluate((main) => main.isConnected)).toBe(false);
+
+    await shopCards(app).nth(1).click();
+    await app.getByRole("button", { name: "行った", exact: true }).click();
+
+    await afterDelivered(app, stale);
+    // あとで押した店の印が、先に押した方の古い写しで消えていない。
+    await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
     await expect(
       app.locator("ul > li button span span").filter({ hasText: /^行った$/ }),
     ).toHaveCount(2);

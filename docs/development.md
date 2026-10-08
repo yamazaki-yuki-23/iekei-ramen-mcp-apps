@@ -79,7 +79,9 @@ Claudeの本番URL追加は未確認であることをページにも明記す�
 
 ### UI のホスト境界
 
-`src/iekei-app.tsx` は両方の入口が使う画面と状態を持つ。`src/hosts/types.ts` が
+`src/iekei-app.tsx` は両方の入口が使う画面と状態を持つ。payload ごとに key で作り直す結果の画面は
+`src/iekei-app-inner.tsx`、作り直しをまたぐ state（焦点・読み上げ・「行った」の列など）は外側の
+`iekei-app.tsx` に置く（#171・#172）。`src/hosts/types.ts` が
 tool呼び出し・リンク・表示モード・モデルとの会話の契約を定義し、SDKのAppは
 `src/hosts/mcp.tsx` に閉じ込める。MCPの初期通知は従来どおり受け取り、Webでは
 `src/hosts/web.tsx` が同じoriginの `/mcp` にSDKクライアントを接続する。
