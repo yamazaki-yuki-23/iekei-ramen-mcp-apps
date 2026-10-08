@@ -32,6 +32,26 @@ interface Env extends AuthEnv {
   GEOCODE_GATE?: DurableObjectNamespace;
   /** 使われているかを数える（Workers Analytics Engine）。手元の Node サーバーには無い。 */
   USAGE?: AnalyticsEngineDataset;
+  /** 静的ページ（dist/web）。存在しない URL に Web の 404 ページを返すのに使う（#169）。 */
+  ASSETS?: Fetcher;
+}
+
+/**
+ * 存在しない URL。**ブラウザでページを開いた人にだけ** Web の 404 ページを返す（#169）。
+ * 静的ページに無い URL は Worker に落ちてくる（Worker があると not_found_handling は効かない）。
+ * MCP や認可の誤った URL（`/.well-known/*` など）と、HTML を求めていない呼び出しには、
+ * 今どおり素の 404 を返す。
+ */
+async function notFound(request: Request, url: URL, env: Env): Promise<Response> {
+  const wantsPage =
+    request.method === "GET" &&
+    (request.headers.get("Accept") ?? "").includes("text/html") &&
+    !url.pathname.startsWith("/.well-known/");
+  if (wantsPage && env.ASSETS) {
+    const page = await env.ASSETS.fetch(new URL("/404.html", url));
+    if (page.ok) return new Response(page.body, { status: 404, headers: page.headers });
+  }
+  return new Response("Not Found. MCP endpoint is /mcp", { status: 404, headers: CORS_HEADERS });
 }
 
 /** 認可サーバーが受け持つ道か（`/authorize` と Google からの戻りを含む）。 */
@@ -147,12 +167,7 @@ export default {
       return finishSignIn(request, env, origin);
     }
 
-    if (url.pathname !== "/mcp") {
-      return new Response("Not Found. MCP endpoint is /mcp", {
-        status: 404,
-        headers: CORS_HEADERS,
-      });
-    }
+    if (url.pathname !== "/mcp") return notFound(request, url, env);
 
     /*
      * 誰のリクエストか。**無ければ匿名**で、そのまま通す。

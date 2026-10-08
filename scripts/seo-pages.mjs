@@ -46,6 +46,12 @@ const breadcrumbs = (items) => ({
 
 /** 店が全部未判定なら、そのページも未判定の店と同じく検索に載せない。 */
 const allCandidates = (list) => list.every((shop) => shop.confidence === "candidate");
+/**
+ * 市区町村ページは、未判定でない店が 2 軒未満なら載せない（#169）。1 軒だけのページは中身が
+ * その店のページとほぼ同じ（違うのは見出しとパンくずだけ）で、店のページの方が載る。
+ * 県ページからのリンクは残す（noindex でもリンクはたどられる）。
+ */
+const thinCity = (list) => list.filter((shop) => shop.confidence !== "candidate").length < 2;
 
 /*
  * トップと同じ部品と見た目にする（#152）。ロゴと名前・探し方のリンク・見出しと件数の札・
@@ -58,13 +64,14 @@ function page({
   path,
   content,
   noindex = false,
+  canonical = true,
   structured,
   heading = title,
   count,
   crumbs = "",
 }) {
   const ld = [structured ?? []].flat();
-  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}"><link rel="canonical" href="${origin}${path}">${ogp({ title, description, path })}${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${ld.length ? `<script type="application/ld+json">${JSON.stringify(ld.length === 1 ? ld[0] : ld).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page"><header class="seo-header"><a class="seo-brand" href="/"><img src="/favicon.svg" alt="" width="40" height="40">家系ラーメンを探す</a><nav class="seo-links" aria-label="探し方"><a href="/">迷ったら</a><a href="/area/"${path === "/area/" ? ' aria-current="page"' : ""}>都道府県から</a></nav></header><main>${crumbs ? `<p class="seo-crumbs">${crumbs}</p>` : ""}<div class="seo-head"><h1>${escape(heading)}</h1>${count === undefined ? "" : `<span class="seo-count">判定した結果の ${count} 軒</span>`}</div>${content}</main><footer><p class="seo-note">店舗データ: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p></footer></body></html>`;
+  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${canonical ? `<link rel="canonical" href="${origin}${path}">${ogp({ title, description, path })}` : ""}${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${ld.length ? `<script type="application/ld+json">${JSON.stringify(ld.length === 1 ? ld[0] : ld).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page"><header class="seo-header"><a class="seo-brand" href="/"><img src="/favicon.svg" alt="" width="40" height="40">家系ラーメンを探す</a><nav class="seo-links" aria-label="探し方"><a href="/">迷ったら</a><a href="/area/"${path === "/area/" ? ' aria-current="page"' : ""}>都道府県から</a></nav></header><main>${crumbs ? `<p class="seo-crumbs">${crumbs}</p>` : ""}<div class="seo-head"><h1>${escape(heading)}</h1>${count === undefined ? "" : `<span class="seo-count">判定した結果の ${count} 軒</span>`}</div>${content}</main><footer><p class="seo-note">店舗データ: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p></footer></body></html>`;
 }
 
 /** 券売機の入口。アプリの券売機と同じ枠に、茶赤の発券キーを 1 つ置く。 */
@@ -157,7 +164,7 @@ export function seoPages(shops) {
         title: `${label}の家系ラーメンの候補一覧`,
         description: `${label}で判定した結果の${list.length}軒。店舗情報と地図を確認できます。家系ではない店が含まれている可能性があります。`,
         path,
-        noindex: allCandidates(list),
+        noindex: thinCity(list),
         structured: breadcrumbs([
           [prefecture, prefPath(prefecture)],
           [city, path],
@@ -167,7 +174,7 @@ export function seoPages(shops) {
         content: `${machine(`${city}の券売機`, appLink(prefecture, city), `${city}で探す`, "アプリで地図と一覧を開きます")}${shopList(list)}`,
       }),
     );
-    if (!allCandidates(list)) indexed.push(path);
+    if (!thinCity(list)) indexed.push(path);
   }
   for (const shop of shops) {
     const path = shopPath(shop);
@@ -210,6 +217,19 @@ export function seoPages(shops) {
     );
     if (shop.confidence !== "candidate") indexed.push(path);
   }
+  // 存在しない URL で Worker が返すページ（#169）。どこにも載せず、行き先だけ示す。
+  files.set(
+    "/404.html",
+    page({
+      title: "ページが見つかりません｜家系ラーメンを探す",
+      description: "お探しのページは見つかりませんでした。",
+      path: "/404.html",
+      heading: "ページが見つかりません",
+      noindex: true,
+      canonical: false,
+      content: `<p class="seo-lead">URL が変わったか、店舗の情報が更新された可能性があります。</p>${machine("家系ラーメンの券売機", "/", "アプリで探す", "迷ったら、近くの 3 軒から")}<p><a class="seo-sub-link" href="/area/">都道府県から探す</a></p>`,
+    }),
+  );
   files.set(
     "/sitemap.xml",
     `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${indexed.map((path) => `<url><loc>${escape(origin + path)}</loc></url>`).join("")}</urlset>`,

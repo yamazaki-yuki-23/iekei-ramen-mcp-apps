@@ -6,6 +6,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./dist/web",
+    // 存在しない URL に Web の 404 ページを返すため、Worker から読む（#169）。
+    "binding": "ASSETS",
     "not_found_handling": "none",
     // HTMLのナビゲーションでも、MCPと認可の経路を静的ページに置き換えない。
     "run_worker_first": [

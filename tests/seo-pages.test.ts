@@ -32,7 +32,8 @@ function jsonLd(html: string): Record<string, unknown>[] {
 describe("静的SEOページ", () => {
   it("県・市・店を生成し、未判定だけnoindexとsitemap除外にする", () => {
     const { files, counts } = seoPages(shops);
-    expect(counts).toEqual({ prefectures: 1, municipalities: 1, shops: 2, indexed: 5 });
+    // 市区町村は未判定でない店が 1 軒だけなので載せない（#169）。
+    expect(counts).toEqual({ prefectures: 1, municipalities: 1, shops: 2, indexed: 4 });
     expect(files.get("/area/kanagawa/")).toContain("判定した結果の2軒");
     expect(files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toContain("未判定家");
     expect(files.get("/shop/node-123/")).not.toContain('name="robots" content="noindex"');
@@ -132,9 +133,36 @@ describe("静的SEOページ", () => {
     expect(counts.indexed).toBe(
       2 +
         [...byPref.values()].filter(indexedPages).length +
-        [...byCity.values()].filter(indexedPages).length +
+        // 市区町村は、未判定でない店が 2 軒以上のときだけ載せる（#169）。
+        [...byCity.values()].filter(
+          (list) => list.filter((s) => s.confidence !== "candidate").length >= 2,
+        ).length +
         data.filter((s) => s.confidence !== "candidate").length,
     );
+  });
+});
+
+describe("薄いページと 404（#169）", () => {
+  it("未判定でない店が 1 軒だけの市区町村は noindex・sitemap 外、2 軒なら載せる", () => {
+    const one = seoPages(shops);
+    const city = "/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/";
+    expect(one.files.get(city)).toContain('name="robots" content="noindex"');
+    expect(one.files.get("/sitemap.xml")).not.toContain(city);
+    // 県のページは今どおり載せ、市区町村へのリンクも残す。
+    expect(one.files.get("/area/kanagawa/")).not.toContain("noindex");
+    expect(one.files.get("/area/kanagawa/")).toContain(`href="${city}"`);
+    const two = seoPages([shop, { ...shop, id: "node/789", name: "二軒目家" }]);
+    expect(two.files.get(city)).not.toContain("noindex");
+    expect(two.files.get("/sitemap.xml")).toContain(city);
+  });
+
+  it("404 ページは noindex で canonical を持たず、sitemap に載らない", () => {
+    const { files } = seoPages(shops);
+    const html = files.get("/404.html")!;
+    expect(html).toContain('name="robots" content="noindex"');
+    expect(html).not.toContain('rel="canonical"');
+    expect(html).toContain('href="/area/"');
+    expect(files.get("/sitemap.xml")).not.toContain("404");
   });
 });
 
