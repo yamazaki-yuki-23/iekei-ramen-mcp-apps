@@ -1,5 +1,5 @@
-import { useMemo, type CSSProperties, type ReactNode } from "react";
-import { metaParts, sameNameLabels } from "../lib/same-name";
+import { memo, useMemo, type CSSProperties, type ReactNode } from "react";
+import { metaParts, sameNameLabels, type SameNameLabel } from "../lib/same-name";
 import { TASTES, type Shop } from "../lib/types";
 import { formatDistance } from "../lib/geo";
 import { openingHoursLabel } from "../lib/opening-hours";
@@ -60,6 +60,101 @@ function RankStub({
   return <span className={styles.rank}>{index + 1}</span>;
 }
 
+/**
+ * 食券 1 枚。**memo で包み、変わった札だけ描き直す**（#157）。キーワードの下書きは外側の
+ * state なので、1 打鍵ごとに一覧全体が描き直され、最大 200 枚の札を作り直していた。
+ * 受け取るものは札ごとの値だけにする（onSelect は外側の setSelected で変わらない）。
+ */
+const ShopCard = memo(function ShopCard({
+  shop,
+  index,
+  selected,
+  visited,
+  label,
+  ranked,
+  stub,
+  onSelect,
+}: {
+  shop: Shop;
+  index: number;
+  selected: boolean;
+  visited: boolean;
+  label?: SameNameLabel;
+  ranked?: boolean;
+  stub: "number" | "distance";
+  onSelect?: (shop: Shop) => void;
+}) {
+  const meta = metaParts(shop, label);
+  return (
+    <button
+      type="button"
+      className={styles.card}
+      onClick={() => onSelect?.(shop)}
+      aria-current={selected || undefined}
+      /*
+       * どの店かを名指しできるようにする。**店名は同一性ではない**——
+       * 同じチェーンの別店舗は同じ名前で並ぶので、名前で突き合わせると
+       * 別の店を同じ店と数える（実測: 「次の 3 軒を見る」の前後を店名で
+       * 比べていて、壱八家が 2 店入った途端に重複と判定された）。
+       */
+      data-shop-id={shop.id}
+    >
+      {ranked && <RankStub shop={shop} index={index} stub={stub} />}
+      <span className={styles.cardBody}>
+        <span className={styles.shopHead}>
+          {/* 取り出す対象を名指しできるようにしておく（テストが店名だけを読む）。 */}
+          <span className={styles.shopName} data-shop-name>
+            {shop.name}
+          </span>
+          {label && (
+            <span className={styles.shopWhere} data-shop-where>
+              {label.text}
+            </span>
+          )}
+        </span>
+        {/*
+         * 判定の段階（家系か・可能性か・未判定か）はカードに出さない（#144）。
+         * 家系のアプリで「家系」と並べても情報にならない。誤りの可能性は画面下の
+         * 但し書きで全モード共通に伝え、報告で直す。
+         */}
+        <span className={styles.badges}>
+          {/*
+           * 味とブランドはバッジにせず、控えめな文字で添える。黒・茶赤・灰のバッジが
+           * 並ぶと、意味の違わないものが違う色に見えて読みにくかった。
+           */}
+          <span className={styles.shopFacts}>
+            {[TASTES[shop.taste].label, shop.brand].filter(Boolean).join("・")}
+          </span>
+          {/* 行った印は特典の無いサブ機能なので、塗らずに控えめに添える。 */}
+          {visited && <span className={styles.badgeVisited}>行った</span>}
+        </span>
+        {/*
+         * 名前の隣に出した分は、住所の行で繰り返さない（同じ文字列が
+         * 2 つ並ぶと壊れて見える）。**ただし出していない分は残す**——
+         * 市区町村だけで見分けが付く店から町名まで消すと、持っている
+         * 情報が画面から減る。判断は src/lib/same-name.ts にある。
+         */}
+        {/*
+         * data-shop-meta-parts は、どの欄を出したかを区切って持つ。
+         * **見た目は変わらない。** 文字列を目で突き合わせると、住所に
+         * 市名が入っている店（「横浜市」/「横浜市磯子区上中里町669-1」）や、
+         * 欄の中に空白がある店で誤判定するため、テストが欄ごとに
+         * 比べられるようにしてある。
+         */}
+        <span className={styles.meta} data-shop-meta data-shop-meta-parts={meta.join("\u0000")}>
+          {meta.join(" ")}
+        </span>
+        {shop.openingHours && (
+          <span className={styles.meta}>営業 {openingHoursLabel(shop.openingHours)}</span>
+        )}
+      </span>
+      {stub === "number" && shop.distanceKm !== undefined && (
+        <span className={styles.distance}>{formatDistance(shop.distanceKm)}</span>
+      )}
+    </button>
+  );
+});
+
 export function ShopList({
   shops,
   ranked,
@@ -96,76 +191,16 @@ export function ShopList({
           // 最初の 3 枚だけずらして出す（200 枚目が 24 秒後に出ないように）。
           style={ticket && i < 3 ? ({ "--ticket-index": i } as CSSProperties) : undefined}
         >
-          <button
-            type="button"
-            className={`${styles.card} ${selectedId === shop.id ? styles.cardSelected : ""}`}
-            onClick={() => onSelect?.(shop)}
-            aria-current={selectedId === shop.id || undefined}
-            /*
-             * どの店かを名指しできるようにする。**店名は同一性ではない**——
-             * 同じチェーンの別店舗は同じ名前で並ぶので、名前で突き合わせると
-             * 別の店を同じ店と数える（実測: 「次の 3 軒を見る」の前後を店名で
-             * 比べていて、壱八家が 2 店入った途端に重複と判定された）。
-             */
-            data-shop-id={shop.id}
-          >
-            {ranked && <RankStub shop={shop} index={i} stub={stub} />}
-            <span className={styles.cardBody}>
-              <span className={styles.shopHead}>
-                {/* 取り出す対象を名指しできるようにしておく（テストが店名だけを読む）。 */}
-                <span className={styles.shopName} data-shop-name>
-                  {shop.name}
-                </span>
-                {labels.has(shop.id) && (
-                  <span className={styles.shopWhere} data-shop-where>
-                    {labels.get(shop.id)?.text}
-                  </span>
-                )}
-              </span>
-              {/*
-               * 判定の段階（家系か・可能性か・未判定か）はカードに出さない（#144）。
-               * 家系のアプリで「家系」と並べても情報にならない。誤りの可能性は画面下の
-               * 但し書きで全モード共通に伝え、報告で直す。
-               */}
-              <span className={styles.badges}>
-                {/*
-                 * 味とブランドはバッジにせず、控えめな文字で添える。黒・茶赤・灰のバッジが
-                 * 並ぶと、意味の違わないものが違う色に見えて読みにくかった。
-                 */}
-                <span className={styles.shopFacts}>
-                  {[TASTES[shop.taste].label, shop.brand].filter(Boolean).join("・")}
-                </span>
-                {/* 行った印は特典の無いサブ機能なので、塗らずに控えめに添える。 */}
-                {visitedIds?.has(shop.id) && <span className={styles.badgeVisited}>行った</span>}
-              </span>
-              {/*
-               * 名前の隣に出した分は、住所の行で繰り返さない（同じ文字列が
-               * 2 つ並ぶと壊れて見える）。**ただし出していない分は残す**——
-               * 市区町村だけで見分けが付く店から町名まで消すと、持っている
-               * 情報が画面から減る。判断は src/lib/same-name.ts にある。
-               */}
-              {/*
-               * data-shop-meta-parts は、どの欄を出したかを区切って持つ。
-               * **見た目は変わらない。** 文字列を目で突き合わせると、住所に
-               * 市名が入っている店（「横浜市」/「横浜市磯子区上中里町669-1」）や、
-               * 欄の中に空白がある店で誤判定するため、テストが欄ごとに
-               * 比べられるようにしてある。
-               */}
-              <span
-                className={styles.meta}
-                data-shop-meta
-                data-shop-meta-parts={metaParts(shop, labels.get(shop.id)).join("\u0000")}
-              >
-                {metaParts(shop, labels.get(shop.id)).join(" ")}
-              </span>
-              {shop.openingHours && (
-                <span className={styles.meta}>営業 {openingHoursLabel(shop.openingHours)}</span>
-              )}
-            </span>
-            {stub === "number" && shop.distanceKm !== undefined && (
-              <span className={styles.distance}>{formatDistance(shop.distanceKm)}</span>
-            )}
-          </button>
+          <ShopCard
+            shop={shop}
+            index={i}
+            selected={selectedId === shop.id}
+            visited={visitedIds?.has(shop.id) ?? false}
+            label={labels.get(shop.id)}
+            ranked={ranked}
+            stub={stub}
+            onSelect={onSelect}
+          />
           {selectedId === shop.id && detail}
         </li>
       ))}

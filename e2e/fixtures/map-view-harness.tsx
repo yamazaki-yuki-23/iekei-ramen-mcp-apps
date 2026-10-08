@@ -51,6 +51,11 @@ function Harness() {
   const [selectedId, setSelectedId] = useState<string>();
   const [visibleShops, setVisibleShops] = useState(shops);
   useEffect(() => {
+    /*
+     * 横浜駅の周りへ寄せた画角から始める。親の effect は子（MapView が地図を作って
+     * 全体へ寄せる effect）の後に走るので、ここで動かせば最初の画角になる。
+     */
+    window.mapTest.map?.setView([focus.lat, focus.lon], focus.zoom);
     window.mapTest.visit = (value) => setVisited(new Set(value ? [shops[0].id] : []));
     window.mapTest.filter = () => setVisibleShops([shops[0]]);
   }, []);
@@ -62,7 +67,6 @@ function Harness() {
     <MapView
       shops={visibleShops}
       selectedId={selectedId}
-      focus={focus}
       refit={false}
       onSelect={(shop) => setSelectedId(shop.id)}
       visitedIds={visited}
