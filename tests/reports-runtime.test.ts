@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createTestHarness, unstable_readConfig, type TestHarness } from "wrangler";
-import { REPORT_ACCEPTED } from "../src/lib/reports";
+import { REPORT_ACCEPTED } from "../src/lib/report-accepted";
 const { compatibility_date, compatibility_flags } = unstable_readConfig(
   { config: fileURLToPath(new URL("../wrangler.jsonc", import.meta.url)) },
   { hideWarnings: true },

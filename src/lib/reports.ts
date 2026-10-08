@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-export const REPORT_ACCEPTED = "受け取りました。反映は確認してからなので時間がかかります";
 const existing = { shopId: z.string().trim().min(1).max(100) };
 export const ReportSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("not-iekei"), ...existing }),

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { focusLabel, mapListShops } from "../lib/map-list";
 import type { Bounds, Origin, SearchMode, Shop } from "../lib/types";
 import styles from "../mcp-app.module.css";
-import { MapView } from "./MapView";
 import { MapToolbar, type FullscreenControl } from "./MapToolbar";
+import { MapView } from "./lazy-map";
 import { ShopList } from "./ShopList";
 
 /*
@@ -127,31 +127,42 @@ export function ResultView({
                 }
               />
               <div className={styles.mapStage}>
-                <MapView
-                  shops={shops}
-                  selectedId={selectedId}
-                  /*
-                   * **塊の外を選んだら、その塊の一覧は畳む。** 出したままだと
-                   * 「この地点の 3 軒」の下に 4 枚並び、見出しの数も「この地点」という
-                   * まとまりも嘘になる。外を選んだ時点で、その塊の話は終わっている。
-                   */
-                  onSelect={(shop) => {
-                    if (focused && !focused.some((s) => s.id === shop.id)) setFocused(null);
-                    onSelect(shop);
-                  }}
-                  route={route}
-                  routeOrigin={routeOrigin}
-                  expanded={fullscreen?.expanded ?? false}
-                  onClusterSelect={(group, viaKeyboard) => {
-                    wantHeadFocus.current = viaKeyboard;
-                    setFocused(group);
-                  }}
-                  onReady={(getBounds) => (getBoundsRef.current = getBounds)}
-                  initialBounds={bounds}
-                  refit={!bounds}
-                  origin={origin}
-                  visitedIds={visitedIds}
-                />
+                {/* 読み込みを待つ間も、地図と同じ大きさの箱を置いて配置を動かさない。 */}
+                <Suspense
+                  fallback={
+                    <div
+                      className={
+                        fullscreen?.expanded ? `${styles.map} ${styles.mapExpanded}` : styles.map
+                      }
+                    />
+                  }
+                >
+                  <MapView
+                    shops={shops}
+                    selectedId={selectedId}
+                    /*
+                     * **塊の外を選んだら、その塊の一覧は畳む。** 出したままだと
+                     * 「この地点の 3 軒」の下に 4 枚並び、見出しの数も「この地点」という
+                     * まとまりも嘘になる。外を選んだ時点で、その塊の話は終わっている。
+                     */
+                    onSelect={(shop) => {
+                      if (focused && !focused.some((s) => s.id === shop.id)) setFocused(null);
+                      onSelect(shop);
+                    }}
+                    route={route}
+                    routeOrigin={routeOrigin}
+                    expanded={fullscreen?.expanded ?? false}
+                    onClusterSelect={(group, viaKeyboard) => {
+                      wantHeadFocus.current = viaKeyboard;
+                      setFocused(group);
+                    }}
+                    onReady={(getBounds) => (getBoundsRef.current = getBounds)}
+                    initialBounds={bounds}
+                    refit={!bounds}
+                    origin={origin}
+                    visitedIds={visitedIds}
+                  />
+                </Suspense>
               </div>
               <p className={styles.mapNote}>{PIN_NOTE}</p>
               {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}

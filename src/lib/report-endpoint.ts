@@ -1,5 +1,6 @@
 import shops from "../../data/shops.json";
-import { receiveReport, REPORT_ACCEPTED, ReportSchema } from "./reports";
+import { REPORT_ACCEPTED } from "./report-accepted";
+import { receiveReport, ReportSchema } from "./reports";
 
 interface ReportEnv {
   VISITS?: D1Database;
