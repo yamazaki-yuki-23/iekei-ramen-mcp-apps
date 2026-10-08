@@ -80,11 +80,14 @@ export default {
     const url = new URL(request.url);
     /*
      * http で来たら https へ送る（#168）。送らないと、認可のメタデータが http の URL を
-     * 案内してしまう。POST は 301 だと GET に変わるので 308 にする。手元の開発サーバーと
-     * E2E（localhost）は http のまま。静的ページは Worker より先に返るので、ゾーンの
-     * 「Always Use HTTPS」で送る（docs/development.md）。
+     * 案内してしまう。POST は 301 だと GET に変わるので 308 にする。静的ページは Worker より
+     * 先に返るので、ゾーンの「Always Use HTTPS」で送る（docs/development.md）。
+     *
+     * **Cloudflare が付ける X-Forwarded-Proto で見る。** `wrangler dev` は URL と Host を routes の
+     * ホスト名（http://iekeiramen.com）に書き換えて渡し、返した Location は localhost に戻すので、
+     * URL で見ると手元で http://localhost へ送り続けた。手元にはこのヘッダが無い。
      */
-    if (url.protocol === "http:" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
+    if (request.headers.get("X-Forwarded-Proto") === "http") {
       url.protocol = "https:";
       const safe = request.method === "GET" || request.method === "HEAD";
       return Response.redirect(url.toString(), safe ? 301 : 308);

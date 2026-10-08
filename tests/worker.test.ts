@@ -170,8 +170,9 @@ describe("worker.fetch", () => {
   });
 
   it("http で来たら https へ送り、POST は 308 で本文ごと送り直させる（#168）", async () => {
+    const http = { "X-Forwarded-Proto": "http" };
     const get = await worker.fetch(
-      new Request("http://iekeiramen.com/.well-known/oauth-protected-resource"),
+      new Request("http://iekeiramen.com/.well-known/oauth-protected-resource", { headers: http }),
       env,
       ctx,
     );
@@ -180,7 +181,7 @@ describe("worker.fetch", () => {
       "https://iekeiramen.com/.well-known/oauth-protected-resource",
     );
     const post = await worker.fetch(
-      new Request("http://iekeiramen.com/mcp?x=1", { method: "POST", body: "{}" }),
+      new Request("http://iekeiramen.com/mcp?x=1", { method: "POST", body: "{}", headers: http }),
       env,
       ctx,
     );
@@ -193,6 +194,10 @@ describe("worker.fetch", () => {
       ctx,
     );
     expect(await meta.json()).toMatchObject({ resource: "https://iekeiramen.com/mcp" });
+    // wrangler dev は URL を http://iekeiramen.com に書き換えて渡すが、ヘッダは付かない。
+    // ここで送ると、Location が localhost に戻されて手元で送り続けた。
+    const local = await worker.fetch(new Request("http://iekeiramen.com/health"), env, ctx);
+    expect(local.status).toBe(200);
   });
 
   it("KV の無い環境では、サインインの道が落ちずに 501 を返す", async () => {
