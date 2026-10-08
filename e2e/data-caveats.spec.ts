@@ -1,7 +1,12 @@
 import { expect } from "@playwright/test";
 import { test } from "./fixtures";
 import { CONFIDENCE, TASTES } from "../src/lib/types";
-import { DATA_FOOTNOTE, TASTE_REFERENCE_NOTE, misjudgeNote } from "../src/lib/data-caveats";
+import {
+  DATA_CREDIT,
+  DATA_FOOTNOTE,
+  TASTE_REFERENCE_NOTE,
+  resultCaveat,
+} from "../src/lib/data-caveats";
 import { callTool, waitForApp } from "./helpers";
 
 test("今回の 3 軒が確定店だけでも、UI から母集団の可能性の注意書きをモデルへ送る", async ({
@@ -22,20 +27,21 @@ for (const theme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: theme });
     const app = await callTool(page, "decide-iekei-ramen", { keyword: "横濱家" });
     await waitForApp(app);
-    // 並べた根拠は出すが、判定の段階は画面に書かない（#144。モデルにだけ渡す）。
-    await expect(app.getByText(/軒を.*に並べた/)).toBeVisible();
+    // 判定の段階は画面に書かない（#144。モデルにだけ渡す）。長い根拠の文も出さない（#152）。
     await expect(app.getByText(/家系の可能性/)).toHaveCount(0);
-    // 常に出す注記は短く、推定と直線距離だけは必ず残す。
-    await expect(app.getByText(DATA_FOOTNOTE)).toBeVisible();
-    // 判定の段階は出さず、誤りの可能性を 1 文で伝える（#144）。
-    await expect(app.getByText(misjudgeNote(false))).toBeVisible();
-    // 会話の中には報告の口が無いので、Web 版の報告へ案内する（誤りを直す道を残す）。
-    await expect(
-      app.getByText(/Web 版（iekeiramen\.com）で店を開き「店舗情報を報告する」/),
-    ).toBeVisible();
-    await app.getByText("味の傾向について", { exact: true }).click();
-    const note = app.locator("details").filter({ hasText: "味の傾向について" });
+    await expect(app.getByText(/軒を.*に並べた/)).toHaveCount(0);
+    // 但し書きは結果のすぐ下に 1 回。会話の中は Web 版の報告へ案内する（#152）。
+    await expect(app.getByText(resultCaveat(false), { exact: true })).toHaveCount(1);
+    await expect(app.getByText(/推定/).filter({ visible: true })).toHaveCount(1);
+    // 出典は見せ、説明は「データについて」に畳む。
+    await expect(app.getByText(DATA_CREDIT)).toBeVisible();
+    await expect(app.getByText(DATA_FOOTNOTE)).toBeHidden();
+    await app.getByText("データについて", { exact: true }).click();
+    const note = app.locator("details").filter({ hasText: "データについて" });
+    await expect(note).toContainText(DATA_FOOTNOTE);
     await expect(note).toContainText(TASTE_REFERENCE_NOTE);
+    // 参考値の但し書きは畳んだ中でも 1 回（#152）。
+    expect((await note.innerText()).split(TASTE_REFERENCE_NOTE).length - 1).toBe(1);
     await expect(note).toContainText(TASTES.unknown.description);
     expect(await app.locator("body").evaluate((body) => body.scrollWidth - body.clientWidth)).toBe(
       0,
@@ -54,6 +60,6 @@ test("キーワード付きで開いた「迷ったら」は、発券しても�
   await expect(app.getByRole("button", { name: "このキーワードを外す" })).toBeVisible();
   await app.getByRole("button", { name: /^発券する/ }).click();
   await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
-  await expect(app.getByText(/「横濱家」に合う/)).toBeVisible();
+  await expect(app.getByText("キーワード「横濱家」")).toBeVisible();
   await expect(app.getByRole("button", { name: "このキーワードを外す" })).toBeVisible();
 });

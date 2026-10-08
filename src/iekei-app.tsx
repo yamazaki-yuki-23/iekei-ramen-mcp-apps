@@ -44,7 +44,7 @@ import { originLabel } from "./lib/geo";
 import { createDeliveryQueue } from "./lib/model-context";
 import { EMPTY_PAYLOAD } from "./lib/payload";
 import { safeAreaStyle } from "./lib/safe-area";
-import { DATA_DEFINITIONS, DATA_FOOTNOTE, misjudgeNote } from "./lib/data-caveats";
+import { DATA_CREDIT, DATA_DEFINITIONS, DATA_FOOTNOTE } from "./lib/data-caveats";
 import { scopeLabel } from "./lib/scope";
 import { MAX_STOPS, planRoute } from "./lib/route";
 import type { AppPayload, DecideInfo, Origin, SearchMode, Shop, VisitResult } from "./lib/types";
@@ -1014,12 +1014,12 @@ function IekeiAppInner({
       />
 
       <footer className={styles.footer}>
-        <p className={styles.footnote}>{misjudgeNote(app.capabilities.reports === true)}</p>
-        <p className={styles.footnote}>{DATA_FOOTNOTE}</p>
+        {/* 但し書きは結果の下に 1 回（#152）。ここは出典だけ見せ、説明は畳む。 */}
+        <p className={styles.footnote}>{DATA_CREDIT}</p>
         <details className={styles.guide}>
-          <summary className={styles.guideSummary}>味の傾向について</summary>
+          <summary className={styles.guideSummary}>データについて</summary>
           <ul className={styles.definitions}>
-            {DATA_DEFINITIONS.map((line) => (
+            {[DATA_FOOTNOTE, ...DATA_DEFINITIONS].map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ul>

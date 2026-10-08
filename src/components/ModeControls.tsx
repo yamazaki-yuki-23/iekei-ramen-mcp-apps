@@ -69,12 +69,7 @@ export function ModeControls({
 
   if (mode === "nearby") {
     return (
-      <MachineShell
-        title="近くの券売機"
-        hint="押して、発券"
-        caveat="距離は直線距離です。歩く道のりではありません。"
-        compact={compact}
-      >
+      <MachineShell title="近くの券売機" hint="押して、発券" compact={compact}>
         <NearbyPanel
           origin={origin}
           onLocate={onLocate}
@@ -107,12 +102,7 @@ export function ModeControls({
   // 店名の券売機（#144）。ブランドのキーを押すか打って、発券する。
   if (mode === "form") {
     return (
-      <MachineShell
-        title="店名の券売機"
-        hint="押すか、打って発券"
-        caveat="家系の判定は推定です。ブランドは地図の記載から判定しています。"
-        compact={compact}
-      >
+      <MachineShell title="店名の券売機" hint="押すか、打って発券" compact={compact}>
         <BrandKeys
           brands={brands}
           keyword={form.keyword}

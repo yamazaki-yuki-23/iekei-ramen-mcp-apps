@@ -1,4 +1,5 @@
 import { expect } from "@playwright/test";
+import { resultCaveat } from "../src/lib/data-caveats";
 import { test } from "./fixtures";
 import { callTool, waitForApp, openMode } from "./helpers";
 
@@ -13,10 +14,12 @@ test("初回は家系の3行説明を開き、次回は畳む。候補を変え�
   await expect(intro).toHaveAttribute("open", "");
   await expect(intro.getByText("豚骨醤油と太めの麺が定番です。", { exact: true })).toBeVisible();
   await expect(intro.getByText("迷ったら、まず3軒から見てみよう。", { exact: true })).toBeVisible();
-  await expect(intro.getByText("家系判定と味の分類は推定です。", { exact: true })).toBeVisible();
   // 最初の画面は約束と券売機（#144）。位置を求めずに、全国の 3 軒の食券が出ている。
   await expect(page.getByText("家系がある。")).toBeVisible();
-  await expect(page.getByText("家系の判定と味の傾向は推定、距離は直線距離です。")).toBeVisible();
+  // 但し書きは券売機の下ではなく、3 軒のすぐ下に 1 回（#152）。
+  await expect(page.getByText(resultCaveat(true))).toBeVisible();
+  // 1 画面に 1 回（券売機の下・画面の下の段落には重ねない）。
+  await expect(page.getByText(/推定/).filter({ visible: true })).toHaveCount(1);
   await expect(page.locator("main")).toHaveAttribute("data-mode", "decide");
   const nav = page.getByRole("navigation", { name: "探し方" });
   await expect(nav.getByRole("button").first()).toHaveText("迷ったら");
@@ -38,7 +41,7 @@ test("初回は家系の3行説明を開き、次回は畳む。候補を変え�
   await summary.press("Enter");
   await expect(intro).toHaveAttribute("open", "");
   await page.getByRole("button", { name: "次の 3 軒を見る" }).click();
-  await expect(page.getByText(/^\d+ 軒中 4〜6 軒目$/)).toBeVisible();
+  await expect(page.getByText(/^全国 \d+ 軒中、.+に 4〜6 軒目$/)).toBeVisible();
   await expect(intro).toHaveAttribute("open", "");
   expect(
     await page.evaluate(
@@ -74,7 +77,7 @@ test("localStorageが使えなくても説明を畳み、候補を切り替え�
   await intro.locator(":scope > summary").click();
   await expect(intro).not.toHaveAttribute("open", "");
   await page.getByRole("button", { name: "次の 3 軒を見る" }).click();
-  await expect(page.getByText(/^\d+ 軒中 4〜6 軒目$/)).toBeVisible();
+  await expect(page.getByText(/^全国 \d+ 軒中、.+に 4〜6 軒目$/)).toBeVisible();
   await expect(intro).not.toHaveAttribute("open", "");
   await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
   expect(errors).toEqual([]);

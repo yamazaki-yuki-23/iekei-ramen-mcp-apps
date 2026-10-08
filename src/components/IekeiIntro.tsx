@@ -24,7 +24,6 @@ export function IekeiIntro({ open, onToggle }: Props) {
         <div className={styles.introLines}>
           <p>豚骨醤油と太めの麺が定番です。</p>
           <p>迷ったら、まず3軒から見てみよう。</p>
-          <p>家系判定と味の分類は推定です。</p>
         </div>
         <details className={styles.guide}>
           <summary className={styles.guideSummary}>直系・資本系・インスパイア系とは</summary>

@@ -34,7 +34,9 @@ describe("静的SEOページ", () => {
     const html = seoPages(shops).files.get("/area/kanagawa/")!;
     expect(html).not.toContain(CONFIDENCE.candidate.description);
     expect(html).not.toContain(CONFIDENCE.confirmed.label + "</span>");
-    expect(html).toContain("家系ではない店が、家系として表示されている可能性があります。");
+    expect(html).toContain(
+      "家系かどうかは地図の記載と既知のブランドからの推定、味の傾向は既知のブランドからの参考値で、実食に基づくものではありません。",
+    );
     // 段階を出さない代わりに、誤りを直す道（アプリの報告）へ案内する。
     expect(html).toContain(
       '<a href="/">アプリ</a>でその店を開き「店舗情報を報告する」から教えてください。',
@@ -98,7 +100,12 @@ describe("静的SEOページ", () => {
       titles.push(html.match(/<title>(.*?)<\/title>/)![1]);
       descriptions.push(html.match(/name="description" content="([^"]*)"/)![1]);
       canonicals.push(html.match(/rel="canonical" href="([^"]*)"/)![1]);
-      expect(html).toContain("家系判定と味の傾向");
+      expect(html).toContain("味の傾向は既知のブランドからの参考値");
+      // 座標の行は出さない。利用者には意味が無く、地図のリンクで足りる（#152）。
+      expect(html).not.toContain("座標：");
+      // 但し書きと誤りの報告の案内は、どのページも 1 回だけ（#152）。
+      expect(html.split("参考値").length - 1).toBe(1);
+      expect(html.split("店舗情報を報告する").length - 1).toBe(1);
       expect(html).toContain("OpenStreetMap contributors");
       expect(html).toContain("ODbL");
       expect(html).toContain('rel="icon"');
@@ -117,13 +124,14 @@ describe("静的SEOページ", () => {
 });
 
 describe("Webの検索条件リンク", () => {
-  it("県・市区町村・店名を既存の匿名検索へ渡す", () => {
+  it("市区町村・店名は匿名検索へ、県だけは券売機へ渡す", () => {
     expect(webEntry("?prefecture=神奈川県&keyword=横浜市")).toEqual({
       name: "search-iekei-ramen",
       arguments: { prefecture: "神奈川県", keyword: "横浜市" },
     });
+    // 県だけなら、その県の券売機（迷ったら）で開く（#152。都道府県のページの発券キー）。
     expect(webEntry("?prefecture=神奈川県")).toEqual({
-      name: "search-iekei-ramen",
+      name: "decide-iekei-ramen",
       arguments: { prefecture: "神奈川県" },
     });
     expect(webEntry("?keyword=吉村家")).toEqual({
@@ -138,6 +146,6 @@ describe("Webの検索条件リンク", () => {
       `?keyword=${"x".repeat(101)}`,
       "?tool=stamp-iekei-ramen",
     ])
-      expect(webEntry(query)).toEqual({ name: "decide-iekei-ramen", arguments: {} });
+      expect(webEntry(query)).toEqual({ name: "decide-iekei-ramen", arguments: { near: "auto" } });
   });
 });

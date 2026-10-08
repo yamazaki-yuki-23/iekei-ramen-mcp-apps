@@ -285,7 +285,7 @@ test.describe("モード切り替え", () => {
     const app = await callTool(page, "search-iekei-ramen");
     await waitForApp(app);
 
-    await expect(app.getByText(/OpenStreetMap（ODbL）由来/)).toBeVisible();
+    await expect(app.getByText(/© OpenStreetMap contributors（ODbL）/)).toBeVisible();
   });
 
   test("狭いホストでもタブが溝からはみ出さない", async ({ page }) => {
@@ -305,8 +305,9 @@ test.describe("モード切り替え", () => {
 });
 
 /** 根拠の一文から母数（「〜 軒を」）を取り出す。 */
-function poolSize(basis: string): string | undefined {
-  return basis.match(/(\d+) 軒を/)?.[1];
+/** 「全国 352 軒中、近い順に 1〜3 軒目」から母数を取る（#152 で長い根拠の文は画面から外した）。 */
+function poolSize(round: string): string | undefined {
+  return round.match(/(\d+) 軒中/)?.[1];
 }
 
 test.describe("迷ったら（3 軒に絞る）", () => {
@@ -320,10 +321,12 @@ test.describe("迷ったら（3 軒に絞る）", () => {
       label: "横浜駅",
     });
     await waitForApp(app);
-    await expect(app.getByText(/横浜駅から近い順に並べ/)).toBeVisible();
+    await expect(app.getByRole("heading", { name: /（横浜駅）/ })).toBeVisible();
+    await expect(app.getByText("近い順に並べています。")).toBeVisible();
     await app.getByRole("button", { name: /^発券する/ }).click();
     await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
-    await expect(app.getByText(/横浜駅から近い順に並べ/)).toBeVisible();
+    await expect(app.getByRole("heading", { name: /（横浜駅）/ })).toBeVisible();
+    await expect(app.getByText("近い順に並べています。")).toBeVisible();
   });
 
   test("3 軒まで絞り、なぜこの 3 軒かを画面に出す", async ({ page }) => {
@@ -336,8 +339,9 @@ test.describe("迷ったら（3 軒に絞る）", () => {
 
     await expect(shopCards(app)).toHaveCount(3);
     // 根拠を出さないと、根拠の無い「おすすめ」を押し付けているように見える。
-    await expect(app.getByText(/横浜駅から近い順に並べ/)).toBeVisible();
-    await expect(app.getByText(/順位は「おすすめ度」ではありません/)).toBeVisible();
+    await expect(app.getByRole("heading", { name: /（横浜駅）/ })).toBeVisible();
+    await expect(app.getByText("近い順に並べています。")).toBeVisible();
+    await expect(app.getByText(/並び順はおすすめ度ではありません/)).toBeVisible();
   });
 
   test("3 軒とも一度に見える（一覧の中で切れない）", async ({ page }) => {
@@ -455,14 +459,15 @@ test.describe("迷ったら（3 軒に絞る）", () => {
      * キーワードを落とすと母数が全国に広がり、「次の候補」として無関係な店が
      * 出る。効いている語は根拠の一文にも書いて、隠れた絞り込みにしない。
      */
-    const pool = await app.locator("section p").first().innerText();
-    expect(pool).toContain("「横浜」に合う");
+    const round = app.getByText(/ 軒中、.+に \d+〜\d+ 軒目$/);
+    await expect(app.getByText("キーワード「横浜」")).toBeVisible();
+    const pool = await round.innerText();
 
     await app.getByRole("button", { name: "次の 3 軒を見る" }).click();
     await expect(app.getByText(/ 4〜6 軒目$/)).toBeVisible();
 
-    const after = await app.locator("section p").first().innerText();
-    expect(after).toContain("「横浜」に合う");
+    await expect(app.getByText("キーワード「横浜」")).toBeVisible();
+    const after = await round.innerText();
     // 母数（〜軒）が変わっていないこと。広がると無関係な店が混ざる。
     expect(poolSize(after)).toBe(poolSize(pool));
   });
@@ -475,14 +480,13 @@ test.describe("迷ったら（3 軒に絞る）", () => {
      */
     const app = await callTool(page, "decide-iekei-ramen", { keyword: "横浜" });
     await waitForApp(app);
-    const before = await app.locator("section p").first().innerText();
-    expect(before).toContain("「横浜」に合う");
+    const round = app.getByText(/ 軒中、.+に \d+〜\d+ 軒目$/);
+    const before = await round.innerText();
 
     await app.getByRole("tab", { name: "迷ったら" }).click();
 
     await expect(app.getByText("キーワード「横浜」")).toBeVisible();
-    const after = await app.locator("section p").first().innerText();
-    expect(after).toContain("「横浜」に合う");
+    const after = await round.innerText();
     expect(poolSize(after)).toBe(poolSize(before));
   });
 
@@ -708,7 +712,7 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     // 距離で並べた結果なので、場所を名乗らないと何の 3 軒か分からない。
     await expect(app.getByRole("heading", { name: /35\.4657, 139\.6220/ })).toBeVisible();
     await expect(app.getByRole("heading", { name: /（全国）/ })).toHaveCount(0);
-    await expect(app.getByText(/35\.4657, 139\.6220から近い順/)).toBeVisible();
+    await expect(app.getByText("近い順に並べています。")).toBeVisible();
   });
 
   test("モデルが付けたキーワードは、0 件でも見えて外せる", async ({ page }) => {

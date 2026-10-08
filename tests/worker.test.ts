@@ -37,6 +37,29 @@ const rpc = (name: string) =>
     }),
   });
 
+/** Web の最初の画面と同じ near: "auto" で「迷ったら」を呼ぶ。cf は Cloudflare が付ける接続元の位置。 */
+const decideNearAuto = (cf?: Record<string, string>) => {
+  const request = new Request(`${ORIGIN}/mcp`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: { name: "decide-iekei-ramen", arguments: { near: "auto" } },
+    }),
+  });
+  if (cf) Object.defineProperty(request, "cf", { value: cf });
+  return worker.fetch(request, env, ctx).then(async (res) => {
+    const body = await res.text();
+    return JSON.parse(body.slice(body.indexOf("data: ") + 6).split("\n")[0]).result
+      .structuredContent;
+  });
+};
+
 describe("worker.fetch", () => {
   it("本文を持てない GET でも /mcp が 500 にならない", async () => {
     const response = await fetchPath("/mcp", { method: "GET" });
@@ -47,6 +70,26 @@ describe("worker.fetch", () => {
   it("匿名でも検索の tool は呼べる", async () => {
     const response = await rpc("search-iekei-ramen");
     expect(response.status).toBe(200);
+  });
+
+  it("Web の最初の 3 軒（near: auto）は、接続元から推定した地域で出す（#152）", async () => {
+    const near = await decideNearAuto({
+      latitude: "34.6937",
+      longitude: "135.5023",
+      city: "Osaka",
+      region: "Osaka",
+    });
+    expect(near.query.origin).toMatchObject({
+      source: "edge",
+      label: expect.stringMatching(/付近$/),
+    });
+    expect(near.decide.basis).toBe("distance");
+    expect(near.shops[0].prefecture).toBe("大阪府");
+    // 推定できなければ、案内を出さずに全国から（near: true とは違う）。
+    const anywhere = await decideNearAuto();
+    expect(anywhere.query.origin).toBeUndefined();
+    expect(anywhere.decide.needsOrigin).toBeUndefined();
+    expect(anywhere.shops).toHaveLength(3);
   });
 
   it("Cloudflare が付ける接続元の位置（request.cf）が tool まで届く", async () => {

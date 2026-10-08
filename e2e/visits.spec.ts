@@ -6,6 +6,7 @@
  * 動いている（`IEKEI_DEV_VISITOR`。main.ts にしか無い道）。
  */
 import { expect, type FrameLocator, type Page } from "@playwright/test";
+import { resultCaveat } from "../src/lib/data-caveats";
 import { test } from "./fixtures";
 import {
   afterDelivered,
@@ -181,6 +182,8 @@ test.describe("サインイン済み", () => {
     await expect(app.getByRole("heading", { level: 1 })).toHaveText("行った店");
     // 条件の入力欄も出さない。ここで県や味を変えると検索に化けて、記録の画面から弾かれる。
     await expect(app.getByLabel("都道府県")).toHaveCount(0);
+    // 店の判定と味を出すので、但し書きと報告の案内も 1 回（#152）。
+    await expect(app.getByText(resultCaveat(false))).toBeVisible();
   });
 
   test("「行った店」で取り消すと、その場で一覧から消える", async ({ page }) => {
