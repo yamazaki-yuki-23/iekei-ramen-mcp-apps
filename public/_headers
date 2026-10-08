@@ -3,3 +3,8 @@
 # ハッシュの無いものは既定（max-age=0, must-revalidate）のまま。
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# 一度 https で来たブラウザには、次から http を使わせない（#168）。サブドメインは
+# 持っていないので includeSubDomains・preload は付けない（外すのに何か月もかかる）。
+/*
+  Strict-Transport-Security: max-age=31536000

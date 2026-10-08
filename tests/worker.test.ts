@@ -166,6 +166,32 @@ describe("worker.fetch", () => {
     expect(response.status).toBe(200);
   });
 
+  it("http で来たら https へ送り、POST は 308 で本文ごと送り直させる（#168）", async () => {
+    const get = await worker.fetch(
+      new Request("http://iekeiramen.com/.well-known/oauth-protected-resource"),
+      env,
+      ctx,
+    );
+    expect(get.status).toBe(301);
+    expect(get.headers.get("Location")).toBe(
+      "https://iekeiramen.com/.well-known/oauth-protected-resource",
+    );
+    const post = await worker.fetch(
+      new Request("http://iekeiramen.com/mcp?x=1", { method: "POST", body: "{}" }),
+      env,
+      ctx,
+    );
+    expect(post.status).toBe(308);
+    expect(post.headers.get("Location")).toBe("https://iekeiramen.com/mcp?x=1");
+    // https で来たら、メタデータも https の URL を案内する。
+    const meta = await worker.fetch(
+      new Request("https://iekeiramen.com/.well-known/oauth-protected-resource"),
+      env,
+      ctx,
+    );
+    expect(await meta.json()).toMatchObject({ resource: "https://iekeiramen.com/mcp" });
+  });
+
   it("KV の無い環境では、サインインの道が落ちずに 501 を返す", async () => {
     // 認可サーバーは `cloudflare:workers` を取り込む。**読み込むとプロセスが落ちる**
     // ので、手前で断る。ここが通らないと手元の開発サーバーが死ぬ。
