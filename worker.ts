@@ -78,6 +78,17 @@ const CORS_HEADERS = {
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    /*
+     * http で来たら https へ送る（#168）。送らないと、認可のメタデータが http の URL を
+     * 案内してしまう。POST は 301 だと GET に変わるので 308 にする。手元の開発サーバーと
+     * E2E（localhost）は http のまま。静的ページは Worker より先に返るので、ゾーンの
+     * 「Always Use HTTPS」で送る（docs/development.md）。
+     */
+    if (url.protocol === "http:" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
+      url.protocol = "https:";
+      const safe = request.method === "GET" || request.method === "HEAD";
+      return Response.redirect(url.toString(), safe ? 301 : 308);
+    }
     const origin = url.origin;
 
     if (url.pathname === "/reports") return handleReport(request, env);

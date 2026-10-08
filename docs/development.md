@@ -23,6 +23,10 @@ HTMLやハッシュの無いファイルは既定の `max-age=0` のまま（#15
 トップの `#root` は画面1枚分を空けておく（`src/web.css`）。JSより先に描かれる下のリンクが
 押し下げられて CLS が 0.33 になっていた。接続できなかった画面（`data-connection="failed"`）は短いので空けない。つながった後の警告では空けたまま。
 本番は#41の決定に従い `https://iekeiramen.com/`。workers.devは再開しない。
+http で来たら https へ送る（#168）。Worker を通る経路（`run_worker_first`）は `worker.ts` が
+GET/HEAD を 301・それ以外を 308 で送る（認可のメタデータが http の URL を案内しないように）。
+静的ページは Worker より先に返るので、ゾーン `iekeiramen.com` の「SSL/TLS → エッジ証明書 →
+Always Use HTTPS」をオンにして送る。HSTS は `public/_headers`（`includeSubDomains`・`preload` なし）。
 
 ### 検索エンジン向けの静的ページ
 

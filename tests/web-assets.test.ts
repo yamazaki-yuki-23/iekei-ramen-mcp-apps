@@ -190,12 +190,18 @@ describe("workerdのWeb静的配信と既存API", () => {
 describe("キャッシュの指定（#153）", () => {
   it("名前にハッシュが入る /assets/* だけを長く持ち、HTML は毎回確かめる", () => {
     const headers = readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
-    const rules = headers
+    const cached = headers
       .split(/\n(?=\S)/)
-      .filter((block) => !block.startsWith("#") && block.trim())
+      .filter((block) => !block.startsWith("#") && block.includes("Cache-Control"))
       .map((block) => block.trim().split("\n")[0]);
     // ハッシュの無いパス（/・/*・*.html）に長いキャッシュが付くと、更新が届かなくなる。
-    expect(rules).toEqual(["/assets/*"]);
+    expect(cached).toEqual(["/assets/*"]);
     expect(headers).toContain("Cache-Control: public, max-age=31536000, immutable");
+  });
+
+  it("全体に HSTS を付け、サブドメインと preload は宣言しない（#168）", () => {
+    const headers = readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
+    expect(headers).toMatch(/^\/\*\n {2}Strict-Transport-Security: max-age=31536000$/m);
+    expect(headers).not.toMatch(/^\s+Strict-Transport-Security:.*(includeSubDomains|preload)/m);
   });
 });
