@@ -2,7 +2,7 @@ import { formatDistance } from "./geo";
 import type { Shop } from "./types";
 
 /**
- * 家系スワイプ（#166）の、画面に依らない決まり。問いかけの文・出口・FEVER のたまり方。
+ * 家系マッチ（#166）の、画面に依らない決まり。問いかけの文・出口・FEVER のたまり方。
  * 問いかけは**持っている事実だけ**で作る（距離・見た数・残りの数・操作の回数・注文の一般論）。
  * 「人気」「おいしい」「営業中」「当たり」は使わない（tests/swipe.test.ts で確かめる）。
  */
@@ -122,6 +122,6 @@ export function chargeFor(dir: SwipeDir, rare: boolean): number {
 /** シェアの文。店の評価は書かない（決めた事実と場所だけ）。 */
 export function shareText(names: string[]): string {
   return names.length === 1
-    ? `今日は「${names[0]}」に行く。家系スワイプで決めた。`
-    : `今日は ${names.map((n) => `「${n}」`).join("→")} をまわる。家系スワイプで決めた。`;
+    ? `今日は「${names[0]}」に行く。家系マッチで決めた。`
+    : `今日は ${names.map((n) => `「${n}」`).join("→")} をまわる。家系マッチで決めた。`;
 }

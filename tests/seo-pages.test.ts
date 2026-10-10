@@ -33,7 +33,9 @@ describe("静的SEOページ", () => {
   it("県・市・店を生成し、未判定だけnoindexとsitemap除外にする", () => {
     const { files, counts } = seoPages(shops);
     // 市区町村は未判定でない店が 1 軒だけなので載せない（#169）。
-    expect(counts).toEqual({ prefectures: 1, municipalities: 1, shops: 2, indexed: 4 });
+    expect(counts).toEqual({ prefectures: 1, municipalities: 1, shops: 2, indexed: 5 });
+    // 固定の 3 枚（トップ・家系マッチ #181・都道府県の一覧）も載せる。
+    expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/match/");
     expect(files.get("/area/kanagawa/")).toContain("判定した結果の2軒");
     expect(files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toContain("未判定家");
     expect(files.get("/shop/node-123/")).not.toContain('name="robots" content="noindex"');
@@ -131,7 +133,7 @@ describe("静的SEOページ", () => {
       (s) => `${s.prefecture}/${s.city}`,
     );
     expect(counts.indexed).toBe(
-      2 +
+      3 +
         [...byPref.values()].filter(indexedPages).length +
         // 市区町村は、未判定でない店が 2 軒以上のときだけ載せる（#169）。
         [...byCity.values()].filter(
@@ -202,7 +204,7 @@ describe("検索結果と共有のための追加（#155）", () => {
       'name="robots" content="noindex"',
     );
     expect(files.get("/sitemap.xml")).not.toContain("/area/kanagawa/");
-    expect(counts.indexed).toBe(2);
+    expect(counts.indexed).toBe(3);
     // 1 軒でも未判定以外があれば今どおり index する。
     expect(seoPages(shops).files.get("/area/kanagawa/")).not.toContain("noindex");
   });

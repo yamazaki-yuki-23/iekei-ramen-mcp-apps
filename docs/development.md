@@ -82,10 +82,11 @@ Search Consoleの所有権は2026-10-04に確認済み。DNSのTXTレコード�
 別の手順にし、検索を始める段階でGoogleへのサインインを要求しない。
 Claudeの本番URL追加は未確認であることをページにも明記する。
 
-### 家系スワイプ（`/swipe/`、#166）
+### 家系マッチ（`/match/`、#166・#181）
 
-Web だけの別ページ（`swipe/index.html` → `src/swipe/main.tsx`）。トップの大きな `iekei-app` には入れず、
+Web だけの別ページ（`match/index.html` → `src/swipe/main.tsx`）。トップの大きな `iekei-app` には入れず、
 同じ origin の `/mcp` を MCP クライアントで呼ぶ（トップと同じ。検索の決まりはサーバーの tool だけが持つ）。
+旧 URL の `/swipe/` は `public/_redirects` で `/match/` へ 301 で送る（#181。静的アセットの転送で、Worker は通らない）。
 
 - 店は `find-nearby-iekei-ramen` を `limit: 20` で近い順に取る。続きは `offset`。`facts: true` を渡すと、
   レア札の理由（事実だけ、`src/lib/shop-facts.ts`）が各店に付く。ほかの経路は `facts` を頼まないので payload は変わらない

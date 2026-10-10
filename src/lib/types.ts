@@ -21,7 +21,7 @@ export interface Shop {
   osmUrl: string;
   /** 「近くを探す」の結果にだけ入る、現在地からの直線距離 (km)。 */
   distanceKm?: number;
-  /** 家系スワイプのレア札の理由（#166）。事実だけ。find-nearby に facts を頼んだときだけ入る。 */
+  /** 家系マッチのレア札の理由（#166）。事実だけ。find-nearby に facts を頼んだときだけ入る。 */
   facts?: string[];
 }
 

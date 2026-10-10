@@ -1,4 +1,4 @@
-家系スワイプ（#166）の払う音
+家系マッチ（#166）の払う音
 
 swoop.mp3
   元の素材: "swoop2g.flac" by Streety

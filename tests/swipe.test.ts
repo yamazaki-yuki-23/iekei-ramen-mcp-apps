@@ -23,7 +23,7 @@ const shop = (km?: number): Shop => ({
 });
 const base = { index: 1, seen: 0, passStreak: 0, left: 10, nearLeft: 0 };
 
-describe("家系スワイプの問いかけ（#166）", () => {
+describe("家系マッチの問いかけ（#166）", () => {
   it("近い店は直線距離で問う（「直線」と書く）", () => {
     const ask = askFor({ ...base, shop: shop(0.4), nearLeft: 3 });
     expect(ask.text).toBe("直線 400m。行ける距離？");

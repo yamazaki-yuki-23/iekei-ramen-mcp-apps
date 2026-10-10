@@ -741,7 +741,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
         }))
         .toSorted((a, b) => a.distanceKm - b.distanceKm)
         .slice(offset, offset + limit)
-        // 家系スワイプのレア札の理由（#166）。事実だけ。頼まれたときだけ添える。
+        // 家系マッチのレア札の理由（#166）。事実だけ。頼まれたときだけ添える。
         .map((s) => (facts ? { ...s, facts: shopFacts(s, brandsInCity) } : s));
       const payload: Omit<AppPayload, "prefectures"> = {
         mode: "nearby",

@@ -1,7 +1,7 @@
 import type { SwipeDir } from "../lib/swipe";
 
 /*
- * 家系スワイプの音（#166、オーナーと決めた）。
+ * 家系マッチの音（#166、オーナーと決めた）。
  *
  * - 払う音: 録音の「シュッ」（public/sounds/swoop.mp3、CC0。出典は public/sounds/CREDITS.txt）。
  *   何十回聞いても気にならない小ささ。行きたいとパスの差は長さだけ
