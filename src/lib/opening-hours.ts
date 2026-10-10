@@ -48,15 +48,25 @@ function formatDays(selector: string): string | null {
   return out.includes("毎日") ? "毎日" : out.join("・");
 }
 
+/**
+ * 閉店の時刻。日付をまたぐなら「翌」を付ける（「11:00-27:00」→「翌 3:00」、
+ * 「11:00-1:00」→「翌 1:00」）。27:00 のままだと読み替えが要り、1:00 のままだと
+ * 開店前に閉まるように見える。終わりの 00:00・24:00 は「その日の終わり」なので 24:00。
+ */
+function endLabel(h1: number, m1: string, h2: number, m2: string): string {
+  if ((h2 === 0 || h2 === 24) && m2 === "00") return "24:00";
+  if (h2 >= 24) return `翌 ${h2 - 24}:${m2}`;
+  if (h2 * 60 + Number(m2) < h1 * 60 + Number(m1)) return `翌 ${h2}:${m2}`;
+  return `${h2}:${m2}`;
+}
+
 function formatTimes(spec: string): string | null {
   const out: string[] = [];
   for (const range of spec.split(/\s*,\s*/)) {
     const m = TIME.exec(range);
     if (!m) return null;
     const [, h1, m1, h2, m2] = m;
-    // 終わりの 00:00 は「その日の終わり」。0:00 と書くと開店前に見える。
-    const end = Number(h2) === 0 && m2 === "00" ? "24:00" : `${Number(h2)}:${m2}`;
-    out.push(`${Number(h1)}:${m1}〜${end}`);
+    out.push(`${Number(h1)}:${m1}〜${endLabel(Number(h1), m1, Number(h2), m2)}`);
   }
   return out.join("、");
 }

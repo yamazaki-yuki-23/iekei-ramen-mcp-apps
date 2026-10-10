@@ -1,0 +1,8 @@
+家系スワイプ（#166）の払う音
+
+swoop.mp3
+  元の素材: "swoop2g.flac" by Streety
+  URL: https://freesound.org/s/30241/
+  ライセンス: CC0 1.0（Creative Commons Zero）https://creativecommons.org/publicdomain/zero/1.0/
+  加工: 鳴っている部分を 250ms に切り、終わり 60ms をフェードアウト、5kHz のローパス、
+        音量をそろえ（-20 LUFS）、モノラル 22kHz・32kbps の MP3 にした
