@@ -1,0 +1,704 @@
+/*
+ * 家系タイプ診断（#167）。縦長の 1 画面: 共通のヘッダー / 見出し / 進み具合 / 問いと 3 つの答え。
+ * 最後は券売機の取り出し口から結果の食券が出てくる。色・余白はトークンだけを使う（DESIGN.md）。
+ */
+.page {
+  min-height: 100dvh;
+  overflow-x: clip;
+  background: var(--color-surface-muted);
+  color: var(--color-text-primary);
+}
+
+.app {
+  max-width: 26rem;
+  margin: 0 auto;
+  padding: calc(var(--space-3) + env(safe-area-inset-top, 0px)) var(--space-4)
+    calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* 音を消す（家系マッチと同じ設定を使う）。 */
+.mute {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--control-min-size);
+  min-height: var(--control-min-size);
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.mute:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--color-focus-edge);
+}
+
+/* 左上はどのページでも同じ「丼＋家系ラーメンを探す」で、押すとトップへ。 */
+.brand {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-min-size);
+  color: var(--color-text-primary);
+  font-size: var(--font-heading-lg-size);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-heading-lg-size);
+  line-height: var(--font-heading-lg-line-height);
+  font-weight: var(--font-weight-bold);
+}
+
+.progress {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.progress span {
+  height: 10px;
+  border: var(--border-width-regular) solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-surface);
+  transition: background var(--duration-fast) var(--easing-standard);
+}
+
+.progress span[data-done] {
+  background: var(--color-accent-fill);
+}
+
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  animation: slide-in 260ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(48px);
+    opacity: 0;
+  }
+}
+
+.count {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.question h2 {
+  margin: 0;
+  font-size: var(--font-heading-2xl-size);
+  line-height: var(--font-display-line-height);
+  font-weight: var(--font-weight-display);
+}
+
+.question h2:focus {
+  outline: none;
+}
+
+.options {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* 答えは券売機の釦。押したらすぐ次の問いへ進む。 */
+.option {
+  min-height: 72px;
+  padding: 0 var(--space-4);
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 5px 0 var(--color-ink);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-heading-lg-size);
+  font-weight: var(--font-weight-bold);
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 var(--color-ink);
+  background: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
+}
+
+.option:focus-visible,
+.btn:focus-visible,
+.primary:focus-visible,
+.back:focus-visible,
+.brand:focus-visible {
+  /* 焦点は 2 色の輪（DESIGN.md）。黄だけだと明るい面で見失う。 */
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--color-focus-edge);
+}
+
+.back {
+  align-self: flex-start;
+  min-height: var(--control-min-size);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-accent-strong);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 取り出し口。食券はこの下から押し出されて出てくる。 */
+.slot {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--color-ink);
+}
+
+.slot::after {
+  content: "";
+  position: absolute;
+  inset: -6px -4px;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.slot[data-rarity="激レア"]::after {
+  background: radial-gradient(closest-side, rgba(255, 214, 102, 0.95), rgba(214, 162, 30, 0));
+  animation: slot-glow 1400ms ease-out both;
+}
+
+.slot[data-rarity="レア"]::after {
+  background: radial-gradient(closest-side, rgba(235, 242, 248, 0.95), rgba(169, 180, 191, 0));
+  animation: slot-glow 900ms ease-out both;
+}
+
+@keyframes slot-glow {
+  40% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* 表面の光ときらめき・判子。カードの中に重ね、押せるものの邪魔をしない。 */
+.effects {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* 激レア: 虹色の光が表面を流れ続ける（ホログラム風）。 */
+.holo {
+  position: absolute;
+  inset: -20% -120%;
+  background: linear-gradient(
+    115deg,
+    transparent 32%,
+    rgba(255, 90, 160, 0.22) 38%,
+    rgba(255, 210, 80, 0.22) 43%,
+    rgba(90, 230, 160, 0.22) 48%,
+    rgba(80, 170, 255, 0.22) 53%,
+    rgba(190, 110, 255, 0.22) 58%,
+    transparent 64%
+  );
+  animation: holo 3.6s ease-in-out 1.4s infinite alternate both;
+}
+
+@keyframes holo {
+  from {
+    transform: translateX(-28%);
+  }
+  to {
+    transform: translateX(28%);
+  }
+}
+
+/* レア: 銀の光が 1 回だけ横切る。 */
+.sheen {
+  position: absolute;
+  inset: 0 -60%;
+  background: linear-gradient(
+    105deg,
+    transparent 42%,
+    rgba(255, 255, 255, 0.85) 50%,
+    transparent 58%
+  );
+  opacity: 0;
+  animation: sheen 1000ms ease-in-out 1000ms both;
+}
+
+@keyframes sheen {
+  from {
+    transform: translateX(-60%);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(60%);
+    opacity: 1;
+  }
+}
+
+.sparkle {
+  position: absolute;
+  color: var(--shindan-gold);
+  font-size: 22px;
+  line-height: 1;
+  opacity: 0;
+  animation: twinkle 1.8s ease-in-out 1.2s infinite both;
+}
+
+.sparkle[data-at="a"] {
+  top: 30%;
+  left: 7%;
+}
+
+.sparkle[data-at="b"] {
+  top: 44%;
+  right: 7%;
+  animation-delay: 1.65s;
+}
+
+.sparkle[data-at="c"] {
+  bottom: 22%;
+  left: 10%;
+  animation-delay: 2.1s;
+}
+
+.sparkle[data-at="d"] {
+  top: 16%;
+  right: 30%;
+  animation-delay: 2.55s;
+}
+
+.card[data-rarity="レア"] .sparkle {
+  font-size: 16px;
+  animation-iteration-count: 2;
+}
+
+@keyframes twinkle {
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(20deg);
+  }
+  from,
+  to {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+/* 「激レア！」の判子。カードが出きったところで押される。 */
+.stamp {
+  position: absolute;
+  top: 34%;
+  right: 6%;
+  padding: 4px 12px;
+  border: 3px solid #c0392b;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.85);
+  color: #c0392b;
+  font-size: var(--font-heading-lg-size);
+  font-weight: var(--font-weight-display);
+  transform: rotate(-12deg);
+  animation: stamp 420ms cubic-bezier(0.3, 1.6, 0.5, 1) 1350ms both;
+}
+
+@keyframes stamp {
+  from {
+    opacity: 0;
+    transform: rotate(-12deg) scale(2.4);
+  }
+}
+
+/* 定番: 光らない代わりに、丼から湯気が立つ。 */
+.common {
+  margin: 0;
+  align-self: stretch;
+  text-align: left;
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-strong);
+}
+
+.steam {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  display: flex;
+  gap: 14px;
+  transform: translateX(-30%);
+  color: light-dark(rgba(110, 90, 80, 0.6), rgba(255, 255, 255, 0.55));
+}
+
+.steam i {
+  width: 10px;
+  height: 26px;
+  border-radius: 999px;
+  background: currentColor;
+  filter: blur(2px);
+  opacity: 0;
+  animation: steam 2.6s ease-out infinite;
+}
+
+.steam i:nth-child(2) {
+  animation-delay: 0.85s;
+}
+
+.steam i:nth-child(3) {
+  animation-delay: 1.7s;
+}
+
+@keyframes steam {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scaleY(0.6);
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-14px) scaleY(1.1);
+  }
+}
+
+.ticketWrap {
+  margin: -18px -12px 0;
+  padding: 4px 12px 12px;
+  overflow: hidden;
+}
+
+/* 結果のカード（トレーディングカードの形）。大きく注文の言葉、丼のキャラクター、タイプ名、珍しさの★。 */
+.card,
+.cardSmall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow:
+    inset 0 0 0 6px var(--color-surface),
+    inset 0 0 0 8px var(--shindan-gold),
+    0 6px 0 var(--color-ink);
+  text-align: center;
+}
+
+.card {
+  --shindan-gold: #d6a21e;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 6px;
+  animation: issue 700ms cubic-bezier(0.25, 0.9, 0.3, 1.05) both;
+}
+
+/* 激レアは取り出し口が金色に光ってから出る。レアは銀の光とともに出る。 */
+.card[data-rarity="激レア"] {
+  animation-delay: 650ms;
+  box-shadow:
+    inset 0 0 0 6px var(--color-surface),
+    inset 0 0 0 9px var(--shindan-gold),
+    0 6px 0 var(--color-ink),
+    0 0 22px 4px rgba(214, 162, 30, 0.55);
+}
+
+.card[data-rarity="レア"] {
+  --shindan-gold: #a9b4bf;
+  animation-delay: 250ms;
+}
+
+.cardSmall[data-rarity="レア"] {
+  --shindan-gold: #a9b4bf;
+}
+
+.cardSmall {
+  --shindan-gold: #d6a21e;
+  height: 100%;
+  padding: var(--space-2) var(--space-2) var(--space-3);
+}
+
+@keyframes issue {
+  from {
+    transform: translateY(-105%);
+  }
+}
+
+.cardTop {
+  align-self: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--space-2);
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+.cardSmall .cardTop {
+  justify-content: center;
+}
+
+.cardSmall .cardTop > span:last-child {
+  display: none;
+}
+
+/* 珍しさのバッジ。激レアは金の塗り、レアは金の枠、定番は控えめ。 */
+.rarity {
+  padding: 2px 10px;
+  border: var(--border-width-regular) solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+.rarity[data-rarity="激レア"] {
+  background: var(--shindan-gold);
+  color: #211814;
+}
+
+.rarity[data-rarity="レア"] {
+  border-color: var(--shindan-gold);
+  border-width: 2px;
+}
+
+.spell {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spell span {
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+.spell strong {
+  font-size: var(--font-heading-2xl-size);
+  line-height: 1.2;
+  font-weight: var(--font-weight-display);
+  color: var(--color-accent-strong);
+  text-wrap: balance;
+}
+
+.art {
+  position: relative;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+}
+
+.typeName {
+  margin: 0;
+  font-size: var(--font-heading-xl-size);
+  line-height: 1.25;
+  font-weight: var(--font-weight-display);
+  text-wrap: balance;
+}
+
+.cardSmall .typeName {
+  font-size: var(--font-heading-sm-size);
+}
+
+.typeName:focus {
+  outline: none;
+}
+
+.catch {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.cardSmall .catch {
+  display: none;
+}
+
+.lead {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+  line-height: 1.6;
+}
+
+.compare h2 {
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-2);
+  border-left: 5px solid var(--color-accent-fill);
+  font-size: var(--font-heading-lg-size);
+  line-height: 1.3;
+  font-weight: var(--font-weight-display);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.pair > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.who {
+  margin: 0;
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-bold);
+  text-align: center;
+}
+
+.pairLine {
+  margin: var(--space-2) 0 0;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.6;
+}
+
+.aruaru {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.aruaru li {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  line-height: 1.6;
+}
+
+/* 見出しは本文と一目で分けられるように、大きく太く、左に茶赤の線。 */
+.block h3 {
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-2);
+  border-left: 5px solid var(--color-accent-fill);
+  font-size: var(--font-heading-lg-size);
+  line-height: 1.3;
+  font-weight: var(--font-weight-display);
+  color: var(--color-text-primary);
+}
+
+.block {
+  padding-top: var(--space-2);
+}
+
+.block p,
+.note {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.chips {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chips li {
+  padding: 4px var(--space-3);
+  border: var(--border-width-regular) solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-surface);
+  font-weight: var(--font-weight-bold);
+}
+
+.note {
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.btn,
+.primary {
+  min-height: 48px;
+  padding: 0 var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary {
+  min-height: 56px;
+  background: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
+  box-shadow: 0 4px 0 var(--color-ink);
+}
+
+/* 動きを減らす設定では演出を止め、静止したカードにする（金・銀の縁とバッジは残す）。 */
+@media (prefers-reduced-motion: reduce) {
+  .question,
+  .card,
+  .slot::after,
+  .stamp {
+    animation: none;
+  }
+
+  .holo,
+  .sheen,
+  .sparkle,
+  .steam {
+    display: none;
+  }
+}

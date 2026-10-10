@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatDistance } from "../lib/geo";
 import { describeLeg, googleMapsRouteUrl, MAX_STOPS, planRoute } from "../lib/route";
+import { shareLinks } from "../lib/share";
 import { exitFor, shareText } from "../lib/swipe";
 import type { Origin, Shop } from "../lib/types";
 import styles from "./swipe.module.css";
@@ -14,13 +15,11 @@ const mapUrl = (s: Shop) => `https://www.google.com/maps/search/?api=1&query=${s
 const SITE = "https://iekeiramen.com/match/";
 
 /**
- * 決まった店のシェア（文字だけ）。画像つきのカードは #46 のシェアの仕組みと合流させる
- * （二重に作らない）。文は決めた事実と場所だけで、店の評価は書かない。
+ * 決まった店のシェア（文字だけ）。投稿画面の URL は src/lib/share.ts（#46 と共有）。
+ * 文は決めた事実と場所だけで、店の評価は書かない。
  */
 function Share({ names }: { names: string[] }) {
-  const text = shareText(names);
-  const x = `https://twitter.com/intent/tweet?${new URLSearchParams({ text, url: SITE })}`;
-  const threads = `https://www.threads.net/intent/post?${new URLSearchParams({ text: `${text} ${SITE}` })}`;
+  const { threads, x } = shareLinks(shareText(names), SITE);
   return (
     <div className={styles.row}>
       <a className={styles.btn} href={x} target="_blank" rel="noopener noreferrer">
