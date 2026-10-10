@@ -321,6 +321,32 @@ test("トップの一言の下とナビから家系マッチへ行け、ナビ�
   await expect(page.getByRole("heading", { level: 1, name: "家系マッチ" })).toBeVisible();
 });
 
+test("行きたいが 1 軒でも 2〜3 軒でも、読み直した後にリストを空にできる（#180）", async ({
+  page,
+}) => {
+  await open(page);
+  for (const count of [1, 2]) {
+    for (let i = 0; i < count; i++) await swipeBy(page, /^行きたい →/);
+    // 読み直すと戻す履歴は消える。リストは端末に残っている。
+    await page.reload();
+    await expect(top(page)).toBeVisible();
+    await expect(wantsButton(page)).toHaveText(`行きたい ${count}`);
+    await wantsButton(page).click();
+    await expect(
+      page.getByRole("heading", { name: count === 1 ? /^今日は「/ : "まわる店（2 軒）" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "リストを空にする" }).click();
+    await expect(page.getByRole("heading", { name: "行きたいリストは空です" })).toBeVisible();
+    await page.reload();
+    await expect(wantsButton(page)).toHaveText("行きたい 0");
+  }
+  // 「今日はここ」で決めた紙には出さない（行きたいリストとは別の画面）。
+  await expect(top(page)).toBeVisible();
+  await page.getByRole("button", { name: /今日はここ/ }).click();
+  await expect(page.getByRole("heading", { name: /^今日は「/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "リストを空にする" })).toHaveCount(0);
+});
+
 test("左上はほかのページと同じヘッダーでトップへ戻れ、390px で札と操作キーが 1 画面に入る（#182）", async ({
   page,
 }) => {
