@@ -11,7 +11,7 @@ import styles from "./swipe.module.css";
  */
 
 const mapUrl = (s: Shop) => `https://www.google.com/maps/search/?api=1&query=${s.lat}%2C${s.lon}`;
-const SITE = "https://iekeiramen.com/swipe/";
+const SITE = "https://iekeiramen.com/match/";
 
 /**
  * 決まった店のシェア（文字だけ）。画像つきのカードは #46 のシェアの仕組みと合流させる

@@ -52,7 +52,7 @@ const ShopSchema = z.object({
   osmUrl: z.string(),
   /** 「近くを探す」のときだけ入る、現在地からの直線距離 (km)。 */
   distanceKm: z.number().optional(),
-  /** 家系スワイプのレア札の理由（#166）。事実だけ。頼まれたときだけ入る。 */
+  /** 家系マッチのレア札の理由（#166）。事実だけ。頼まれたときだけ入る。 */
   facts: z.array(z.string()).optional(),
 });
 

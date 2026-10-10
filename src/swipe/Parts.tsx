@@ -21,7 +21,7 @@ export function Header({
       <div>
         <a className={styles.brand} href="/">
           <BrandMark size={28} />
-          家系スワイプ
+          家系マッチ
         </a>
         {place && <div className={styles.place}>{place}</div>}
       </div>

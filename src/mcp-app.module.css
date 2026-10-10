@@ -267,6 +267,8 @@
   font-size: var(--font-heading-sm-size);
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing-normal);
+  /* <a> で作るボタン（トップの家系マッチの入口、#181）にも下線を付けない。 */
+  text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -668,6 +670,9 @@
 }
 
 .modeLink {
+  /* <a>（家系マッチ）も <button> と同じく、44px の中で文字を上下の真ん中に置く（#181）。 */
+  display: inline-flex;
+  align-items: center;
   min-height: 44px;
   padding: 0;
   border: none;

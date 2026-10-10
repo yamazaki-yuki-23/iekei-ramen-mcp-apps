@@ -2,10 +2,10 @@ import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
 
 /*
- * 家系スワイプ（#166）。E2E のサーバーは接続元の位置を引かないので、ブラウザの位置（横浜駅）に頼る経路を通る。
+ * 家系マッチ（#166）。E2E のサーバーは接続元の位置を引かないので、ブラウザの位置（横浜駅）に頼る経路を通る。
  * 本番は接続元の推定（「〇〇市付近」）から始まり、位置の許可は求めない（tests/worker.test.ts で確かめている）。
  */
-const URL = "http://localhost:3134/swipe/";
+const URL = "http://localhost:3134/match/";
 const YOKOHAMA = { latitude: 35.4658, longitude: 139.6222 };
 
 async function open(page: Page) {
@@ -287,4 +287,36 @@ test("文字は 14px より小さくしない（但し書きを含む）", async
       .map((el) => el.textContent!.trim().slice(0, 20)),
   );
   expect(small).toEqual([]);
+});
+
+test("トップの一言の下とナビから家系マッチへ行け、ナビの 5 項目は同じ高さ（#181）", async ({
+  page,
+}) => {
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("http://localhost:3134/");
+    const nav = page.getByRole("navigation", { name: "探し方" });
+    await expect(nav.getByRole("link", { name: "家系マッチ" })).toHaveAttribute("href", "/match/");
+    // 文字の上下の真ん中を測る（箱は同じ高さでも、<a> だけ文字が上に寄っていた）。
+    const items = await nav.locator(":scope > *").evaluateAll((els) =>
+      els.map((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const text = range.getBoundingClientRect();
+        const box = el.getBoundingClientRect();
+        return { row: Math.round(box.top), middle: Math.round(text.top + text.height / 2) };
+      }),
+    );
+    expect(items).toHaveLength(5);
+    for (const item of items) {
+      const sameRow = items.filter((other) => other.row === item.row);
+      for (const other of sameRow)
+        expect(Math.abs(other.middle - item.middle)).toBeLessThanOrEqual(1);
+    }
+  }
+  const entry = page.getByRole("link", { name: "近くの家系とマッチング →" });
+  await expect(entry).toHaveAttribute("href", "/match/");
+  await entry.click();
+  await expect(page).toHaveTitle("家系マッチ｜近くの家系と、マッチング");
+  await expect(page.getByRole("link", { name: "家系マッチ" })).toBeVisible();
 });
