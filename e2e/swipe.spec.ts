@@ -318,5 +318,21 @@ test("トップの一言の下とナビから家系マッチへ行け、ナビ�
   await expect(entry).toHaveAttribute("href", "/match/");
   await entry.click();
   await expect(page).toHaveTitle("家系マッチ｜近くの家系と、マッチング");
-  await expect(page.getByRole("link", { name: "家系マッチ" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "家系マッチ" })).toBeVisible();
+});
+
+test("左上はほかのページと同じヘッダーでトップへ戻れ、390px で札と操作キーが 1 画面に入る（#182）", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await expect(page.getByRole("heading", { level: 1, name: "家系マッチ" })).toBeVisible();
+  for (const name of [/^← パス/, /^戻す/, /^行きたい →/, /今日はここ/]) {
+    const box = (await page.getByRole("button", { name }).boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(844);
+  }
+  const card = (await top(page).boundingBox())!;
+  expect(card.height).toBeGreaterThanOrEqual(300);
+  await page.getByRole("link", { name: "家系ラーメンを探す" }).click();
+  await expect(page).toHaveURL("http://localhost:3134/");
 });

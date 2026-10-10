@@ -48,9 +48,31 @@
 
 .top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 0 var(--space-2);
+}
+
+/* 共通のヘッダーは 1 行だけ（ナビは並べない）。ページの名前はその下の見出しで、音と行きたいと同じ行（#182）。 */
+.brandRow {
+  flex-basis: 100%;
+}
+
+.head {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
   gap: var(--space-2);
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: var(--font-heading-lg-size);
+  line-height: var(--font-heading-lg-line-height);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
 }
 
 .brand {
