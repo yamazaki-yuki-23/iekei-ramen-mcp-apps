@@ -990,12 +990,13 @@ npm run dev
 ```
 
 `http://localhost:3031/mcp` で MCP サーバーが起動します。
-UI つきで確認する場合は MCP Apps SDK の basic-host が使えます（`npm run e2e:setup` で `e2e-host/` に取ったものでもよい）。
+UI つきで確認する場合は MCP Apps SDK の basic-host を使う。`npm run e2e:setup` が
+リポジトリで固定した版を `e2e-host/` に取り、Bun 無しで動く形にビルドする
+（basic-host 本来の `npm run start` は Bun が要る）。
 
 ```bash
-git clone --depth 1 https://github.com/modelcontextprotocol/ext-apps.git /tmp/mcp-ext-apps
-cd /tmp/mcp-ext-apps/examples/basic-host && npm install
-SERVERS='["http://localhost:3031/mcp"]' npm run start   # → http://localhost:8080
+npm run e2e:setup
+SERVERS='["http://localhost:3031/mcp"]' npx tsx e2e-host/ext-apps/examples/basic-host/serve.ts   # → http://localhost:8080
 ```
 
 Cloudflare のローカルランタイム（workerd）で確認する場合:
