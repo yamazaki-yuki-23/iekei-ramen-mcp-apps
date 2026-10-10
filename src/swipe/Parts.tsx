@@ -18,12 +18,16 @@ export function Header({
   const [muted, setMutedState] = useState(isMuted);
   return (
     <div className={styles.top}>
-      <div>
+      {/* 左上はどのページでも同じ「丼＋家系ラーメンを探す」で、押すとトップへ（#182）。 */}
+      <div className={styles.brandRow}>
         <a className={styles.brand} href="/">
-          <BrandMark size={28} />
-          家系マッチ
+          <BrandMark size={36} />
+          家系ラーメンを探す
         </a>
-        {place && <div className={styles.place}>{place}</div>}
+      </div>
+      <div className={styles.head}>
+        <h1 className={styles.pageTitle}>家系マッチ</h1>
+        {place && <span className={styles.place}>{place}</span>}
       </div>
       <div className={styles.headRight}>
         <button
