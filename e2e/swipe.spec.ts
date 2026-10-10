@@ -93,6 +93,10 @@ test("行きたいの数で出口が変わる: 1 → 地図 / 2〜3 → まわ�
   await page.getByRole("button", { name: "選んだ店で順路にする" }).click();
   await expect(page.getByRole("heading", { name: "まわる店（3 軒）" })).toBeVisible();
   // 決まった店は文字だけでシェアできる（画像つきは #46 と合流）。
+  await expect(page.locator('a[href*="threads.net"], a[href*="twitter.com"]')).toHaveText([
+    "X でシェア",
+    "Threads でシェア",
+  ]);
   await expect(page.getByRole("link", { name: "X でシェア" })).toHaveAttribute(
     "href",
     /twitter\.com\/intent\/tweet/,

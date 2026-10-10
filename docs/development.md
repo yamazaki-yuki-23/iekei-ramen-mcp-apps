@@ -234,6 +234,17 @@ Web だけの別ページ（`match/index.html` → `src/swipe/main.tsx`）。ト
 - 決まった店のシェアは文字だけ（X・Threads の投稿画面へのリンク）。画像つきのカードは #46 と合流させる
 - MCP（会話の中）には出していない（#166 の見本の後に決める）
 
+### 家系タイプ診断（`/shindan/`、#167）
+
+Web だけの別ページ（`shindan/index.html` → `src/shindan/main.tsx`）。問い・タイプ・注文の呪文は `src/lib/shindan.ts` が持つ。
+
+- 回答は送らず、残さない（画面の中だけで結果を出す。サーバーも呼ばない）
+- シェアの URL はタイプごとの紙 `/shindan/<タイプ>/`。中身は診断と同じページで、開くと 1 問目から始まる。
+  `scripts/build-seo.mjs` がビルドの後に、OGP の題と画像だけを差し替えて作る
+- シェア画像（`public/og/shindan-<タイプ>.png`、1200×630）は `node scripts/shindan-og.mjs` で作ってコミットする。
+  タイプ名か文言を変えたときだけ回す
+- 投稿画面の URL は `src/lib/share.ts`（#46 と共有。X を左、Threads を右に並べる）
+
 ### UI のホスト境界
 
 `src/iekei-app.tsx` は両方の入口が使う画面と状態を持つ。payload ごとに key で作り直す結果の画面は

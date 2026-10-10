@@ -11,8 +11,8 @@ export const APP_HEAD_ID = "app-head";
 
 /**
  * Web の最初の画面の一言（#125・#144）。屋号の太さで大きく置き、すぐ下の券売機へつなぐ。
- * 主な入口は券売機の「発券する」。一言のすぐ下に、家系マッチ（#181）への第 2 ボタンを 1 つだけ置く
- * （券売機より強くしない）。但し書きは券売機の取り出し口の下にある。
+ * 主な入口は券売機の「発券する」。一言のすぐ下に、家系マッチ（#181）と家系タイプ診断（#167）への
+ * 第 2 ボタンを置く（券売機より強くしない）。但し書きは券売機の取り出し口の下にある。
  *
  * **位置は求めない。** 開いた瞬間に許可を求めると、何のサイトか分かる前に断られる。
  * 現在地は、券売機で「近くで」を選んで発券したときだけ求める。
@@ -30,6 +30,9 @@ export function PromiseHero() {
       <div className={styles.heroActions}>
         <a className={styles.buttonSecondary} href="/match/">
           近くの家系とマッチング →
+        </a>
+        <a className={styles.buttonSecondary} href="/shindan/">
+          家系タイプ診断（6 問）→
         </a>
       </div>
       <p className={styles.heroLead}>{LEAD}</p>

@@ -92,7 +92,7 @@ function chips(items) {
 /** WorkerのAPIへ変更を加えず、ビルド時にだけHTMLとsitemapを生成する。 */
 export function seoPages(shops) {
   const files = new Map();
-  const indexed = ["/", "/match/", "/area/"];
+  const indexed = ["/", "/match/", "/shindan/", "/area/"];
   const prefs = new Map();
   const cities = new Map();
   const ids = new Set();

@@ -121,7 +121,8 @@ export function unlock() {
 }
 
 export const sound = {
-  async swipe(dir: SwipeDir) {
+  /** volume は家系タイプ診断（#167）の答えの音で小さくするため。既定は家系マッチの大きさ。 */
+  async swipe(dir: SwipeDir, volume = 0.55) {
     const a = audio();
     if (!a || !master) return;
     const buf = await loadSwoop(a);
@@ -130,10 +131,10 @@ export const sound = {
     const g = a.createGain();
     const at = a.currentTime;
     src.buffer = buf;
-    g.gain.value = 0.55;
+    g.gain.value = volume;
     // パスは少し早めに抜く（差は長さだけ）。録音は 1.4kHz のローパスを通さない（「シュッ」らしさが消える）。
     if (dir === "pass") {
-      g.gain.setValueAtTime(0.55, at + buf.duration * 0.7);
+      g.gain.setValueAtTime(volume, at + buf.duration * 0.7);
       g.gain.linearRampToValueAtTime(0.0001, at + buf.duration * 0.85);
     }
     src.connect(g).connect(master);
@@ -147,6 +148,10 @@ export const sound = {
     for (const [i, f] of [196, 247, 294, 392].entries())
       tone("triangle", f, f, i * 0.07, 0.9, 0.18, 0.04);
     tone("sine", 98, 70, 0, 0.8, 0.35, 0.04);
+  },
+  /** レアのカード（家系タイプ診断）。銀の光に合わせた短く柔らかい 3 音（いちばん高くても 784Hz）。 */
+  shimmer() {
+    for (const [i, f] of [523, 659, 784].entries()) tone("sine", f, f, i * 0.06, 0.5, 0.1, 0.04);
   },
   fever() {
     tone("sawtooth", 110, 220, 0, 0.9, 0.12, 0.08);
