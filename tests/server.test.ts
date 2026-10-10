@@ -270,6 +270,27 @@ describe("search-iekei-ramen", () => {
 });
 
 describe("find-nearby-iekei-ramen", () => {
+  it("offset で続きを近い順に返し、facts で事実だけの特徴を添える（#166）", async () => {
+    const origin = { lat: 35.4658, lon: 139.6222 };
+    const first = await callApp("find-nearby-iekei-ramen", { ...origin, limit: 5 });
+    const next = await callApp("find-nearby-iekei-ramen", {
+      ...origin,
+      limit: 5,
+      offset: 5,
+      facts: true,
+    });
+    expect(next.payload.shops).toHaveLength(5);
+    // 続きは前の 5 件と重ならず、距離は前の最後より遠い。
+    const ids = new Set(first.payload.shops.map((s) => s.id));
+    expect(next.payload.shops.some((s) => ids.has(s.id))).toBe(false);
+    expect(next.payload.shops[0].distanceKm!).toBeGreaterThanOrEqual(
+      first.payload.shops.at(-1)!.distanceKm!,
+    );
+    expect(next.payload.shops.every((s) => Array.isArray(s.facts))).toBe(true);
+    // 頼まなければ付けない（ほかの経路の payload を大きくしない）。
+    expect(first.payload.shops.every((s) => s.facts === undefined)).toBe(true);
+  });
+
   // 横浜駅
   const origin = { lat: 35.4658, lon: 139.6222 };
 

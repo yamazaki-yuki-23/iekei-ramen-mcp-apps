@@ -2,6 +2,7 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
     "index.html",
+    "src/swipe/main.tsx",
     "mcp-app.html",
     "src/mcp-app.tsx",
     "scripts/*.mjs",

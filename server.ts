@@ -1,6 +1,7 @@
 import { ALL_PREFECTURES } from "./src/lib/prefectures.ts";
 import { topBrands, type BrandCount } from "./src/lib/brands.ts";
 import { localizeOrigin } from "./src/lib/place-label.ts";
+import { brandCounts, shopFacts } from "./src/lib/shop-facts.ts";
 import { openingHoursLabel } from "./src/lib/opening-hours.ts";
 /**
  * 家系ラーメンを探す MCP Apps サーバー。
@@ -524,6 +525,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
   const dataset = deps.shops ?? DEFAULT_SHOPS;
   // 店名の券売機に並べるブランド（#144）。判定した結果の軒数が多い順。
   const brands = topBrands(dataset);
+  const brandsInCity = brandCounts(dataset);
   /**
    * 座標を渡されなかったときの現在地。ホストが渡す位置 → 接続元からの推定の順
    * （後者は HTTP なら request.cf、stdio なら照会エンドポイント）。どちらも名前が
@@ -668,6 +670,19 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           .optional()
           .describe("利用者が地名や地図で指定した地点の経度。省略するとホストの現在地を使う"),
         limit: z.number().int().min(1).max(20).default(5).describe("提案する店舗数"),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .max(1000)
+          .default(0)
+          .describe("近い順の何件目から返すか（0 始まり）。続きを取るときに使う"),
+        facts: z
+          .boolean()
+          .optional()
+          .describe(
+            "true なら、各店に事実だけの特徴（直系・濃厚、朝 5 時から、その市区町村で 1 軒だけのブランド）を添える",
+          ),
         label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
         /*
          * OriginSource の 4 値すべてを受ける。2 値に絞っていた頃は、ホスト由来
@@ -685,7 +700,7 @@ export function createServer(deps: ServerDeps = {}): McpServer {
       outputSchema: PayloadSchema,
       ...toolMetadata("find-nearby-iekei-ramen"),
     },
-    async ({ lat, lon, limit, label, source }, ctx): Promise<CallToolResult> => {
+    async ({ lat, lon, limit, offset, facts, label, source }, ctx): Promise<CallToolResult> => {
       const incomplete = incompleteCoordinates(lat, lon);
       if (incomplete) return incomplete;
 
@@ -725,7 +740,9 @@ export function createServer(deps: ServerDeps = {}): McpServer {
           distanceKm: Number(distanceKm(origin.lat, origin.lon, s.lat, s.lon).toFixed(3)),
         }))
         .toSorted((a, b) => a.distanceKm - b.distanceKm)
-        .slice(0, limit);
+        .slice(offset, offset + limit)
+        // 家系スワイプのレア札の理由（#166）。事実だけ。頼まれたときだけ添える。
+        .map((s) => (facts ? { ...s, facts: shopFacts(s, brandsInCity) } : s));
       const payload: Omit<AppPayload, "prefectures"> = {
         mode: "nearby",
         shops: ranked,

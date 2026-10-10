@@ -81,6 +81,10 @@ export function ModeTabs({
               {LINK_LABEL[key]}
             </button>
           ))}
+        {/* 家系スワイプ（#166）は別のページ。Web の入口のリンクにだけ置く（会話の中のタブには出さない）。 */}
+        <a className={styles.modeLink} href="/swipe/">
+          スワイプ
+        </a>
       </nav>
     );
   }

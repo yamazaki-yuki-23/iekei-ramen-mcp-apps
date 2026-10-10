@@ -18,7 +18,8 @@ export default defineConfig(({ mode }) => ({
     sourcemap: isDevelopment ? "inline" : undefined,
     cssMinify: !isDevelopment,
     minify: !isDevelopment,
-    rollupOptions: { input: mode === "web" ? "index.html" : "mcp-app.html" },
+    // Web は 2 枚: トップ（index.html）と家系スワイプ（swipe/index.html、#166）。
+    rollupOptions: { input: mode === "web" ? ["index.html", "swipe/index.html"] : "mcp-app.html" },
     outDir: mode === "web" ? "dist/web" : "dist",
     emptyOutDir: mode === "web",
   },

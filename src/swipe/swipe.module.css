@@ -1,0 +1,826 @@
+/*
+ * 家系スワイプ（#166）。縦長の 1 画面: 見出しと数 / FEVER のゲージ / 問いかけ / 食券の山 / 操作キー / 但し書き。
+ * 色は src/global.css のトークン（黒＝輪郭と文字、茶赤＝押す操作、白と暖かい灰＝面）。
+ * 演出の色（金・熱・湯気・光の筋）はこの画面だけのもの（DESIGN.md「家系スワイプ」の例外）。
+ */
+.page {
+  --gold: #d6a21e;
+  --gold-glow: rgba(214, 162, 30, 0.55);
+  --gold-ink: #2a1d00;
+  --heat: light-dark(rgba(184, 68, 44, 0.7), rgba(184, 68, 44, 0.45));
+  --heat-soft: light-dark(rgba(184, 68, 44, 0.18), rgba(184, 68, 44, 0.12));
+  --dull: light-dark(rgba(60, 52, 46, 0.18), rgba(0, 0, 0, 0.35));
+  --steam: light-dark(rgba(255, 255, 255, 0.95), rgba(246, 239, 230, 0.35));
+  --glow: light-dark(rgba(255, 214, 150, 0.55), rgba(255, 200, 130, 0.25));
+  --ray-a: rgba(184, 68, 44, 0.28);
+  --ray-b: rgba(214, 162, 30, 0.3);
+  --flame-in: rgba(255, 210, 120, 0.9);
+  --flame-out: rgba(184, 68, 44, 0.6);
+  --back-line: light-dark(#3b2a20, #d9cfc3);
+  --slam-bg: light-dark(rgba(255, 255, 255, 0.92), rgba(20, 19, 18, 0.9));
+  min-height: 100dvh;
+  /* 払って画面の外へ出ていく札で、横にスクロールさせない。 */
+  overflow-x: clip;
+  background: var(--color-surface-muted);
+  color: var(--color-text-primary);
+}
+
+.fx {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  max-width: 26rem;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: calc(var(--space-3) + env(safe-area-inset-top, 0px)) var(--space-4)
+    calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-min-size);
+  color: var(--color-text-primary);
+  font-size: var(--font-heading-lg-size);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+}
+
+.place {
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+.headRight {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.round {
+  min-width: var(--control-min-size);
+  min-height: var(--control-min-size);
+  padding: 0 var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.round b {
+  color: var(--color-accent-strong);
+}
+
+.round .slash {
+  display: none;
+}
+
+.round[aria-pressed="true"] .slash {
+  display: inline;
+}
+
+.round[aria-pressed="true"] .wave {
+  display: none;
+}
+
+.counter {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+/* カタカタと回って増える数（transform だけ）。 */
+.odo {
+  display: inline-block;
+  height: 1.3em;
+  overflow: hidden;
+  vertical-align: bottom;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-display);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.odo span {
+  display: block;
+  line-height: 1.3em;
+}
+
+.gaugeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-note);
+  font-weight: 800;
+  color: var(--color-text-muted);
+}
+
+.gaugeLabel {
+  display: inline-block;
+  transform-origin: left center;
+}
+
+.feverOn .gaugeLabel {
+  color: var(--gold);
+  font-size: 22px;
+  letter-spacing: 0.1em;
+  text-shadow: 0 2px 0 var(--color-accent-fill);
+}
+
+.gauge {
+  position: relative;
+  flex: 1;
+  height: 12px;
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.gaugeBar {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--color-accent-fill), var(--gold));
+  transition: transform 300ms ease-out;
+}
+
+.askWrap {
+  position: relative;
+}
+
+.ask {
+  min-height: 2.6em;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.ask small {
+  width: 100%;
+  font-weight: 400;
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+.combo {
+  position: absolute;
+  right: 0;
+  top: -6px;
+  z-index: 3;
+  color: var(--color-accent-fill);
+  font-weight: var(--font-weight-display);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  text-shadow: 0 2px 0 var(--color-surface);
+  transform-origin: right top;
+}
+
+.feverOn .combo {
+  transform: scale(1.5);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-note);
+  cursor: pointer;
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--color-accent-fill);
+  border-color: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
+  font-weight: 700;
+}
+
+/* 食券の山。上の 1 枚だけが指に付いてくる。下の 2 枚は裏向きで待ち、上を払うほど前に出る。 */
+/* 札と紙（終わり・決まり・行きたいリスト）が重なる舞台。 */
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 340px;
+  margin-bottom: 26px;
+}
+
+.stack {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+
+.ticket {
+  position: absolute;
+  inset: 0;
+  perspective: 1200px;
+  will-change: transform;
+  transform-origin: 50% 90%;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.flip {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 380ms cubic-bezier(0.3, 0.7, 0.3, 1.15);
+}
+
+.down .flip {
+  transform: rotateY(180deg);
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 6px 0 var(--color-ink);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.front {
+  display: grid;
+  grid-template-columns: 4.6rem 1fr;
+}
+
+.front::before,
+.front::after {
+  content: "";
+  position: absolute;
+  left: calc(4.6rem - 10px);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-surface-muted);
+  border: var(--border-width-strong) solid var(--color-ink);
+}
+
+.front::before {
+  top: -11px;
+  clip-path: inset(50% 0 0 0);
+}
+
+.front::after {
+  bottom: -11px;
+  clip-path: inset(0 0 50% 0);
+}
+
+/* 裏: 食券の裏の地紋。めくるまで中身が分からない。 */
+.back {
+  transform: rotateY(180deg);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-ink) 0 14px,
+    var(--back-line) 14px 16px
+  );
+}
+
+.back span {
+  padding: 10px 22px;
+  border: 3px solid var(--color-surface);
+  border-radius: var(--radius-md);
+  background: var(--color-ink);
+  color: var(--color-surface);
+  font-size: 30px;
+  font-weight: var(--font-weight-display);
+  letter-spacing: 0.2em;
+}
+
+/* 半券は食券の番号（めくった順）。距離は大きく出さない（オーナー判断）。 */
+.stub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-right: var(--border-width-strong) dashed var(--color-ink);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.stub strong {
+  font-size: 36px;
+  font-weight: var(--font-weight-display);
+  line-height: 1;
+}
+
+.stub span {
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+.body {
+  min-width: 0;
+  padding: 22px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.order {
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+.name {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.where,
+.hours {
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.where {
+  font-size: 14px;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fact {
+  padding: 3px 10px;
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-note);
+}
+
+/* レア札の理由（事実だけ）。金の札に濃い文字。 */
+.rareTag {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: var(--gold);
+  color: var(--gold-ink);
+  font-size: var(--font-size-note);
+  font-weight: 800;
+}
+
+.gold {
+  position: absolute;
+  inset: -4px;
+  border: 4px solid var(--gold);
+  border-radius: calc(var(--radius-lg) + 4px);
+  box-shadow:
+    0 0 24px var(--gold-glow),
+    inset 0 0 18px var(--gold-glow);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.shine {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.shineBand {
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 244, 200, 0.85), transparent);
+}
+
+.stamp {
+  position: absolute;
+  top: 26px;
+  padding: 6px 14px;
+  border: 3px solid currentColor;
+  border-radius: 10px;
+  font-size: 26px;
+  font-weight: var(--font-weight-display);
+  letter-spacing: 0.08em;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stampWant {
+  composes: stamp;
+  right: 18px;
+  color: var(--color-accent-fill);
+  transform: rotate(12deg);
+}
+
+.stampPass {
+  composes: stamp;
+  left: 5.6rem;
+  color: var(--color-ink);
+  transform: rotate(-12deg);
+}
+
+.feverOn .stampWant {
+  transform: rotate(12deg) scale(1.7);
+}
+
+.feverOn .stampPass {
+  transform: rotate(-12deg) scale(1.7);
+}
+
+/* 操作キー。券売機のキーと同じ押した手応え。 */
+.keys {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr 1fr;
+  gap: var(--space-2);
+}
+
+.key {
+  min-height: 56px;
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: 800;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--color-ink);
+  transition:
+    transform 90ms,
+    box-shadow 90ms;
+}
+
+.key:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--color-ink);
+}
+
+.key small {
+  display: block;
+  font-weight: 400;
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+}
+
+.keyWant {
+  composes: key;
+  background: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
+}
+
+.keyWant small {
+  color: var(--color-text-on-accent);
+}
+
+.key:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.today {
+  min-height: 52px;
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-ink);
+  color: var(--color-surface);
+  font: inherit;
+  font-weight: 800;
+  font-size: 17px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--color-accent-fill);
+}
+
+.today:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+.today:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.caveat a {
+  color: var(--color-accent-strong);
+}
+
+.caveat,
+.credit {
+  margin: 0;
+  font-size: var(--font-size-note);
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+/* 終わり・決まり・行きたいリスト・読み込み中。山の上に重ねる紙。 */
+.sheet {
+  position: absolute;
+  inset: 0;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.sheet h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.sheet p {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.btn {
+  min-height: 48px;
+  padding: 0 var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btnPrimary {
+  composes: btn;
+  background: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.placeLabel {
+  width: 100%;
+  font-size: var(--font-size-note);
+  font-weight: 700;
+}
+
+.placeInput {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--control-min-size);
+  padding: 0 var(--space-3);
+  border: var(--border-width-regular) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: var(--border-width-regular) solid var(--color-border);
+  border-radius: 10px;
+}
+
+.list li span {
+  flex: 1;
+  min-width: 0;
+}
+
+.list li small {
+  display: block;
+  color: var(--color-text-muted);
+}
+
+.list input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--color-accent-fill);
+}
+
+.app button:focus-visible,
+.app a:focus-visible,
+.app input:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--color-focus-edge);
+}
+
+/* ---- 背景の演出（札の後ろだけ。transform と opacity だけを動かす）---- */
+.heat {
+  position: absolute;
+  inset: -30%;
+  opacity: 0;
+  background: radial-gradient(
+    140% 120% at 100% 50%,
+    var(--heat) 0%,
+    var(--heat-soft) 45%,
+    transparent 85%
+  );
+}
+
+.dull {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: var(--dull);
+}
+
+.glow,
+.glowDull {
+  position: absolute;
+  top: 50%;
+  width: 200vmax;
+  height: 200vmax;
+  margin: -100vmax;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(closest-side, var(--glow), transparent);
+}
+
+.glowDull {
+  background: radial-gradient(closest-side, var(--dull), transparent);
+}
+
+.ripple,
+.rippleDull {
+  position: absolute;
+  top: 45%;
+  width: 120px;
+  height: 120px;
+  margin: -60px;
+  border-radius: 50%;
+  border: 3px solid var(--color-accent-fill);
+  opacity: 0;
+}
+
+.rippleDull {
+  border-color: var(--color-text-muted);
+}
+
+.steam {
+  position: absolute;
+  bottom: -60px;
+  width: 70px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--steam), transparent);
+  opacity: 0;
+  filter: blur(6px);
+}
+
+.topping {
+  position: absolute;
+  top: 5%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  opacity: 0;
+}
+
+.rays {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 220vmax;
+  height: 220vmax;
+  margin: -110vmax;
+  opacity: 0;
+  background: repeating-conic-gradient(
+    var(--ray-a) 0deg 9deg,
+    transparent 9deg 18deg,
+    var(--ray-b) 18deg 27deg,
+    transparent 27deg 36deg
+  );
+  mask: radial-gradient(closest-side, #000 20%, transparent 75%);
+}
+
+.flame {
+  position: absolute;
+  bottom: -40px;
+  width: 60px;
+  height: 140px;
+  border-radius: 50% 50% 40% 40%;
+  opacity: 0;
+  background: radial-gradient(
+    60% 70% at 50% 70%,
+    var(--flame-in),
+    var(--flame-out) 60%,
+    transparent 75%
+  );
+}
+
+.slam {
+  position: fixed;
+  left: 50%;
+  top: 42%;
+  z-index: 5;
+  padding: 10px 26px;
+  border: 6px solid var(--gold);
+  border-radius: 18px;
+  background: var(--slam-bg);
+  color: var(--gold);
+  font-size: 44px;
+  font-weight: var(--font-weight-display);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .key,
+  .today,
+  .flip,
+  .gaugeBar {
+    transition: none;
+  }
+
+  .fx,
+  .slam,
+  .shine,
+  .gaugeRow {
+    display: none;
+  }
+}
