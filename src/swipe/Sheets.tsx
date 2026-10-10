@@ -108,7 +108,16 @@ export function EndSheet({
   );
 }
 
-export function TodaySheet({ shop, onBack }: { shop: Shop; onBack(): void }) {
+/** onClear は「行きたい」リストから開いたときだけ渡す（何軒でも空にできるように、#180）。 */
+export function TodaySheet({
+  shop,
+  onBack,
+  onClear,
+}: {
+  shop: Shop;
+  onBack(): void;
+  onClear?(): void;
+}) {
   return (
     <Sheet title={`今日は「${shop.name}」`}>
       <p>
@@ -127,13 +136,28 @@ export function TodaySheet({ shop, onBack }: { shop: Shop; onBack(): void }) {
         <button type="button" className={styles.btn} onClick={onBack}>
           続けて見る
         </button>
+        {onClear && (
+          <button type="button" className={styles.btn} onClick={onClear}>
+            リストを空にする
+          </button>
+        )}
       </div>
       <Share names={[shop.name]} />
     </Sheet>
   );
 }
 
-function RouteSheet({ shops, origin, onBack }: { shops: Shop[]; origin?: Origin; onBack(): void }) {
+function RouteSheet({
+  shops,
+  origin,
+  onBack,
+  onClear,
+}: {
+  shops: Shop[];
+  origin?: Origin;
+  onBack(): void;
+  onClear?(): void;
+}) {
   const route = planRoute(shops, origin);
   return (
     <Sheet title={`まわる店（${route.legs.length} 軒）`}>
@@ -169,6 +193,11 @@ function RouteSheet({ shops, origin, onBack }: { shops: Shop[]; origin?: Origin;
         <button type="button" className={styles.btn} onClick={onBack}>
           食券に戻る
         </button>
+        {onClear && (
+          <button type="button" className={styles.btn} onClick={onClear}>
+            リストを空にする
+          </button>
+        )}
       </div>
       <Share names={route.legs.map((leg) => leg.shop.name)} />
     </Sheet>
@@ -267,9 +296,9 @@ export function WantsSheet({
         />
       );
     case "map":
-      return <TodaySheet shop={sorted[0]} onBack={onBack} />;
+      return <TodaySheet shop={sorted[0]} onBack={onBack} onClear={onClear} />;
     case "route":
-      return <RouteSheet shops={sorted} origin={origin} onBack={onBack} />;
+      return <RouteSheet shops={sorted} origin={origin} onBack={onBack} onClear={onClear} />;
     default:
       return <PickSheet shops={sorted} onPick={setRoute} onBack={onBack} onClear={onClear} />;
   }
