@@ -1,0 +1,63 @@
+/*
+ * 下のタブバー（#194）。スマホ幅だけ。iPhone の画面下の余白（safe area）の上に置く。
+ * 高さは --tabbar-height（global.css）。ページの下の余白は global.css が付ける。
+ */
+.bar {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .bar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 20;
+    display: block;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-top: var(--border-width-regular) solid var(--color-border-strong);
+    background: var(--color-surface);
+  }
+}
+
+.bar ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.bar a {
+  position: relative;
+  min-height: var(--tabbar-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-1) / 2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+  text-decoration: none;
+}
+
+/* いまいる画面: 茶赤の文字と太字、上に線（色だけに頼らない）。 */
+.bar a[aria-current="page"] {
+  color: var(--color-accent-strong);
+  font-weight: var(--font-weight-bold);
+}
+
+.bar a[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: var(--border-width-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-accent-fill);
+}
+
+.bar a:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 6px var(--color-focus-edge);
+}

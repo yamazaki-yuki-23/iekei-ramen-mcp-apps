@@ -244,3 +244,73 @@
   outline-offset: 1px;
   box-shadow: 0 0 0 5px var(--color-focus-edge);
 }
+
+/*
+ * 下のタブバー（#194）。React の画面の src/components/TabBar.module.css と同じ見た目。
+ * アイコンの絵は src/lib/tabbar.ts（両方がそこから描く）。下の余白は seo-tokens.css（global.css）が付ける。
+ */
+.tabbar {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .tabbar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 20;
+    display: block;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-top: var(--border-width-regular) solid var(--color-border-strong);
+    background: var(--color-surface);
+  }
+}
+
+.tabbar ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.seo-page .tabbar a {
+  position: relative;
+  min-height: var(--tabbar-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-1) / 2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+  text-decoration: none;
+}
+
+.seo-page .tabbar a[aria-current="page"] {
+  color: var(--color-accent-strong);
+  font-weight: var(--font-weight-bold);
+}
+
+.tabbar a[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: var(--border-width-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-accent-fill);
+}
+
+.tabbar a:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 6px var(--color-focus-edge);
+}
+
+/* 別のページへの入口（家系マッチ・家系カメラ・診断）。スマホ幅では下のタブバー（#194）に任せる。 */
+@media (max-width: 40rem) {
+  .seo-links .seo-feature {
+    display: none;
+  }
+}

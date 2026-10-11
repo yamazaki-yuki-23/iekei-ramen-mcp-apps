@@ -245,7 +245,7 @@ Web だけの別ページ（`shindan/index.html` → `src/shindan/main.tsx`）�
   タイプ名か文言を変えたときだけ回す
 - 投稿画面の URL は `src/lib/share.ts`（#46 と共有。X を左、Threads を右に並べる）
 
-### 家系カメラ（仮、`/camera/`、#190）
+### 家系カメラ（`/camera/`、#190）
 
 Web だけの別ページ（`camera/index.html` → `src/camera/main.tsx`）。投稿文のひな形は `src/lib/camera-post.ts`、
 写真の仕上げは `src/camera/photo.ts`。

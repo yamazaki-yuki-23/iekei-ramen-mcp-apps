@@ -40,6 +40,17 @@ describe("静的SEOページ", () => {
     expect(files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toContain("未判定家");
     expect(files.get("/shop/node-123/")).not.toContain('name="robots" content="noindex"');
     expect(files.get("/shop/way-456/")).toContain('name="robots" content="noindex"');
+    // スマホ幅の下のタブバー（#194）。「探す」がいまいる画面で、アイコンは線の svg。
+    for (const path of ["/area/kanagawa/", "/shop/node-123/"]) {
+      const html = files.get(path)!;
+      expect(html).toContain('<nav class="tabbar" aria-label="機能" data-tabbar>');
+      expect(html).toContain('<a href="/" aria-current="page"><svg');
+      for (const href of ["/match/", "/camera/", "/shindan/"])
+        expect(html).toContain(`<a href="${href}"><svg`);
+      // パソコン幅では上のナビから開ける（スマホ幅では隠してタブバーに任せる）。
+      for (const href of ["/match/", "/camera/", "/shindan/"])
+        expect(html).toContain(`<a class="seo-feature" href="${href}">`);
+    }
     expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/shop/node-123/");
     expect(files.get("/sitemap.xml")).not.toContain("way-456");
     expect(files.get("/robots.txt")).toContain("Sitemap: https://iekeiramen.com/sitemap.xml");

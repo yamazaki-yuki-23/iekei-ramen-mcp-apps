@@ -293,29 +293,54 @@ test("文字は 14px より小さくしない（但し書きを含む）", async
   expect(small).toEqual([]);
 });
 
-test("トップの一言の下とナビから家系マッチへ行け、ナビの 5 項目は同じ高さ（#181）", async ({
+test("パソコン幅は上のナビに 7 項目、スマホ幅は探し方の 4 項目と下のタブバー。どれも同じ高さ（#181・#194）", async ({
   page,
 }) => {
-  for (const width of [390, 1280]) {
+  for (const [width, count] of [
+    [390, 4],
+    [1280, 7],
+  ] as const) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("http://localhost:3134/");
     const nav = page.getByRole("navigation", { name: "探し方" });
-    await expect(nav.getByRole("link", { name: "家系マッチ" })).toHaveAttribute("href", "/match/");
+    await expect(nav.getByRole("button", { name: "地図で" })).toBeVisible();
     // 文字の上下の真ん中を測る（箱は同じ高さでも、<a> だけ文字が上に寄っていた）。
     const items = await nav.locator(":scope > *").evaluateAll((els) =>
-      els.map((el) => {
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        const text = range.getBoundingClientRect();
-        const box = el.getBoundingClientRect();
-        return { row: Math.round(box.top), middle: Math.round(text.top + text.height / 2) };
-      }),
+      els
+        .filter((el) => el.getBoundingClientRect().height > 0)
+        .map((el) => {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          const text = range.getBoundingClientRect();
+          const box = el.getBoundingClientRect();
+          return {
+            row: Math.round(box.top),
+            height: Math.round(box.height),
+            middle: Math.round(text.top + text.height / 2),
+          };
+        }),
     );
-    expect(items).toHaveLength(5);
+    expect(items).toHaveLength(count);
+    for (const item of items) expect(item.height).toBe(items[0].height);
     for (const item of items) {
       const sameRow = items.filter((other) => other.row === item.row);
       for (const other of sameRow)
         expect(Math.abs(other.middle - item.middle)).toBeLessThanOrEqual(1);
+    }
+    const tabbar = page.getByRole("navigation", { name: "機能" });
+    if (width === 1280) {
+      await expect(nav.getByRole("link", { name: "家系マッチ" })).toHaveAttribute(
+        "href",
+        "/match/",
+      );
+      await expect(nav.getByRole("link", { name: "家系カメラ" })).toHaveAttribute(
+        "href",
+        "/camera/",
+      );
+      await expect(nav.getByRole("link", { name: "診断" })).toHaveAttribute("href", "/shindan/");
+      await expect(tabbar).toBeHidden();
+    } else {
+      await expect(tabbar).toBeVisible();
     }
   }
   const entry = page.getByRole("link", { name: "近くの家系とマッチング →" });
@@ -323,6 +348,78 @@ test("トップの一言の下とナビから家系マッチへ行け、ナビ�
   await entry.click();
   await expect(page).toHaveTitle("家系マッチ｜近くの家系と、マッチング");
   await expect(page.getByRole("heading", { level: 1, name: "家系マッチ" })).toBeVisible();
+});
+
+test("スマホ幅の下のタブバーは、どの画面でもいまいる画面が分かり、キーボードで移れる（#194）", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const [url, current] of [
+    ["/", "探す"],
+    ["/match/", "家系マッチ"],
+    ["/camera/", "家系カメラ"],
+    ["/shindan/", "診断"],
+  ] as const) {
+    await page.goto(`http://localhost:3134${url}`);
+    const tabbar = page.getByRole("navigation", { name: "機能" });
+    await expect(tabbar.getByRole("link")).toHaveText(["探す", "家系マッチ", "家系カメラ", "診断"]);
+    await expect(tabbar.getByRole("link", { name: current })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(tabbar.locator('[aria-current="page"]')).toHaveCount(1);
+  }
+  // 都道府県・店のページ（静的な HTML）にも同じタブバー。アイコンは線の svg。
+  for (const url of ["/area/kanagawa/", "/area/"]) {
+    await page.goto(`http://localhost:3134${url}`);
+    const tabbar = page.getByRole("navigation", { name: "機能" });
+    await expect(tabbar).toBeVisible();
+    await expect(tabbar.getByRole("link")).toHaveText(["探す", "家系マッチ", "家系カメラ", "診断"]);
+    await expect(tabbar.locator("svg")).toHaveCount(4);
+    await expect(tabbar.getByRole("link", { name: "探す" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  }
+  // パソコン幅の都道府県のページは、上のナビから開ける。
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("http://localhost:3134/area/kanagawa/");
+  const links = page.getByRole("navigation", { name: "探し方" });
+  for (const [name, href] of [
+    ["家系マッチ", "/match/"],
+    ["家系カメラ", "/camera/"],
+    ["診断", "/shindan/"],
+  ])
+    await expect(links.getByRole("link", { name })).toHaveAttribute("href", href);
+  await expect(page.getByRole("navigation", { name: "機能" })).toBeHidden();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(links.getByRole("link", { name: "家系マッチ" })).toBeHidden();
+  await page.goto("http://localhost:3134/shindan/");
+  // 診断の画面からキーボードで家系カメラへ。
+  const camera = page
+    .getByRole("navigation", { name: "機能" })
+    .getByRole("link", { name: "家系カメラ" });
+  await camera.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/camera\/$/);
+});
+
+test("スマホ幅でも、家系マッチの札と操作キーはタブバーより上に収まる（#182・#194）", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  // iPhone の画面下の余白はタブバーが受け持つので、ページの下の余白からは外す（二重に空けない）。
+  expect(
+    await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--page-safe-bottom").trim(),
+    ),
+  ).toBe("0px");
+  const tabTop = (await page.getByRole("navigation", { name: "機能" }).boundingBox())!.y;
+  for (const name of [/^← パス/, /^戻す/, /^行きたい →/, /今日はここ/]) {
+    const box = (await page.getByRole("button", { name }).boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(tabTop);
+  }
 });
 
 test("行きたいが 1 軒でも 2〜3 軒でも、読み直した後にリストを空にできる（#180）", async ({
