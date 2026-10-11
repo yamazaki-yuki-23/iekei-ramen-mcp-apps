@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
-import { seoPages } from "./seo-pages.mjs";
+import { seoPages, siteHeader } from "./seo-pages.mjs";
+import { tabBarHtml } from "../src/lib/tabbar.ts";
 import { TYPES, shareUrl } from "../src/lib/shindan.ts";
 
 const output = new URL("../dist/web/", import.meta.url);
@@ -11,6 +12,23 @@ for (const [path, content] of files) {
   await writeFile(destination, content);
 }
 await copyFile(new URL("../src/global.css", import.meta.url), new URL("seo-tokens.css", output));
+
+/*
+ * 「チャットで使う方法」（/connect、#196）も、ほかの静的なページと同じヘッダーと下のタブバーにする。
+ * public/connect.html は手で書いた 1 枚なので、ビルドの後でヘッダーを差し替え、タブバーを足す。
+ * /connect はどのタブにも属さないので、選ばれたタブは無し。
+ */
+const connectFile = new URL("connect.html", output);
+const connect = await readFile(connectFile, "utf8");
+const connectHeader = /<header>[\s\S]*?<\/header>/;
+if (!connectHeader.test(connect) || !connect.includes("</body>"))
+  throw new Error("connect.html のヘッダーかタブバーの置き場所が見つかりません");
+await writeFile(
+  connectFile,
+  connect
+    .replace(connectHeader, siteHeader("/connect"))
+    .replace("</body>", `${tabBarHtml()}</body>`),
+);
 
 /*
  * 家系タイプ診断のシェア用の紙（#167）。中身は診断と同じページで、開くと 1 問目から始まる。

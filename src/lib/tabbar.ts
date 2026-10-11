@@ -81,7 +81,8 @@ const attrs = (o: Record<string, string | number>) =>
     .join(" ");
 
 /** 静的なページ用の HTML（React を使わないページ）。 */
-export function tabBarHtml(current: TabKey): string {
+/** current が無いページ（/connect）は、どのタブも選ばない。 */
+export function tabBarHtml(current?: TabKey): string {
   const items = TABS.map((t) => {
     const icon = t.icon.map((s) => `<${s.tag} ${attrs(s.attrs)}/>`).join("");
     const here = t.key === current ? ' aria-current="page"' : "";
