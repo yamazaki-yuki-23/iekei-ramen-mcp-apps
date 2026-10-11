@@ -21,7 +21,9 @@ export default defineConfig(({ mode }) => ({
     // Web は 3 枚: トップ（index.html）と家系マッチ（match/index.html、#166・#181）と家系タイプ診断（shindan/index.html、#167）。
     rollupOptions: {
       input:
-        mode === "web" ? ["index.html", "match/index.html", "shindan/index.html"] : "mcp-app.html",
+        mode === "web"
+          ? ["index.html", "match/index.html", "shindan/index.html", "camera/index.html"]
+          : "mcp-app.html",
     },
     outDir: mode === "web" ? "dist/web" : "dist",
     emptyOutDir: mode === "web",

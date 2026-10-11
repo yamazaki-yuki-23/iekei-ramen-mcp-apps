@@ -1,0 +1,321 @@
+/*
+ * 家系カメラ（仮、#190）。縦長の 1 画面: 共通のヘッダー / 見出し / 撮る・店を選ぶ・仕上げて投稿。
+ * 色・余白はトークンだけを使う（DESIGN.md）。
+ */
+.page {
+  min-height: 100dvh;
+  background: var(--color-surface-muted);
+  color: var(--color-text-primary);
+}
+
+.app {
+  max-width: 30rem;
+  margin: 0 auto;
+  padding: calc(var(--space-3) + env(safe-area-inset-top, 0px)) var(--space-4)
+    calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.brand {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-min-size);
+  color: var(--color-text-primary);
+  font-size: var(--font-heading-lg-size);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-heading-lg-size);
+  line-height: var(--font-heading-lg-line-height);
+}
+
+.shoot,
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.shoot h2,
+.step h2 {
+  margin: 0;
+  font-size: var(--font-heading-xl-size);
+  line-height: 1.3;
+  font-weight: var(--font-weight-display);
+}
+
+.step h2:focus,
+.shoot h2:focus {
+  outline: none;
+}
+
+.shoot p,
+.step p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.muted,
+.note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+}
+
+/* ファイルの入力は見えなくし、ラベルをボタンの形にする（押せる範囲はラベル全体）。 */
+.file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.btn,
+.btnPrimary,
+.primary {
+  position: relative;
+  min-height: var(--control-min-size);
+  padding: 0 var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary {
+  min-height: calc(var(--control-min-size) + var(--space-6));
+  font-size: var(--font-heading-xl-size);
+  background: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
+  box-shadow: 0 var(--space-1) 0 var(--color-ink);
+}
+
+.btnPrimary {
+  flex: 1;
+  background: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
+}
+
+.primary:focus-within,
+.btn:focus-within,
+.btn:focus-visible,
+.btnPrimary:focus-visible,
+.chip:focus-visible,
+.shop:focus-visible,
+.link:focus-visible,
+.brand:focus-visible,
+.input:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--color-focus-edge);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.link {
+  align-self: flex-start;
+  min-height: var(--control-min-size);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-accent-strong);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.shops {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.shop {
+  width: 100%;
+  min-height: calc(var(--control-min-size) + var(--space-3));
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space-1) / 2);
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shop span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+}
+
+.place {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-weight: var(--font-weight-bold);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--control-min-size);
+  padding: 0 var(--space-3);
+  border: var(--border-width-regular) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+.preview {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  background: var(--color-ink);
+}
+
+.chips {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chips legend {
+  margin-bottom: var(--space-1);
+  padding: 0;
+  font-weight: var(--font-weight-bold);
+}
+
+.chip {
+  min-height: var(--control-min-size);
+  padding: 0 var(--space-3);
+  border: var(--border-width-regular) solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-fill);
+  color: var(--color-text-on-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-min-size);
+}
+
+.check input {
+  width: var(--space-6);
+  height: var(--space-6);
+}
+
+.texts {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.texts figure {
+  margin: 0;
+}
+
+.texts figcaption {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-note);
+}
+
+.text {
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width-regular) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 共有の画面を使わずに投稿する手順。 */
+.manual {
+  padding: var(--space-3);
+  border: var(--border-width-strong) solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.manual h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-heading-lg-size);
+}
+
+.manual h3:focus {
+  outline: none;
+}
+
+.manual ol {
+  margin: 0;
+  padding-left: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* 写真の上を指でなぞって判子を動かす（ページを動かさない）。 */
+.preview[data-stamp] {
+  touch-action: none;
+  cursor: grab;
+}
+
+.preview:focus-visible,
+.note a:focus-visible,
+.check input:focus-visible,
+.range input:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--color-focus-edge);
+}
+
+.range {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-weight: var(--font-weight-bold);
+}
+
+.range input {
+  width: 100%;
+  min-height: var(--control-min-size);
+  accent-color: var(--color-accent-fill);
+}
