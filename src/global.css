@@ -151,6 +151,8 @@
   --radius-lg: 16px;
   --radius-full: 999px;
   --control-min-size: 44px;
+  /* 下のタブバー（#194、スマホ幅だけ）の高さ。safe area はこの下に足す。 */
+  --tabbar-height: 56px;
   /* 券売機・食券・選択中の輪郭。通常の枠（1px）と分けて持つ。 */
   --border-width-strong: 2px;
 
@@ -255,5 +257,21 @@ strong {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * 下のタブバー（#194）がある画面では、最後の中身がタブバーに隠れないよう下を空ける。
+ * --tabbar-space は、画面いっぱいの高さを使うページ（家系マッチ）が自分の高さから引くのにも使う。
+ */
+@media (max-width: 40rem) {
+  :root:has(nav[data-tabbar]) {
+    --tabbar-space: calc(var(--tabbar-height) + env(safe-area-inset-bottom, 0px));
+    /* safe area はタブバーが受け持つので、ページの下の余白からは外す（二重に空けない）。 */
+    --page-safe-bottom: 0px;
+  }
+
+  :root:has(nav[data-tabbar]) body {
+    padding-bottom: var(--tabbar-space);
   }
 }

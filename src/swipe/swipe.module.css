@@ -18,7 +18,7 @@
   --flame-out: rgba(184, 68, 44, 0.6);
   --back-line: light-dark(#3b2a20, #d9cfc3);
   --slam-bg: light-dark(rgba(255, 255, 255, 0.92), rgba(20, 19, 18, 0.9));
-  min-height: 100dvh;
+  min-height: calc(100dvh - var(--tabbar-space, 0px));
   /* 払って画面の外へ出ていく札で、横にスクロールさせない。 */
   overflow-x: clip;
   background: var(--color-surface-muted);
@@ -37,10 +37,11 @@
   position: relative;
   z-index: 1;
   max-width: 26rem;
-  min-height: 100dvh;
+  /* 下のタブバー（#194）の分を引いて、札と操作キーを 1 画面に収める（#182）。 */
+  min-height: calc(100dvh - var(--tabbar-space, 0px));
   margin: 0 auto;
   padding: calc(var(--space-3) + env(safe-area-inset-top, 0px)) var(--space-4)
-    calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    calc(var(--space-4) + var(--page-safe-bottom, env(safe-area-inset-bottom, 0px)));
   display: flex;
   flex-direction: column;
   gap: var(--space-2);

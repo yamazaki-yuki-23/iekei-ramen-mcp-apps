@@ -2,7 +2,7 @@ import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
 
 /*
- * 家系カメラ（仮、#190）。写真は端末の中で仕上げ、サーバーに送らない。書き出した写真に位置情報が残らない。
+ * 家系カメラ（#190）。写真は端末の中で仕上げ、サーバーに送らない。書き出した写真に位置情報が残らない。
  * E2E のサーバーは接続元の位置を引かないので、ブラウザの位置（横浜駅）から近い順の店が出る。
  */
 const URL = "http://localhost:3134/camera/";

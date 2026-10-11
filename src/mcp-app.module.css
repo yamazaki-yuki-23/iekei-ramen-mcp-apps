@@ -691,6 +691,17 @@
   text-decoration: none;
 }
 
+/* 別のページへの入口（家系マッチ・家系カメラ・診断）。スマホ幅では下のタブバー（#194）に任せる。 */
+.featureLink {
+  composes: modeLink;
+}
+
+@media (max-width: 40rem) {
+  .featureLink {
+    display: none;
+  }
+}
+
 .modeLink:disabled {
   opacity: 0.45;
   cursor: default;

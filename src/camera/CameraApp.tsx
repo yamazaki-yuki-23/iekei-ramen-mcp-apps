@@ -1,3 +1,4 @@
+import { TabBar } from "../components/TabBar";
 import { useRef, useState } from "react";
 import { BrandMark } from "../components/BrandMark";
 import type { Shop } from "../lib/types";
@@ -10,7 +11,7 @@ import { ShopPicker } from "./ShopPicker";
 const focusHeading = (el: HTMLHeadingElement | null) => el?.focus();
 
 /**
- * 家系カメラ（仮、#190）。撮る → 店を選ぶ → 仕上げと投稿文 → X・Threads へ。
+ * 家系カメラ（#190）。撮る → 店を選ぶ → 仕上げと投稿文 → X・Threads へ。
  * 写真はサーバーに送らず、保存もしない（加工も投稿文作りも端末の中）。
  */
 export function CameraApp() {
@@ -100,6 +101,7 @@ export function CameraApp() {
           />
         )}
       </main>
+      <TabBar current="camera" />
     </div>
   );
 }

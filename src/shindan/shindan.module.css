@@ -3,7 +3,7 @@
  * 最後は券売機の取り出し口から結果の食券が出てくる。色・余白はトークンだけを使う（DESIGN.md）。
  */
 .page {
-  min-height: 100dvh;
+  min-height: calc(100dvh - var(--tabbar-space, 0px));
   overflow-x: clip;
   background: var(--color-surface-muted);
   color: var(--color-text-primary);
@@ -13,7 +13,7 @@
   max-width: 26rem;
   margin: 0 auto;
   padding: calc(var(--space-3) + env(safe-area-inset-top, 0px)) var(--space-4)
-    calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
+    calc(var(--space-5) + var(--page-safe-bottom, env(safe-area-inset-bottom, 0px)));
   display: flex;
   flex-direction: column;
   gap: var(--space-3);

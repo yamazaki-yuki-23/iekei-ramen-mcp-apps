@@ -81,9 +81,18 @@ export function ModeTabs({
               {LINK_LABEL[key]}
             </button>
           ))}
-        {/* 家系マッチ（#166）は別のページ。Web の入口のリンクにだけ置く（会話の中のタブには出さない）。 */}
-        <a className={styles.modeLink} href="/match/">
+        {/*
+         * 家系マッチ（#166）・家系カメラ（#190）・診断（#167）は別のページ。Web の入口のリンクにだけ置く
+         * （会話の中のタブには出さない）。スマホ幅では隠し、下のタブバー（#194）から開く。
+         */}
+        <a className={styles.featureLink} href="/match/">
           家系マッチ
+        </a>
+        <a className={styles.featureLink} href="/camera/">
+          家系カメラ
+        </a>
+        <a className={styles.featureLink} href="/shindan/">
+          診断
         </a>
       </nav>
     );

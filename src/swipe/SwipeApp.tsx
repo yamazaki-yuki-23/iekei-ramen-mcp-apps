@@ -1,3 +1,4 @@
+import { TabBar } from "../components/TabBar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { distanceKm, originLabel } from "../lib/geo";
 import { factStamp } from "../lib/shop-facts";
@@ -281,6 +282,7 @@ export function SwipeApp() {
           onToday={decideToday}
         />
       </main>
+      <TabBar current="match" />
     </div>
   );
 }
