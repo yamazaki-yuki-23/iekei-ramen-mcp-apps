@@ -65,4 +65,71 @@
   // 読み取り 1 日 1 万回。書くのは tool 名とサインインの有無だけで、個人は特定しない。
   // 週ごとの件数は `npm run usage`。
   "analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "iekei_ramen_usage" }],
+  // 本番の Worker ではプレビュー版（Version URLs）を使わない。Durable Object を持つ Worker には
+  // 作られないため（#192。公式: Version URLs are not generated for Workers that implement a Durable Object）。
+  // 本番の前に確かめる場所は、下の確認用の環境（staging）。
+  "preview_urls": false,
+  /*
+   * 確認用の環境（#192）。`npm run deploy:staging` で、どのブランチからでも上げる（CI からは上げない）。
+   * オーナーがスマホで、本番と同じ https の条件で確かめるための場所。Access（Cloudflare アカウント）で守る。
+   *
+   * **データベース・KV・Durable Object・Analytics Engine・連打止めは本番と分ける**（確認中に何を押しても
+   * 本番のデータと利用回数の数字に触らない）。サインインの秘密の値も本番と共有しない（入れていないので、
+   * 確認用ではサインインは動かない）。
+   * **routes は空にする。** 書かないと本番の routes（iekeiramen.com）を引き継ぎ、確認用が本番の URL を奪う。
+   */
+  "env": {
+    "staging": {
+      "name": "iekei-ramen-staging",
+      "routes": [],
+      // 初めて作るときだけ false で上げ、オーナーが Access を付けてから true にした（#192）。
+      "workers_dev": true,
+      "preview_urls": false,
+      // サインインの値（GOOGLE_CLIENT_ID）は入れない。確認用ではサインインを動かさない。
+      "vars": {},
+      "assets": {
+        // 確認用は検索エンジンに載せない robots.txt と X-Robots-Tag を足した複製を上げる
+        // （scripts/deploy-staging.mjs が作る）。
+        "directory": "./dist/staging",
+        "binding": "ASSETS",
+        "not_found_handling": "none",
+        "run_worker_first": [
+          "/mcp",
+          "/health",
+          "/whereami",
+          "/reports",
+          "/authorize",
+          "/callback/google",
+          "/token",
+          "/register",
+          "/.well-known/*",
+        ],
+      },
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "d0e99b4c70ec41588a54d33dd8b80a90" }],
+      "d1_databases": [
+        {
+          "binding": "VISITS",
+          "database_name": "iekei-ramen-visits-staging",
+          "database_id": "c07ba531-2069-4cda-970e-d550f8f0e85a",
+        },
+      ],
+      "ratelimits": [
+        {
+          "name": "GEOCODE_LIMITER",
+          "namespace_id": "2001",
+          "simple": { "limit": 5, "period": 60 },
+        },
+        {
+          "name": "REPORT_LIMITER",
+          "namespace_id": "2002",
+          "simple": { "limit": 5, "period": 60 },
+        },
+      ],
+      "durable_objects": {
+        "bindings": [{ "name": "GEOCODE_GATE", "class_name": "GeocodeGate" }],
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GeocodeGate"] }],
+      "analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "iekei_ramen_usage_staging" }],
+    },
+  },
 }
