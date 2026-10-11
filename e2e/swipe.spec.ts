@@ -381,6 +381,17 @@ test("スマホ幅の下のタブバーは、どの画面でもいまいる画�
       "page",
     );
   }
+  // チャットで使う方法（/connect、#196）にも同じタブバー。どのタブにも属さないので、選ばれたタブは無し。
+  await page.goto("http://localhost:3134/connect");
+  const connectBar = page.getByRole("navigation", { name: "機能" });
+  await expect(connectBar.getByRole("link")).toHaveText([
+    "探す",
+    "家系マッチ",
+    "家系カメラ",
+    "診断",
+  ]);
+  await expect(connectBar.locator("svg")).toHaveCount(4);
+  await expect(connectBar.locator('[aria-current="page"]')).toHaveCount(0);
   // パソコン幅の都道府県のページは、上のナビから開ける。
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("http://localhost:3134/area/kanagawa/");
@@ -392,6 +403,16 @@ test("スマホ幅の下のタブバーは、どの画面でもいまいる画�
   ])
     await expect(links.getByRole("link", { name })).toHaveAttribute("href", href);
   await expect(page.getByRole("navigation", { name: "機能" })).toBeHidden();
+  // /connect のパソコン幅の上のナビも、都道府県・店のページとそろえる。
+  await page.goto("http://localhost:3134/connect");
+  await expect(page.getByRole("navigation", { name: "探し方" }).getByRole("link")).toHaveText([
+    "迷ったら",
+    "都道府県から",
+    "家系マッチ",
+    "家系カメラ",
+    "診断",
+  ]);
+  await page.goto("http://localhost:3134/area/kanagawa/");
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(links.getByRole("link", { name: "家系マッチ" })).toBeHidden();
   await page.goto("http://localhost:3134/shindan/");
