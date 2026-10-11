@@ -245,6 +245,17 @@ Web だけの別ページ（`shindan/index.html` → `src/shindan/main.tsx`）�
   タイプ名か文言を変えたときだけ回す
 - 投稿画面の URL は `src/lib/share.ts`（#46 と共有。X を左、Threads を右に並べる）
 
+### 家系カメラ（仮、`/camera/`、#190）
+
+Web だけの別ページ（`camera/index.html` → `src/camera/main.tsx`）。投稿文のひな形は `src/lib/camera-post.ts`、
+写真の仕上げは `src/camera/photo.ts`。
+
+- 写真はサーバーに送らず、保存しない。加工は canvas で端末の中だけ。canvas から書き出すと EXIF（位置情報）は付かない
+  （`e2e/camera.spec.ts` で、位置情報入りの写真から書き出したものに EXIF が無いこと・送った通信が小さいことを確かめる）
+- 店の候補は家系マッチと同じ `createFeed`（接続元の推定 → ブラウザの位置 → 地名）。店の中で使うので「いまいる場所で探し直す」がある
+- 投稿は Web Share API（写真と文）。渡せない端末（PC）では写真を保存し、文をコピーして投稿画面を開く
+- 検索エンジンには載せない（`noindex`。見本の段階）
+
 ### UI のホスト境界
 
 `src/iekei-app.tsx` は両方の入口が使う画面と状態を持つ。payload ごとに key で作り直す結果の画面は

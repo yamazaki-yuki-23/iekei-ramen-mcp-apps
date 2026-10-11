@@ -4,6 +4,7 @@
     "index.html",
     "src/swipe/main.tsx",
     "src/shindan/main.tsx",
+    "src/camera/main.tsx",
     "mcp-app.html",
     "src/mcp-app.tsx",
     "scripts/*.mjs",

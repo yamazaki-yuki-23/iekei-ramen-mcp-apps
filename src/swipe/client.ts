@@ -34,6 +34,14 @@ async function nearby(client: Client, offset: number, origin?: Origin): Promise<
   return { shops: payload.shops, origin: payload.query.origin };
 }
 
+/** ブラウザの位置を基準地点にする。 */
+const browserOrigin = (pos: GeolocationPosition): Origin => ({
+  lat: pos.coords.latitude,
+  lon: pos.coords.longitude,
+  label: "現在地",
+  source: "precise",
+});
+
 /**
  * 近くの家系を近い順に、SWIPE_STEP 軒ずつ取る。
  *
@@ -44,29 +52,35 @@ async function nearby(client: Client, offset: number, origin?: Origin): Promise<
 export function createFeed() {
   const ready = connect();
   let origin: Origin | undefined;
+  // 探し直しが重なったら、最後に頼んだものの場所だけを覚える（遅れて返った古い検索で上書きしない）。
+  let asked = 0;
+  const keep = (mine: number, next: Origin) => {
+    if (mine === asked) origin = next;
+  };
+  const from = async (mine: number, client: Client, next: Origin) => {
+    const page = await nearby(client, 0, next);
+    keep(mine, next);
+    return page;
+  };
   return {
     async first(): Promise<Page> {
+      const mine = ++asked;
       const client = await ready;
       const page = await nearby(client, 0);
       if (page.origin) {
-        origin = page.origin;
+        keep(mine, page.origin);
         return page;
       }
       const pos = await requestBrowserPosition();
       if (!pos) return { shops: [] };
-      origin = {
-        lat: pos.coords.latitude,
-        lon: pos.coords.longitude,
-        label: "現在地",
-        source: "precise",
-      };
-      return nearby(client, 0, origin);
+      return from(mine, client, browserOrigin(pos));
     },
     /**
      * 地名・駅名から探す（接続元もブラウザの位置も取れなかったとき）。見つからなければ null。
      * 失敗（連打止め・地名検索の不調）は「見つからない」にせず、理由ごと投げる。
      */
     async fromPlace(query: string): Promise<Page | null> {
+      const mine = ++asked;
       const client = await ready;
       const result = await client.callTool({ name: "geocode-place", arguments: { query } });
       if (result.isError) {
@@ -81,13 +95,33 @@ export function createFeed() {
           | undefined
       )?.results?.[0];
       if (!hit) return null;
-      origin = {
+      return from(mine, client, {
         lat: hit.lat,
         lon: hit.lon,
         label: hit.label.split(",")[0].trim(),
         source: "place",
-      };
-      return nearby(client, 0, origin);
+      });
+    },
+    /**
+     * いまの基準地点で、もう一度最初から取る（家系カメラで店を選び直すとき。#190）。
+     * 地名やブラウザの位置で探し直していれば、その場所のまま。まだ無ければ first と同じ。
+     */
+    /** まだ返っていない検索を無効にする（家系カメラで店を選んだとき。選んだ候補の場所を書き換えさせない）。 */
+    settle() {
+      ++asked;
+    },
+    async again(): Promise<Page> {
+      if (!origin) return this.first();
+      // 選び直しも 1 回の頼みとして数え、まだ返っていない古い検索に場所を書き換えさせない。
+      ++asked;
+      return nearby(await ready, 0, origin);
+    },
+    /** ブラウザの位置で探し直す（家系カメラ #190。店の中にいるので、市区町村の推定より近くを正しく出す）。 */
+    async here(): Promise<Page | null> {
+      const mine = ++asked;
+      const [client, pos] = await Promise.all([ready, requestBrowserPosition()]);
+      if (!pos) return null;
+      return from(mine, client, browserOrigin(pos));
     },
     async next(offset: number): Promise<Page> {
       return nearby(await ready, offset, origin);
