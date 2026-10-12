@@ -1,12 +1,17 @@
 import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
-import { seoPages, siteHeader } from "./seo-pages.mjs";
+import { legalPages, seoPages, siteHeader } from "./seo-pages.mjs";
+import { legalLinksHtml } from "../src/lib/legal-links.ts";
 import { tabBarHtml } from "../src/lib/tabbar.ts";
 import { TYPES, shareUrl } from "../src/lib/shindan.ts";
 
 const output = new URL("../dist/web/", import.meta.url);
 const shops = JSON.parse(await readFile(new URL("../data/shops.json", import.meta.url), "utf8"));
 const { files, counts } = seoPages(shops);
-for (const [path, content] of files) {
+const legal = legalPages({
+  privacy: await readFile(new URL("../docs/legal/privacy-policy.md", import.meta.url), "utf8"),
+  terms: await readFile(new URL("../docs/legal/terms.md", import.meta.url), "utf8"),
+});
+for (const [path, content] of [...files, ...legal]) {
   const destination = new URL(`.${path}${path.endsWith("/") ? "index.html" : ""}`, output);
   await mkdir(new URL(".", destination), { recursive: true });
   await writeFile(destination, content);
@@ -21,12 +26,14 @@ await copyFile(new URL("../src/global.css", import.meta.url), new URL("seo-token
 const connectFile = new URL("connect.html", output);
 const connect = await readFile(connectFile, "utf8");
 const connectHeader = /<header>[\s\S]*?<\/header>/;
-if (!connectHeader.test(connect) || !connect.includes("</body>"))
-  throw new Error("connect.html のヘッダーかタブバーの置き場所が見つかりません");
+if (!connectHeader.test(connect) || !connect.includes("</body>") || !connect.includes("</footer>"))
+  throw new Error("connect.html のヘッダー・フッター・タブバーの置き場所が見つかりません");
 await writeFile(
   connectFile,
   connect
     .replace(connectHeader, siteHeader("/connect"))
+    // 規約へのリンク（#198）。接続して使い始める前に目に入るように、フッターに置く。
+    .replace("</footer>", `${legalLinksHtml()}</footer>`)
     .replace("</body>", `${tabBarHtml()}</body>`),
 );
 

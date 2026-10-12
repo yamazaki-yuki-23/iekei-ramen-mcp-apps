@@ -1,4 +1,6 @@
 import { tabBarHtml } from "../src/lib/tabbar.ts";
+import { legalLinksHtml } from "../src/lib/legal-links.ts";
+import { legalMarkdown } from "./legal-markdown.mjs";
 import { ALL_PREFECTURES } from "../src/lib/prefectures.ts";
 
 const origin = "https://iekeiramen.com";
@@ -78,9 +80,10 @@ function page({
   heading = title,
   count,
   crumbs = "",
+  tab = "search",
 }) {
   const ld = [structured ?? []].flat();
-  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${canonical ? `<link rel="canonical" href="${origin}${path}">${ogp({ title, description, path })}` : ""}${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${ld.length ? `<script type="application/ld+json">${JSON.stringify(ld.length === 1 ? ld[0] : ld).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page">${siteHeader(path)}<main>${crumbs ? `<p class="seo-crumbs">${crumbs}</p>` : ""}<div class="seo-head"><h1>${escape(heading)}</h1>${count === undefined ? "" : `<span class="seo-count">判定した結果の ${count} 軒</span>`}</div>${content}</main><footer><p class="seo-note">店舗データ: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p></footer>${tabBarHtml("search")}</body></html>`;
+  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${canonical ? `<link rel="canonical" href="${origin}${path}">${ogp({ title, description, path })}` : ""}${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${ld.length ? `<script type="application/ld+json">${JSON.stringify(ld.length === 1 ? ld[0] : ld).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page">${siteHeader(path)}<main>${crumbs ? `<p class="seo-crumbs">${crumbs}</p>` : ""}<div class="seo-head"><h1>${escape(heading)}</h1>${count === undefined ? "" : `<span class="seo-count">判定した結果の ${count} 軒</span>`}</div>${content}</main><footer><p class="seo-note">店舗データ: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p>${legalLinksHtml()}</footer>${tabBarHtml(tab)}</body></html>`;
 }
 
 /** 券売機の入口。アプリの券売機と同じ枠に、茶赤の発券キーを 1 つ置く。 */
@@ -253,4 +256,32 @@ export function seoPages(shops) {
       indexed: indexed.length,
     },
   };
+}
+
+/**
+ * プライバシーポリシーと利用規約（#198）。正本は docs/legal/*.md で、ここでは HTML にするだけ。
+ * `/privacy.html` に置くと、静的アセットが `/privacy` で返す（/connect と同じ）。
+ */
+export function legalPages({ privacy, terms }) {
+  const files = new Map();
+  for (const [path, markdown, description] of [
+    ["/privacy", privacy, "家系ラーメンを探すが受け取る情報と、その使い道・保存・外部への送信"],
+    ["/terms", terms, "家系ラーメンを探すの利用条件"],
+  ]) {
+    const { title, html } = legalMarkdown(markdown);
+    if (!title || /【/.test(html)) throw new Error(`${path}: 見出しが無いか、【】が残っています`);
+    files.set(
+      `${path}.html`,
+      page({
+        title: `${title}｜家系ラーメンを探す`,
+        description,
+        path,
+        heading: title,
+        content: `<div class="seo-legal">${html}</div>`,
+        // どのタブの中身でもないので、タブは選ばない（/connect と同じ）。
+        tab: null,
+      }),
+    );
+  }
+  return files;
 }

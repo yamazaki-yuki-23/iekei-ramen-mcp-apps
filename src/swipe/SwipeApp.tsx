@@ -1,4 +1,5 @@
 import { TabBar } from "../components/TabBar";
+import { LegalLinks } from "../components/LegalLinks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { distanceKm, originLabel } from "../lib/geo";
 import { factStamp } from "../lib/shop-facts";
@@ -282,6 +283,7 @@ export function SwipeApp() {
           onToday={decideToday}
         />
       </main>
+      <LegalLinks />
       <TabBar current="match" />
     </div>
   );

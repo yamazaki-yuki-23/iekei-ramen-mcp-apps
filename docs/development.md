@@ -208,6 +208,13 @@ Search Consoleの所有権は2026-10-04に確認済み。DNSのTXTレコード�
 ページ公開後、オーナーがドメイン `iekeiramen.com` の「サイトマップ」で
 `https://iekeiramen.com/sitemap.xml` を送信し、送信日をissueに残す。
 
+### プライバシーポリシーと利用規約（`/privacy`・`/terms`、#198）
+
+正本は `docs/legal/*.md`。`npm run build:ui` の最後に `scripts/build-seo.mjs` が `legalPages`（`scripts/seo-pages.mjs`）で
+`dist/web/privacy.html`・`terms.html` を作る（静的アセットが `/privacy`・`/terms` で返す）。`【` が残っているとビルドが止まる。
+Web のすべてのページの下と `/connect` のフッターに 2 つへのリンクを出す（`src/lib/legal-links.ts`）。
+**保存するもの・外部に送る先・端末に残すものを変えたら、規約も直す**（直す箇所の表は [docs/legal/README.md](legal/README.md)）。
+
 ### チャットへの接続案内
 
 チャットへの接続案内は `public/connect.html` を `/connect` で配信する。

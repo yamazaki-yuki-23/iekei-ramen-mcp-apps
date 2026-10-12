@@ -314,3 +314,50 @@
     display: none;
   }
 }
+
+/*
+ * プライバシーポリシーと利用規約（#198）。読み物なので行の長さを抑える。表は狭い画面で
+ * 表だけ横に送り、ページ全体は横に動かさない。
+ */
+.seo-legal {
+  max-width: 48rem;
+  line-height: 1.8;
+}
+.seo-legal h2 {
+  margin-top: var(--space-8);
+  font-size: 1.25rem;
+}
+.seo-legal h3 {
+  margin-top: var(--space-6);
+  font-size: 1.0625rem;
+}
+.seo-table {
+  overflow-x: auto;
+  margin-block: var(--space-4);
+}
+.seo-table table {
+  min-width: 40rem;
+  border-collapse: collapse;
+  font-size: var(--font-size-note);
+  line-height: 1.6;
+}
+.seo-table th,
+.seo-table td {
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width-regular) solid var(--color-border-strong);
+  text-align: left;
+  vertical-align: top;
+}
+.seo-table th {
+  background: var(--color-surface-muted);
+}
+.seo-legal ul,
+.seo-legal ol {
+  padding-left: 1.5em;
+}
+.seo-legal ul {
+  list-style: disc;
+}
+.seo-legal ol {
+  list-style: decimal;
+}
