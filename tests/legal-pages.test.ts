@@ -59,6 +59,8 @@ describe("/privacy・/terms のページ（#198）", () => {
 
   it("【】が残っていればビルドを止める", () => {
     expect(() => legalPages({ privacy: "# 題\n\n制定日: 【公開日】", terms })).toThrow(/【】/);
+    // 見出しは本文と別に取り出すので、見出しの【】も見る。
+    expect(() => legalPages({ privacy: "# 【サービス名】\n\n本文", terms })).toThrow(/【】/);
   });
 
   it("今の機能の扱いを書いている（端末の中だけ・外部への送信・計測）", () => {

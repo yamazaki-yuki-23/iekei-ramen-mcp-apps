@@ -269,7 +269,7 @@ export function legalPages({ privacy, terms }) {
     ["/terms", terms, "家系ラーメンを探すの利用条件"],
   ]) {
     const { title, html } = legalMarkdown(markdown);
-    if (!title || /【/.test(html)) throw new Error(`${path}: 見出しが無いか、【】が残っています`);
+    if (!title || /【/.test(title + html)) throw new Error(`${path}: 見出しが無いか、【】が残っています`);
     files.set(
       `${path}.html`,
       page({
