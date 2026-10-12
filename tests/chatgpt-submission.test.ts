@@ -27,6 +27,27 @@ describe("ChatGPT の申請の中身（#47）", () => {
     for (const p of ui.defaultPrompt) expect(p.length).toBeLessThanOrEqual(128);
   });
 
+  it("カテゴリは受け付けられる 13 種類のどれか（developers.openai.com/plugins/deploy/submission-errors）", () => {
+    expect([
+      "Productivity",
+      "Creativity",
+      "Developer Tools",
+      "Business & Operations",
+      "Data & Analytics",
+      "Communication",
+      "Education & Research",
+      "Security",
+      "Finance",
+      "Healthcare",
+      "Travel",
+      "Entertainment",
+      "Other",
+    ]).toContain(ui.category);
+    // 最終の申請では release notes も要る。
+    expect(openai.publication.release_notes).toBeTruthy();
+    expect(plugin.description.length).toBeLessThanOrEqual(1024);
+  });
+
   it("審査に要る URL が本番の https を指す", () => {
     for (const key of ["websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL"])
       expect(ui[key]).toMatch(/^https:\/\/iekeiramen\.com(\/|$)/);
