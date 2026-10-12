@@ -70,17 +70,12 @@ export function siteHeader(path) {
 }
 
 /**
- * 見出しを文節の切れ目でだけ折り返せるようにする（#205）。Safari は word-break: auto-phrase を
- * 持たないので、<wbr> と seo.css の keep-all で単語の途中を割らない。切れ目は空白と、ひらがな
- * （助詞）のあとに漢字・カタカナが続く所（「から|家系」「の|候補」「を|探す」）。「とんこつ」のような
- * ひらがなの語の中は割らない。**店名（properName）は空白でだけ割る。**「しゃかりき家」の
- * ような固有名詞は、ひらがなと漢字の境目でも切らない。
+ * 見出しの HTML（#205）。**文節の切れ目は推し量らず、呼ぶ側が配列で渡す**（地名・店名を 1 つの
+ * 区切りに入れ、中で割らない）。区切りの間だけ <wbr> にし、seo.css の keep-all でそこでだけ
+ * 折り返す。Safari は word-break: auto-phrase を持たないので、こうして明示する。
+ * ひらがなと漢字の境目から推し量ると、「しゃかりき|家」「さいたま|市」と固有名詞を割った。
  */
-const phrases = (text, properName) =>
-  escape(text).replace(
-    properName ? /(\s)/g : /(\s|[\u3041-\u309f](?=[\u4e00-\u9fff\u30a0-\u30ff]))/g,
-    "$1<wbr>",
-  );
+const phrases = (heading) => [heading].flat().map(escape).join("<wbr>");
 
 function page({
   title,
@@ -91,14 +86,12 @@ function page({
   canonical = true,
   structured,
   heading = title,
-  /** 見出しが店名。文節の切れ目を推し量らず、空白でだけ折り返す。 */
-  properName = false,
   count,
   crumbs = "",
   tab = "search",
 }) {
   const ld = [structured ?? []].flat();
-  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${canonical ? `<link rel="canonical" href="${origin}${path}">${ogp({ title, description, path })}` : ""}${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${ld.length ? `<script type="application/ld+json">${JSON.stringify(ld.length === 1 ? ld[0] : ld).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page">${siteHeader(path)}<main>${crumbs ? `<p class="seo-crumbs">${crumbs}</p>` : ""}<div class="seo-head"><h1>${phrases(heading, properName)}</h1>${count === undefined ? "" : `<span class="seo-count">判定した結果の ${count} 軒</span>`}</div>${content}</main><footer><p class="seo-note">店舗データ: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p>${legalLinksHtml()}</footer>${tabBarHtml(tab)}</body></html>`;
+  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${canonical ? `<link rel="canonical" href="${origin}${path}">${ogp({ title, description, path })}` : ""}${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${ld.length ? `<script type="application/ld+json">${JSON.stringify(ld.length === 1 ? ld[0] : ld).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page">${siteHeader(path)}<main>${crumbs ? `<p class="seo-crumbs">${crumbs}</p>` : ""}<div class="seo-head"><h1>${phrases(heading)}</h1>${count === undefined ? "" : `<span class="seo-count">判定した結果の ${count} 軒</span>`}</div>${content}</main><footer><p class="seo-note">店舗データ: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p>${legalLinksHtml()}</footer>${tabBarHtml(tab)}</body></html>`;
 }
 
 /** 券売機の入口。アプリの券売機と同じ枠に、茶赤の発券キーを 1 つ置く。 */
@@ -155,6 +148,7 @@ export function seoPages(shops) {
     "/area/",
     page({
       title: "都道府県から家系ラーメンの候補を探す",
+      heading: ["都道府県から", "家系ラーメンの", "候補を", "探す"],
       description: `判定した結果の${shops.length}軒を都道府県から探せます。家系ではない店が含まれている可能性があります。`,
       path: "/area/",
       count: shops.length,
@@ -172,6 +166,7 @@ export function seoPages(shops) {
       path,
       page({
         title: `${prefecture}の家系ラーメンの候補一覧`,
+        heading: [`${prefecture}の`, "家系ラーメンの", "候補一覧"],
         description: `${prefecture}で判定した結果の${list.length}軒。店舗情報・地域と地図を確認できます。家系ではない店が含まれている可能性があります。`,
         path,
         noindex: allCandidates(list),
@@ -189,6 +184,7 @@ export function seoPages(shops) {
       path,
       page({
         title: `${label}の家系ラーメンの候補一覧`,
+        heading: [`${prefecture} `, `${city}の`, "家系ラーメンの", "候補一覧"],
         description: `${label}で判定した結果の${list.length}軒。店舗情報と地図を確認できます。家系ではない店が含まれている可能性があります。`,
         path,
         noindex: thinCity(list),
@@ -229,7 +225,6 @@ export function seoPages(shops) {
         description: `${shop.name}の店舗情報。地域は${[region(shop), shop.address].filter(Boolean).join(" ")}。地図の位置を確認できます。`,
         path,
         heading: shop.name,
-        properName: true,
         noindex: shop.confidence === "candidate",
         structured: [
           structured,
@@ -252,7 +247,7 @@ export function seoPages(shops) {
       title: "ページが見つかりません｜家系ラーメンを探す",
       description: "お探しのページは見つかりませんでした。",
       path: "/404.html",
-      heading: "ページが見つかりません",
+      heading: ["ページが", "見つかりません"],
       noindex: true,
       canonical: false,
       content: `<p class="seo-lead">URL が変わったか、店舗の情報が更新された可能性があります。</p>${machine("家系ラーメンの券売機", "/", "アプリで探す", "迷ったら、近くの 3 軒から")}<p><a class="seo-sub-link" href="/area/">都道府県から探す</a></p>`,

@@ -445,9 +445,12 @@ test("スマホ幅でも、下の規約のリンクは 44px で押せ、見出�
   // 「の」以外の助詞（から・を）の後でも割れる。13 字の「都道府県から家系ラーメンの」は 1 行に入らない。
   await page.goto("http://localhost:3134/area/");
   expect((await lines()).every((s) => ["都道", "家系", "候補", "探す"].includes(s))).toBe(true);
-  // 店名は固有名詞。ひらがなと漢字の境目（「しゃかりき|家」）でも切らない。
+  // 店名は固有名詞。ひらがなと漢字の境目（「しゃかりき|家」）でも切らない（区切りは呼ぶ側が渡す）。
   await page.goto("http://localhost:3134/shop/way-548841303/");
   expect(await page.locator("h1").innerHTML()).not.toContain("<wbr>");
+  // 市区町村名も固有名詞。「さいたま|市」と切らない。
+  await page.goto(`http://localhost:3134/area/saitama/${encodeURIComponent("さいたま市")}/`);
+  expect(await page.locator("h1").innerHTML()).toContain("<wbr>さいたま市の<wbr>");
   await page.goto("http://localhost:3134/connect");
   expect((await lines()).every((s) => ["チャ", "家系", "探す"].includes(s))).toBe(true);
   // 家系マッチの見出しは 1 行。場所はその下の行で、音・行きたいは見出しの右のまま。
