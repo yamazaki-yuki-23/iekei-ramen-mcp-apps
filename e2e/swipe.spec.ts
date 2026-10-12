@@ -350,6 +350,40 @@ test("パソコン幅は上のナビに 7 項目、スマホ幅は探し方の 4
   await expect(page.getByRole("heading", { level: 1, name: "家系マッチ" })).toBeVisible();
 });
 
+test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はその下。いまの探し方は塗って示す（#204）", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("http://localhost:3134/");
+  const tickets = page.locator("ul > li > button[data-shop-id]");
+  await expect(tickets).toHaveCount(3);
+  const tabTop = (await page.getByRole("navigation", { name: "機能" }).boundingBox())!.y;
+  for (const box of await tickets.evaluateAll((els) =>
+    els.map((el) => el.getBoundingClientRect().bottom),
+  ))
+    expect(box).toBeLessThanOrEqual(tabTop);
+  // 読む順（焦点の順）も食券が先。見た目だけ入れ替えない。
+  const order = await page.evaluate(() => {
+    const ticket = document.querySelector("ul > li > button[data-shop-id]")!;
+    const issue = [...document.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("発券する"),
+    )!;
+    return ticket.compareDocumentPosition(issue) & Node.DOCUMENT_POSITION_FOLLOWING;
+  });
+  expect(order).toBeTruthy();
+  const current = page
+    .getByRole("navigation", { name: "探し方" })
+    .getByRole("button", { name: "迷ったら" });
+  await expect(current).toHaveAttribute("aria-current", "page");
+  const [fill, plain] = await page
+    .getByRole("navigation", { name: "探し方" })
+    .getByRole("button")
+    .evaluateAll((els) => els.slice(0, 2).map((el) => getComputedStyle(el).backgroundColor));
+  expect(fill).not.toBe(plain);
+  // 家系マッチ・診断の入口は下のタブバーにあるので、一言の下には出さない。
+  await expect(page.getByRole("link", { name: "近くの家系とマッチング →" })).toBeHidden();
+});
+
 test("スマホ幅の下のタブバーは、どの画面でもいまいる画面が分かり、キーボードで移れる（#194）", async ({
   page,
 }) => {

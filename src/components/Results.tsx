@@ -48,6 +48,10 @@ function keepsControls(mode: SearchMode, belowMap: ReactNode, aside: ReactNode) 
 /**
  * 券売機（aside）と食券を 1 つの舞台に並べる（Web）。揃うまでの間は食券の側だけを
  * 状態に差し替え、券売機は同じ位置（同じ要素）に残す。会話の中は aside が無い。
+ *
+ * **並びは食券（答え）が先、券売機が後**（#204）。スマホ幅では 3 軒を最初の画面に入れ、券売機は
+ * 「条件を変えて発券し直す」場所として下に置く（会話の中と同じ並び）。パソコン幅は CSS の格子で
+ * 左に券売機、右に食券のまま（見た目は変えない）。読み上げと Tab の順も、答えが先になる。
  */
 function DecideStage({
   aside,
@@ -62,11 +66,11 @@ function DecideStage({
 }) {
   return (
     <div className={aside ? styles.decideStage : undefined}>
-      {aside}
       <div className={styles.decideOut}>
         <FailureNote failure={status ? null : failure} />
         {status ?? panel}
       </div>
+      {aside}
     </div>
   );
 }
