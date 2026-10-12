@@ -1,4 +1,5 @@
 import { TabBar } from "../components/TabBar";
+import { LegalLinks } from "../components/LegalLinks";
 import { useEffect, useState } from "react";
 import { BrandMark } from "../components/BrandMark";
 import { shareLinks } from "../lib/share";
@@ -74,6 +75,7 @@ export function ShindanApp() {
           <Result answers={answers} friend={friend} onRetry={() => go([])} />
         )}
       </main>
+      <LegalLinks />
       <TabBar current="shindan" />
     </div>
   );

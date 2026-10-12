@@ -4,6 +4,7 @@ import { IekeiApp } from "./iekei-app";
 import { WebConnection } from "./hosts/web";
 import { IekeiIntro } from "./components/IekeiIntro";
 import { TabBar } from "./components/TabBar";
+import { LegalLinks } from "./components/LegalLinks";
 import { PromiseHero } from "./components/PromiseHero";
 import { initialIntroOpen } from "./lib/intro-state";
 import { webEntry } from "./lib/web-entry";
@@ -20,6 +21,7 @@ function WebApp() {
         hero={PromiseHero}
         introduction={<IekeiIntro open={introOpen} onToggle={setIntroOpen} />}
       />
+      <LegalLinks />
       <TabBar current="search" />
     </>
   );

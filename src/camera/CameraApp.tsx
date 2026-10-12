@@ -1,4 +1,5 @@
 import { TabBar } from "../components/TabBar";
+import { LegalLinks } from "../components/LegalLinks";
 import { useRef, useState } from "react";
 import { BrandMark } from "../components/BrandMark";
 import type { Shop } from "../lib/types";
@@ -101,6 +102,7 @@ export function CameraApp() {
           />
         )}
       </main>
+      <LegalLinks />
       <TabBar current="camera" />
     </div>
   );
