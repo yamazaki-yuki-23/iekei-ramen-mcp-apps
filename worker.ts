@@ -34,6 +34,12 @@ interface Env extends AuthEnv {
   USAGE?: AnalyticsEngineDataset;
   /** 静的ページ（dist/web）。存在しない URL に Web の 404 ページを返すのに使う（#169）。 */
   ASSETS?: Fetcher;
+  /**
+   * ChatGPT のディレクトリへの申請（#47）でドメインを確かめる文字列。申請画面で受け取り、
+   * Cloudflare のダッシュボードで Secret として入れる（コードもデプロイも要らない。秘密ではないが、
+   * vars に書くと CI のデプロイのたびに wrangler.jsonc の値で上書きされるため）。
+   */
+  OPENAI_APPS_CHALLENGE?: string;
 }
 
 /**
@@ -145,6 +151,13 @@ export default {
      * 文書とは持ち主が違い、こちらは KV が無くても返せる。
      */
     if (isResourceMetadataPath(url.pathname)) return resourceMetadata(origin, CORS_HEADERS);
+
+    // 文字列だけを返す（JSON にしない。OpenAI の指定）。入れていなければ素の 404 のまま。
+    if (url.pathname === "/.well-known/openai-apps-challenge" && env.OPENAI_APPS_CHALLENGE) {
+      return new Response(env.OPENAI_APPS_CHALLENGE.trim(), {
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+      });
+    }
 
     /*
      * 認可サーバーに任せる道。**`/authorize` は含めない**——そこは Google へ

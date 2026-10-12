@@ -36,7 +36,8 @@
     "slides:pdf": "node scripts/make-slides-pdf.mjs",
     "doctor": "react-doctor",
     "prepare": "git config core.hooksPath .githooks || true",
-    "usage": "node --env-file-if-exists=.dev.vars scripts/usage.mjs"
+    "usage": "node --env-file-if-exists=.dev.vars scripts/usage.mjs",
+    "submission:chatgpt": "rm -f dist/iekei-ramen-chatgpt.zip && mkdir -p dist && cd submission/chatgpt && zip -r -X ../../dist/iekei-ramen-chatgpt.zip plugin.json mcp.json assets"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^1.1.0",

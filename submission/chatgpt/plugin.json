@@ -1,0 +1,94 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "iekei-ramen",
+  "version": "1.0.0",
+  "description": "家系ラーメンの店を、会話の中で地図と一覧で探せます。迷ったら 3 軒まで絞ります。",
+  "author": {
+    "name": "山﨑悠樹",
+    "email": "support@iekeiramen.com",
+    "url": "https://iekeiramen.com"
+  },
+  "homepage": "https://iekeiramen.com",
+  "repository": "https://github.com/yamazaki-yuki-23/iekei-ramen-mcp-apps",
+  "keywords": ["ramen", "iekei", "restaurant", "map", "japan"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "家系ラーメンを探す",
+        "shortDescription": "迷ったら、3 軒まで絞る",
+        "longDescription": "会話の中で、家系ラーメンの店を探せます。\n\n■ できること\n・迷ったら：今いる場所や駅の近くから、家系ラーメンを 3 軒まで絞ります。並べた根拠（近い順など）も一緒に示します\n・店名で：ブランド名や都道府県から探せます\n・現在地から：近い順に一覧で出します\n・地図で：日本地図の上で、家系ラーメンの店を探せます\n・まわる店：気になる店を 2〜3 軒積むと、回る順番と距離を出し、Google マップで開けます\n・行った店：行った店を記録し、都道府県ごとにどれだけ回ったかを確かめられます（この機能だけ Google でのサインインが要ります）\n\n画面で選んだ 1 軒は会話にも渡るので、続けて「この店はどんな店？」と聞けます。\n\n■ データについて\n店の情報は OpenStreetMap をもとにしています。家系ラーメンかどうかは地図の記載からの推定で、味の傾向も参考値です。距離は直線距離です。評判・混雑・営業中かどうかは扱っていません。営業時間は変わることがあるので、訪問前に店の公式情報で確かめてください。\n\n■ Web 版もあります\nhttps://iekeiramen.com では、近くの家系を 1 枚ずつ払って出会う「家系マッチ」や、撮った一杯から投稿文を作る「家系カメラ」も使えます。",
+        "developerName": "山﨑悠樹",
+        "category": "Food & Drink",
+        "capabilities": [
+          "近くの家系ラーメンを 3 軒まで絞る",
+          "都道府県・ブランド名で探す",
+          "地図で探す",
+          "行った店を記録する（Google でのサインインが要る）"
+        ],
+        "websiteURL": "https://iekeiramen.com",
+        "supportURL": "https://iekeiramen.com/connect#support",
+        "privacyPolicyURL": "https://iekeiramen.com/privacy",
+        "termsOfServiceURL": "https://iekeiramen.com/terms",
+        "defaultPrompt": [
+          "横浜駅の近くで家系ラーメンを 3 軒に絞って",
+          "神奈川県の吉村家系の店を一覧で見せて",
+          "家系ラーメンの店を日本地図で見せて"
+        ],
+        "brandColor": "#B8442C",
+        "brandColorDark": "#DA7256",
+        "composerIcon": "./assets/logo.png",
+        "logo": "./assets/logo.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "駅名を基準に、近い家系ラーメンを最大 3 軒に絞る",
+              "prompt": "横浜駅の近くで家系ラーメンを 3 軒に絞って",
+              "tools_triggered": "geocode-place, decide-iekei-ramen",
+              "expected_behavior": "geocode-place で横浜駅の座標を調べ、decide-iekei-ramen が近い順に最大 3 軒を出す。画面に 3 軒の食券と並べた根拠（近い順）、直線距離が出る。家系判定は推定、距離は直線距離と添える"
+            },
+            {
+              "description": "都道府県とブランド名で探す",
+              "prompt": "神奈川県の吉村家系の店を一覧で見せて",
+              "tools_triggered": "search-iekei-ramen",
+              "expected_behavior": "search-iekei-ramen が都道府県「神奈川県」とキーワードで絞り、店の一覧を出す。件数は「判定した結果の〇軒」と出る"
+            },
+            {
+              "description": "現在地から近い順に探す",
+              "prompt": "今いる場所から近い家系ラーメンを教えて",
+              "tools_triggered": "find-nearby-iekei-ramen",
+              "expected_behavior": "find-nearby-iekei-ramen が ChatGPT から渡されるおおよその現在地を基準に、近い順に 5 軒を出す。位置が分からないときは、地名を入れる案内を出す"
+            },
+            {
+              "description": "地図で探す",
+              "prompt": "家系ラーメンの店を日本地図で見せて",
+              "tools_triggered": "show-iekei-ramen-map",
+              "expected_behavior": "show-iekei-ramen-map が日本地図に店を並べた画面を出す。ピンを押すと店の詳細が開く"
+            },
+            {
+              "description": "行った店の記録を見る（サインインが要る）",
+              "prompt": "私が行った家系ラーメンの店を見せて",
+              "tools_triggered": "show-visited-iekei-ramen",
+              "expected_behavior": "サインインしていなければ Google でのサインインを求める。審査用のアカウントでサインインすると、show-visited-iekei-ramen が行った店の一覧と都道府県ごとの制覇率を出す（空の状態から始まる）"
+            }
+          ],
+          "negative": [
+            {
+              "description": "店探しではない料理の質問には使わない",
+              "prompt": "家系ラーメンのスープの作り方を教えて"
+            },
+            {
+              "description": "予約はできないので使わない",
+              "prompt": "吉村家の席を明日の 19 時で予約して"
+            },
+            {
+              "description": "ラーメンと関係の無い依頼には使わない",
+              "prompt": "東京から大阪への新幹線の時間を調べて"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
