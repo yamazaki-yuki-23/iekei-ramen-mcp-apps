@@ -66,6 +66,8 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  /* 見出しは字の幅のまま（JavaScript を待たずに出す骨組み、match/index.html と同じ箱。#203）。 */
+  align-items: flex-start;
 }
 
 .pageTitle {
@@ -90,6 +92,7 @@
 
 /* 地名は単語の途中で割らない。入りきらなければ末尾を「…」にする。 */
 .place {
+  max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
