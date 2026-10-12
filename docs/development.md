@@ -215,6 +215,18 @@ Search Consoleの所有権は2026-10-04に確認済み。DNSのTXTレコード�
 Web のすべてのページの下と `/connect` のフッターに 2 つへのリンクを出す（`src/lib/legal-links.ts`）。
 **保存するもの・外部に送る先・端末に残すものを変えたら、規約も直す**（直す箇所の表は [docs/legal/README.md](legal/README.md)）。
 
+### ChatGPT のディレクトリへの申請（#47）
+
+申請は ZIP のアップロード（platform.openai.com/plugins）。中身の正本は `submission/chatgpt/`（`plugin.json`・`mcp.json`・
+`assets/logo.png`）で、`npm run submission:chatgpt` が `dist/iekei-ramen-chatgpt.zip` を作る。上限と形は
+`tests/chatgpt-submission.test.ts` が見る（公式: developers.openai.com/plugins/deploy/submission）。
+**審査用のアカウント・審査の方へのメモ・動画の URL は ZIP に入れず、申請画面で入れる**（ZIP に入れると拒否される）。
+掲載の文・画像・tool を変えたら ZIP を作り直して上げ直す（MCP サーバーの変更は OpenAI が毎日読み直す）。
+
+ドメインの確認は `/.well-known/openai-apps-challenge` が、Worker の Secret `OPENAI_APPS_CHALLENGE` の文字列だけを
+`text/plain` で返す（`worker.ts`）。申請画面で受け取った文字列を、Cloudflare のダッシュボード（Workers → `iekei-ramen-mcp` →
+設定 → 変数とシークレット → 追加、種類は「シークレット」）に入れれば、デプロイ無しで返る。vars に書くと CI のデプロイで上書きされる。
+
 ### チャットへの接続案内
 
 チャットへの接続案内は `public/connect.html` を `/connect` で配信する。

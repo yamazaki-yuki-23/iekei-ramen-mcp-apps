@@ -59,6 +59,14 @@ const decideNearAuto = (cf?: Record<string, string>) => {
   });
 };
 
+/** ドメイン確認の文字列を入れた（入れていない）環境で、確認の URL を開く（#47）。 */
+const openAppsChallenge = (value?: string) =>
+  worker.fetch(
+    new Request(`${ORIGIN}/.well-known/openai-apps-challenge`),
+    { ...(env as object), OPENAI_APPS_CHALLENGE: value } as never,
+    ctx,
+  );
+
 describe("worker.fetch", () => {
   it("本文を持てない GET でも /mcp が 500 にならない", async () => {
     const response = await fetchPath("/mcp", { method: "GET" });
@@ -226,6 +234,14 @@ describe("worker.fetch", () => {
       expect(response.status).toBe(404);
       expect(await response.text()).toBe("Not Found. MCP endpoint is /mcp");
     }
+  });
+
+  it("ChatGPT のドメイン確認の文字列を、入れたときだけそのまま返す（#47）", async () => {
+    const set = await openAppsChallenge("token-abc\n");
+    expect(set.status).toBe(200);
+    expect(set.headers.get("Content-Type")).toMatch(/^text\/plain/);
+    expect(await set.text()).toBe("token-abc");
+    expect((await openAppsChallenge()).status).toBe(404);
   });
 
   it("KV の無い環境では、サインインの道が落ちずに 501 を返す", async () => {
