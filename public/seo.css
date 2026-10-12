@@ -79,6 +79,9 @@
   font-weight: var(--font-weight-display);
   line-height: 1.25;
   text-wrap: balance;
+  /* 折り返しは <wbr> の位置だけ（scripts/seo-pages.mjs の phrases）。入りきらない長い店名は端で割る。 */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .seo-count {
   padding: var(--space-1) var(--space-3);

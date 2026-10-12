@@ -69,6 +69,12 @@ export function siteHeader(path) {
   return `<header class="seo-header"><a class="seo-brand" href="/"><img src="/favicon.svg" alt="" width="40" height="40">家系ラーメンを探す</a><nav class="seo-links" aria-label="探し方"><a href="/">迷ったら</a><a href="/area/"${path === "/area/" ? ' aria-current="page"' : ""}>都道府県から</a><a class="seo-feature" href="/match/">家系マッチ</a><a class="seo-feature" href="/camera/">家系カメラ</a><a class="seo-feature" href="/shindan/">診断</a></nav></header>`;
 }
 
+/**
+ * 見出しを文節の切れ目（「の」の後・空白）でだけ折り返せるようにする（#205）。Safari は
+ * word-break: auto-phrase を持たないので、<wbr> と seo.css の keep-all で単語の途中を割らない。
+ */
+const phrases = (text) => escape(text).replace(/(の|\s)/g, "$1<wbr>");
+
 function page({
   title,
   description,
@@ -83,7 +89,7 @@ function page({
   tab = "search",
 }) {
   const ld = [structured ?? []].flat();
-  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${canonical ? `<link rel="canonical" href="${origin}${path}">${ogp({ title, description, path })}` : ""}${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${ld.length ? `<script type="application/ld+json">${JSON.stringify(ld.length === 1 ? ld[0] : ld).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page">${siteHeader(path)}<main>${crumbs ? `<p class="seo-crumbs">${crumbs}</p>` : ""}<div class="seo-head"><h1>${escape(heading)}</h1>${count === undefined ? "" : `<span class="seo-count">判定した結果の ${count} 軒</span>`}</div>${content}</main><footer><p class="seo-note">店舗データ: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p>${legalLinksHtml()}</footer>${tabBarHtml(tab)}</body></html>`;
+  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${canonical ? `<link rel="canonical" href="${origin}${path}">${ogp({ title, description, path })}` : ""}${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${ld.length ? `<script type="application/ld+json">${JSON.stringify(ld.length === 1 ? ld[0] : ld).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page">${siteHeader(path)}<main>${crumbs ? `<p class="seo-crumbs">${crumbs}</p>` : ""}<div class="seo-head"><h1>${phrases(heading)}</h1>${count === undefined ? "" : `<span class="seo-count">判定した結果の ${count} 軒</span>`}</div>${content}</main><footer><p class="seo-note">店舗データ: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p>${legalLinksHtml()}</footer>${tabBarHtml(tab)}</body></html>`;
 }
 
 /** 券売機の入口。アプリの券売機と同じ枠に、茶赤の発券キーを 1 つ置く。 */

@@ -393,18 +393,64 @@ test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はそ�
   // パソコン幅は左に券売機・右に食券なので、読む順も券売機が先。幅を変えても選んだキーは残る。
   await page.getByRole("button", { name: /^直系・濃厚/ }).click();
   await page.setViewportSize({ width: 1280, height: 800 });
-  const machineFirst = await page.evaluate(() => {
-    const ticket = document.querySelector("ul > li > button[data-shop-id]")!;
-    const button = [...document.querySelectorAll("button")].find((b) =>
-      b.textContent?.includes("発券する"),
-    )!;
-    return Boolean(button.compareDocumentPosition(ticket) & Node.DOCUMENT_POSITION_FOLLOWING);
-  });
-  expect(machineFirst).toBe(true);
+  // 幅の切り替えは matchMedia の通知のあとに描き直すので、そろうまで待つ。
+  const machineFirst = () =>
+    page.evaluate(() => {
+      const ticket = document.querySelector("ul > li > button[data-shop-id]")!;
+      const button = [...document.querySelectorAll("button")].find((b) =>
+        b.textContent?.includes("発券する"),
+      )!;
+      return Boolean(button.compareDocumentPosition(ticket) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+  await expect.poll(machineFirst).toBe(true);
   await expect(page.getByRole("button", { name: /^直系・濃厚/ })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
+});
+
+test("スマホ幅でも、下の規約のリンクは 44px で押せ、見出しは文節の途中で割れない（#205）", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.context().grantPermissions(["geolocation"], { origin: "http://localhost:3134" });
+  await page.context().setGeolocation(YOKOHAMA);
+  for (const path of ["/", "/match/", "/shindan/", "/camera/", "/area/kanagawa/", "/connect"]) {
+    await page.goto(`http://localhost:3134${path}`);
+    const links = page.getByRole("navigation", { name: "規約" }).getByRole("link");
+    await expect(links).toHaveCount(2);
+    for (const box of await links.evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect().height),
+    ))
+      expect(box, path).toBeGreaterThanOrEqual(44);
+  }
+  // 見出しの各行が、文節の切れ目で始まる（「家系ラ / ーメン」と割らない）。
+  const lines = async () =>
+    page.locator("h1").evaluate((h) => {
+      const range = document.createRange();
+      const starts: string[] = [];
+      let lineTop = -1;
+      for (const node of [...h.childNodes].filter((n) => n.nodeType === Node.TEXT_NODE))
+        for (let i = 0; i < node.textContent!.length; i++) {
+          range.setStart(node, i);
+          range.setEnd(node, i + 1);
+          const y = Math.round(range.getBoundingClientRect().top);
+          if (y > lineTop + 4) starts.push(node.textContent!.slice(i, i + 2));
+          lineTop = Math.max(lineTop, y);
+        }
+      return starts;
+    });
+  await page.goto("http://localhost:3134/area/kanagawa/");
+  expect(await lines()).toEqual(["神奈", "家系"]);
+  await page.goto("http://localhost:3134/connect");
+  expect((await lines()).every((s) => ["チャ", "家系", "探す"].includes(s))).toBe(true);
+  // 家系マッチの見出しは 1 行。場所はその下の行で、音・行きたいは見出しの右のまま。
+  await page.goto("http://localhost:3134/match/");
+  await expect(page.locator("article[data-shop-id]").first()).toBeVisible();
+  expect(await lines()).toHaveLength(1);
+  const title = (await page.locator("h1").boundingBox())!;
+  const wants = (await page.getByRole("button", { name: /^行きたい \d+$/ }).boundingBox())!;
+  expect(wants.x).toBeGreaterThan(title.x + title.width);
 });
 
 test("スマホ幅の下のタブバーは、どの画面でもいまいる画面が分かり、キーボードで移れる（#194）", async ({

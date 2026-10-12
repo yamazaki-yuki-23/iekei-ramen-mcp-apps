@@ -232,9 +232,10 @@ h3,
 h4,
 h5,
 h6 {
-  /* 見出しは字を詰め、折り返しの行長を揃える。 */
+  /* 見出しは字を詰め、折り返しの行長を揃える。和文は文節で折り返す（対応していないブラウザは無視する。#205）。 */
   letter-spacing: var(--letter-spacing-tight);
   text-wrap: balance;
+  word-break: auto-phrase;
 }
 
 code,
@@ -284,11 +285,16 @@ strong {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--space-2) var(--space-4);
-  padding: var(--space-4) var(--space-4) var(--space-5);
+  gap: 0 var(--space-4);
+  /* リンク自体が 44px の高さを持つので、上下の余白はその分だけ減らす（#205）。 */
+  padding: var(--space-2) var(--space-4) var(--space-3);
   font-size: var(--font-size-note);
 }
 
+/* 文字は小さいままで、押せる高さは 44px にする（DESIGN.md。#202 の総点検では 21px だった）。 */
 .legal-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-min-size);
   color: var(--color-text-muted);
 }
