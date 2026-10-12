@@ -389,6 +389,22 @@ test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はそ�
   await page.keyboard.press("Enter");
   await expect(tickets.first()).toBeFocused();
   await expect(tickets.first()).toBeInViewport();
+
+  // パソコン幅は左に券売機・右に食券なので、読む順も券売機が先。幅を変えても選んだキーは残る。
+  await page.getByRole("button", { name: /^直系・濃厚/ }).click();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const machineFirst = await page.evaluate(() => {
+    const ticket = document.querySelector("ul > li > button[data-shop-id]")!;
+    const button = [...document.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("発券する"),
+    )!;
+    return Boolean(button.compareDocumentPosition(ticket) & Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  expect(machineFirst).toBe(true);
+  await expect(page.getByRole("button", { name: /^直系・濃厚/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });
 
 test("スマホ幅の下のタブバーは、どの画面でもいまいる画面が分かり、キーボードで移れる（#194）", async ({
