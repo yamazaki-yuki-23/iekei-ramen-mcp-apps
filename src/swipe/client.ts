@@ -50,7 +50,12 @@ const browserOrigin = (pos: GeolocationPosition): Origin => ({
  * 続き（offset）は、最初に決まった基準地点で取る（途中で場所が変わらないように）。
  */
 export function createFeed() {
-  const ready = connect();
+  /*
+   * 接続は、最初に店を頼んだときに始める（#203）。接続の部品（MCP クライアント、約 88KB）を開いた直後に
+   * 読むと、最初の表示と回線を取り合う。家系カメラは写真を選ぶまで店を頼まないので、撮る画面では読まない。
+   */
+  let connection: Promise<Client> | undefined;
+  const ready = () => (connection ??= connect());
   let origin: Origin | undefined;
   // 探し直しが重なったら、最後に頼んだものの場所だけを覚える（遅れて返った古い検索で上書きしない）。
   let asked = 0;
@@ -63,9 +68,13 @@ export function createFeed() {
     return page;
   };
   return {
+    /** 店を頼む前に、接続だけ始めておく（家系カメラで撮り始めたとき。#203）。失敗は頼んだときに出す。 */
+    warm() {
+      ready().catch(() => {});
+    },
     async first(): Promise<Page> {
       const mine = ++asked;
-      const client = await ready;
+      const client = await ready();
       const page = await nearby(client, 0);
       if (page.origin) {
         keep(mine, page.origin);
@@ -81,7 +90,7 @@ export function createFeed() {
      */
     async fromPlace(query: string): Promise<Page | null> {
       const mine = ++asked;
-      const client = await ready;
+      const client = await ready();
       const result = await client.callTool({ name: "geocode-place", arguments: { query } });
       if (result.isError) {
         const text = (result.content as Array<{ type: string; text?: string }>).find(
@@ -114,17 +123,17 @@ export function createFeed() {
       if (!origin) return this.first();
       // 選び直しも 1 回の頼みとして数え、まだ返っていない古い検索に場所を書き換えさせない。
       ++asked;
-      return nearby(await ready, 0, origin);
+      return nearby(await ready(), 0, origin);
     },
     /** ブラウザの位置で探し直す（家系カメラ #190。店の中にいるので、市区町村の推定より近くを正しく出す）。 */
     async here(): Promise<Page | null> {
       const mine = ++asked;
-      const [client, pos] = await Promise.all([ready, requestBrowserPosition()]);
+      const [client, pos] = await Promise.all([ready(), requestBrowserPosition()]);
       if (!pos) return null;
       return from(mine, client, browserOrigin(pos));
     },
     async next(offset: number): Promise<Page> {
-      return nearby(await ready, offset, origin);
+      return nearby(await ready(), offset, origin);
     },
   };
 }

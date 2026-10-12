@@ -541,3 +541,24 @@ test("左上はほかのページと同じヘッダーでトップへ戻れ、39
   await page.getByRole("link", { name: "家系ラーメンを探す" }).click();
   await expect(page).toHaveURL("http://localhost:3134/");
 });
+
+test("JavaScript を待たずに、上の行（ロゴと見出し）を先に出し、React の画面と同じ位置に置く（#203）", async ({
+  browser,
+}) => {
+  const place = async (javaScriptEnabled: boolean) => {
+    const context = await browser.newContext({
+      javaScriptEnabled,
+      viewport: { width: 390, height: 844 },
+    });
+    const page = await context.newPage();
+    await page.goto(URL);
+    const heading = page.getByRole("heading", { level: 1, name: "家系マッチ" });
+    await expect(heading).toBeVisible();
+    await expect(page.getByRole("link", { name: "家系ラーメンを探す" }).first()).toBeVisible();
+    const box = await heading.boundingBox();
+    await context.close();
+    return box;
+  };
+  // 骨組み（HTML だけ）と React の画面で、見出しの位置がずれない（入れ替わるときに跳ねない）。
+  expect(await place(false)).toEqual(await place(true));
+});
