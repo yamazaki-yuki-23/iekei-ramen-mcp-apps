@@ -42,3 +42,9 @@
   outline-offset: 1px;
   box-shadow: 0 0 0 5px var(--color-focus-edge);
 }
+
+/* 見出しは <wbr> の位置でだけ折り返す（#205。Safari は word-break: auto-phrase を持たない）。 */
+.phrase {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}

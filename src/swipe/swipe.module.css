@@ -60,16 +60,19 @@
   flex-basis: 100%;
 }
 
+/* 見出しは 1 行に収め、場所はその下の行に置く（#205。横に並べると「家系 / マッチ」と割れた）。 */
 .head {
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
+  flex-direction: column;
+  /* 見出しは字の幅のまま（JavaScript を待たずに出す骨組み、match/index.html と同じ箱。#203）。 */
+  align-items: flex-start;
 }
 
 .pageTitle {
   margin: 0;
+  white-space: nowrap;
   font-size: var(--font-heading-lg-size);
   line-height: var(--font-heading-lg-line-height);
   font-weight: var(--font-weight-bold);
@@ -87,7 +90,12 @@
   text-decoration: none;
 }
 
+/* 地名は単語の途中で割らない。入りきらなければ末尾を「…」にする。 */
 .place {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: var(--font-size-note);
   color: var(--color-text-muted);
 }
