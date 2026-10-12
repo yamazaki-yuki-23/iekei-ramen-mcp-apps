@@ -3,7 +3,19 @@
   "mcpServers": {
     "iekei-ramen": {
       "type": "streamable-http",
-      "url": "https://iekeiramen.com/mcp"
+      "url": "https://iekeiramen.com/mcp",
+      "extensions": {
+        "com.openai": {
+          "auth": {
+            "type": "mixed",
+            "client": { "mode": "dcr" },
+            "registrationUrl": "https://iekeiramen.com/register",
+            "authorizationUrl": "https://iekeiramen.com/authorize",
+            "tokenUrl": "https://iekeiramen.com/token",
+            "baseScopes": ["stamp"]
+          }
+        }
+      }
     }
   }
 }

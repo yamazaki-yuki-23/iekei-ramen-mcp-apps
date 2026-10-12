@@ -30,10 +30,13 @@ describe("ChatGPT の申請の中身（#47）", () => {
   it("審査に要る URL が本番の https を指す", () => {
     for (const key of ["websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL"])
       expect(ui[key]).toMatch(/^https:\/\/iekeiramen\.com(\/|$)/);
-    expect(mcp.mcpServers["iekei-ramen"]).toEqual({
-      type: "streamable-http",
-      url: "https://iekeiramen.com/mcp",
-    });
+    const entry = mcp.mcpServers["iekei-ramen"];
+    expect(entry).toMatchObject({ type: "streamable-http", url: "https://iekeiramen.com/mcp" });
+    // 探すのは匿名、「行った店」だけ OAuth。混在（mixed）と宣言しないと審査で OAuth のケースを試せない。
+    const auth = entry.extensions["com.openai"].auth;
+    expect(auth).toMatchObject({ type: "mixed", client: { mode: "dcr" }, baseScopes: ["stamp"] });
+    for (const key of ["registrationUrl", "authorizationUrl", "tokenUrl"])
+      expect(auth[key]).toMatch(/^https:\/\/iekeiramen\.com\//);
   });
 
   it("参照する画像が ZIP に入る場所にある", () => {
