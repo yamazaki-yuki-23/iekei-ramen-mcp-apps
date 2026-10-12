@@ -70,10 +70,13 @@ export function siteHeader(path) {
 }
 
 /**
- * 見出しを文節の切れ目（「の」の後・空白）でだけ折り返せるようにする（#205）。Safari は
- * word-break: auto-phrase を持たないので、<wbr> と seo.css の keep-all で単語の途中を割らない。
+ * 見出しを文節の切れ目でだけ折り返せるようにする（#205）。Safari は word-break: auto-phrase を
+ * 持たないので、<wbr> と seo.css の keep-all で単語の途中を割らない。切れ目は空白と、ひらがな
+ * （助詞）のあとに漢字・カタカナが続く所（「から|家系」「の|候補」「を|探す」）。「とんこつ」のような
+ * ひらがなの語の中は割らない。
  */
-const phrases = (text) => escape(text).replace(/(の|\s)/g, "$1<wbr>");
+const phrases = (text) =>
+  escape(text).replace(/(\s|[\u3041-\u309f](?=[\u4e00-\u9fff\u30a0-\u30ff]))/g, "$1<wbr>");
 
 function page({
   title,
