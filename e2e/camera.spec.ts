@@ -332,6 +332,24 @@ test("撮り直すと、前の写真の画素を手放す", async ({ page }) => 
   expect(await closed()).toEqual([true, true]);
 });
 
+test("開いた直後は店を探す接続を読まず、撮るボタンに触れたら読み始める（#203）", async ({
+  page,
+}) => {
+  // 接続の部品（MCP クライアント）か /mcp を読んだら覚える。最初の表示と回線を取り合わないように。
+  const loaded: string[] = [];
+  page.on("request", (req) => {
+    if (req.url().endsWith("/mcp") || req.postData()?.includes('"method":"initialize"'))
+      loaded.push(req.url());
+  });
+  await open(page);
+  await expect(page.getByRole("heading", { name: "撮った一杯から、投稿の文を作る" })).toBeVisible();
+  await page.waitForTimeout(1500);
+  expect(loaded).toEqual([]);
+  // 撮るボタンに触れたら、写真を選んでいる間に接続を済ませておく（店を選ぶ画面を待たせない）。
+  await page.getByText("撮った写真から選ぶ").dispatchEvent("pointerdown");
+  await expect.poll(() => loaded.length).toBeGreaterThan(0);
+});
+
 test("店を選び直しても、店を探す接続を作り足さない", async ({ page }) => {
   const connects: string[] = [];
   page.on("request", (req) => {

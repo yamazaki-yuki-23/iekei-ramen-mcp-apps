@@ -61,7 +61,16 @@ export function CameraApp() {
         </a>
         <h1 className={styles.title}>家系カメラ</h1>
         {!photo ? (
-          <section className={styles.shoot} aria-labelledby="shoot-title">
+          <section
+            className={styles.shoot}
+            aria-labelledby="shoot-title"
+            /*
+             * 撮るボタンに触れたら、店を探す接続を始める（#203）。開いた直後には読まず最初の表示を軽くし、
+             * 写真を選んでいる間に読み終えて、店を選ぶ画面を待たせない。写真は送らない（接続は店を探すだけ）。
+             */
+            onPointerDown={feed.warm}
+            onFocus={feed.warm}
+          >
             <h2 id="shoot-title" tabIndex={-1} ref={retaken ? focusHeading : undefined}>
               撮った一杯から、投稿の文を作る
             </h2>

@@ -24,9 +24,80 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://iekeiramen.com/og-card.png" />
     <link rel="stylesheet" href="/src/global.css" />
+    <!--
+      React が描くまでの骨組み（#203）。JavaScript を待たずに、上の行（ロゴと見出し）を先に出す。
+      React は #root の中身を丸ごと入れ替えるので、ずれ（CLS）にはならない。見た目は家系マッチの
+      上の行（src/swipe/Parts.tsx の Header・swipe.module.css の .app/.brand/.pageTitle）にそろえる。
+    -->
+    <style>
+      .boot {
+        min-height: 100dvh;
+        background: var(--color-surface-muted);
+        color: var(--color-text-primary);
+      }
+      .boot-app {
+        max-width: 26rem;
+        margin: 0 auto;
+        padding: calc(var(--space-3) + env(safe-area-inset-top, 0px)) var(--space-4) var(--space-4);
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      /* 見出しは React では音・行きたいの丸いボタンと同じ行にあり、その高さの中で縦に真ん中。 */
+      .boot-head {
+        display: flex;
+        align-items: center;
+        min-height: calc(var(--control-min-size) + 2 * var(--border-width-strong));
+      }
+      .boot-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        min-height: var(--control-min-size);
+        color: var(--color-text-primary);
+        font-size: var(--font-heading-lg-size);
+        font-weight: var(--font-weight-bold);
+        text-decoration: none;
+      }
+      .boot-title {
+        margin: 0;
+        font-size: var(--font-heading-lg-size);
+        line-height: var(--font-heading-lg-line-height);
+        font-weight: var(--font-weight-bold);
+        letter-spacing: var(--letter-spacing-tight);
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot">
+        <div class="boot-app">
+          <a class="boot-brand" href="/"
+            ><svg width="36" height="36" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+              <g stroke="var(--color-ink)" stroke-width="4" stroke-linecap="round">
+                <line x1="47" y1="5" x2="30" y2="29" />
+                <line x1="55" y1="9" x2="36" y2="29" />
+              </g>
+              <rect x="13" y="12" width="11" height="19" rx="1.5" fill="var(--color-ink)" />
+              <rect x="4" y="27" width="56" height="7" rx="3.5" fill="var(--color-ink)" />
+              <path
+                d="M7 33H57C57 48 46 57 32 57C18 57 7 48 7 33Z"
+                fill="var(--color-accent-fill)"
+              />
+              <rect
+                x="21"
+                y="56"
+                width="22"
+                height="5"
+                rx="2"
+                fill="var(--color-accent-fill)"
+              /></svg
+            >家系ラーメンを探す</a
+          >
+          <div class="boot-head"><h1 class="boot-title">家系マッチ</h1></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/swipe/main.tsx"></script>
   </body>
 </html>
