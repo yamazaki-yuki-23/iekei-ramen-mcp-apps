@@ -222,7 +222,9 @@ test("結果を入れ替えない札をキーボードで押しても、見守�
   expect((await rafs()) - before).toBeLessThan(10);
 });
 
-test("位置の取得に時間がかかっても、キーボードで発券した焦点は発券の釦に戻る", async ({ page }) => {
+test("位置の取得に時間がかかっても、キーボードで発券した焦点は出た 1 枚目の食券へ渡る", async ({
+  page,
+}) => {
   // 位置は 1.2 秒後に返る。呼び出しの前の待ちで、見守りをやめない。
   await page.addInitScript(() => {
     navigator.geolocation.getCurrentPosition = (ok) =>
@@ -247,7 +249,8 @@ test("位置の取得に時間がかかっても、キーボードで発券し�
     .poll(() => before!.evaluate((el) => el.isConnected), { timeout: 10_000 })
     .toBe(false);
   await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
-  await expect(issue).toBeFocused();
+  // 食券は券売機より前に並ぶので、焦点は出たばかりの 1 枚目へ渡る（#204）。
+  await expect(app.locator("button[data-shop-id]").first()).toBeFocused();
 });
 
 test("「現在地から」で位置の取得に時間がかかっても、キーボードで押した「現在地で発券」に焦点が戻る", async ({

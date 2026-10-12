@@ -382,6 +382,13 @@ test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はそ�
   expect(fill).not.toBe(plain);
   // 家系マッチ・診断の入口は下のタブバーにあるので、一言の下には出さない。
   await expect(page.getByRole("link", { name: "近くの家系とマッチング →" })).toBeHidden();
+
+  // 下の券売機で発券し直したら、出たばかりの 1 枚目へ焦点と画面を渡す（Tab で食券を飛ばさない）。
+  const issue = page.getByRole("button", { name: /発券する/ });
+  await issue.focus();
+  await page.keyboard.press("Enter");
+  await expect(tickets.first()).toBeFocused();
+  await expect(tickets.first()).toBeInViewport();
 });
 
 test("スマホ幅の下のタブバーは、どの画面でもいまいる画面が分かり、キーボードで移れる（#194）", async ({

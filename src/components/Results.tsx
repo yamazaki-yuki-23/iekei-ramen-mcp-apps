@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { AppPayload, Bounds, SearchMode, Shop } from "../lib/types";
 import { DecidePanel } from "./DecidePanel";
 import type { FullscreenControl } from "./MapToolbar";
@@ -64,9 +64,19 @@ function DecideStage({
   failure: string | null;
   panel: ReactNode;
 }) {
+  const out = useRef<HTMLDivElement>(null);
+  const shown = !status;
+  /*
+   * 下の券売機で発券し直すと、新しい食券は画面の上の外に出る（スマホ幅）。食券の頭が
+   * 画面より上にあるときだけ、そこまで戻す。最初の表示やパソコン幅では動かさない。
+   */
+  useEffect(() => {
+    const el = out.current;
+    if (shown && el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
+  }, [shown]);
   return (
     <div className={aside ? styles.decideStage : undefined}>
-      <div className={styles.decideOut}>
+      <div className={styles.decideOut} ref={out}>
         <FailureNote failure={status ? null : failure} />
         {status ?? panel}
       </div>

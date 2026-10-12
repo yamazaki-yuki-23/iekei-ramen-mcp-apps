@@ -3,6 +3,7 @@ import { TASTES, type Origin, type TasteKey } from "../lib/types";
 import styles from "../mcp-app.module.css";
 import type { FormValues } from "./SearchForm";
 import { MachineShell } from "./MachineShell";
+import { FIRST_TICKET_KEY } from "./ShopList";
 
 /** どこで探すか。都道府県は form.prefecture、近くでは基準地点を使う。 */
 export type Where = "near" | "pref" | "all";
@@ -184,6 +185,11 @@ export function TicketMachine({
          * use-server-tools の通し番号が捨てる）。止めると「壊れた」と読まれる。
          */
         aria-busy={busy}
+        /*
+         * 作り直したあと、焦点は同じ名前の最初の要素へ戻る。食券は券売機より前にあるので、
+         * 出たばかりの 1 枚目へ渡る（#204）。食券が無ければ、このボタンへ戻る。
+         */
+        data-focus-key={FIRST_TICKET_KEY}
       >
         発券する<small>3 軒が出てきます</small>
       </button>
