@@ -73,10 +73,14 @@ export function siteHeader(path) {
  * 見出しを文節の切れ目でだけ折り返せるようにする（#205）。Safari は word-break: auto-phrase を
  * 持たないので、<wbr> と seo.css の keep-all で単語の途中を割らない。切れ目は空白と、ひらがな
  * （助詞）のあとに漢字・カタカナが続く所（「から|家系」「の|候補」「を|探す」）。「とんこつ」のような
- * ひらがなの語の中は割らない。
+ * ひらがなの語の中は割らない。**店名（properName）は空白でだけ割る。**「しゃかりき家」の
+ * ような固有名詞は、ひらがなと漢字の境目でも切らない。
  */
-const phrases = (text) =>
-  escape(text).replace(/(\s|[\u3041-\u309f](?=[\u4e00-\u9fff\u30a0-\u30ff]))/g, "$1<wbr>");
+const phrases = (text, properName) =>
+  escape(text).replace(
+    properName ? /(\s)/g : /(\s|[\u3041-\u309f](?=[\u4e00-\u9fff\u30a0-\u30ff]))/g,
+    "$1<wbr>",
+  );
 
 function page({
   title,
@@ -87,12 +91,14 @@ function page({
   canonical = true,
   structured,
   heading = title,
+  /** 見出しが店名。文節の切れ目を推し量らず、空白でだけ折り返す。 */
+  properName = false,
   count,
   crumbs = "",
   tab = "search",
 }) {
   const ld = [structured ?? []].flat();
-  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${canonical ? `<link rel="canonical" href="${origin}${path}">${ogp({ title, description, path })}` : ""}${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${ld.length ? `<script type="application/ld+json">${JSON.stringify(ld.length === 1 ? ld[0] : ld).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page">${siteHeader(path)}<main>${crumbs ? `<p class="seo-crumbs">${crumbs}</p>` : ""}<div class="seo-head"><h1>${phrases(heading)}</h1>${count === undefined ? "" : `<span class="seo-count">判定した結果の ${count} 軒</span>`}</div>${content}</main><footer><p class="seo-note">店舗データ: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p>${legalLinksHtml()}</footer>${tabBarHtml(tab)}</body></html>`;
+  return `<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escape(title)}</title><meta name="description" content="${escape(description)}">${canonical ? `<link rel="canonical" href="${origin}${path}">${ogp({ title, description, path })}` : ""}${noindex ? '<meta name="robots" content="noindex">' : ""}<link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180"><link rel="stylesheet" href="/seo-tokens.css"><link rel="stylesheet" href="/seo.css">${ld.length ? `<script type="application/ld+json">${JSON.stringify(ld.length === 1 ? ld[0] : ld).replace(/</g, "\\u003c")}</script>` : ""}</head><body class="seo-page">${siteHeader(path)}<main>${crumbs ? `<p class="seo-crumbs">${crumbs}</p>` : ""}<div class="seo-head"><h1>${phrases(heading, properName)}</h1>${count === undefined ? "" : `<span class="seo-count">判定した結果の ${count} 軒</span>`}</div>${content}</main><footer><p class="seo-note">店舗データ: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>（<a href="https://opendatacommons.org/licenses/odbl/1-0/">ODbL</a>）。個別に確認した補正を含む場合があります。</p>${legalLinksHtml()}</footer>${tabBarHtml(tab)}</body></html>`;
 }
 
 /** 券売機の入口。アプリの券売機と同じ枠に、茶赤の発券キーを 1 つ置く。 */
@@ -223,6 +229,7 @@ export function seoPages(shops) {
         description: `${shop.name}の店舗情報。地域は${[region(shop), shop.address].filter(Boolean).join(" ")}。地図の位置を確認できます。`,
         path,
         heading: shop.name,
+        properName: true,
         noindex: shop.confidence === "candidate",
         structured: [
           structured,
