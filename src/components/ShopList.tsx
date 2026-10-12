@@ -65,6 +65,9 @@ function RankStub({
  * state なので、1 打鍵ごとに一覧全体が描き直され、最大 200 枚の札を作り直していた。
  * 受け取るものは札ごとの値だけにする（onSelect は外側の setSelected で変わらない）。
  */
+/** 1 枚目の食券の data-focus-key。use-result-handoff.ts はこの名前で焦点の戻り先を探す。 */
+export const FIRST_TICKET_KEY = "first-ticket";
+
 const ShopCard = memo(function ShopCard({
   shop,
   index,
@@ -98,6 +101,8 @@ const ShopCard = memo(function ShopCard({
        * 比べていて、壱八家が 2 店入った途端に重複と判定された）。
        */
       data-shop-id={shop.id}
+      // 発券したあと、キーボードの焦点を 1 枚目へ渡す（#204。TicketMachine の「発券する」と同じ名前）。
+      data-focus-key={index === 0 ? FIRST_TICKET_KEY : undefined}
     >
       {ranked && <RankStub shop={shop} index={index} stub={stub} />}
       <span className={styles.cardBody}>

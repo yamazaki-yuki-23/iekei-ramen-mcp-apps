@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import type { AppPayload, Bounds, SearchMode, Shop } from "../lib/types";
 import { DecidePanel } from "./DecidePanel";
 import type { FullscreenControl } from "./MapToolbar";
@@ -48,7 +48,21 @@ function keepsControls(mode: SearchMode, belowMap: ReactNode, aside: ReactNode) 
 /**
  * 券売機（aside）と食券を 1 つの舞台に並べる（Web）。揃うまでの間は食券の側だけを
  * 状態に差し替え、券売機は同じ位置（同じ要素）に残す。会話の中は aside が無い。
+ *
+ * **並びは食券（答え）が先、券売機が後**（#204）。スマホ幅では 3 軒を最初の画面に入れ、券売機は
+ * 「条件を変えて発券し直す」場所として下に置く（会話の中と同じ並び）。パソコン幅は CSS の格子で
+ * 左に券売機、右に食券のまま（見た目は変えない）。読み上げと Tab の順も見た目にそろえる
+ * （スマホ幅は答えが先、パソコン幅は券売機が先）。
  */
+/** パソコン幅（券売機と食券を左右に並べる幅。mcp-app.module.css の .decideStage と同じ）。 */
+const WIDE = "(min-width: 64rem)";
+const subscribeWide = (on: () => void) => {
+  const q = matchMedia(WIDE);
+  q.addEventListener("change", on);
+  return () => q.removeEventListener("change", on);
+};
+const isWide = () => matchMedia(WIDE).matches;
+
 function DecideStage({
   aside,
   status,
@@ -60,13 +74,29 @@ function DecideStage({
   failure: string | null;
   panel: ReactNode;
 }) {
+  const out = useRef<HTMLDivElement>(null);
+  const shown = !status;
+  /*
+   * 下の券売機で発券し直すと、新しい食券は画面の上の外に出る（スマホ幅）。食券の頭が
+   * 画面より上にあるときだけ、そこまで戻す。最初の表示やパソコン幅では動かさない。
+   */
+  useEffect(() => {
+    const el = out.current;
+    if (shown && el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
+  }, [shown]);
+  // 読む順（Tab・読み上げ）は見た目の順にそろえる。パソコン幅は左の券売機が先。
+  const wide = useSyncExternalStore(subscribeWide, isWide, () => false);
+  const result = (
+    <div key="out" className={styles.decideOut} ref={out}>
+      <FailureNote failure={status ? null : failure} />
+      {status ?? panel}
+    </div>
+  );
+  // key で並べ替えるので、幅が変わっても券売機は作り直さない（選んだキーを保つ）。
+  const machine = <Fragment key="machine">{aside}</Fragment>;
   return (
     <div className={aside ? styles.decideStage : undefined}>
-      {aside}
-      <div className={styles.decideOut}>
-        <FailureNote failure={status ? null : failure} />
-        {status ?? panel}
-      </div>
+      {wide ? [machine, result] : [result, machine]}
     </div>
   );
 }

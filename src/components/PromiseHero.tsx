@@ -22,7 +22,7 @@ export function PromiseHero() {
     <section className={styles.hero} aria-labelledby="promise">
       <p className={styles.heroCatch} id="promise">
         近くに、
-        <br />
+        <br className={styles.heroBreak} />
         <em>まだ知らない</em>
         <br />
         家系がある。
