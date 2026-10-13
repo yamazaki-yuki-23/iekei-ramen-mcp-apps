@@ -1957,34 +1957,17 @@
 }
 
 /*
- * 移るときの動き（#212、見本）。選んだ探し方の塗りは、名前で前後を結んで滑らせる。
- * 店の詳細は、選んだカードの下に薄く現れ、閉じるときは薄れて消える（拡大はしない。DESIGN.md 7. 動き）。
+ * 店の詳細は、選んだカードの下に薄く現れる（#212）。CSS だけで動かす（@starting-style。動きのために
+ * state や effect を足さない）。閉じるときは消えるだけ（React が要素を外すので、CSS では薄れさせられない）。
+ * 動きを減らす設定では、global.css が transition を止める。最初の表示では詳細が無い（選び直すと
+ * replacePayload が選択を外す）ので、開いた瞬間にしか動かない。
  */
-.modeLink[aria-current="page"] {
-  view-transition-name: mode-current;
-}
-
 .selected {
-  view-transition-name: shop-detail;
+  transition: opacity var(--duration-transition) var(--easing-standard);
 }
 
-:global(::view-transition-new(shop-detail)):only-child {
-  animation-name: shop-detail-open;
-}
-
-:global(::view-transition-old(shop-detail)):only-child {
-  animation-name: shop-detail-close;
-  animation-duration: var(--duration-transition-out);
-}
-
-@keyframes shop-detail-open {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes shop-detail-close {
-  to {
+@starting-style {
+  .selected {
     opacity: 0;
   }
 }
