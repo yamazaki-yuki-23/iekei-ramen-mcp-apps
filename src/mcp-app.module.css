@@ -1958,7 +1958,7 @@
 
 /*
  * 移るときの動き（#212、見本）。選んだ探し方の塗りは、名前で前後を結んで滑らせる。
- * 店の詳細は、選んだカードの下から広がり、閉じるときは薄れて消える。
+ * 店の詳細は、選んだカードの下に薄く現れ、閉じるときは薄れて消える（拡大はしない。DESIGN.md 7. 動き）。
  */
 .modeLink[aria-current="page"] {
   view-transition-name: mode-current;
@@ -1970,18 +1970,16 @@
 
 :global(::view-transition-new(shop-detail)):only-child {
   animation-name: shop-detail-open;
-  transform-origin: top center;
 }
 
 :global(::view-transition-old(shop-detail)):only-child {
   animation-name: shop-detail-close;
-  animation-duration: 150ms;
+  animation-duration: var(--duration-transition-out);
 }
 
 @keyframes shop-detail-open {
   from {
     opacity: 0;
-    transform: scaleY(0.9);
   }
 }
 

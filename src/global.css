@@ -176,6 +176,9 @@
 
   --duration-fast: 120ms;
   --easing-standard: cubic-bezier(0.2, 0, 0.1, 1);
+  /* 画面の移り変わり（#212、DESIGN.md 7. 動き）。入るものと、消えるもの。 */
+  --duration-transition: 200ms;
+  --duration-transition-out: 150ms;
 }
 
 * {
@@ -296,12 +299,12 @@ nav[data-tabbar] {
 ::view-transition-group(*),
 ::view-transition-old(*),
 ::view-transition-new(*) {
-  animation-duration: 200ms;
-  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  animation-duration: var(--duration-transition);
+  animation-timing-function: var(--easing-standard);
 }
 
 ::view-transition-old(root) {
-  animation-duration: 150ms;
+  animation-duration: var(--duration-transition-out);
 }
 
 /* 動きを減らす設定では、画面の中の切り替えも動かさない（呼ぶ側でも止めているが、念のため）。 */
