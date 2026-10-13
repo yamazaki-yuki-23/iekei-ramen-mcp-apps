@@ -3,6 +3,7 @@
  */
 import type { McpUiDisplayMode, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import { useMemo, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { ModeControls } from "./components/ModeControls";
 import { ModePanel, ModeTabs } from "./components/ModeTabs";
 import type { FormValues } from "./components/SearchForm";
@@ -23,7 +24,6 @@ import { AppHeader } from "./components/AppHeader";
 import type { PresentationProps } from "./iekei-app";
 import { buildHeading, formatCount, isPayloadReady, pageHead } from "./lib/heading";
 import { issueWith } from "./lib/issue-tickets";
-import { withViewTransition } from "./lib/view-transition";
 export interface InnerProps extends PresentationProps {
   app: UiHost;
   payload: AppPayload;
@@ -245,7 +245,13 @@ export function IekeiAppInner({
       }
       onAsk={supportedAction(app.capabilities.model, () => void askAboutShop(selected))}
       onOpenMap={() => openInMaps(selected)}
-      onClear={() => onSelect(null)}
+      onClear={() => {
+        // 閉じたら、焦点を元のカードへ戻す（#212）。カードは残り、詳細だけが外れる。
+        flushSync(() => onSelect(null));
+        document
+          .querySelector<HTMLElement>(`button[data-shop-id="${CSS.escape(selected.id)}"]`)
+          ?.focus();
+      }}
       asking={asking}
       inRoute={inRoute}
       routeFull={!inRoute && stops.length >= MAX_STOPS}
@@ -344,8 +350,7 @@ export function IekeiAppInner({
 
       <ModeTabs
         mode={mode}
-        // 選んだ探し方の塗りが滑って移る（#212）。
-        onChange={(next) => withViewTransition(() => switchMode(next))}
+        onChange={switchMode}
         mutating={mutating}
         visitsAvailable={visitsAvailable}
         primaryMode={primaryMode}

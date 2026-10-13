@@ -982,7 +982,10 @@ test.describe("選択中の店の詳細", () => {
     await page.keyboard.press("Tab");
     await expect(card).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
+    await expect(app.getByRole("region", { name: "選択中の店舗" })).toBeFocused();
+    // 開くと焦点は詳細へ移る（#212）。Shift+Tab で選択中のカードへ戻ったときの見た目を見る。
+    await page.keyboard.press("Shift+Tab");
+    await expect(card).toBeFocused();
 
     // 影は 120ms かけて変わるので、落ち着くまで待つ（途中は色が薄い）。
     const shadow = () => card.evaluate((el) => getComputedStyle(el).boxShadow);

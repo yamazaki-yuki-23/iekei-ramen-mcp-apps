@@ -5,6 +5,7 @@ import { formatDistance } from "../lib/geo";
 import { openingHoursLabel } from "../lib/opening-hours";
 import styles from "../mcp-app.module.css";
 import { StateNote } from "./StateNote";
+import { SELECTED_SHOP_ID } from "./SelectedShop";
 
 interface Props {
   shops: Shop[];
@@ -76,6 +77,7 @@ const ShopCard = memo(function ShopCard({
   label,
   ranked,
   stub,
+  expandable,
   onSelect,
 }: {
   shop: Shop;
@@ -85,6 +87,8 @@ const ShopCard = memo(function ShopCard({
   label?: SameNameLabel;
   ranked?: boolean;
   stub: "number" | "distance";
+  /** 選ぶと下に詳細が開く一覧か。開閉を読み上げで分かるようにする（#212）。 */
+  expandable?: boolean;
   onSelect?: (shop: Shop) => void;
 }) {
   const meta = metaParts(shop, label);
@@ -94,6 +98,8 @@ const ShopCard = memo(function ShopCard({
       className={styles.card}
       onClick={() => onSelect?.(shop)}
       aria-current={selected || undefined}
+      aria-expanded={expandable ? selected : undefined}
+      aria-controls={expandable && selected ? SELECTED_SHOP_ID : undefined}
       /*
        * どの店かを名指しできるようにする。**店名は同一性ではない**——
        * 同じチェーンの別店舗は同じ名前で並ぶので、名前で突き合わせると
@@ -200,6 +206,7 @@ export function ShopList({
             shop={shop}
             index={i}
             selected={selectedId === shop.id}
+            expandable={detail !== undefined}
             visited={visitedIds?.has(shop.id) ?? false}
             label={labels.get(shop.id)}
             ranked={ranked}

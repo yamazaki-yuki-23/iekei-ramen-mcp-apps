@@ -51,6 +51,9 @@ interface Props {
  * カードを押すと即座に外部地図が開いていた頃は、選択という状態が残らず
  * モデルに渡すものが無かった。カードは選ぶだけにして、行き先はここに出す。
  */
+/** 詳細の id。開いているカードの aria-controls から指す。 */
+export const SELECTED_SHOP_ID = "selected-shop";
+
 export function SelectedShop({
   report,
   onAsk,
@@ -69,12 +72,25 @@ export function SelectedShop({
   // 別の店を選ぶとカードごと作り直される（li の key が店の id）ので、
   // マウント時に 1 度でいい。
   const ref = useRef<HTMLElement>(null);
+  // 一覧のカードから開いたら、焦点を詳細へ移す（#212）。閉じたら元のカードへ戻すのは onClear の側。
+  // 地図のピンから開いたときは移さない（ピンをたどっている途中で、地図の中の位置を見失う）。
   useEffect(() => {
+    if (document.activeElement?.matches("button[data-shop-id]"))
+      ref.current?.focus({ preventScroll: true });
     ref.current?.scrollIntoView({ block: "nearest" });
   }, []);
 
   return (
-    <section className={styles.selected} aria-label="選択中の店舗" ref={ref}>
+    <section
+      id={SELECTED_SHOP_ID}
+      className={styles.selected}
+      aria-label="選択中の店舗"
+      ref={ref}
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClear();
+      }}
+    >
       {/*
        * 並びは「行き先 → 初めての人向けの注文 → 控えめな記録と報告」。
        * 一番強いのは地図アプリへの導線で、選んだ人の次の行動はそこにある。
