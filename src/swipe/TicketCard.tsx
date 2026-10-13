@@ -1,4 +1,4 @@
-import type { CSSProperties, Ref } from "react";
+import { Fragment, type CSSProperties, type Ref } from "react";
 import { formatDistance } from "../lib/geo";
 import { openingHoursLabel } from "../lib/opening-hours";
 import { TASTES, type Shop } from "../lib/types";
@@ -21,6 +21,21 @@ interface Props {
  * 距離は半券に大きく出さず、本文の事実の 1 つとして小さく書く（オーナー判断）。
  * レア札は理由を事実で書く（直系・濃厚／朝 5 時から／その市区町村で 1 軒だけのブランド）。
  */
+/**
+ * 印の文の折り返し位置（#209）。印は keep-all なので、空白と <wbr> でだけ割れる。店名（ブランド）は
+ * 推し量らず、持っている shop.brand で 1 つの区切りにする（「町田商 / 店」と割らない。#205 と同じ考え）。
+ */
+function phrased(fact: string, brand: string | undefined) {
+  if (!brand || !fact.endsWith(brand) || fact === brand) return fact;
+  return (
+    <>
+      {fact.slice(0, -brand.length)}
+      <wbr />
+      {brand}
+    </>
+  );
+}
+
 export function TicketCard({ shop, number, down, hidden, style, ref }: Props) {
   const facts = [
     shop.distanceKm !== undefined && `直線 ${formatDistance(shop.distanceKm)}`,
@@ -47,7 +62,21 @@ export function TicketCard({ shop, number, down, hidden, style, ref }: Props) {
           </div>
           <div className={styles.body}>
             <span className={styles.order}>近い順</span>
-            {rare.length > 0 && <span className={styles.rareTag}>◆ {rare.join("・")}</span>}
+            {rare.length > 0 && (
+              <span className={styles.rareTag}>
+                ◆{" "}
+                {rare.map((fact, i) => (
+                  <Fragment key={fact}>
+                    {i > 0 && (
+                      <>
+                        ・<wbr />
+                      </>
+                    )}
+                    {phrased(fact, shop.brand)}
+                  </Fragment>
+                ))}
+              </span>
+            )}
             <h2 className={styles.name}>{shop.name}</h2>
             <span className={styles.where}>
               {[shop.prefecture, shop.city, shop.address].filter(Boolean).join(" ")}

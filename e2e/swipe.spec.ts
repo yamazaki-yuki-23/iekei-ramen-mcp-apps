@@ -462,6 +462,24 @@ test("スマホ幅でも、下の規約のリンクは 44px で押せ、見出�
   expect(wants.x).toBeGreaterThan(title.x + title.width);
 });
 
+test("レア札の印は、店名の途中で割れない（#209）", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.context().grantPermissions(["geolocation"], { origin: "http://localhost:3134" });
+  // 酒田市上安町の町田商店。いちばん長い「〇〇で 1 軒だけの〇〇」の 1 つ（直す前は「町田 / 商店」）。
+  await page.context().setGeolocation({ latitude: 38.92971, longitude: 139.859353 });
+  await page.goto(URL);
+  await expect(top(page)).toHaveAttribute("data-rare", "true");
+  const brandLines = await top(page)
+    .locator("[class*=rareTag]")
+    .evaluate((tag) => {
+      const text = [...tag.childNodes].find((n) => n.textContent === "町田商店")!;
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+    });
+  expect(brandLines).toBe(1);
+});
+
 test("スマホ幅の下のタブバーは、どの画面でもいまいる画面が分かり、キーボードで移れる（#194）", async ({
   page,
 }) => {

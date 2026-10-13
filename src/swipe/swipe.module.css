@@ -447,6 +447,9 @@
   color: var(--gold-ink);
   font-size: var(--font-size-note);
   font-weight: 800;
+  /* 空白と <wbr> でだけ折り返し、店名の途中で割らない（TicketCard の phrased。#209）。 */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .gold {
