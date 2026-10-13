@@ -36,6 +36,7 @@ import type { AppPayload, Origin, SearchMode, Shop, VisitResult } from "./lib/ty
 import styles from "./mcp-app.module.css";
 
 import type { HostConnectionProps, UiHost } from "./hosts/types";
+import { nameVisibleCards, withViewTransition } from "./lib/view-transition";
 
 export interface PresentationProps {
   introduction?: ReactNode;
@@ -294,6 +295,12 @@ function IekeiAppConnected({
   hostContextPatch,
   onContextChange,
 }: ConnectedProps) {
+  // 店の詳細は、選んだカードの下に現れ、下のカードは滑って下がる（#212）。
+  // 参照を保つ（店のカードは memo で、入力のたびに 200 枚を描き直さない。#157）。
+  const selectShop = useCallback(
+    (shop: Shop | null) => withViewTransition(() => setSelected(shop), nameVisibleCards),
+    [setSelected],
+  );
   /**
    * 選択をモデルに渡す列。ホストは次のユーザー発話までこれを溜めておくので、
    * 「この店について聞く」を押した時点では店の詳細が揃っている。
@@ -443,7 +450,7 @@ function IekeiAppConnected({
       notice={notice}
       onNotice={setNotice}
       selected={selected}
-      onSelect={setSelected}
+      onSelect={selectShop}
       stops={stops}
       routeOrigin={routeOrigin}
       onAddStop={addStop}

@@ -176,6 +176,9 @@
 
   --duration-fast: 120ms;
   --easing-standard: cubic-bezier(0.2, 0, 0.1, 1);
+  /* 画面の移り変わり（#212、DESIGN.md 7. 動き）。入るものと、消えるもの。 */
+  --duration-transition: 200ms;
+  --duration-transition-out: 150ms;
 }
 
 * {
@@ -274,6 +277,42 @@ strong {
 
   :root:has(nav[data-tabbar]) body {
     padding-bottom: var(--tabbar-space);
+  }
+}
+
+/*
+ * 移るときの動き（#212、見本）。ページをまたぐ移動は @view-transition、画面の中の切り替えは
+ * src/lib/view-transition.ts。対応していないブラウザは読み飛ばし、今までどおりぱっと切り替わる。
+ * 中身は短く入れ替えるだけで滑らせない（ヘッダーはどのページも同じなので、入れ替えても動いて見えない）。
+ * タブバーは名前を付けて別に撮り、入れ替えの中で動かさない。
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+
+nav[data-tabbar] {
+  view-transition-name: tabbar;
+}
+
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: var(--duration-transition);
+  animation-timing-function: var(--easing-standard);
+}
+
+::view-transition-old(root) {
+  animation-duration: var(--duration-transition-out);
+}
+
+/* 動きを減らす設定では、画面の中の切り替えも動かさない（呼ぶ側でも止めているが、念のため）。 */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }
 
