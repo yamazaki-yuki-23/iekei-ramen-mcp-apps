@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 1440 1440" preserveAspectRatio="xMidYMid slice">
+  <!-- 絵（写真ではない）。真上から見た家系の一杯：海苔 3 枚・ほうれん草・チャーシュー・うずら。 -->
+  <rect width="1440" height="1440" fill="#c9a77c"/>
+  <g stroke="#a8875c" stroke-width="6" opacity="0.6">
+    <line x1="0" y1="180" x2="1440" y2="180"/><line x1="0" y1="420" x2="1440" y2="420"/>
+    <line x1="0" y1="1020" x2="1440" y2="1020"/><line x1="0" y1="1260" x2="1440" y2="1260"/>
+  </g>
+  <circle cx="720" cy="720" r="610" fill="#22150e"/>
+  <circle cx="720" cy="720" r="585" fill="#b8442c"/>
+  <circle cx="720" cy="720" r="560" fill="none" stroke="#22150e" stroke-width="10" stroke-dasharray="28 22"/>
+  <circle cx="720" cy="720" r="520" fill="#22150e"/>
+  <circle cx="720" cy="720" r="505" fill="#d9a35f"/>
+  <g fill="#e8bd7a" opacity="0.9">
+    <ellipse cx="560" cy="600" rx="38" ry="22"/><ellipse cx="880" cy="860" rx="30" ry="18"/>
+    <ellipse cx="640" cy="930" rx="24" ry="14"/><ellipse cx="930" cy="560" rx="20" ry="12"/>
+    <ellipse cx="500" cy="820" rx="18" ry="11"/>
+  </g>
+  <g fill="#f1d27a" stroke="#c99b3e" stroke-width="5">
+    <path d="M430 760 q60 -40 120 0 t120 0 t120 0" fill="none" stroke-width="22" stroke="#f1d27a"/>
+    <path d="M440 800 q60 -40 120 0 t120 0 t120 0" fill="none" stroke-width="22" stroke="#efca6a"/>
+  </g>
+  <g transform="rotate(-8 720 720)">
+    <rect x="470" y="250" width="150" height="300" rx="8" fill="#1b2a1c"/>
+    <rect x="610" y="235" width="150" height="300" rx="8" fill="#203322"/>
+    <rect x="750" y="250" width="150" height="300" rx="8" fill="#1b2a1c"/>
+    <g stroke="#2f4a31" stroke-width="4"><line x1="500" y1="300" x2="590" y2="300"/><line x1="640" y1="290" x2="730" y2="290"/><line x1="780" y1="300" x2="870" y2="300"/></g>
+  </g>
+  <g>
+    <ellipse cx="960" cy="760" rx="150" ry="120" fill="#3f7a35"/>
+    <ellipse cx="930" cy="730" rx="90" ry="60" fill="#56953f"/>
+    <ellipse cx="1000" cy="800" rx="70" ry="40" fill="#2f6328"/>
+  </g>
+  <g>
+    <ellipse cx="640" cy="980" rx="190" ry="120" fill="#8a4b2a"/>
+    <ellipse cx="640" cy="975" rx="165" ry="98" fill="#c98a5c"/>
+    <path d="M500 960 q140 -50 280 0" stroke="#e6b48a" stroke-width="14" fill="none"/>
+    <path d="M520 1010 q120 -40 240 0" stroke="#a8673f" stroke-width="10" fill="none"/>
+  </g>
+  <g>
+    <circle cx="520" cy="660" r="56" fill="#f6efe2" stroke="#d9c9ac" stroke-width="5"/>
+    <circle cx="520" cy="660" r="26" fill="#f2b33d"/>
+  </g>
+  <g stroke="#3a2416" stroke-width="22" stroke-linecap="round">
+    <line x1="1180" y1="200" x2="860" y2="640"/><line x1="1250" y1="250" x2="910" y2="660"/>
+  </g>
+</svg>
