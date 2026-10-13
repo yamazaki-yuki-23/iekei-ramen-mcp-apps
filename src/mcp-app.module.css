@@ -1957,13 +1957,9 @@
 }
 
 /*
- * 移るときの動き（#212、見本）。選んだ探し方の塗りは、名前で前後を結んで滑らせる。
- * 店の詳細は、選んだカードの下に薄く現れ、閉じるときは薄れて消える（拡大はしない。DESIGN.md 7. 動き）。
+ * 移るときの動き（#212）。店の詳細は、選んだカードの下に薄く現れ、閉じるときは薄れて消える
+ * （拡大はしない。DESIGN.md 7. 動き）。ヘッダーのナビ（探し方）には動きを付けない（オーナー判断）。
  */
-.modeLink[aria-current="page"] {
-  view-transition-name: mode-current;
-}
-
 .selected {
   view-transition-name: shop-detail;
 }

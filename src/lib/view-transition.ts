@@ -1,19 +1,13 @@
 import { flushSync } from "react-dom";
 
 /*
- * 画面の中の切り替え（探し方・店の詳細）を、ブラウザの View Transitions で短く動かす（#212）。
+ * 画面の中の切り替え（店の詳細）を、ブラウザの View Transitions で短く動かす（#212）。
  * ページをまたぐ移動は CSS の @view-transition（global.css）が受け持つ。
  *
  * **動かさないとき:** 対応していないブラウザ、動きを減らす設定。どちらも今までどおり、その場で切り替える。
  */
-/** いま動きの中で画面を描き直しているか。 */
-let updating = false;
-
 export function withViewTransition(update: () => void, prepare?: () => () => void) {
   if (
-    // 動きの中から呼ばれたら（探し方を変えると、選んだ店も外す）、その動きに含める。
-    // 新しく始めると、外側の動きが打ち切られて動かなくなる。
-    updating ||
     typeof document.startViewTransition !== "function" ||
     matchMedia("(prefers-reduced-motion: reduce)").matches
   ) {
@@ -22,14 +16,7 @@ export function withViewTransition(update: () => void, prepare?: () => () => voi
   }
   const cleanup = prepare?.();
   // 撮る直前と直後の画面の間で、React の描き直しを同期で済ませる（済まないと、動かずに切り替わる）。
-  const transition = document.startViewTransition(() => {
-    updating = true;
-    try {
-      flushSync(update);
-    } finally {
-      updating = false;
-    }
-  });
+  const transition = document.startViewTransition(() => flushSync(update));
   void transition.finished.finally(() => cleanup?.());
 }
 

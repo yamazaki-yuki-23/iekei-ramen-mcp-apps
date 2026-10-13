@@ -297,9 +297,13 @@ function IekeiAppConnected({
 }: ConnectedProps) {
   // 店の詳細は、選んだカードの下に現れ、下のカードは滑って下がる（#212）。
   // 参照を保つ（店のカードは memo で、入力のたびに 200 枚を描き直さない。#157）。
+  // 選ぶ店が変わらないとき（探し方を変えると、何も選んでいなくても外す）は動かさない。
   const selectShop = useCallback(
-    (shop: Shop | null) => withViewTransition(() => setSelected(shop), nameVisibleCards),
-    [setSelected],
+    (shop: Shop | null) =>
+      shop?.id === selected?.id
+        ? setSelected(shop)
+        : withViewTransition(() => setSelected(shop), nameVisibleCards),
+    [selected, setSelected],
   );
   /**
    * 選択をモデルに渡す列。ホストは次のユーザー発話までこれを溜めておくので、

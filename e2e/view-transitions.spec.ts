@@ -77,7 +77,9 @@ test("動きを減らす設定では、ページの移動も画面の中の切�
   await expect.poll(() => page.evaluate(() => sessionStorage.getItem("vt"))).toBe("false");
 });
 
-test("探し方の切り替えと店の詳細は、画面の中で短く動かす（#212）", async ({ page }) => {
+test("店の詳細を開くときだけ画面の中で短く動かし、探し方の切り替えでは動かさない（#212）", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await countInPage(page);
   await page.goto(TOP);
@@ -91,7 +93,8 @@ test("探し方の切り替えと店の詳細は、画面の中で短く動か�
   const ticket = page.locator("button[data-shop-id]").first();
   await ticket.click();
   await expect(page.getByRole("region", { name: "選択中の店舗" })).toBeVisible();
-  expect(await calls(page)).toBe(3);
+  // ヘッダーのナビ（探し方）は動かさない（オーナー判断）。動くのは店の詳細を開いたときだけ。
+  expect(await calls(page)).toBe(1);
   // 動きが済んだら、カードに付けた一時の名前は外す（次の切り替えで名前が重ならない）。
   await expect
     .poll(() => ticket.evaluate((el) => (el as HTMLElement).style.viewTransitionName))

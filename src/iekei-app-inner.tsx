@@ -23,7 +23,6 @@ import { AppHeader } from "./components/AppHeader";
 import type { PresentationProps } from "./iekei-app";
 import { buildHeading, formatCount, isPayloadReady, pageHead } from "./lib/heading";
 import { issueWith } from "./lib/issue-tickets";
-import { withViewTransition } from "./lib/view-transition";
 export interface InnerProps extends PresentationProps {
   app: UiHost;
   payload: AppPayload;
@@ -344,8 +343,7 @@ export function IekeiAppInner({
 
       <ModeTabs
         mode={mode}
-        // 選んだ探し方の塗りが滑って移る（#212）。
-        onChange={(next) => withViewTransition(() => switchMode(next))}
+        onChange={switchMode}
         mutating={mutating}
         visitsAvailable={visitsAvailable}
         primaryMode={primaryMode}
