@@ -36,6 +36,7 @@ import type { AppPayload, Origin, SearchMode, Shop, VisitResult } from "./lib/ty
 import styles from "./mcp-app.module.css";
 
 import type { HostConnectionProps, UiHost } from "./hosts/types";
+import { nameVisibleCards, withViewTransition } from "./lib/view-transition";
 
 export interface PresentationProps {
   introduction?: ReactNode;
@@ -443,7 +444,8 @@ function IekeiAppConnected({
       notice={notice}
       onNotice={setNotice}
       selected={selected}
-      onSelect={setSelected}
+      // 店の詳細は、選んだカードの下に広がり、下のカードは滑って下がる（#212）。
+      onSelect={(shop) => withViewTransition(() => setSelected(shop), nameVisibleCards)}
       stops={stops}
       routeOrigin={routeOrigin}
       onAddStop={addStop}

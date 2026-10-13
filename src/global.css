@@ -278,6 +278,42 @@ strong {
 }
 
 /*
+ * 移るときの動き（#212、見本）。ページをまたぐ移動は @view-transition、画面の中の切り替えは
+ * src/lib/view-transition.ts。対応していないブラウザは読み飛ばし、今までどおりぱっと切り替わる。
+ * 中身は短く入れ替えるだけで滑らせない（ヘッダーはどのページも同じなので、入れ替えても動いて見えない）。
+ * タブバーは名前を付けて別に撮り、入れ替えの中で動かさない。
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+
+nav[data-tabbar] {
+  view-transition-name: tabbar;
+}
+
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 200ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+::view-transition-old(root) {
+  animation-duration: 150ms;
+}
+
+/* 動きを減らす設定では、画面の中の切り替えも動かさない（呼ぶ側でも止めているが、念のため）。 */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/*
  * 規約へのリンク（#198）。Web のすべてのページの下に出す（src/lib/legal-links.ts）。
  * 静的なページもこのファイルを seo-tokens.css として読むので、両方ここで決める。
  */

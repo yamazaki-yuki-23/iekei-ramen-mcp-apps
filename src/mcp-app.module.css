@@ -1955,3 +1955,38 @@
   outline-offset: 1px;
   box-shadow: 0 0 0 5px var(--color-focus-edge);
 }
+
+/*
+ * 移るときの動き（#212、見本）。選んだ探し方の塗りは、名前で前後を結んで滑らせる。
+ * 店の詳細は、選んだカードの下から広がり、閉じるときは薄れて消える。
+ */
+.modeLink[aria-current="page"] {
+  view-transition-name: mode-current;
+}
+
+.selected {
+  view-transition-name: shop-detail;
+}
+
+:global(::view-transition-new(shop-detail)):only-child {
+  animation-name: shop-detail-open;
+  transform-origin: top center;
+}
+
+:global(::view-transition-old(shop-detail)):only-child {
+  animation-name: shop-detail-close;
+  animation-duration: 150ms;
+}
+
+@keyframes shop-detail-open {
+  from {
+    opacity: 0;
+    transform: scaleY(0.9);
+  }
+}
+
+@keyframes shop-detail-close {
+  to {
+    opacity: 0;
+  }
+}
