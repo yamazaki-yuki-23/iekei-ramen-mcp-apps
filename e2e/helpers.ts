@@ -256,8 +256,10 @@ const MODE_LINK = {
 export async function openMode(scope: Page | FrameLocator, mode: keyof typeof MODE_TAB) {
   const tab = scope.getByRole("tab", { name: MODE_TAB[mode], exact: true });
   if ((await tab.count()) > 0) return tab.click();
-  await scope
+  const link = scope
     .getByRole("navigation", { name: "探し方" })
-    .getByRole("button", { name: MODE_LINK[mode], exact: true })
-    .click();
+    .getByRole("button", { name: MODE_LINK[mode], exact: true });
+  await link.click();
+  // 切り替えは動き（#212）の撮影のあとに入るので、済むまで待つ（待たずに次を仕掛けると、切り替えの取得に当たる）。
+  await expect(link).toHaveAttribute("aria-current", "page");
 }
