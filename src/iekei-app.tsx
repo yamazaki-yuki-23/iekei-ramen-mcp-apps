@@ -295,6 +295,12 @@ function IekeiAppConnected({
   hostContextPatch,
   onContextChange,
 }: ConnectedProps) {
+  // 店の詳細は、選んだカードの下に現れ、下のカードは滑って下がる（#212）。
+  // 参照を保つ（店のカードは memo で、入力のたびに 200 枚を描き直さない。#157）。
+  const selectShop = useCallback(
+    (shop: Shop | null) => withViewTransition(() => setSelected(shop), nameVisibleCards),
+    [setSelected],
+  );
   /**
    * 選択をモデルに渡す列。ホストは次のユーザー発話までこれを溜めておくので、
    * 「この店について聞く」を押した時点では店の詳細が揃っている。
@@ -444,8 +450,7 @@ function IekeiAppConnected({
       notice={notice}
       onNotice={setNotice}
       selected={selected}
-      // 店の詳細は、選んだカードの下に広がり、下のカードは滑って下がる（#212）。
-      onSelect={(shop) => withViewTransition(() => setSelected(shop), nameVisibleCards)}
+      onSelect={selectShop}
       stops={stops}
       routeOrigin={routeOrigin}
       onAddStop={addStop}
