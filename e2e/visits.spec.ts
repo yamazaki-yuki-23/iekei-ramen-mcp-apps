@@ -607,7 +607,7 @@ test.describe("サインイン済み", () => {
      * 消去と 1 軒ずつの記録が同時に走ると、応答の順によって画面とサーバーが
      * ずれる（どちらの応答にもその時点の記録の全体が入っているため）。
      *
-     * **いまはその窓が無い。** 消している間、一覧は「読み込み中…」に変わり、
+     * **いまはその窓が無い。** 消している間、一覧は押せない（前の一覧を薄く残すだけ。#214）、
      * 選択も外れるので、押せる釦そのものが画面に無い。ここが崩れると窓が開く
      * ので、性質として固定しておく（逆向き——記録の最中に消す——は、
      * 消す釦が busy で押せないことで塞がっている）。
@@ -646,8 +646,10 @@ test.describe("サインイン済み", () => {
      * 返事が届いて空になった後の状態に一致してしまい、窓が開いていても通る
      * （実際にそうなっていた）。返事は 2.5 秒後なので、1 秒で判断する。
      */
-    await expect(app.getByText("読み込み中…")).toBeVisible({ timeout: 1000 });
-    await expect(shopCards(app)).toHaveCount(0, { timeout: 1000 });
+    await expect(app.getByRole("status").filter({ hasText: "読み込み中…" })).toHaveCount(1, {
+      timeout: 1000,
+    });
+    await expect(app.locator("ul > li > button:not([inert] *)")).toHaveCount(0, { timeout: 1000 });
     await expect(app.getByRole("button", { name: /^行った/ })).toHaveCount(0, {
       timeout: 1000,
     });
@@ -656,6 +658,34 @@ test.describe("サインイン済み", () => {
     await expect(app.getByText("まだ記録がありません")).toBeVisible({
       timeout: 20_000,
     });
+  });
+
+  test("「行った店」へ移る間の骨組みは、記録の数だけ出す（届いて縮んで跳ねない。#214 のレビュー）", async ({
+    page,
+  }) => {
+    const app = await callTool(
+      page,
+      "search-iekei-ramen",
+      { prefecture: "神奈川県" },
+      MEMBER_SERVER_NAME,
+    );
+    await waitForApp(app);
+    await selectFirst(app);
+    await app.getByRole("button", { name: "行った", exact: true }).click();
+    await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
+
+    await page.route(`**/${MEMBER_SERVER_URL.split("//")[1]}`, async (route) => {
+      if ((route.request().postData() ?? "").includes('"show-visited-iekei-ramen"'))
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+      await route.continue();
+    });
+    await app.getByRole("tab", { name: "行った店" }).click();
+    // 返事は 2.5 秒後。届く前の骨組みを 1 秒で見る（直す前は記録 1 件でも 8 枚だった）。
+    await expect(app.getByRole("status").filter({ hasText: "読み込み中…" })).toHaveCount(1, {
+      timeout: 1000,
+    });
+    await expect(app.locator("ul > li > button")).toHaveCount(1, { timeout: 1000 });
+    await expect(shopCards(app)).toHaveCount(1, { timeout: 20_000 });
   });
 
   test("「行った」をキーボードで押したら、その場で済んだあとは焦点の見守りを回し続けない（#156）", async ({

@@ -1,6 +1,15 @@
-import { Fragment, useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import type { AppPayload, Bounds, SearchMode, Shop } from "../lib/types";
+import type { ResultLook } from "../lib/skeleton";
 import { DecidePanel } from "./DecidePanel";
+import { Pending } from "./Pending";
 import type { FullscreenControl } from "./MapToolbar";
 import { preloadMapView } from "./lazy-map";
 import { ResultView } from "./ResultView";
@@ -62,34 +71,73 @@ const subscribeWide = (on: () => void) => {
   return () => q.removeEventListener("change", on);
 };
 const isWide = () => matchMedia(WIDE).matches;
+const subscribeWidth = (on: () => void) => {
+  addEventListener("resize", on);
+  return () => removeEventListener("resize", on);
+};
+const innerWidthNow = () => window.innerWidth;
+
+/**
+ * 3 軒の並びの一番高い値。画面の幅が変わったら（向きを変えたなど）測り直す。
+ * ponytail: ページの間だけ覚える。並びの高さがページをまたいで変わることは無いので、保存はしない。
+ */
+let tallest = { width: 0, height: 0 };
+function keepTallest(height: number, width: number): number {
+  if (width !== tallest.width) tallest = { width, height: 0 };
+  tallest.height = Math.max(tallest.height, height);
+  return tallest.height;
+}
 
 function DecideStage({
   aside,
   status,
   failure,
   panel,
+  look,
 }: {
   aside: ReactNode;
   status: ReactNode;
   failure: string | null;
   panel: ReactNode;
+  look: ResultLook;
 }) {
   const out = useRef<HTMLDivElement>(null);
-  const shown = !status;
+  // 骨組み・薄い結果の間は「出た」に数えない（届いたときに 1 回だけ戻す）。
+  const shown = !status && look === "live";
   /*
-   * 下の券売機で発券し直すと、新しい食券は画面の上の外に出る（スマホ幅）。食券の頭が
-   * 画面より上にあるときだけ、そこまで戻す。最初の表示やパソコン幅では動かさない。
+   * 下の券売機で発券し直すと、新しい食券は画面の上の外に出る（スマホ幅）。**食券が丸ごと画面より
+   * 上にあるときだけ**、そこまで戻す。頭が少し上にはみ出ているだけで戻すと、「次の 3 軒を見る」を
+   * 押すたびに画面が動き、押したボタンが指の下から逃げた（#214、オーナーの指摘）。
    */
   useEffect(() => {
     const el = out.current;
-    if (shown && el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
+    if (shown && el && el.getBoundingClientRect().bottom < 0) el.scrollIntoView({ block: "start" });
   }, [shown]);
+  /*
+   * 3 軒の並びの高さは、このページで出た一番高いものを保つ（#214、オーナーの指摘）。営業時間の行の
+   * 有無で食券の高さが 106〜131px と違い、入れ替わるたびに下の「次の 3 軒を見る」が上下していた。
+   * 縮めないので、押したボタンが上へ逃げない。作り直されても覚えておくため、部品の外に持つ。
+   */
+  // 向きを変えるなど幅が変わったら、前の幅で測った高さを外して測り直す（#214 のレビュー）。
+  const width = useSyncExternalStore(subscribeWidth, innerWidthNow, () => 0);
+  useLayoutEffect(() => {
+    const box = out.current;
+    // 店の詳細（食券の中）の並びではなく、3 軒の並びそのもの。
+    const list = box?.querySelector<HTMLElement>("ul:not(li ul)");
+    if (!shown || !box || !list) return;
+    box.style.removeProperty("--tickets-min");
+    // 一覧ではなく外の箱に持たせる。待つ間は一覧が包み直されて作り直され、一覧に書いた高さは消えた。
+    box.style.setProperty(
+      "--tickets-min",
+      `${keepTallest(list.getBoundingClientRect().height, width)}px`,
+    );
+  }, [shown, width]);
   // 読む順（Tab・読み上げ）は見た目の順にそろえる。パソコン幅は左の券売機が先。
   const wide = useSyncExternalStore(subscribeWide, isWide, () => false);
   const result = (
     <div key="out" className={styles.decideOut} ref={out}>
       <FailureNote failure={status ? null : failure} />
-      {status ?? panel}
+      {status ?? <Pending look={look}>{panel}</Pending>}
     </div>
   );
   // key で並べ替えるので、幅が変わっても券売機は作り直さない（選んだキーを保つ）。
@@ -124,8 +172,10 @@ interface Props {
   reports: boolean;
   mode: SearchMode;
   payload: AppPayload;
-  /** payload が今のモードのものか。揃うまで結果を出さない。 */
+  /** payload が今のモードのものか（待つ間に骨組み・前の結果を出すときも立つ）。揃うまで結果を出さない。 */
   ready: boolean;
+  /** 結果の領域の見え方（#214）。待つ間は前の結果を薄く残すか、骨組みを出す。 */
+  look: ResultLook;
   /** 応答を待つ間に条件を編集したため、再検索が必要。 */
   needsSearch: boolean;
   shops: Shop[];
@@ -174,6 +224,7 @@ export function Results({
   mode,
   payload,
   ready,
+  look,
   needsSearch,
   shops,
   keyword,
@@ -197,8 +248,13 @@ export function Results({
   /*
    * 結果が出た後に、地図（Leaflet）を先に読んでおく（lazy-map.ts の preloadMapView・#154）。
    * 「迷ったら」は ResultView を描かないので、どのモードでも描くここで始める。
+   * つながる前も骨組みでここを描くので、結果が出るまで（live になるまで）待つ。最初の結果を
+   * 取りに行く通信と帯域を取り合わせない（#214 のレビュー）。import は 2 回目から手元のものを返す。
    */
-  useEffect(preloadMapView, []);
+  const live = look === "live";
+  useEffect(() => {
+    if (live) preloadMapView();
+  }, [live]);
   /*
    * 「行った店」だけは ready を待たずに出す道がある。
    *
@@ -248,19 +304,21 @@ export function Results({
     return (
       <>
         <FailureNote failure={failure} />
-        <VisitedPanel
-          signedIn
-          shops={shops}
-          recordCount={visitedIds.size}
-          progress={payload.progress}
-          selectedId={selected?.id}
-          onSelect={onSelect}
-          detail={detail}
-          onForget={onForget}
-          onSignIn={onSignIn}
-          asking={asking}
-          busy={busy}
-        />
+        <Pending look={look}>
+          <VisitedPanel
+            signedIn
+            shops={shops}
+            recordCount={visitedIds.size}
+            progress={payload.progress}
+            selectedId={selected?.id}
+            onSelect={onSelect}
+            detail={detail}
+            onForget={onForget}
+            onSignIn={onSignIn}
+            asking={asking}
+            busy={busy}
+          />
+        </Pending>
         {/* 行った店も店の判定と味を出すので、但し書きを 1 回（#152）。 */}
         {shops.length > 0 && <ResultCaveat reports={reports} />}
       </>
@@ -277,6 +335,7 @@ export function Results({
         aside={aside}
         status={status}
         failure={failure}
+        look={look}
         panel={
           <DecidePanel
             title={decideTitle}
@@ -324,6 +383,7 @@ export function Results({
         visitedIds={visitedIds}
         belowMap={belowMap}
         status={status}
+        look={look}
         reportHint={reportHint}
       />
       {/* 但し書きは結果のすぐ下に 1 回（#152）。出す店が無いときは言うことが無い。 */}

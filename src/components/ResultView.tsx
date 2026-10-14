@@ -6,6 +6,8 @@ import { MapToolbar, type FullscreenControl } from "./MapToolbar";
 import { MapView } from "./lazy-map";
 import { MapLoadBoundary } from "./MapLoadBoundary";
 import { ShopList } from "./ShopList";
+import { Pending } from "./Pending";
+import type { ResultLook } from "../lib/skeleton";
 
 /*
  * 円の意味は画面に書く。**直線距離だと明示する**（徒歩◯分に換算する材料は
@@ -54,6 +56,50 @@ interface Props {
   reportHint?: string;
   /** 読み込み中・失敗の表示。あれば地図と一覧の代わりに出す（絞り込みは残す）。 */
   status?: ReactNode;
+  /** 結果の領域の見え方（#214）。骨組みの間は地図を描かず、同じ大きさの箱で場所を取る。 */
+  look?: ResultLook;
+}
+
+/** 地図の欄。同じ探し方で取り直す間は押せず（inert）、300ms を過ぎたら薄くする（#214）。 */
+function mapMainProps(look: ResultLook) {
+  const waiting = look === "hold" || look === "dim";
+  return {
+    className: look === "dim" ? `${styles.mapMain} pending-dim` : styles.mapMain,
+    inert: waiting,
+  };
+}
+
+/**
+ * 地図の置き場所。地図を待つ間は、道具の帯を押せない状態で出し、地図と同じ大きさの箱で場所を取る（#154）。
+ * 地図の部品を読み込む間（Suspense）と、違う探し方から移ってきて結果を待つ間（骨組み・#214）の両方で同じ箱。
+ */
+function MapArea({
+  placeholder,
+  fullscreen,
+  onSearchArea,
+  children,
+}: {
+  placeholder: boolean;
+  fullscreen?: FullscreenControl;
+  onSearchArea?: (bounds: Bounds) => void;
+  children: ReactNode;
+}) {
+  const box = (
+    <>
+      <MapToolbar fullscreen={fullscreen} busy onSearchArea={onSearchArea && (() => {})} />
+      <div className={styles.mapStage}>
+        <div
+          className={fullscreen?.expanded ? `${styles.map} ${styles.mapExpanded}` : styles.map}
+        />
+      </div>
+    </>
+  );
+  if (placeholder) return box;
+  return (
+    <MapLoadBoundary>
+      <Suspense fallback={box}>{children}</Suspense>
+    </MapLoadBoundary>
+  );
 }
 
 /**
@@ -63,6 +109,7 @@ export function ResultView({
   reportHint,
   belowMap,
   status,
+  look = "live",
   mode,
   shops,
   selectedId,
@@ -113,7 +160,11 @@ export function ResultView({
          * **絞り込み（belowMap）は同じ位置に残す。** 置き場所を変えると、押していた
          * 選択肢ごと作り直されて焦点が消え、失敗したときは条件を変え直す口も消える。
          */}
-        <div className={styles.mapMain}>
+        {/*
+         * 同じ探し方で取り直す間（この範囲で発券）は、前の結果の地図も押せない（#214）。一覧だけ止めると、
+         * 古いピンを選べてしまい、取り直しが失敗したときに選んだ店がモデルに残ったままになる。
+         */}
+        <div {...mapMainProps(look)}>
           {status ?? (
             <>
               {/*
@@ -121,67 +172,50 @@ export function ResultView({
                * 地図の範囲を読めないうちに押せてしまい、押しても何も起きない（#154）。
                * 待つ間は同じ帯を押せない状態で出し、地図と同じ大きさの箱を置いて配置を動かさない。
                */}
-              <MapLoadBoundary>
-                <Suspense
-                  fallback={
-                    <>
-                      <MapToolbar
-                        fullscreen={fullscreen}
-                        busy
-                        onSearchArea={onSearchArea && (() => {})}
-                      />
-                      <div className={styles.mapStage}>
-                        <div
-                          className={
-                            fullscreen?.expanded
-                              ? `${styles.map} ${styles.mapExpanded}`
-                              : styles.map
-                          }
-                        />
-                      </div>
-                    </>
+              <MapArea
+                placeholder={look === "skeleton" || look === "reserve"}
+                fullscreen={fullscreen}
+                onSearchArea={onSearchArea}
+              >
+                <MapToolbar
+                  fullscreen={fullscreen}
+                  busy={busy}
+                  onSearchArea={
+                    onSearchArea &&
+                    (() => {
+                      const shown = getBoundsRef.current?.();
+                      if (shown) onSearchArea(shown);
+                    })
                   }
-                >
-                  <MapToolbar
-                    fullscreen={fullscreen}
-                    busy={busy}
-                    onSearchArea={
-                      onSearchArea &&
-                      (() => {
-                        const shown = getBoundsRef.current?.();
-                        if (shown) onSearchArea(shown);
-                      })
-                    }
+                />
+                <div className={styles.mapStage}>
+                  <MapView
+                    shops={shops}
+                    selectedId={selectedId}
+                    /*
+                     * **塊の外を選んだら、その塊の一覧は畳む。** 出したままだと
+                     * 「この地点の 3 軒」の下に 4 枚並び、見出しの数も「この地点」という
+                     * まとまりも嘘になる。外を選んだ時点で、その塊の話は終わっている。
+                     */
+                    onSelect={(shop) => {
+                      if (focused && !focused.some((s) => s.id === shop.id)) setFocused(null);
+                      onSelect(shop);
+                    }}
+                    route={route}
+                    routeOrigin={routeOrigin}
+                    expanded={fullscreen?.expanded ?? false}
+                    onClusterSelect={(group, viaKeyboard) => {
+                      wantHeadFocus.current = viaKeyboard;
+                      setFocused(group);
+                    }}
+                    onReady={(getBounds) => (getBoundsRef.current = getBounds)}
+                    initialBounds={bounds}
+                    refit={!bounds}
+                    origin={origin}
+                    visitedIds={visitedIds}
                   />
-                  <div className={styles.mapStage}>
-                    <MapView
-                      shops={shops}
-                      selectedId={selectedId}
-                      /*
-                       * **塊の外を選んだら、その塊の一覧は畳む。** 出したままだと
-                       * 「この地点の 3 軒」の下に 4 枚並び、見出しの数も「この地点」という
-                       * まとまりも嘘になる。外を選んだ時点で、その塊の話は終わっている。
-                       */
-                      onSelect={(shop) => {
-                        if (focused && !focused.some((s) => s.id === shop.id)) setFocused(null);
-                        onSelect(shop);
-                      }}
-                      route={route}
-                      routeOrigin={routeOrigin}
-                      expanded={fullscreen?.expanded ?? false}
-                      onClusterSelect={(group, viaKeyboard) => {
-                        wantHeadFocus.current = viaKeyboard;
-                        setFocused(group);
-                      }}
-                      onReady={(getBounds) => (getBoundsRef.current = getBounds)}
-                      initialBounds={bounds}
-                      refit={!bounds}
-                      origin={origin}
-                      visitedIds={visitedIds}
-                    />
-                  </div>
-                </Suspense>
-              </MapLoadBoundary>
+                </div>
+              </MapArea>
               <p className={styles.mapNote}>{PIN_NOTE}</p>
               {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}
               {/* 出ている店に 1 軒でも記録があるときだけ書く。無いと読む意味が無い。 */}
@@ -208,17 +242,19 @@ export function ResultView({
                 </button>
               </div>
             )}
-            <ShopList
-              shops={mapListShops(focused ?? shops, selectedId)}
-              ranked
-              ticket
-              selectedId={selectedId}
-              onSelect={onSelect}
-              detail={detail}
-              emptyMessage={EMPTY_MESSAGE.map}
-              emptyHint={reportHint}
-              visitedIds={visitedIds}
-            />
+            <Pending look={look}>
+              <ShopList
+                shops={mapListShops(focused ?? shops, selectedId)}
+                ranked
+                ticket
+                selectedId={selectedId}
+                onSelect={onSelect}
+                detail={detail}
+                emptyMessage={EMPTY_MESSAGE.map}
+                emptyHint={reportHint}
+                visitedIds={visitedIds}
+              />
+            </Pending>
           </div>
         )}
       </div>
@@ -226,18 +262,20 @@ export function ResultView({
   }
 
   return (
-    <ShopList
-      shops={shops}
-      // 店名・現在地の結果も食券で出す（#144）。現在地は半券に直線距離を書く。
-      ranked={mode !== "visited"}
-      ticket={mode !== "visited"}
-      stub={mode === "nearby" ? "distance" : "number"}
-      selectedId={selectedId}
-      onSelect={onSelect}
-      detail={detail}
-      emptyMessage={EMPTY_MESSAGE[mode]}
-      emptyHint={mode === "form" ? reportHint : undefined}
-      visitedIds={visitedIds}
-    />
+    <Pending look={look}>
+      <ShopList
+        shops={shops}
+        // 店名・現在地の結果も食券で出す（#144）。現在地は半券に直線距離を書く。
+        ranked={mode !== "visited"}
+        ticket={mode !== "visited"}
+        stub={mode === "nearby" ? "distance" : "number"}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        detail={detail}
+        emptyMessage={EMPTY_MESSAGE[mode]}
+        emptyHint={mode === "form" ? reportHint : undefined}
+        visitedIds={visitedIds}
+      />
+    </Pending>
   );
 }

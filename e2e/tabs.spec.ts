@@ -217,9 +217,9 @@ test("位置の許可を待つ間に前の操作の応答が届いても、後�
   await app.getByRole("button", { name: /^発券する/ }).click();
   release();
   await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
-  // 捨てた応答の店を、位置待ちの間に選べない（取得中のまま）。
-  await expect(app.getByText("読み込み中…", { exact: true })).toBeVisible();
-  await expect(app.locator("button[data-shop-id]")).toHaveCount(0);
+  // 捨てた応答の店を、位置待ちの間に選べない（取得中のまま）。前の 3 軒は薄く残るが押せない（#214）。
+  await expect(app.getByRole("status").filter({ hasText: "読み込み中…" })).toHaveCount(1);
+  await expect(app.locator("button[data-shop-id]:not([inert] *)")).toHaveCount(0);
   await afterDelivered(
     app,
     app.locator("body").evaluate(() => window.iekeiPositionFixture.release("success")),

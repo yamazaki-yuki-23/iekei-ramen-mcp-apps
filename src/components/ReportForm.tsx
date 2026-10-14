@@ -3,16 +3,8 @@ import { REPORT_ACCEPTED } from "../lib/report-accepted";
 import type { ShopReport } from "../lib/reports";
 import styles from "../mcp-app.module.css";
 
-export function ReportEntry({
-  enabled,
-  ready = true,
-  shopId,
-}: {
-  enabled?: boolean;
-  ready?: boolean;
-  shopId?: string;
-}) {
-  if (!enabled || !ready) return null;
+export function ReportEntry({ enabled, shopId }: { enabled?: boolean; shopId?: string }) {
+  if (!enabled) return null;
   return <ReportForm shopId={shopId} />;
 }
 

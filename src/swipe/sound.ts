@@ -33,7 +33,8 @@ export function setMuted(next: boolean) {
   }
 }
 
-function audio(): AudioContext | null {
+/** 音の仕組みを作る（まだ鳴らさない）。最初の 1 回だけ約 150ms 止まる（CPU 4 倍遅くして）。 */
+function context(): AudioContext | null {
   if (muted) return null;
   try {
     if (!ctx) {
@@ -47,11 +48,17 @@ function audio(): AudioContext | null {
       lp.connect(master).connect(ctx.destination);
       synth = lp;
     }
-    if (ctx.state === "suspended") void ctx.resume();
     return ctx;
   } catch {
     return null;
   }
+}
+
+/** 鳴らせる状態にする。iPhone の Safari では、操作の中で直接呼ばないと再開できない。 */
+function audio(): AudioContext | null {
+  const a = context();
+  if (a?.state === "suspended") void a.resume();
+  return a;
 }
 
 function tone(
@@ -114,7 +121,36 @@ function loadSwoop(a: AudioContext): Promise<AudioBuffer | null> {
   return swoop;
 }
 
-/** 音を出す準備（最初の操作で呼ぶ）。払う音の読み込みも始める。 */
+/**
+ * 画面を描き終えてから fn を呼ぶ（#214）。払う音を鳴らす処理を、操作の反応（画面を描くまで）から外す。
+ * 音の遅れは 1 フレームだけ。**再開（unlock）はここに回さない**——iPhone の Safari は、操作の中で
+ * 直接再開しないと音を出させない。
+ */
+export function afterPaint(fn: () => void) {
+  requestAnimationFrame(() => setTimeout(fn, 0));
+}
+
+/** 音の仕組みと払う音を作っておく（鳴らさない）。 */
+function prepare() {
+  const a = context();
+  if (a) void loadSwoop(a);
+}
+
+/**
+ * 音の仕組みを、手が空いたときに先に作っておく（#214）。払う操作の中で作ると、最初の 1 回だけ約 150ms
+ * 止まり、反応に 208ms かかっていた（CPU 4 倍遅くして）。作るのは操作が無くてもよく（止まった状態で
+ * できる）、鳴らす前の再開だけを操作の中で行う（unlock）。戻り値で取り消す。
+ */
+export function prepareWhenIdle(): () => void {
+  if (typeof requestIdleCallback === "function") {
+    const id = requestIdleCallback(prepare, { timeout: 3000 });
+    return () => cancelIdleCallback(id);
+  }
+  const timer = setTimeout(prepare, 1500);
+  return () => clearTimeout(timer);
+}
+
+/** 音を出す準備（操作の中で直接呼ぶ）。先に作ってあれば再開するだけで軽い。払う音の読み込みも始める。 */
 export function unlock() {
   const a = audio();
   if (a) void loadSwoop(a);

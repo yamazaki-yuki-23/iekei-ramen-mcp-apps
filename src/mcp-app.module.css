@@ -1971,3 +1971,8 @@
     opacity: 0;
   }
 }
+
+/* 3 軒の並びの高さは、このページで出た一番高いものを保つ（#214。Results.tsx の DecideStage が測る）。 */
+.decideOut ul:not(li ul) {
+  min-height: var(--tickets-min, auto);
+}

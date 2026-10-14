@@ -302,6 +302,8 @@ test("パソコン幅は上のナビに 7 項目、スマホ幅は探し方の 4
   ] as const) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("http://localhost:3134/");
+    // つながる前の本体も同じ探し方を出す。つながると作り直されるので、測るのはその後（#214）。
+    await expect(page.locator("main:not([inert])")).toHaveCount(1);
     const nav = page.getByRole("navigation", { name: "探し方" });
     await expect(nav.getByRole("button", { name: "地図で" })).toBeVisible();
     // 文字の上下の真ん中を測る（箱は同じ高さでも、<a> だけ文字が上に寄っていた）。
