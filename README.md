@@ -81,12 +81,12 @@
 
 作り・動かし方・データの更新は、次のファイルにあります。
 
-| 知りたいこと                                       | 場所                                                                                    |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| 全体像の図・ファイル構成・tool 一覧                | [docs/development.md「アーキテクチャ」](docs/development.md#アーキテクチャ)             |
-| セットアップ・ローカルで動かす                     | [docs/development.md「動作確認」](docs/development.md#動作確認)                         |
-| テスト・静的解析                                   | [docs/development.md「テスト」](docs/development.md#テスト)                             |
-| デプロイ・外部サービス・記録の置き場               | [docs/development.md「デプロイ」](docs/development.md#デプロイ)                         |
-| 店舗データの作り方・更新・判定の段階               | [docs/development.md「データ」](docs/development.md#データ)                             |
-| 開発の進め方（Claude Code・Codex・issue の回し方） | [docs/development.md「開発の進め方」](docs/development.md#開発の進め方claude-codecodex) |
-| 作業のルール・見た目の決まり                       | [AGENTS.md](AGENTS.md)・[DESIGN.md](DESIGN.md)                                          |
+| 知りたいこと                                       | 場所                                                                 |
+| -------------------------------------------------- | -------------------------------------------------------------------- |
+| 全体像の図・ファイル構成・tool 一覧                | [docs/development/architecture.md](docs/development/architecture.md) |
+| セットアップ・ローカルで動かす                     | [docs/development/running.md](docs/development/running.md)           |
+| テスト・静的解析                                   | [docs/development/testing.md](docs/development/testing.md)           |
+| デプロイ・外部サービス・記録の置き場               | [docs/development/deploy.md](docs/development/deploy.md)             |
+| 店舗データの作り方・更新・判定の段階               | [docs/development/data.md](docs/development/data.md)                 |
+| 開発の進め方（Claude Code・Codex・issue の回し方） | [docs/development/workflow.md](docs/development/workflow.md)         |
+| 作業のルール・見た目の決まり                       | [AGENTS.md](AGENTS.md)・[DESIGN.md](DESIGN.md)                       |
