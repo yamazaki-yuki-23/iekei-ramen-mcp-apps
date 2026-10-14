@@ -1,4 +1,4 @@
-export { GeocodeGate } from "../../src/lib/geocode-gate";
+export { GeocodeGate } from "../../server/geocode-gate";
 
 const attempts = new Map<string, { calls: number; aborted: boolean }>();
 

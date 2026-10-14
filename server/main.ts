@@ -9,9 +9,9 @@ import { createServer as createHttpServer } from "node:http";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { createServer } from "./server.ts";
 import worker, { serveMcp } from "./worker.ts";
-import { GeocodeGate } from "./src/lib/geocode-gate.ts";
-import { memoryVisits } from "./src/lib/visits.ts";
-import { PayloadSchema } from "./src/lib/schema.ts";
+import { GeocodeGate } from "./geocode-gate.ts";
+import { memoryVisits } from "./visits.ts";
+import { PayloadSchema } from "./schema.ts";
 
 const PORT = Number(process.env.PORT ?? 3031);
 

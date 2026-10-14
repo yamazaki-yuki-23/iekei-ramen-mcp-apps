@@ -7,9 +7,9 @@
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { describe, expect, it } from "vitest";
-import { createServer } from "../server";
+import { createServer } from "../server/server";
 import type { AppPayload } from "../src/lib/types";
-import { memoryVisits } from "../src/lib/visits";
+import { memoryVisits } from "../server/visits";
 
 const VISITOR = { id: "visitor-1" };
 

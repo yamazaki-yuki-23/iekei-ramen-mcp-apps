@@ -1,4 +1,4 @@
-import { handleReport } from "../../src/lib/report-endpoint";
+import { handleReport } from "../../server/report-endpoint";
 export default {
   fetch(request: Request, env: { VISITS: D1Database }) {
     return handleReport(request, {
