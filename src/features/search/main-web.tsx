@@ -1,6 +1,6 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { IekeiApp } from "./iekei-app";
+import { SearchApp } from "./SearchApp";
 import { WebConnection } from "./components/WebConnection";
 import { IekeiIntro } from "./components/IekeiIntro";
 import { TabBar } from "../../components/TabBar";
@@ -13,7 +13,7 @@ function WebApp() {
   const [introOpen, setIntroOpen] = useState(initialIntroOpen);
   return (
     <>
-      <IekeiApp
+      <SearchApp
         Connection={WebConnection}
         primaryMode={
           webEntry(window.location.search).name === "search-iekei-ramen" ? "form" : "decide"

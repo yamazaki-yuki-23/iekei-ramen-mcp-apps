@@ -81,7 +81,7 @@ export function SearchForm({ prefectures, values, onChange, onSubmit, busy, hide
           </label>
           <input
             id="kw"
-            // Enter で結果が差し替わったあと、この欄へ焦点を戻す（use-result-handoff.ts）。
+            // Enter で結果が差し替わったあと、この欄へ焦点を戻す（use-keyboard-focus-return.ts）。
             data-result-input="keyword"
             className={styles.input}
             type="search"

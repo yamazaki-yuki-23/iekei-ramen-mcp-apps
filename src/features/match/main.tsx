@@ -1,9 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { SwipeApp } from "./SwipeApp";
+import { MatchApp } from "./MatchApp";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <SwipeApp />
+    <MatchApp />
   </StrictMode>,
 );

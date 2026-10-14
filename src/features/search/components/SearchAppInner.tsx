@@ -1,21 +1,23 @@
 /**
- * 結果の画面。payload ごとに key で作り直される側（作り直されない外側は iekei-app.tsx）。
+ * 結果の画面。payload ごとに key で作り直される側（作り直されない外側は SearchApp.tsx）。
  */
 import type { McpUiDisplayMode, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import { useMemo, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { ModeControls } from "./ModeControls";
-import { ModePanel, ModeTabs } from "./ModeTabs";
+import { ModePanel } from "./ModePanel";
+import { ModeTabs } from "./ModeTabs";
 import type { FormValues } from "./SearchForm";
 import { Results } from "./Results";
 import { RoutePanel } from "./RoutePanel";
 import { SelectedShop } from "./SelectedShop";
-import { ReportEntry } from "./ReportForm";
+import { ReportEntry } from "./ReportEntry";
 import { useFullscreen } from "../hooks/use-fullscreen";
 import { useResultState } from "../hooks/use-result-state";
 import { countPlaceholder, placeholderTitle } from "../../../utils/skeleton";
 import { useModeSwitch } from "../hooks/use-mode-switch";
-import { createStampQueue, useServerTools } from "../hooks/use-server-tools";
+import { useServerTools } from "../hooks/use-server-tools";
+import type { createStampQueue } from "../utils/stamp-queue";
 import { safeAreaStyle } from "../utils/safe-area";
 import { DATA_CREDIT, DATA_DEFINITIONS, DATA_FOOTNOTE } from "../../../utils/data-caveats";
 import { MAX_STOPS, planRoute } from "../../../utils/route";
@@ -23,7 +25,7 @@ import type { AppPayload, Origin, SearchMode, Shop, VisitResult } from "../../..
 import styles from "../styles/search.module.css";
 import type { UiHost } from "../types/host";
 import { AppHeader } from "./AppHeader";
-import type { PresentationProps } from "../iekei-app";
+import type { PresentationProps } from "../SearchApp";
 import { pageHead } from "../utils/heading";
 import { issueWith } from "../lib/issue-tickets";
 export interface InnerProps extends PresentationProps {
@@ -105,7 +107,7 @@ function placeControls(Hero: PresentationProps["hero"], mode: SearchMode, contro
  * payload ごとに key で作り直されるので、状態は props からそのまま初期化できる。
  * tool 結果が届くたびにモードを揃え、フォームの下書きは外側で保持する。
  */
-export function IekeiAppInner({
+export function SearchAppInner({
   introduction,
   hero: Hero,
   primaryMode,

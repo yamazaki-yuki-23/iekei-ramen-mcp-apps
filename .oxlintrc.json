@@ -404,6 +404,28 @@
         "typescript/no-non-null-assertion": "off",
         "no-await-in-loop": "off"
       }
+    },
+    {
+      "files": ["src/**/*.ts", "src/**/*.tsx"],
+      "rules": {
+        "unicorn/filename-case": [
+          "error",
+          {
+            "case": "kebabCase"
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/**/components/**/*.tsx", "src/features/*/*App.tsx"],
+      "rules": {
+        "unicorn/filename-case": [
+          "error",
+          {
+            "case": "pascalCase"
+          }
+        ]
+      }
     }
   ]
 }

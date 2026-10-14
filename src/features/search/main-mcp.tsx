@@ -1,10 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { IekeiApp } from "./iekei-app";
+import { SearchApp } from "./SearchApp";
 import { McpConnection } from "./components/McpConnection";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <IekeiApp Connection={McpConnection} />
+    <SearchApp Connection={McpConnection} />
   </StrictMode>,
 );

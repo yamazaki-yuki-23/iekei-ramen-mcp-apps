@@ -27,9 +27,10 @@ import {
 import { StateNote } from "./components/StateNote";
 import { CONNECTING_HOST } from "./utils/connecting";
 import type { FormValues } from "./components/SearchForm";
-import { createStampQueue } from "./hooks/use-server-tools";
-import { IekeiAppInner } from "./components/iekei-app-inner";
-import { useKeyboardFocusReturn, useResultAnnouncement } from "./hooks/use-result-handoff";
+import { createStampQueue } from "./utils/stamp-queue";
+import { SearchAppInner } from "./components/SearchAppInner";
+import { useKeyboardFocusReturn } from "./hooks/use-keyboard-focus-return";
+import { useResultAnnouncement } from "./hooks/use-result-announcement";
 import { createDeliveryQueue } from "./utils/model-context";
 import { EMPTY_PAYLOAD } from "../../utils/payload";
 import { MAX_STOPS } from "../../utils/route";
@@ -48,7 +49,7 @@ export interface PresentationProps {
   primaryMode?: SearchMode;
 }
 
-export function IekeiApp({
+export function SearchApp({
   Connection,
   introduction,
   hero,
@@ -185,7 +186,7 @@ export function IekeiApp({
     setHostContextPatch((prev) => ({ ...prev, ...params }));
   }, []);
 
-  // 作り直しのあとの焦点と読み上げ。作り直されないここで持つ（src/features/search/hooks/use-result-handoff.ts）。
+  // 作り直しのあとの焦点と読み上げ。作り直されないここで持つ（src/features/search/hooks/use-keyboard-focus-return.ts・use-result-announcement.ts）。
   useKeyboardFocusReturn();
   const announcer = useResultAnnouncement(payloadVersion, payload);
 
@@ -219,7 +220,7 @@ export function IekeiApp({
            * 会話の中（hero なし）は、つながるのがすぐなので「読み込み中」のまま。
            */
           <>
-            <IekeiAppConnected
+            <SearchAppConnected
               introduction={introduction}
               hero={hero}
               primaryMode={primaryMode}
@@ -278,7 +279,7 @@ interface ConnectedProps extends PresentationProps {
   onContextChange: (context: McpUiHostContext) => void;
 }
 
-function IekeiAppConnected({
+function SearchAppConnected({
   introduction,
   hero,
   primaryMode,
@@ -439,7 +440,7 @@ function IekeiAppConnected({
   );
 
   return (
-    <IekeiAppInner
+    <SearchAppInner
       key={payloadVersion}
       introduction={introduction}
       hero={hero}

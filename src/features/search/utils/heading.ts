@@ -1,4 +1,4 @@
-import type { PresentationProps } from "../iekei-app";
+import type { PresentationProps } from "../SearchApp";
 import { originLabel } from "../../../utils/geo";
 import { scopeLabel } from "../../../utils/scope";
 import { basisLabel } from "../../../utils/shortlist";
