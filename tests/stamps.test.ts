@@ -9,7 +9,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { describe, expect, it } from "vitest";
 import { createServer } from "../server/server";
 import type { AppPayload } from "../src/types";
-import { memoryVisits } from "../server/visits";
+import { memoryVisits } from "../server/lib/visits";
 
 const VISITOR = { id: "visitor-1" };
 

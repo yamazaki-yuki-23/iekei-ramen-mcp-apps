@@ -108,6 +108,32 @@
       }
     },
     {
+      "files": ["server/utils/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/features/**"],
+                "message": "共有（src/ のトップ）は機能を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/lib/**", "**/hooks/**", "**/components/**"],
+                "message": "utils/ は外部に触らないので、lib/・hooks/・components/ の値を import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true
+              },
+              {
+                "message": "utils/ は外部に触らないので、外部のパッケージを import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true,
+                "regex": "^[^.]"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["src/features/search/**"],
       "rules": {
         "no-restricted-imports": [
@@ -308,7 +334,7 @@
       }
     },
     {
-      "files": ["src/utils/**", "src/features/*/utils/**"],
+      "files": ["server/utils/**", "src/features/*/utils/**", "src/utils/**"],
       "rules": {
         "no-restricted-globals": [
           "error",
@@ -423,6 +449,17 @@
           "error",
           {
             "case": "pascalCase"
+          }
+        ]
+      }
+    },
+    {
+      "files": ["server/**/*.ts"],
+      "rules": {
+        "unicorn/filename-case": [
+          "error",
+          {
+            "case": "kebabCase"
           }
         ]
       }

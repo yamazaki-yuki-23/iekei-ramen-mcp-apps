@@ -1,4 +1,4 @@
-import { GeocodeGate } from "../../server/geocode-gate";
+import { GeocodeGate } from "../../server/lib/geocode-gate";
 
 // この使い捨てWorkerから外部ネットワークへは出さない。
 globalThis.fetch = async (input) => {

@@ -47,6 +47,14 @@
 - ブラウザのコード（`src/`）は `server/` を import しない
 - 実行時の循環 import をしない（型だけの import は JavaScript から消えて動きに関わらないので数えない）
 
+### 4. `server/` の中
+
+`server/` にも同じ種類の決まりを使う（`lib/`・`utils/`・`types/`・`styles/`）。違うのは直下と `tools/` だけ。
+
+- 直下は、入口の `worker.ts`（Workers）・`main.ts`（手元の Node）と、tool を登録するだけの `server.ts`
+- `tools/<tool 名>.ts` に、1 tool 1 ファイルで置く（例: `tools/decide-iekei-ramen.ts`）。どの tool も、`server.ts` が 1 回だけ作る材料（`ToolContext`。店舗データ・都道府県・地点の割り出し・payload の出口）を受け取る
+- `lib/` は外部（D1・KV・Analytics Engine・Durable Object・Nominatim・`zod` などのパッケージ）に触るもの、`utils/` は触らない文面づくり・検査
+
 ## 名前の決まり
 
 | 種類                                                     | 規則                                                                                                                                                                                                                                         | 例                                              |
@@ -69,6 +77,9 @@ iekei-ramen/
 ├─ index.html・mcp-app.html          入口の HTML（Vite の決まりでルート。URL と 1 対 1）
 ├─ match/・camera/・shindan/         各ページの index.html だけ
 ├─ server/                           サーバー側（Workers と手元の Node）。ブラウザには載らない
+│  ├─ worker.ts・main.ts・server.ts 入口と、tool の登録
+│  ├─ tools/                        tool（1 tool 1 ファイル。ファイル名は tool の名前）
+│  └─ lib/・utils/・types/・styles/
 ├─ scripts/・tests/・e2e/・docs/・data/・public/・migrations/
 └─ src/
    ├─ features/
@@ -91,7 +102,7 @@ iekei-ramen/
 
 ## 強制のしかた
 
-新しい依存は足さない。oxlint（`.oxlintrc.json` の `overrides`）で書けるものは lint、書けないものは単体テスト（`tests/structure-*.test.ts`）で見張る。**機械で確かめるのは、この表の行だけ。** 普通に書いたときの崩れ方（置き間違い・名前の付け間違い・向きの逆な import）を止めるためのもので、表に無いこと（わざとすり抜ける書き方や、CSS をどこから読むか）はコードレビューで見る。確かめ方をすり抜けの数だけ増やすと、テストの方が読めなくなる。決まりを変えるときは、この表と確かめ方も同じ PR で直す。
+新しい依存は足さない。oxlint（`.oxlintrc.json` の `overrides`）で書けるものは lint、書けないものは単体テスト（`tests/structure-*.test.ts`）で見張る。**機械で確かめるのは、この表の行だけ。** 種類のフォルダ（`lib/`・`utils/`・`types/` など）の行は、`src/` と `server/` の両方に当てる。 普通に書いたときの崩れ方（置き間違い・名前の付け間違い・向きの逆な import）を止めるためのもので、表に無いこと（わざとすり抜ける書き方や、CSS をどこから読むか）はコードレビューで見る。確かめ方をすり抜けの数だけ増やすと、テストの方が読めなくなる。決まりを変えるときは、この表と確かめ方も同じ PR で直す。
 
 **置き場**
 
@@ -105,7 +116,7 @@ iekei-ramen/
 | フック（`use` で始まる export）は `hooks/` にだけ置く                                                                                                                                                             | 単体テスト                                                                                                                                                                                                                                                                                                                            |
 | `types/` には型だけ（JavaScript にすると何も残らない。値の宣言・値の import・再 export・式のどれも無い）                                                                                                          | 単体テスト（ビルドと同じ Vite の oxc で JavaScript にし、型の import だけを消して、空であることを確かめる。型だけのモジュールでも残る `export {};` と空の文 `;` は数えない）                                                                                                                                                          |
 | 型だけのファイルは `types/` に置く（`utils/`・`lib/` に置かない）                                                                                                                                                 | 単体テスト（`utils/`・`lib/` の `.ts` を同じ方法で JavaScript にし、何も残らなければ落とす）                                                                                                                                                                                                                                          |
-| `lib/` のファイルは外部に触る（決めたグローバル・外部のパッケージの値・ほかの `lib/` の値のどれかを使う。型だけの import は JavaScript から消えるので数えない）                                                   | 単体テスト（`import type` と、中が全部 `type` の `import { type A }` は数えない）                                                                                                                                                                                                                                                     |
+| `lib/` のファイルは外部に触る（決めたグローバル・Cloudflare の binding（`D1Database` など）・外部のパッケージの値・ほかの `lib/` の値のどれかを使う。型だけの import は JavaScript から消えるので数えない）       | 単体テスト（`import type` と、中が全部 `type` の `import { type A }` は数えない）                                                                                                                                                                                                                                                     |
 | `utils/` は外部に触らない: 決めたグローバル（`window`・`document`・`localStorage`・`fetch`・`crypto`・`setTimeout` など）を使わない                                                                               | lint `no-restricted-globals`                                                                                                                                                                                                                                                                                                          |
 | `utils/` は外部に触らない: 外部のパッケージと、`lib/`・`hooks/`・`components/` の値を import しない（型だけは可）                                                                                                 | lint `no-restricted-imports`                                                                                                                                                                                                                                                                                                          |
 | `styles/` には CSS だけ                                                                                                                                                                                           | 単体テスト                                                                                                                                                                                                                                                                                                                            |
@@ -128,6 +139,8 @@ iekei-ramen/
 | 部品のファイル名は、export する唯一の部品の名前と同じ（PascalCase の `function`・`const`・`class` を部品として数える。SCREAMING_CASE の定数は数えない）                                                                     | 単体テスト                             |
 | CSS の名前と置き場（部品専用は `<部品名>.module.css` を部品の隣、機能の CSS は `<機能名>.module.css`、入口だけが読む CSS は同じ名前の入口がある `main.css`・`main-<場所>.css`、全ページ共通は `src/styles/` に kebab-case） | 単体テスト（oxlint は CSS を読まない） |
 | サーバーが返す画面だけが読む CSS は `server/styles/` に kebab-case で置く                                                                                                                                                   | 単体テスト                             |
+| `server/` の直下は `worker.ts`・`main.ts`・`server.ts` と種類のフォルダ・`tools/` だけ                                                                                                                                      | 単体テスト                             |
+| `server/tools/<名前>.ts` は、その名前の tool を 1 つだけ登録する                                                                                                                                                            | 単体テスト                             |
 
 ## よくある迷い
 

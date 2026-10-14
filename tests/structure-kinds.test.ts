@@ -19,9 +19,11 @@ function walk(dir: string): string[] {
   });
 }
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
-/** 種類のフォルダ（トップと各機能）の中のファイル。 */
+/** 種類のフォルダ（src/ のトップ・各機能・server/）の中のファイル。 */
 const inKind = (kind: string) =>
-  walk("src").filter((path) => new RegExp(`^src/(features/[^/]+/)?${kind}/`).test(path));
+  [...walk("src"), ...walk("server")].filter((path) =>
+    new RegExp(`^(src/(features/[^/]+/)?|server/)${kind}/`).test(path),
+  );
 
 /**
  * 外部に触るときに使うグローバル。`utils/` で禁じるもの（.oxlintrc.json の no-restricted-globals）と
@@ -47,6 +49,12 @@ const EXTERNAL_GLOBALS = [
   "createImageBitmap",
   "OffscreenCanvas",
   "CanvasRenderingContext2D",
+  // Cloudflare のサービスにつなぐ binding（引数で受け取って使う）
+  "D1Database",
+  "KVNamespace",
+  "AnalyticsEngineDataset",
+  "DurableObjectState",
+  "DurableObjectNamespace",
 ];
 
 /** 値として import している先（`import type` は数えない）。 */
@@ -82,7 +90,7 @@ describe("種類のフォルダの中身（docs/development/structure.md）", ()
     expect(bad).toEqual([]);
   });
 
-  it("lib/ のファイルは外部に触る（決めたグローバル・外部のパッケージ・ほかの lib/ の値のどれかを使う）", () => {
+  it("lib/ のファイルは外部に触る（決めたグローバル・Cloudflare の binding・外部のパッケージ・ほかの lib/ の値のどれかを使う）", () => {
     const bad = inKind("lib")
       .filter((file) => /\.(ts|tsx)$/.test(file))
       .filter((file) => {

@@ -183,6 +183,26 @@ describe("置き場と名前の決まり（docs/development/structure.md）", ()
     expect(bad).toEqual([]);
   });
 
+  it("server/ の直下には、入口（worker.ts・main.ts）と登録の server.ts・種類のフォルダだけがある", () => {
+    const allowed = new Set(["worker.ts", "main.ts", "server.ts", "tools", ...KINDS]);
+    const extra = list("server").filter((name) => !allowed.has(name));
+    expect(extra).toEqual([]);
+  });
+
+  it("server/tools/<名前>.ts は、その名前の tool を 1 つだけ登録する", () => {
+    const bad = walk("server/tools").flatMap((file) => {
+      const names = [
+        ...read(file).matchAll(/register(?:App)?Tool\(\s*(?:server,\s*)?"([^"]+)"/g),
+      ].map((match) => match[1]);
+      const expected = basename(file, ".ts");
+      return names.length === 1 && names[0] === expected
+        ? []
+        : [`${file}: 登録している tool が ${JSON.stringify(names)}（${expected} だけにする）`];
+    });
+    expect(bad).toEqual([]);
+    expect(walk("server/tools").length).toBeGreaterThan(0);
+  });
+
   it("調べる対象が見つかっている（たどり方が壊れていない）", () => {
     expect(features).toEqual(expect.arrayContaining(["search", "match", "camera", "shindan"]));
     expect(filesIn("hooks").length).toBeGreaterThan(5);

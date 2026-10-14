@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createServer } from "../server/server";
 import data from "../data/shops.json";
 import { readPayload } from "../src/utils/payload";
-import { memoryVisits } from "../server/visits";
+import { memoryVisits } from "../server/lib/visits";
 
 const visitor = { id: "snapshot-test" };
 

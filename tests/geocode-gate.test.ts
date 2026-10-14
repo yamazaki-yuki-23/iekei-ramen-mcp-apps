@@ -4,7 +4,7 @@ import {
   GEOCODE_SPACING_MS,
   GeocodeGate,
   reserveSlot,
-} from "../server/geocode-gate";
+} from "../server/lib/geocode-gate";
 
 describe("reserveSlot", () => {
   it("空いていればすぐ通し、次の枠を 1 間隔あとに置く", () => {

@@ -1,5 +1,6 @@
 /** tool の outputSchema。UI にはこの形で structuredContent が届く。 */
 import { z } from "zod";
+import { ALL_PREFECTURES } from "../../src/utils/prefectures.ts";
 
 const TasteSchema = z.enum(["rich", "creamy", "chain", "unknown"]);
 
@@ -119,3 +120,14 @@ export const StampResultSchema = PayloadSchema.partial()
       PayloadSchema.safeParse(value).success || VisitSnapshotSchema.safeParse(value).success,
     { message: "スタンプ応答は完全な店舗一覧か、visitedとprogressだけのsnapshotにしてください" },
   );
+
+/** 検索条件の欄。**文言が同じ tool だけで共有する**——説明はモデルが読む契約で、
+ * 地図の「この都道府県にズームして表示する」とは伝えることが違う。 */
+export const conditionFields = {
+  prefecture: z.enum(ALL_PREFECTURES).optional().describe("都道府県名（例: 神奈川県）"),
+  taste: z
+    .enum(["rich", "creamy", "chain"])
+    .optional()
+    .describe("味の傾向: rich=直系・濃厚 / creamy=クリーミー / chain=チェーン・万人向け"),
+  keyword: z.string().optional().describe("店名・ブランド・地名の部分一致キーワード"),
+};
