@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Codex のレビューが、PR の先頭のコミットに届くまで待ち、未返信の指摘を出す。
 #
-#   scripts/wait-codex-review.sh [PR番号]     # 省略時は今のブランチの PR
+#   scripts/dev/wait-codex-review.sh [PR番号]     # 省略時は今のブランチの PR
 #
 # 終了コード: 0 = 指摘なし / 3 = 指摘あり（下に一覧） / 4 = 時間切れ
 #             5 = 待っている間に PR の先頭が変わった（新しい先頭でもう一度待つ）

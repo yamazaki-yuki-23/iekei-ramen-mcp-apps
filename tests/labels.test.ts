@@ -6,7 +6,7 @@
  * ここでは、その前提が崩れていないかを材料の側から見る。
  */
 import { describe, expect, it } from "vitest";
-import { findAmbiguous } from "../scripts/labels.mjs";
+import { findAmbiguous } from "../scripts/data/labels.mjs";
 
 const shop = (id: string, name: string, city?: string, address?: string) => ({
   id,

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { seoPages } from "../scripts/seo-pages.mjs";
+import { seoPages } from "../scripts/build/seo-pages.mjs";
 import { type Shop } from "../src/types";
 import { CONFIDENCE } from "../src/utils/labels";
 import { webEntry } from "../src/features/search/utils/web-entry";

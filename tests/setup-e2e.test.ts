@@ -26,7 +26,8 @@ function fixture() {
   const project = join(root, "project");
   const bin = join(root, "bin");
   const log = join(root, "commands.jsonl");
-  for (const dir of [upstream, join(project, "scripts"), bin]) mkdirSync(dir, { recursive: true });
+  for (const dir of [upstream, join(project, "scripts/dev"), bin])
+    mkdirSync(dir, { recursive: true });
   const git = (args: string[], cwd = upstream) =>
     execFileSync(realGit, args, { cwd, stdio: "pipe" });
   git(["init", "-q"]);
@@ -40,8 +41,8 @@ function fixture() {
     git(["tag", `v${version}`]);
   }
   copyFileSync(
-    new URL("../scripts/setup-e2e.mjs", import.meta.url),
-    join(project, "scripts/setup-e2e.mjs"),
+    new URL("../scripts/dev/setup-e2e.mjs", import.meta.url),
+    join(project, "scripts/dev/setup-e2e.mjs"),
   );
   const setVersion = (version: string) =>
     writeFileSync(
@@ -95,7 +96,7 @@ if(args[0]==='run' && args[1]==='build') {
     E2E_SETUP_LATEST_VERSION: "2.0.0",
   };
   const run = (extra: Record<string, string> = {}, args: string[] = []) =>
-    spawnSync(process.execPath, [join(project, "scripts/setup-e2e.mjs"), ...args], {
+    spawnSync(process.execPath, [join(project, "scripts/dev/setup-e2e.mjs"), ...args], {
       cwd: project,
       env: { ...env, ...extra },
       encoding: "utf8",

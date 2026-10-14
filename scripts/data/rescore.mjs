@@ -12,7 +12,7 @@ import path from "node:path";
 import { decide } from "./judgments.mjs";
 import { knownFacts, tagsFingerprint } from "./classify.mjs";
 
-const DIR = path.join(import.meta.dirname, "..", "data");
+const DIR = path.join(import.meta.dirname, "..", "..", "data");
 const OUT = path.join(DIR, "judged.json");
 const raw = JSON.parse(await fs.readFile(path.join(DIR, "osm-raw.json"), "utf-8"));
 const judged = JSON.parse(await fs.readFile(OUT, "utf-8"));

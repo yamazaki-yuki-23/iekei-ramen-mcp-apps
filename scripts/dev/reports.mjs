@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { reportListQuery, reportPage } from "./report-pages.mjs";
+import { reportListQuery, reportPage } from "../build/report-pages.mjs";
 
 // 公開HTTPの読み取り口は作らず、Wranglerの認証済みD1操作だけを使う。
 const [action, ...ids] = process.argv.slice(2);
@@ -29,7 +29,7 @@ try {
   const output = execFileSync(
     process.execPath,
     [
-      fileURLToPath(new URL("../node_modules/wrangler/bin/wrangler.js", import.meta.url)),
+      fileURLToPath(new URL("../../node_modules/wrangler/bin/wrangler.js", import.meta.url)),
       "d1",
       "execute",
       "iekei-ramen-visits",
@@ -39,7 +39,7 @@ try {
       sql,
     ],
     {
-      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      cwd: fileURLToPath(new URL("../..", import.meta.url)),
       encoding: "utf8",
       maxBuffer: 2 * 1024 * 1024,
       stdio: ["ignore", "pipe", "pipe"],

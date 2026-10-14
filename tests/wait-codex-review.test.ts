@@ -1,5 +1,5 @@
 /**
- * scripts/wait-codex-review.sh の「届いた」の見分け方。
+ * scripts/dev/wait-codex-review.sh の「届いた」の見分け方。
  *
  * 偽の gh（tests/fixtures/fake-gh）に GitHub の応答を持たせて流す。**ここを
  * 間違えると、レビューされていないコミットを「指摘なし」としてマージする。**
@@ -24,7 +24,7 @@ function run(fixture: Fixture) {
   const dir = mkdtempSync(join(tmpdir(), "wait-codex-"));
   const file = join(dir, "fixture.json");
   writeFileSync(file, JSON.stringify(fixture));
-  return spawnSync("bash", ["scripts/wait-codex-review.sh", PR], {
+  return spawnSync("bash", ["scripts/dev/wait-codex-review.sh", PR], {
     encoding: "utf8",
     env: {
       ...process.env,

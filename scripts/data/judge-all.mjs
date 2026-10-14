@@ -4,8 +4,8 @@
  * 判定を build-dataset.mjs から切り離しているのは、毎回 API を叩きたくないため。
  * judged.json を置いておけば、データ整形だけならキー無しで回せる。
  *
- * 実行: node scripts/judge-all.mjs        （未判定・タグが変わったものだけ処理する）
- *       node scripts/judge-all.mjs --all  （全部やり直す）
+ * 実行: node scripts/data/judge-all.mjs        （未判定・タグが変わったものだけ処理する）
+ *       node scripts/data/judge-all.mjs --all  （全部やり直す）
  */
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -13,7 +13,7 @@ import { TypeSafeClient } from "@typesafe-ai/sdk";
 import { knownFacts, tagsFingerprint } from "./classify.mjs";
 import { decide, QUESTIONS, shopState } from "./judgments.mjs";
 
-const DIR = path.join(import.meta.dirname, "..", "data");
+const DIR = path.join(import.meta.dirname, "..", "..", "data");
 const OUT = path.join(DIR, "judged.json");
 const raw = JSON.parse(await fs.readFile(path.join(DIR, "osm-raw.json"), "utf-8"));
 

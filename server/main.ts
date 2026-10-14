@@ -1,7 +1,7 @@
 /**
  * ローカル実行用エントリポイント（Node.js）。
- *  npx tsx main.ts          → http://localhost:3031/mcp（PORT で変更可）
- *  npx tsx main.ts --stdio  → stdio トランスポート
+ *  npx tsx server/main.ts          → http://localhost:3031/mcp（PORT で変更可）
+ *  npx tsx server/main.ts --stdio  → stdio トランスポート
  * Cloudflare にデプロイするときは worker.ts が使われる。
  */
 import { readFileSync } from "node:fs";

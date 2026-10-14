@@ -11,6 +11,6 @@
     "data/**",
     "node_modules/**",
     "e2e-host/**",
-    ".slides/**"
+    "docs/slides/**"
   ]
 }

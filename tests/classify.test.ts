@@ -6,9 +6,9 @@ import {
   resolveDuplicates,
   tagsFingerprint,
   toShop,
-} from "../scripts/classify.mjs";
+} from "../scripts/data/classify.mjs";
 // @ts-expect-error 同上
-import { decide, shopState } from "../scripts/judgments.mjs";
+import { decide, shopState } from "../scripts/data/judgments.mjs";
 
 /** OSM のタグを組み立てる小さなヘルパ。 */
 const tags = (t: Record<string, string>) => t;

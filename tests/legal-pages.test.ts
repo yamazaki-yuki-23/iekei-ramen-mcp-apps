@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { legalMarkdown } from "../scripts/legal-markdown.mjs";
-import { legalPages, seoPages } from "../scripts/seo-pages.mjs";
+import { legalMarkdown } from "../scripts/build/legal-markdown.mjs";
+import { legalPages, seoPages } from "../scripts/build/seo-pages.mjs";
 
 const read = (name: string) =>
   readFileSync(new URL(`../docs/legal/${name}.md`, import.meta.url), "utf8");

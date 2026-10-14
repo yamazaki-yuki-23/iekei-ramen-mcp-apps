@@ -13,7 +13,7 @@ import worker from "../server/worker";
 
 const ORIGIN = "http://localhost:3031";
 
-/** バインディングの無い環境。手元の `npx tsx main.ts` と同じ条件。 */
+/** バインディングの無い環境。手元の `npx tsx server/main.ts` と同じ条件。 */
 const env = {
   GOOGLE_CLIENT_ID: "",
   GOOGLE_CLIENT_SECRET: "",

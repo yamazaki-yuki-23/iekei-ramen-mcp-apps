@@ -8,7 +8,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const root = path.join(import.meta.dirname, "..");
+const root = path.join(import.meta.dirname, "..", "..");
 const html = await fs.readFile(path.join(root, "dist", "mcp-app.html"), "utf-8");
 // 認可画面も同じトークンを使う。Worker/Nodeの両方で読める文字列にする。
 const consentCss = (
@@ -22,7 +22,7 @@ const out = path.join(root, "src", "generated", "app-html.ts");
 await fs.mkdir(path.dirname(out), { recursive: true });
 await fs.writeFile(
   out,
-  `// 自動生成ファイル。編集しないこと（scripts/embed-html.mjs が生成する）。\nexport const APP_HTML = ${JSON.stringify(html)};\nexport const CONSENT_CSS = ${JSON.stringify(consentCss)};\n`,
+  `// 自動生成ファイル。編集しないこと（scripts/build/embed-html.mjs が生成する）。\nexport const APP_HTML = ${JSON.stringify(html)};\nexport const CONSENT_CSS = ${JSON.stringify(consentCss)};\n`,
 );
 
 console.error(`embedded ${(html.length / 1024).toFixed(0)} KB -> ${path.relative(root, out)}`);

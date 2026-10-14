@@ -75,7 +75,7 @@ UI を変えたら `npm run build:ui`。**3031 と 8080 は止めない**（ユ�
 
 ### 6. レビューを指摘ゼロまで回し、マージする
 
-- `/codex-review-loop` の手順で回す（待ちは `scripts/wait-codex-review.sh` を背景で）
+- `/codex-review-loop` の手順で回す（待ちは `scripts/dev/wait-codex-review.sh` を背景で）
 - 指摘ゼロになったら `/squash-and-merge` の手順で、まとめて・CI の緑を待って・マージして・デプロイを見届ける
 - **squash はレビューが済んでから。** squash したコミットは Codex がレビューしていないので、その後に依頼すると 1 巡増える
 - 同じ指摘が 3 巡しても収束しなければ止めて聞く

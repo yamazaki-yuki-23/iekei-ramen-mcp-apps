@@ -2,14 +2,14 @@
  * 家系タイプ診断（#167）のシェア画像を 8 枚作る（public/og/shindan-<タイプ>.png、1200×630）。
  * タイプ名か文言を変えたときだけ手で回し、できた画像をコミットする（ビルドでは作らない）。
  *
- *   node scripts/shindan-og.mjs
+ *   node scripts/assets/shindan-og.mjs
  */
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { chromium } from "playwright";
-import { rarity, TYPES } from "../src/utils/shindan.ts";
-import { faceSvg } from "../src/utils/shindan-face.ts";
+import { rarity, TYPES } from "../../src/utils/shindan.ts";
+import { faceSvg } from "../../src/utils/shindan-face.ts";
 
-const out = new URL("../public/og/", import.meta.url);
+const out = new URL("../../public/og/", import.meta.url);
 await mkdir(out, { recursive: true });
 // 前のタイプの画像を残さない。
 for (const f of await readdir(out)) if (f.startsWith("shindan-")) await rm(new URL(f, out));

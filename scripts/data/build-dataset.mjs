@@ -18,7 +18,7 @@ import {
 } from "./classify.mjs";
 import { PAIR_RADIUS_M, SAME_SHOP_AT } from "./judgments.mjs";
 
-const DIR = path.join(import.meta.dirname, "..", "data");
+const DIR = path.join(import.meta.dirname, "..", "..", "data");
 const raw = JSON.parse(await fs.readFile(path.join(DIR, "osm-raw.json"), "utf-8"));
 const judged = JSON.parse(await fs.readFile(path.join(DIR, "judged.json"), "utf-8"));
 // 重複判定の結果。find-duplicates.mjs が書く。
@@ -27,9 +27,9 @@ const judged = JSON.parse(await fs.readFile(path.join(DIR, "judged.json"), "utf-
  *
  * **OSM のタグに住所がほとんど入っていない**ので、同名のチェーン店を
  * 見分けられない（東京都の町田商店 14 店は 1 件も住所を持っていない）。
- * 足りないところだけ、ここで補う。作るのは scripts/fill-areas.mjs。
+ * 足りないところだけ、ここで補う。作るのは scripts/data/fill-areas.mjs。
  */
-const areas = await readJson(new URL("../data/areas.json", import.meta.url), { optional: true });
+const areas = await readJson(new URL("../../data/areas.json", import.meta.url), { optional: true });
 
 const judgedPairs = await fs.readFile(path.join(DIR, "duplicates.json"), "utf-8").then(
   (t) => new Map(JSON.parse(t).pairs.map((p) => [p.fingerprint, p])),

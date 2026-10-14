@@ -5,10 +5,10 @@ import { cpus, platform, tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { pathToFileURL } from "node:url";
-import { clusterShops } from "../src/features/search/utils/cluster.ts";
-import { clusterShops as reference } from "../tests/fixtures/cluster-reference.ts";
+import { clusterShops } from "../../src/features/search/utils/cluster.ts";
+import { clusterShops as reference } from "../../tests/fixtures/cluster-reference.ts";
 
-const shops = JSON.parse(readFileSync(new URL("../data/shops.json", import.meta.url), "utf8"));
+const shops = JSON.parse(readFileSync(new URL("../../data/shops.json", import.meta.url), "utf8"));
 const verifyOnly = process.argv.includes("--verify");
 const root = mkdtempSync(join(tmpdir(), "iekei-cluster-benchmark-"));
 const counters = { projections: 0, centers: 0, distances: 0 };
@@ -56,11 +56,11 @@ function timing(fn, zoom) {
 }
 try {
   const before = await instrument(
-    new URL("../tests/fixtures/cluster-reference.ts", import.meta.url),
+    new URL("../../tests/fixtures/cluster-reference.ts", import.meta.url),
     "before",
   );
   const after = await instrument(
-    new URL("../src/features/search/utils/cluster.ts", import.meta.url),
+    new URL("../../src/features/search/utils/cluster.ts", import.meta.url),
     "after",
   );
   console.info(

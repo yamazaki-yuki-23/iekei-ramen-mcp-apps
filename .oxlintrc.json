@@ -38,7 +38,7 @@
     "node_modules/**",
     "data/**",
     "e2e-host/**",
-    ".slides/**"
+    "docs/slides/**"
   ],
   "overrides": [
     {

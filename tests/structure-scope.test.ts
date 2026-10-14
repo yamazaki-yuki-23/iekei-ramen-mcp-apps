@@ -24,10 +24,10 @@ function walk(dir: string): string[] {
 }
 
 /**
- * ほかのコードを測るだけの道具（scripts/benchmark-*.mjs）は、テストと同じく使う側に数えない。
+ * ほかのコードを測るだけの道具（scripts/dev/benchmark-*.mjs）は、テストと同じく使う側に数えない。
  * 製品の一部ではなく、測る相手の置き場を動かす理由にならないため。
  */
-const MEASURE_ONLY = /^scripts\/benchmark-[^/]+\.mjs$/;
+const MEASURE_ONLY = /^scripts\/dev\/benchmark-[^/]+\.mjs$/;
 const sources = [...walk("src"), ...walk("server"), ...walk("scripts")].filter(
   (path) =>
     /\.(ts|tsx|mjs)$/.test(path) &&

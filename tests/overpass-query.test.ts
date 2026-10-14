@@ -6,7 +6,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // @ts-expect-error データ生成スクリプトと共有する素の JS モジュール
-import { DECLARES, fetchPref, query, toElement } from "../scripts/overpass-query.mjs";
+import { DECLARES, fetchPref, query, toElement } from "../scripts/data/overpass-query.mjs";
 
 /** 呼ばれた順に応答を返す fetch。何回・どこへ投げたかを残す。 */
 function stubFetch(

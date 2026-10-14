@@ -11,8 +11,8 @@
  * 二度手間になる（Codex の指摘で気付いた）。
  *
  * 使い方:
- *   node scripts/fill-areas.mjs           # 足りない分だけ引く
- *   node scripts/fill-areas.mjs --limit 5 # 動作確認（5 件だけ）
+ *   node scripts/data/fill-areas.mjs           # 足りない分だけ引く
+ *   node scripts/data/fill-areas.mjs --limit 5 # 動作確認（5 件だけ）
  *
  * **1 秒に 1 回を超えない。** Nominatim の利用規約の上限で、破ると弾かれる。
  */
@@ -21,9 +21,9 @@ import { pathToFileURL } from "node:url";
 import { toShop } from "./classify.mjs";
 import { readJson } from "./read-json.mjs";
 
-const RAW = new URL("../data/osm-raw.json", import.meta.url);
-const JUDGED = new URL("../data/judged.json", import.meta.url);
-const AREAS = new URL("../data/areas.json", import.meta.url);
+const RAW = new URL("../../data/osm-raw.json", import.meta.url);
+const JUDGED = new URL("../../data/judged.json", import.meta.url);
+const AREAS = new URL("../../data/areas.json", import.meta.url);
 const ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
 /** 規約の上限は 1 req/s。余裕を持たせる。 */
 const INTERVAL_MS = 1200;
@@ -40,7 +40,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * 判定されて止まるため）。
  */
 async function saveAreas(areas) {
-  const temporary = new URL("../data/areas.json.tmp", import.meta.url);
+  const temporary = new URL("../../data/areas.json.tmp", import.meta.url);
   await writeFile(temporary, `${JSON.stringify(areas, null, 2)}\n`);
   await rename(temporary, AREAS);
 }

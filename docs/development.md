@@ -122,14 +122,14 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 | `src/utils/progress.ts`                                                 | 制覇率。順位も称号も作らない                                                  |
 | `src/features/search/utils/same-name.ts`                                | 同名の店が並ぶときだけ、名前の隣に出す地名を決める                            |
 | `migrations/`                                                           | D1 のスキーマ（デプロイ時に適用）                                             |
-| `scripts/overpass-query.mjs`                                            | Overpass のクエリと取得の手順。拾う条件を変えるならここだけ見る               |
-| `scripts/fetch-shops.mjs`                                               | OpenStreetMap から店舗データを取得                                            |
-| `scripts/judgments.mjs`                                                 | TypeSafe に投げる質問と閾値。判定を変えるならここだけ見る                     |
-| `scripts/judge-all.mjs`                                                 | 家系判定を実行して `data/judged.json` に保存                                  |
-| `scripts/find-duplicates.mjs`                                           | 近い 2 件が同一店舗かを判定して `data/duplicates.json` に保存                 |
-| `scripts/rescore.mjs`                                                   | 保存済みの確率から判定だけ作り直す（API 不要）                                |
-| `scripts/fill-areas.mjs`                                                | 住所の欠けている店を座標から逆引き（Nominatim）                               |
-| `scripts/build-dataset.mjs`                                             | 判定結果を整形して `data/shops.json` を生成                                   |
+| `scripts/data/overpass-query.mjs`                                       | Overpass のクエリと取得の手順。拾う条件を変えるならここだけ見る               |
+| `scripts/data/fetch-shops.mjs`                                          | OpenStreetMap から店舗データを取得                                            |
+| `scripts/data/judgments.mjs`                                            | TypeSafe に投げる質問と閾値。判定を変えるならここだけ見る                     |
+| `scripts/data/judge-all.mjs`                                            | 家系判定を実行して `data/judged.json` に保存                                  |
+| `scripts/data/find-duplicates.mjs`                                      | 近い 2 件が同一店舗かを判定して `data/duplicates.json` に保存                 |
+| `scripts/data/rescore.mjs`                                              | 保存済みの確率から判定だけ作り直す（API 不要）                                |
+| `scripts/data/fill-areas.mjs`                                           | 住所の欠けている店を座標から逆引き（Nominatim）                               |
+| `scripts/data/build-dataset.mjs`                                        | 判定結果を整形して `data/shops.json` を生成                                   |
 
 ### tool 一覧
 
@@ -177,7 +177,7 @@ Always Use HTTPS」をオンにして送る。HSTS は `public/_headers`（`incl
 
 ### 検索エンジン向けの静的ページ
 
-`npm run build:ui` の最後に `scripts/build-seo.mjs` が `data/shops.json` から
+`npm run build:ui` の最後に `scripts/build/build-seo.mjs` が `data/shops.json` から
 都道府県・市区町村・店舗のHTML、`sitemap.xml`、`robots.txt`を `dist/web/` に生成する。
 生成物はGitに入れず、データの補正がマージされれば次のビルドで更新される。
 Web用Viteの出力を消す処理の後に生成し、WorkerのAPI経路は変更しない。
@@ -207,9 +207,9 @@ URLエンコードする。住所から区を推測せず、逆引きを反映�
 
 アイコンは大きさで描き分ける（#130）。タブ・検索結果（16〜96px）は `public/favicon.svg`
 （看板の黄に海苔3枚。ロゴのピンと丼は16pxで潰れるため）、ホーム画面・ディレクトリ用は
-`scripts/icons/logo-icon.svg`（ロゴそのもの）が正本。`node scripts/render-favicon.mjs` で
+`scripts/assets/icons/logo-icon.svg`（ロゴそのもの）が正本。`node scripts/assets/render-favicon.mjs` で
 96pxのPNG・180pxのホーム画面用PNG・512pxのディレクトリ用PNG（`icon-512.png`）を作る。
-OGPは `scripts/og-card.svg` が正本で、`node scripts/render-og-card.mjs` で作る。
+OGPは `scripts/assets/og-card.svg` が正本で、`node scripts/assets/render-og-card.mjs` で作る。
 再生成にはPlaywrightのChromiumが必要。通常のCIではコミット済み画像を配信する。
 
 Search Consoleの所有権は2026-10-04に確認済み。DNSのTXTレコードを消さない。
@@ -218,7 +218,7 @@ Search Consoleの所有権は2026-10-04に確認済み。DNSのTXTレコード�
 
 ### プライバシーポリシーと利用規約（`/privacy`・`/terms`、#198）
 
-正本は `docs/legal/*.md`。`npm run build:ui` の最後に `scripts/build-seo.mjs` が `legalPages`（`scripts/seo-pages.mjs`）で
+正本は `docs/legal/*.md`。`npm run build:ui` の最後に `scripts/build/build-seo.mjs` が `legalPages`（`scripts/build/seo-pages.mjs`）で
 `dist/web/privacy.html`・`terms.html` を作る（静的アセットが `/privacy`・`/terms` で返す）。`【` が残っているとビルドが止まる。
 Web のすべてのページの下と `/connect` のフッターに 2 つへのリンクを出す（`src/utils/legal-links.ts`）。
 **保存するもの・外部に送る先・端末に残すものを変えたら、規約も直す**（直す箇所の表は [docs/legal/README.md](legal/README.md)）。
@@ -271,8 +271,8 @@ Web だけの別ページ（`shindan/index.html` → `src/features/shindan/main.
 
 - 回答は送らず、残さない（画面の中だけで結果を出す。サーバーも呼ばない）
 - シェアの URL はタイプごとの紙 `/shindan/<タイプ>/`。中身は診断と同じページで、開くと 1 問目から始まる。
-  `scripts/build-seo.mjs` がビルドの後に、OGP の題と画像だけを差し替えて作る
-- シェア画像（`public/og/shindan-<タイプ>.png`、1200×630）は `node scripts/shindan-og.mjs` で作ってコミットする。
+  `scripts/build/build-seo.mjs` がビルドの後に、OGP の題と画像だけを差し替えて作る
+- シェア画像（`public/og/shindan-<タイプ>.png`、1200×630）は `node scripts/assets/shindan-og.mjs` で作ってコミットする。
   タイプ名か文言を変えたときだけ回す
 - 投稿画面の URL は `src/utils/share.ts`（#46 と共有。X を左、Threads を右に並べる）
 
@@ -486,7 +486,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
   （`visited` / `progress`）だけを受け取る。`readVisitResult` / `applyVisits` が
   記録だけを反映し、検索結果と選択を維持する。「行った店」画面は一覧が必要なので
   `true` を渡す。どちらも書き込み後の1回の読み取りから組み、UIの操作は直列に送る
-- 応答サイズの再計測は `node --import tsx scripts/benchmark-stamps.mjs`。
+- 応答サイズの再計測は `node --import tsx scripts/dev/benchmark-stamps.mjs`。
   実データの訪問0件・100件・全件で、MCP tool結果のJSON全体をUTF-8で比較する。
   HTTP/SSEの付加分と圧縮後の転送量は含めない。記録はメモリだけで、本番のD1へは書かない
 - **保存するもの・外部に送る先を変えたら、規約の下書き（[docs/legal/](legal/README.md)）も直す。**
@@ -636,15 +636,15 @@ Workers にはファイルシステムが無いので、HTML もデータもコ�
 店舗データ自体は実行時に書き換えない。訪問記録はD1の`visits`、匿名の訂正報告は
 同じD1の`reports`に入る。報告から店舗データを自動で変更することはない。
 
-- [scripts/overpass-query.mjs](../scripts/overpass-query.mjs) — **Overpass のクエリと取得の手順は
+- [scripts/data/overpass-query.mjs](../scripts/data/overpass-query.mjs) — **Overpass のクエリと取得の手順は
   ここ 1 か所だけ。** 全国取得と取り直しが別々に写しを持っていて、条件を足したときに
   全国側だけ直していた（取り直した県だけ古い基準で拾ったデータが混ざる）。
   拾うのは「ラーメン店で店名に家」「店名に家系か既知ブランド」「**現地で入力された説明の欄が
   家系**」の 3 通り。3 つめが無いと、名前に「家」を持たない家系が落ちる
   （実測: 東京都だけで壱角屋・春樹・大和家）。
-- [scripts/fetch-shops.mjs](../scripts/fetch-shops.mjs) — Overpass API を都道府県ごとに並列 3 で叩く。
+- [scripts/data/fetch-shops.mjs](../scripts/data/fetch-shops.mjs) — Overpass API を都道府県ごとに並列 3 で叩く。
   1 県あたり 25〜80 秒かかり、たまに失敗する。失敗した県は
-  `node scripts/fetch-missing.mjs 京都府 宮城県` で個別に再取得してマージする。
+  `node scripts/data/fetch-missing.mjs 京都府 宮城県` で個別に再取得してマージする。
   **失敗が残っていれば異常終了する。** 成功と同じ終了コードで返すと、県ごと欠けた
   osm-raw.json をそのまま次の工程へ渡す。このファイルは gitignore なので控えが無く、
   欠けたまま上書きすると取り直すしかない（実測: 752 → 435 件にした）。
@@ -654,17 +654,17 @@ Workers にはファイルシステムが無いので、HTML もデータもコ�
   HTTP 200 と空配列**（実測: 茨城県が 0 件で「成功」し、投げ直すと 20 件返った）。
   ③ は本当に 0 件の県（富山県・高知県）と区別が付かないので、**0 件は別の
   エンドポイントで 1 度だけ疑い、2 回目も 0 なら受け入れる**。
-- [scripts/judgments.mjs](../scripts/judgments.mjs) — TypeSafe に投げる質問と閾値。
+- [scripts/data/judgments.mjs](../scripts/data/judgments.mjs) — TypeSafe に投げる質問と閾値。
   **判定を変えるならこのファイルだけ見ればいい。** 他所に判定ルールを散らさないこと。
-- [scripts/judge-all.mjs](../scripts/judge-all.mjs) — 家系判定を実行して `judged.json` に保存。
+- [scripts/data/judge-all.mjs](../scripts/data/judge-all.mjs) — 家系判定を実行して `judged.json` に保存。
   確率も保存するので、閾値だけ変えたときは `data:rescore` が API 無しで作り直す。
-- [scripts/find-duplicates.mjs](../scripts/find-duplicates.mjs) — 200m 以内のペアが同一店舗かを判定。
-- [scripts/fill-areas.mjs](../scripts/fill-areas.mjs) — 住所の欠けている店を座標から逆引きする
+- [scripts/data/find-duplicates.mjs](../scripts/data/find-duplicates.mjs) — 200m 以内のペアが同一店舗かを判定。
+- [scripts/data/fill-areas.mjs](../scripts/data/fill-areas.mjs) — 住所の欠けている店を座標から逆引きする
   （Nominatim）。**OSM のタグには住所がほとんど入っていない**（564 件中 87 件しか
   市区町村を持たず、東京都の町田商店 14 店は 1 件も持たない）ので、同名の店を
   見分けられない。**判定の後・整形の前に実行する**——shops.json を見る作りにすると
   「整形 → 逆引き → もう一度整形」になる。座標が動いた店は引き直す。
-- [scripts/build-dataset.mjs](../scripts/build-dataset.mjs) — 判定結果の整形と重複除去。判定は持たない。
+- [scripts/data/build-dataset.mjs](../scripts/data/build-dataset.mjs) — 判定結果の整形と重複除去。判定は持たない。
   areas.json は**欠けているところだけ**に使う（現地で入力された OSM のタグを上書きしない）。
 
 #### 判定の段階と住所の出どころ（README から移した）
@@ -713,13 +713,13 @@ npm run data:build    # 整形（API キー不要）            → data/shops.j
 判定に関わるファイルを変えたときに何を再実行するかは、変えた場所で決まります。
 判定の材料（確率・スコア）は保存してあるので、方針を変えるだけなら API は要りません。
 
-| 変えたもの                                           | 再実行するもの                                      | API  |
-| ---------------------------------------------------- | --------------------------------------------------- | ---- |
-| 家系判定の閾値（`CONFIRMED_AT` など）と `decide()`   | `data:rescore` → `data:areas` → `data:build`        | 不要 |
-| `KNOWN_BRANDS` / `EXCLUDE`（`scripts/classify.mjs`） | `data:rescore` → `data:areas` → `data:build`        | 不要 |
-| 重複の閾値（`SAME_SHOP_AT`）                         | `data:build` だけ                                   | 不要 |
-| 質問文（`QUESTIONS`）、`shopState`                   | `data:judge -- --all` → `data:areas` → `data:build` | 要   |
-| 重複判定の質問（`PAIR_QUESTION`）、`PAIR_RADIUS_M`   | `data:dedupe` → `data:build`                        | 要   |
+| 変えたもの                                                | 再実行するもの                                      | API  |
+| --------------------------------------------------------- | --------------------------------------------------- | ---- |
+| 家系判定の閾値（`CONFIRMED_AT` など）と `decide()`        | `data:rescore` → `data:areas` → `data:build`        | 不要 |
+| `KNOWN_BRANDS` / `EXCLUDE`（`scripts/data/classify.mjs`） | `data:rescore` → `data:areas` → `data:build`        | 不要 |
+| 重複の閾値（`SAME_SHOP_AT`）                              | `data:build` だけ                                   | 不要 |
+| 質問文（`QUESTIONS`）、`shopState`                        | `data:judge -- --all` → `data:areas` → `data:build` | 要   |
+| 重複判定の質問（`PAIR_QUESTION`）、`PAIR_RADIUS_M`        | `data:dedupe` → `data:build`                        | 要   |
 
 **判定を変えたら `data:areas` を挟みます。** 判定が変わると、それまで一覧に
 載っていなかった店が載ることがあり、その店の地名はまだ引いていません
@@ -798,10 +798,10 @@ OSMを再取得しても同じIDへの補正は残る。追加のIDは店名と�
 **名乗りは店名だけに書かれているとは限らない。** `description` や `cuisine:ja`、
 `official_name` にも家系だと書いてある（実測: 8 件がこれで「判断できない」から
 確定へ動いた）。**現地で入力された文字は、店名からの推測より強い。**
-[shopState](../scripts/judgments.mjs) が渡す欄を減らすと、判定材料ごと消える。
+[shopState](../scripts/data/judgments.mjs) が渡す欄を減らすと、判定材料ごと消える。
 
-判定を変えるときは [scripts/judgments.mjs](../scripts/judgments.mjs) の質問文か閾値を触る。
-`KNOWN_BRANDS` と `EXCLUDE`（[scripts/classify.mjs](../scripts/classify.mjs)）は事実の
+判定を変えるときは [scripts/data/judgments.mjs](../scripts/data/judgments.mjs) の質問文か閾値を触る。
+`KNOWN_BRANDS` と `EXCLUDE`（[scripts/data/classify.mjs](../scripts/data/classify.mjs)）は事実の
 対応表なのでコードに残してあり、モデルの判断より優先する。ジャンル語のリストは
 質問の選択肢に移したので無い。**判定できない件数が多いときは、閾値ではなく
 選択肢の不足か、渡していない欄を疑うこと**（中華料理店の選択肢が無くて `unclear` に
@@ -842,7 +842,7 @@ CSS より強いので、ホストが 0 を送ってくるだけで見た目が�
   選ぶ。32グループ以下では索引を作らず直接調べる。合計どうしを足すと丸め方が
   変わるため、右側の店を元の順で合計へ加える。`tests/cluster-equivalence.test.ts` が
   変更前の実装と所属・順序・中心・選択店を完全一致で比べる。
-  `node scripts/benchmark-clusters.mjs` は同じ環境で前後の中央値・p95・計算回数を
+  `node scripts/dev/benchmark-clusters.mjs` は同じ環境で前後の中央値・p95・計算回数を
   比べる。CIの `tests/cluster-work.test.ts` は時刻ではなく操作回数だけを検証する。
 - **外から来た文字を Leaflet にそのまま渡さない。** `bindTooltip` は文字列を
   HTML として描く。基準地点の表示名は tool の引数と geocode の結果なので、
@@ -1141,7 +1141,7 @@ Cloudflare 側の確認は `npm run dev:worker`。バンドルサイズは gzip 
 npm run deploy:staging   # いまの作業ツリーを上げる（どのブランチからでも。CI からは上げない）
 ```
 
-`scripts/deploy-staging.mjs` が、ビルド → `dist/web` を `dist/staging` に写して検索エンジン避けを足す →
+`scripts/dev/deploy-staging.mjs` が、ビルド → `dist/web` を `dist/staging` に写して検索エンジン避けを足す →
 確認用の D1 に `migrations/` を当てる → `wrangler deploy --env staging`、の順に行う。上げたものは
 次に誰かが上げるまで残る（**上げる前に、いまの中身を確かめ終えたか聞く**）。
 

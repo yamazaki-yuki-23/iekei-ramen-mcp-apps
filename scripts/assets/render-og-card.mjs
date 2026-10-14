@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 
 const source = new URL("./og-card.svg", import.meta.url);
-const output = new URL("../public/og-card.png", import.meta.url);
-await mkdir(new URL("../public/", import.meta.url), { recursive: true });
+const output = new URL("../../public/og-card.png", import.meta.url);
+await mkdir(new URL("../../public/", import.meta.url), { recursive: true });
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({

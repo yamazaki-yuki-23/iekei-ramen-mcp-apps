@@ -1,7 +1,7 @@
-import { tabBarHtml } from "../src/utils/tabbar.ts";
-import { legalLinksHtml } from "../src/utils/legal-links.ts";
+import { tabBarHtml } from "../../src/utils/tabbar.ts";
+import { legalLinksHtml } from "../../src/utils/legal-links.ts";
 import { legalMarkdown } from "./legal-markdown.mjs";
-import { ALL_PREFECTURES } from "../src/utils/prefectures.ts";
+import { ALL_PREFECTURES } from "../../src/utils/prefectures.ts";
 
 const origin = "https://iekeiramen.com";
 const slugs =
@@ -62,7 +62,7 @@ const thinCity = (list) => list.filter((shop) => shop.confidence !== "candidate"
  * 下線のリンクが並ぶだけだと別のサイトに見えて離れた。静的なまま（Worker で毎回作らない）。
  */
 /**
- * 静的なページの上のヘッダー（丼のロゴ＋ナビ）。都道府県・店のページと /connect（scripts/build-seo.mjs）が使う。
+ * 静的なページの上のヘッダー（丼のロゴ＋ナビ）。都道府県・店のページと /connect（scripts/build/build-seo.mjs）が使う。
  * 家系マッチ・家系カメラ・診断はパソコン幅だけ見せ、スマホ幅では下のタブバー（#194）に任せる。
  */
 export function siteHeader(path) {
