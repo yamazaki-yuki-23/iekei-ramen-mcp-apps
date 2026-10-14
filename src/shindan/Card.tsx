@@ -1,6 +1,6 @@
 import { createElement } from "react";
-import { rarity, type ShindanType } from "../lib/shindan";
-import { faceShapes } from "../lib/shindan-face";
+import { rarity, type ShindanType } from "./shindan";
+import { faceShapes } from "./shindan-face";
 import styles from "./shindan.module.css";
 
 const camel = (k: string) => k.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());

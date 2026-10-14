@@ -7,7 +7,7 @@ globalThis.localStorage = {
   getItem: (k: string) => store.get(k) ?? null,
   setItem: (k: string, v: string) => void store.set(k, v),
 } as Storage;
-const { addMet, localDay, loadWants, saveWants } = await import("../src/swipe/storage");
+const { addMet, localDay, loadWants, saveWants } = await import("../src/match/storage");
 
 describe("今日出会った数の日付", () => {
   it("日本時間の 0 時を過ぎたら、その日の日付になる（UTC の前日にしない）", () => {

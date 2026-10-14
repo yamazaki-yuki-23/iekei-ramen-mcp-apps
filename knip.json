@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
     "index.html",
-    "src/swipe/main.tsx",
+    "src/match/main.tsx",
     "src/shindan/main.tsx",
     "src/camera/main.tsx",
     "mcp-app.html",

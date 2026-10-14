@@ -1,4 +1,4 @@
-import type { Shop } from "./types";
+import type { Shop } from "../lib/types";
 
 /*
  * 家系カメラ（#190）の投稿文。**ひな形で作り、AI は使わない**（持っていない情報を足さない）。

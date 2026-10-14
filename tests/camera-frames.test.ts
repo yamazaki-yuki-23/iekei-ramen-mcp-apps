@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STAMP_OF } from "../src/lib/camera-post";
+import { STAMP_OF } from "../src/camera/camera-post";
 import { FRAMES, frameTexts, placeStamp } from "../src/camera/frames";
 
 const meta = {

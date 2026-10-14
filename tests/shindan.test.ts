@@ -11,8 +11,8 @@ import {
   tableTip,
   TYPES,
   typeFor,
-} from "../src/lib/shindan";
-import { faceSvg } from "../src/lib/shindan-face";
+} from "../src/shindan/shindan";
+import { faceSvg } from "../src/shindan/shindan-face";
 
 /** n 問 × 3 択の全通り。 */
 const every = (n: number): Answer[][] =>

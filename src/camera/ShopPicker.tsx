@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DATA_CREDIT } from "../lib/data-caveats";
 import { formatDistance } from "../lib/geo";
 import type { Shop } from "../lib/types";
-import type { createFeed } from "../swipe/client";
+import type { createFeed } from "../shared/feed";
 import styles from "./camera.module.css";
 import { ShopCaveat } from "./ShopCaveat";
 import { Pending } from "../components/Pending";

@@ -3,7 +3,7 @@ import { BrandMark } from "../components/BrandMark";
 import { DATA_CREDIT } from "../lib/data-caveats";
 import type { Ask, SwipeDir } from "../lib/swipe";
 import type { TasteKey } from "../lib/types";
-import { isMuted, setMuted } from "./sound";
+import { isMuted, setMuted } from "../shared/sound";
 import styles from "./swipe.module.css";
 
 export function Header({

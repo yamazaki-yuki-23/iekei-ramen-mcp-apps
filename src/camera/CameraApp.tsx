@@ -3,7 +3,7 @@ import { LegalLinks } from "../components/LegalLinks";
 import { useRef, useState } from "react";
 import { BrandMark } from "../components/BrandMark";
 import type { Shop } from "../lib/types";
-import { createFeed } from "../swipe/client";
+import { createFeed } from "../shared/feed";
 import styles from "./camera.module.css";
 import { Composer } from "./Composer";
 import { loadPhoto } from "./photo";
