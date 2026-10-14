@@ -12,6 +12,8 @@ import { RoutePanel } from "./components/RoutePanel";
 import { SelectedShop } from "./components/SelectedShop";
 import { ReportEntry } from "./components/ReportForm";
 import { useFullscreen } from "./hooks/use-fullscreen";
+import { useResultState } from "./hooks/use-result-state";
+import { countPlaceholder, placeholderTitle } from "./lib/skeleton";
 import { useModeSwitch } from "./hooks/use-mode-switch";
 import { createStampQueue, useServerTools } from "./hooks/use-server-tools";
 import { safeAreaStyle } from "./lib/safe-area";
@@ -22,10 +24,12 @@ import styles from "./mcp-app.module.css";
 import type { UiHost } from "./hosts/types";
 import { AppHeader } from "./components/AppHeader";
 import type { PresentationProps } from "./iekei-app";
-import { buildHeading, formatCount, isPayloadReady, pageHead } from "./lib/heading";
+import { pageHead } from "./lib/heading";
 import { issueWith } from "./lib/issue-tickets";
 export interface InnerProps extends PresentationProps {
   app: UiHost;
+  /** つながって最初の結果がそろうまで（Web）。押せない状態で描き、結果の場所は骨組みが取る（#214）。 */
+  connecting?: boolean;
   payload: AppPayload;
   resultReceived: boolean;
   form: FormValues;
@@ -106,6 +110,7 @@ export function IekeiAppInner({
   hero: Hero,
   primaryMode,
   app,
+  connecting = false,
   payload,
   resultReceived,
   form,
@@ -218,16 +223,14 @@ export function IekeiAppInner({
   // （直前のモードの payload が順位付きで残ってしまうため）。
   const awaitingOrigin = mode === "nearby" && payload.query.origin === undefined;
 
-  const payloadReady = isPayloadReady(payload, mode, awaitingOrigin, stale);
-
-  const heading = useMemo(
-    () => buildHeading(mode, payload, payloadReady),
-    [mode, payload, payloadReady],
-  );
-
-  const showResults = payloadReady && !awaitingOrigin;
-  const shops = showResults ? payload.shops : [];
-  const count = showResults ? formatCount(mode, payload.total, shops.length, payload.decide) : null;
+  const { payloadReady, waiting, look, heading, shops, count } = useResultState({
+    mode,
+    payload,
+    stale,
+    busy,
+    connecting,
+    awaitingOrigin,
+  });
 
   const inRoute = selected !== null && stops.some((s) => s.id === selected.id);
 
@@ -303,7 +306,8 @@ export function IekeiAppInner({
       <Results
         mode={mode}
         payload={payload}
-        ready={payloadReady}
+        ready={payloadReady || waiting}
+        look={look}
         needsSearch={needsSearch}
         shops={shops}
         keyword={activeKeyword}
@@ -328,7 +332,7 @@ export function IekeiAppInner({
         onSignIn={supportedAction(app.capabilities.visitSignIn, () => void askToSignIn())}
         belowMap={placed.belowMap}
         aside={placed.aside}
-        decideTitle={head.decideTitle}
+        decideTitle={placeholderTitle(head.decideTitle, look)}
         onRetry={retry}
         failure={failure}
         reports={app.capabilities.reports === true}
@@ -341,12 +345,18 @@ export function IekeiAppInner({
     <main
       className={styles.main}
       style={safeAreaStyle(hostContext?.safeAreaInsets)}
-      data-pending-calls={pendingCalls}
+      // つながる間は、最初の結果の呼び出しを 1 件として数える（待つ仕組みが「済んだ」と取り違えない）。
+      data-pending-calls={pendingCalls + (connecting ? 1 : 0)}
       data-busy={busy}
+      inert={connecting}
       data-tool-result-ready={resultReceived}
       data-mode={mode}
     >
-      <AppHeader h1={head.h1} count={head.count} />
+      <AppHeader
+        h1={head.h1}
+        count={head.count}
+        reserve={waiting && !head.decideTitle ? countPlaceholder(mode) : undefined}
+      />
 
       <ModeTabs
         mode={mode}
@@ -369,7 +379,8 @@ export function IekeiAppInner({
       {introduction}
 
       {/* 結果の下、注記の上。モードを切り替えても残るので、組み立てたものが消えない。 */}
-      <ReportEntry enabled={app.capabilities.reports} ready={showResults} />
+      {/* 結果を待たずに出す（#214。動かない部分はデータを待たない）。結果の場所は骨組みが先に取るので押し出されない。 */}
+      <ReportEntry enabled={app.capabilities.reports} />
       <RoutePanel
         route={route}
         origin={routeOrigin}

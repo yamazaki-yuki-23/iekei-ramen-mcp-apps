@@ -10,7 +10,7 @@ import { createFx, type Fx } from "./fx";
 import { useFeed, useFever, useReducedMotion, useSwipeKeys, useTodayCount, vibrate } from "./hooks";
 import { AskLine, Controls, Counter, Gauge, Header } from "./Parts";
 import { EndSheet, PlaceSheet, StatusSheet, TodaySheet, WantsSheet } from "./Sheets";
-import { sound, unlock } from "./sound";
+import { afterPaint, prepareWhenIdle, sound, unlock } from "./sound";
 import { loadWants, saveWants } from "./storage";
 import styles from "./swipe.module.css";
 
@@ -45,6 +45,8 @@ interface Step {
 export function SwipeApp() {
   const reduce = useReducedMotion();
   const { shops, origin, status, exhausted, failed, prefetch, retry, searchPlace } = useFeed();
+  // 音の仕組みは手が空いたときに先に作る。最初の払いを重くしない（#214）。
+  useEffect(prepareWhenIdle, []);
   const fxLayer = useRef<HTMLDivElement>(null);
   const appRef = useRef<HTMLDivElement>(null);
   const fx = useRef<Fx | null>(null);
@@ -94,7 +96,8 @@ export function SwipeApp() {
     fx.current?.burst(dir, nextWant);
     fx.current?.settle();
     fx.current?.shake(dir === "want" ? 2 + Math.min(nextWant, 5) : 1.5);
-    void sound.swipe(dir);
+    // 音は画面を描いた後に鳴らす（最初の払いを重くしない。#214）。
+    afterPaint(() => void sound.swipe(dir));
     vibrate(dir === "want" ? 25 + Math.min(nextWant, 5) * 8 : 12);
     if ((history.length + 1) % 5 === 0) fx.current?.confetti();
     charge(chargeFor(dir, (shop.facts?.length ?? 0) > 0));

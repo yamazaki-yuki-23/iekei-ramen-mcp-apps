@@ -300,3 +300,67 @@ strong {
   min-height: var(--control-min-size);
   color: var(--color-text-muted);
 }
+
+/*
+ * 待つ間の結果の領域（#214、src/components/Pending.tsx）。全ページが最初から読むここに置く
+ * （別の CSS に分けると、トップで最初に読む CSS が 1 つ増え、FCP が 1.66 → 1.91 秒に遅れた）。
+ * - dim: 同じ探し方で取り直す間。前の結果を薄くして残し、高さを保つ
+ * - skeleton: 違う探し方へ移る間。本物の部品に仮の店を渡して描き、文字を透明な帯にする
+ *   （寸法を決め打ちしないので、届いて入れ替わっても配置が変わらない）。光沢は付けない（動きは控えめ）
+ * - reserve: 300ms までは場所だけ取って見せない（速く届いたときにちらつかせない）
+ * 骨組みから本物へは一度に入れ替える（薄く現れる動きは店の詳細だけ）。
+ */
+/*
+ * 包む箱は作らない（display: contents）。箱を作ると、親が縦に並べるときの間隔が中の部品の間から
+ * 消えて、届いて入れ替わったときに高さが変わった（家系カメラで 36px）。
+ */
+.pending-wrap {
+  display: contents;
+}
+
+/* 箱が無いので、薄くするのは中身の 1 つずつ。 */
+.pending-dim > * {
+  opacity: 0.45;
+}
+
+.pending-skeleton :is(strong, span, p, small, b, em, h2, h3, dd, dt, li, a, button) {
+  color: transparent !important;
+}
+
+/*
+ * 帯は枠と同じ --color-border。--color-surface-muted だと背景とのコントラストが明るい画面で 1.07、
+ * 暗い画面で 1.01 しかなく、ただの空白に見えた（デザイナーの確認）。--color-border なら 1.38 / 1.58 で、
+ * 場所取りだと分かり、本物の文字とは張り合わない。
+ */
+.pending-skeleton :is(strong, small, b, em, h2, h3, span:not(:has(*)), p:not(:has(*))) {
+  border-radius: var(--radius-sm);
+  background: var(--color-border);
+}
+
+.pending-skeleton :is(svg, img) {
+  visibility: hidden;
+}
+
+.pending-skeleton button {
+  border-color: var(--color-border) !important;
+  box-shadow: none !important;
+  background: var(--color-surface) !important;
+}
+
+/* visibility は受け継がれるので、箱が無くても中身ごと隠れる。 */
+.pending-reserve {
+  visibility: hidden;
+}
+
+/* 読み上げだけに出す（見た目には出さない）。 */
+.pending-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

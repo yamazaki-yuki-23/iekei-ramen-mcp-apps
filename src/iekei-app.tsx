@@ -25,6 +25,7 @@ import {
   type ReactNode,
 } from "react";
 import { StateNote } from "./components/StateNote";
+import { CONNECTING_HOST } from "./hosts/connecting";
 import type { FormValues } from "./components/SearchForm";
 import { createStampQueue } from "./hooks/use-server-tools";
 import { IekeiAppInner } from "./iekei-app-inner";
@@ -206,18 +207,24 @@ export function IekeiApp({
               {`接続できませんでした。${error.message}`}
             </StateNote>
           </main>
-        ) : !host ? (
+        ) : !host && !hero ? (
           <main className={styles.main}>
-            <HeroSlot Hero={hero} />
             <StateNote kind="loading">読み込み中…</StateNote>
           </main>
         ) : (
+          /*
+           * Web はつながって最初の結果がそろうまでも、画面の本体を押せない状態で描く（#214）。
+           * 動かない部分（見出し・探し方・券売機・「見つからないときは」）は最初から最終の位置に出し、
+           * 結果の場所は骨組みが取る。後から差し込むと、下の部分が押し出されてずれた。
+           * 会話の中（hero なし）は、つながるのがすぐなので「読み込み中」のまま。
+           */
           <>
             <IekeiAppConnected
               introduction={introduction}
               hero={hero}
               primaryMode={primaryMode}
-              app={host}
+              app={host ?? CONNECTING_HOST}
+              connecting={!host}
               payload={payload}
               payloadVersion={payloadVersion}
               setPayload={setPayload}
@@ -248,6 +255,8 @@ export function IekeiApp({
 
 interface ConnectedProps extends PresentationProps {
   app: UiHost;
+  /** つながって最初の結果がそろうまで（Web）。本体を押せない状態で、骨組みとともに描く（#214）。 */
+  connecting?: boolean;
   payload: AppPayload | null;
   payloadVersion: number;
   setPayload: Dispatch<SetStateAction<AppPayload | null>>;
@@ -274,6 +283,7 @@ function IekeiAppConnected({
   hero,
   primaryMode,
   app,
+  connecting = false,
   payload,
   payloadVersion,
   setPayload,
@@ -435,7 +445,11 @@ function IekeiAppConnected({
       hero={hero}
       primaryMode={primaryMode}
       app={app}
-      payload={payload ?? EMPTY_PAYLOAD}
+      connecting={connecting}
+      // つながる前は、最初に出す探し方の骨組みを描く。
+      payload={
+        payload ?? (connecting ? { ...EMPTY_PAYLOAD, mode: primaryMode ?? "form" } : EMPTY_PAYLOAD)
+      }
       resultReceived={payload !== null}
       form={form}
       onForm={onForm}

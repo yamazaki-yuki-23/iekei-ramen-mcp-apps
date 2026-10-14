@@ -17,7 +17,7 @@ import {
   TYPES,
   typeFor,
 } from "../lib/shindan";
-import { isMuted, setMuted, sound, unlock } from "../swipe/sound";
+import { afterPaint, isMuted, prepareWhenIdle, setMuted, sound, unlock } from "../swipe/sound";
 import { Card } from "./Card";
 import styles from "./shindan.module.css";
 
@@ -39,11 +39,13 @@ export function ShindanApp() {
   const [friend] = useState(friendFromUrl);
   // 開いた直後だけは焦点を動かさない。答えた・戻った・やり直した後は、出た問いの見出しへ移す。
   const [moved, setMoved] = useState(false);
+  // 音の仕組みは手が空いたときに先に作る。最初の回答を重くしない（#214）。
+  useEffect(prepareWhenIdle, []);
   const go = (next: Answer[]) => {
-    // 音は最初の操作から鳴らせる（ブラウザは操作の前の音を止める）。
+    // 音は最初の操作から鳴らせる（ブラウザは操作の前の音を止める。再開は操作の中で直接）。
     unlock();
-    // 答えたら、家系マッチの払う音をさらに小さく。
-    if (next.length > answers.length) void sound.swipe("want", 0.25);
+    // 答えたら、家系マッチの払う音をさらに小さく。鳴らすのは画面を描いた後（#214）。
+    if (next.length > answers.length) afterPaint(() => void sound.swipe("want", 0.25));
     setMoved(true);
     setAnswers(next);
   };
