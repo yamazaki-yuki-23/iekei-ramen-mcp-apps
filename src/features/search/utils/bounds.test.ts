@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { normalizeBounds } from "../src/features/search/utils/bounds";
-import type { Bounds } from "../src/types";
+import { normalizeBounds } from "./bounds";
+import type { Bounds } from "../../../types";
 
 /** 横浜あたりを囲む、ふつうの範囲。 */
 const YOKOHAMA = { north: 35.52, south: 35.42, east: 139.68, west: 139.58 };

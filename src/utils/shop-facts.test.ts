@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { brandCounts, factStamp, shopFacts } from "../src/utils/shop-facts";
-import type { Shop } from "../src/types";
+import { brandCounts, factStamp, shopFacts } from "./shop-facts";
+import type { Shop } from "../types";
 
 const shop = (over: Partial<Shop>): Shop => ({
   id: "node/1",

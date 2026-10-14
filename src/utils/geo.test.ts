@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { distanceKm, formatDistance } from "../src/utils/geo";
+import { distanceKm, formatDistance } from "./geo";
 
 // 横浜駅と吉村家（実際に徒歩圏内）。距離計算の目安として使う。
 const YOKOHAMA_STATION = { lat: 35.4658, lon: 139.6222 };

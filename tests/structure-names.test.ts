@@ -20,12 +20,14 @@ const SUBFOLDERS: Record<string, string> = {};
 
 const isDir = (path: string) => statSync(join(ROOT, path)).isDirectory();
 const list = (dir: string) => (existsSync(join(ROOT, dir)) ? readdirSync(join(ROOT, dir)) : []);
-function walk(dir: string): string[] {
+function walkAll(dir: string): string[] {
   return list(dir).flatMap((name) => {
     const path = `${dir}/${name}`;
-    return isDir(path) ? walk(path) : [path];
+    return isDir(path) ? walkAll(path) : [path];
   });
 }
+/** ソースのファイル。隣に置いた単体テスト（*.test.ts）は数えない（置き場と名前の決まりは別に見る）。 */
+const walk = (dir: string) => walkAll(dir).filter((path) => !path.endsWith(".test.ts"));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const pascal = (kebab: string) =>
   kebab.replace(/(^|-)([a-z0-9])/g, (_, __, c: string) => c.toUpperCase());
@@ -56,6 +58,7 @@ describe("置き場と名前の決まり（docs/development/structure.md）", ()
   it("機能の直下には、入口・<機能名>App.tsx・種類のフォルダだけがある", () => {
     const extra = features.flatMap((f) =>
       list(`src/features/${f}`)
+        .filter((name) => !name.endsWith(".test.ts"))
         .filter((name) =>
           isDir(`src/features/${f}/${name}`)
             ? !KINDS.includes(name)
@@ -185,7 +188,7 @@ describe("置き場と名前の決まり（docs/development/structure.md）", ()
 
   it("server/ の直下には、入口（worker.ts・main.ts）と登録の server.ts・種類のフォルダだけがある", () => {
     const allowed = new Set(["worker.ts", "main.ts", "server.ts", "tools", ...KINDS]);
-    const extra = list("server").filter((name) => !allowed.has(name));
+    const extra = list("server").filter((name) => !allowed.has(name) && !name.endsWith(".test.ts"));
     expect(extra).toEqual([]);
   });
 
@@ -201,6 +204,16 @@ describe("置き場と名前の決まり（docs/development/structure.md）", ()
     });
     expect(bad).toEqual([]);
     expect(walk("server/tools").length).toBeGreaterThan(0);
+  });
+
+  it("ソースの隣の単体テストは <ソース名>.test.ts で、同じ名前のソースが隣にある", () => {
+    const bad = [...walkAll("src"), ...walkAll("server")]
+      .filter((file) => file.endsWith(".test.ts"))
+      .filter((file) => {
+        const base = file.replace(/\.test\.ts$/, "");
+        return !existsSync(join(ROOT, `${base}.ts`)) && !existsSync(join(ROOT, `${base}.tsx`));
+      });
+    expect(bad).toEqual([]);
   });
 
   it("調べる対象が見つかっている（たどり方が壊れていない）", () => {

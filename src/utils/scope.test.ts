@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scopeLabel } from "../src/utils/scope";
+import { scopeLabel } from "./scope";
 
 const BOUNDS = { north: 35.48, south: 35.44, east: 139.65, west: 139.6 };
 

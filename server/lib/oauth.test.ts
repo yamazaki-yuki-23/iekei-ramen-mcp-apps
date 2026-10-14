@@ -12,7 +12,7 @@ import {
   exchangeForSubject,
   isOAuthPath,
   isResourceMetadataPath,
-} from "../server/lib/oauth";
+} from "./oauth";
 
 describe("authorizeFailure", () => {
   it("戻り先が分かっているときは、理由を付けてそこへ戻す", () => {

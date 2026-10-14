@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { mapListShops } from "../src/features/search/utils/map-list";
-import type { Shop } from "../src/types";
+import { mapListShops } from "./map-list";
+import type { Shop } from "../../../types";
 
 function shop(id: string): Shop {
   return {

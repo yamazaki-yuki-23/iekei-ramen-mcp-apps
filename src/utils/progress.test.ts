@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { summarize } from "../src/utils/progress";
-import type { Shop } from "../src/types";
+import { summarize } from "./progress";
+import type { Shop } from "../types";
 
 function shop(id: string, prefecture: string): Shop {
   return {

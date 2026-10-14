@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countPlaceholder, resultLook, skeletonShops } from "../src/utils/skeleton";
+import { countPlaceholder, resultLook, skeletonShops } from "./skeleton";
 
 describe("待つ間の見せ方（#214）", () => {
   it("返ってくる数が決まっている探し方は、その数だけ骨組みを出す（多いと届いたときに縮んで跳ねる）", () => {
