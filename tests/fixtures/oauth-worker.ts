@@ -1,4 +1,4 @@
-import worker from "../../worker";
+import worker from "../../server/worker";
 
 // 本番の認可サーバーを使い、Googleとの交換だけを固定する。外部通信は禁止。
 globalThis.fetch = async (input, init) => {

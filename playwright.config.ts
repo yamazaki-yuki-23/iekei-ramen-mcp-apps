@@ -90,7 +90,7 @@ export default defineConfig({
     // Web用previewはMCP fixtureのビルドが終わってから、末尾で起動する。
     {
       // 先に UI をビルドしてからサーバーを起動する（server.ts は埋め込み済み HTML を読む）
-      command: `npm run build:ui && npx tsx main.ts`,
+      command: `npm run build:ui && npx tsx server/main.ts`,
       env: {
         PORT: String(MCP_PORT),
         // 手元ではプレビュー用のサーバーと並ぶので、名前で選び分ける。
@@ -110,7 +110,7 @@ export default defineConfig({
        * サインイン済みの側。UI のビルドは 1 本目がやるので、ここでは起動だけ。
        * 記録はプロセスの中だけに持つので、立て直せば空から始まる。
        */
-      command: `npx tsx main.ts`,
+      command: `npx tsx server/main.ts`,
       env: {
         PORT: String(MEMBER_PORT),
         IEKEI_SERVER_NAME: MEMBER_SERVER_NAME,
@@ -131,7 +131,7 @@ export default defineConfig({
     },
     {
       // 境界テストだけが page.route 経由で利用する。8080の登録・再起動は不要。
-      command: `npx tsx main.ts`,
+      command: `npx tsx server/main.ts`,
       env: {
         PORT: "3133",
         IEKEI_SERVER_NAME: E2E_SERVER_NAME,

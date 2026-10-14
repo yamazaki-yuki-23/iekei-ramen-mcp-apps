@@ -15,7 +15,7 @@
 | サインインで要求する範囲（今は `openid` だけ）                                                   | ポリシー 1.・2.2  |
 | OAuth のライブラリの設定（トークンや登録の有効期限・Cookie・`/register` で受ける欄）             | ポリシー 2.2・2.3 |
 | 外部に送る先（`uiResourceMeta` の CSP・Nominatim・地図アプリへのリンク・新しい外部 API）         | ポリシー 4.       |
-| 利用回数に書く欄（`src/lib/usage.ts` の `toDataPoint`）                                          | ポリシー 2.3      |
+| 利用回数に書く欄（`server/usage.ts` の `toDataPoint`）                                           | ポリシー 2.3      |
 | 家系判定の段階の名前（`CONFIDENCE`）・味の傾向の出し方                                           | 規約 2.           |
 | Cookie（今はサインインの手続き中の `__Host-oauth-*` だけ）                                       | ポリシー 2.2      |
 | Cloudflare Web Analytics（ダッシュボードの設定でエッジが全ページに埋め込む。リポジトリには無い） | ポリシー 2.3・4.  |

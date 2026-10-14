@@ -10,7 +10,7 @@
  *
  * wrangler のログイン（OAuth）では読めない。Analytics の権限が無く 403 になる。
  *
- * 書いている欄は src/lib/usage.ts の toDataPoint と揃えてある。
+ * 書いている欄は server/usage.ts の toDataPoint と揃えてある。
  *   blob1 = tool 名 / blob2 = member・anonymous / blob3 = スタンプの向き
  */
 const DATASET = "iekei_ramen_usage";

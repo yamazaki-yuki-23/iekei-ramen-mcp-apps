@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "iekei-ramen-mcp",
-  "main": "worker.ts",
+  "main": "server/worker.ts",
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
@@ -57,11 +57,11 @@
     { "name": "GEOCODE_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
     { "name": "REPORT_LIMITER", "namespace_id": "1002", "simple": { "limit": 5, "period": 60 } },
   ],
-  // Nominatim へ出ていく問い合わせを、全体で 1 本の列に並べる（src/lib/geocode-gate.ts）。
+  // Nominatim へ出ていく問い合わせを、全体で 1 本の列に並べる（server/geocode-gate.ts）。
   // 無料プランで使えるのは SQLite 版だけなので new_sqlite_classes で作る。
   "durable_objects": { "bindings": [{ "name": "GEOCODE_GATE", "class_name": "GeocodeGate" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GeocodeGate"] }],
-  // 使われているかを数える（src/lib/usage.ts）。無料枠は書き込み 1 日 10 万件・
+  // 使われているかを数える（server/usage.ts）。無料枠は書き込み 1 日 10 万件・
   // 読み取り 1 日 1 万回。書くのは tool 名とサインインの有無だけで、個人は特定しない。
   // 週ごとの件数は `npm run usage`。
   "analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "iekei_ramen_usage" }],

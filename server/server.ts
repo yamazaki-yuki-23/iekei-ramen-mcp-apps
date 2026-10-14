@@ -1,8 +1,8 @@
-import { ALL_PREFECTURES } from "./src/lib/prefectures.ts";
-import { topBrands, type BrandCount } from "./src/lib/brands.ts";
-import { localizeOrigin } from "./src/lib/place-label.ts";
-import { brandCounts, shopFacts } from "./src/lib/shop-facts.ts";
-import { openingHoursLabel } from "./src/lib/opening-hours.ts";
+import { ALL_PREFECTURES } from "../src/lib/prefectures.ts";
+import { topBrands, type BrandCount } from "../src/lib/brands.ts";
+import { localizeOrigin } from "./place-label.ts";
+import { brandCounts, shopFacts } from "../src/lib/shop-facts.ts";
+import { openingHoursLabel } from "../src/lib/opening-hours.ts";
 /**
  * 家系ラーメンを探す MCP Apps サーバー。
  *
@@ -27,22 +27,22 @@ import {
   type ServerContext,
 } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import shopsData from "./data/shops.json" with { type: "json" };
-import { APP_HTML } from "./src/generated/app-html.ts";
-import { distanceKm, formatDistance, originLabel } from "./src/lib/geo.ts";
-import { dataCaveats } from "./src/lib/data-caveats.ts";
-import { GEOCODE_MAX_WAIT_MS } from "./src/lib/geocode-gate.ts";
+import shopsData from "../data/shops.json" with { type: "json" };
+import { APP_HTML } from "../src/generated/app-html.ts";
+import { distanceKm, formatDistance, originLabel } from "../src/lib/geo.ts";
+import { dataCaveats } from "../src/lib/data-caveats.ts";
+import { GEOCODE_MAX_WAIT_MS } from "./geocode-gate.ts";
 import {
   GEOCODE_RESPONSE_TIMEOUT_MS,
   GeocodeTimeoutError,
   withGeocodeTimeout,
-} from "./src/lib/geocode-timeout.ts";
-import { summarize as summarizeVisits } from "./src/lib/progress.ts";
-import { RECORDS_WITHOUT_SHOPS } from "./src/lib/visited-view.ts";
-import { BoundsSchema, PayloadSchema, StampResultSchema } from "./src/lib/schema.ts";
-import { scopeLabel } from "./src/lib/scope.ts";
-import type { VisitStore } from "./src/lib/visits.ts";
-import { describeBasis, describeScope, shortlist } from "./src/lib/shortlist.ts";
+} from "./geocode-timeout.ts";
+import { summarize as summarizeVisits } from "../src/lib/progress.ts";
+import { RECORDS_WITHOUT_SHOPS } from "../src/lib/visited-view.ts";
+import { BoundsSchema, PayloadSchema, StampResultSchema } from "./schema.ts";
+import { scopeLabel } from "../src/lib/scope.ts";
+import type { VisitStore } from "./visits.ts";
+import { describeBasis, describeScope, shortlist } from "../src/lib/shortlist.ts";
 import {
   CONFIDENCE,
   ORIGIN_NOTES,
@@ -54,7 +54,7 @@ import {
   type OriginSource,
   type Shop,
   type TasteKey,
-} from "./src/lib/types.ts";
+} from "../src/lib/types.ts";
 
 const DEFAULT_SHOPS = shopsData as Shop[];
 

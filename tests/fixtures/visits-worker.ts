@@ -1,4 +1,4 @@
-import { d1Visits } from "../../src/lib/visits";
+import { d1Visits } from "../../server/visits";
 
 type Operation =
   | { action: "list" | "clear"; visitorId: string }

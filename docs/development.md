@@ -95,9 +95,10 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 
 | ファイル                      | 役割                                                              |
 | ----------------------------- | ----------------------------------------------------------------- |
-| `server.ts`                   | MCP サーバー本体。UI 付き tool と補助 tool を登録                 |
-| `worker.ts`                   | Cloudflare Workers エントリ（`/mcp` で Streamable HTTP を受ける） |
-| `main.ts`                     | ローカル実行エントリ（HTTP / stdio）                              |
+| `server/`                     | サーバー側（Workers と手元の Node）。ブラウザには載らない         |
+| `server/server.ts`            | MCP サーバー本体。UI 付き tool と補助 tool を登録                 |
+| `server/worker.ts`            | Cloudflare Workers エントリ（`/mcp` で Streamable HTTP を受ける） |
+| `server/main.ts`              | ローカル実行エントリ（HTTP / stdio）                              |
 | `src/mcp-app.tsx`             | MCP Apps の入口                                                   |
 | `src/web.tsx`                 | ブラウザで直接開く Web の入口                                     |
 | `src/iekei-app.tsx`           | 共通 UI の外側。作り直しをまたぐ状態（選択・まわる店・焦点）      |
@@ -109,8 +110,8 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 | `src/lib/route.ts`            | 「まわる店」の順番と距離、地図アプリへ渡す URL                    |
 | `src/lib/model-context.ts`    | 選んだ 1 軒をモデルへ渡す列（順番・失敗・やり直し）               |
 | `src/lib/shop-brief.ts`       | モデルに渡す文面。推定には但し書きを付ける                        |
-| `oauth.ts`                    | Google サインインと、記録の tool に返す 401                       |
-| `src/lib/visits.ts`           | 訪問記録の読み書き（D1）。SQL はここだけ                          |
+| `server/oauth.ts`             | Google サインインと、記録の tool に返す 401                       |
+| `server/visits.ts`            | 訪問記録の読み書き（D1）。SQL はここだけ                          |
 | `src/lib/progress.ts`         | 制覇率。順位も称号も作らない                                      |
 | `src/lib/same-name.ts`        | 同名の店が並ぶときだけ、名前の隣に出す地名を決める                |
 | `migrations/`                 | D1 のスキーマ（デプロイ時に適用）                                 |
@@ -353,7 +354,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
 
 ### UI へのデータ受け渡し
 
-`structuredContent` に `PayloadSchema`（[src/lib/schema.ts](../src/lib/schema.ts)）の形で載せる。
+`structuredContent` に `PayloadSchema`（[server/schema.ts](../server/schema.ts)）の形で載せる。
 `outputSchema` を併記しないとホストに弾かれる。
 
 **重要:** UI が `app.callServerTool()` で呼んだ結果には `ontoolresult` が発火しない。
@@ -379,7 +380,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
 
 ホストの位置と接続元の推定は、名前（city / region）がローマ字で来る（「Saitama Saitama」）。
 サーバーは推定座標にいちばん近い収録店の市区町村（20km 以内）か都道府県（80km 以内）を借りて
-「横浜市付近」と呼び、それより遠ければ「現在地付近」にする（`src/lib/place-label.ts`、#150）。
+「横浜市付近」と呼び、それより遠ければ「現在地付近」にする（`server/place-label.ts`、#150）。
 外部の逆ジオコーディングは呼ばない。端末の位置（「現在地」）と地名は名前を変えない。
 
 564 件の一覧は選択肢地獄で、人は理由の無い長い一覧からは決められない。
@@ -461,7 +462,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
   ChromiumはフォームPOST後のリダイレクトも検査するため、`'self'` だけでは
   同意Cookieを消費した後にGoogleへの転送が遮断される。
   `e2e/oauth-redirect.spec.ts` が許可と拒否の実フォーム操作を検証する。
-- **`/.well-known/oauth-protected-resource` は自分で返す**（[oauth.ts](../oauth.ts)）。
+- **`/.well-known/oauth-protected-resource` は自分で返す**（[oauth.ts](../server/oauth.ts)）。
   ライブラリは認可サーバー側の文書しか出さず、任せると 401 の指す先が 404 になる
 - ライブラリは `cloudflare:workers` を取り込むので**動的 import**。KV の無い環境
   （Node の手元サーバー）では読み込ませず 501 を返す。読み込むとプロセスごと落ちる
@@ -488,7 +489,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
 
 ### 使われているかを数える（Workers Analytics Engine）
 
-tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[src/lib/usage.ts](../src/lib/usage.ts)）。
+tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[server/usage.ts](../server/usage.ts)）。
 **数える口は server.ts の `registerTool` 1 か所（`onToolCall`）。** SDK が引数を検査した後に
 呼ばれるので、引数が足りず弾かれた呼び出しは数えない（本文を読んで数えると入ってしまう）。
 週ごとの件数は `npm run usage`。
@@ -617,7 +618,7 @@ Workers にはファイルシステムが無いので、HTML もデータもコ�
 `src/generated/` は自動生成なので編集しない（gitignore 済み）。
 
 **UI を変更したら `npm run build:ui` を実行しないとサーバーに反映されない。**
-`server.ts` は `src/generated/app-html.ts` を読むので、vite ビルドだけでは足りない。
+`server/server.ts` は `src/generated/app-html.ts` を読むので、vite ビルドだけでは足りない。
 **さらに、起動中の `npm run dev` は再起動しないと古い HTML を返し続ける**
 （起動時に import した文字列を持っているため）。動作確認を頼む前に入れ替えること。
 
@@ -973,7 +974,7 @@ SERVERS='["http://localhost:3031/mcp","http://localhost:3131/mcp","http://localh
 **会員機能は「サインイン済みのサーバー」で確かめる。** 匿名とサインイン済みを
 1 つのプロセスで兼ねられないので、`IEKEI_DEV_VISITOR=誰か` を付けたもう 1 本
 （3132）を並べ、E2E は名前で選ぶ（`MEMBER_SERVER_NAME`）。**この偽サインインの
-道は [main.ts](../main.ts) にしかない。** worker.ts に入れると、環境変数ひとつで
+道は [main.ts](../server/main.ts) にしかない。** worker.ts に入れると、環境変数ひとつで
 認証を迂回できる口を本番へ置くことになる。
 
 **E2E は 1 件ずつ並列に流す（`fullyParallel`、CI は 4 worker）。** 1 本ずつ流すと
@@ -1232,4 +1233,4 @@ flowchart LR
 - UI の文言も日本語。**続く 1 文は改行で分けない**（JSX の改行は空白 1 個に
   畳まれ、和文だと語の途中に隙間が空く）。長い文は定数に出す。
 - 型は [src/lib/types.ts](../src/lib/types.ts) に集約。zod スキーマは
-  [src/lib/schema.ts](../src/lib/schema.ts) で、両者は手で同期させている。
+  [server/schema.ts](../server/schema.ts) で、両者は手で同期させている。

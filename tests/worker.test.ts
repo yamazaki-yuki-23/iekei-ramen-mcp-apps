@@ -9,7 +9,7 @@
  * そこで落ちないことを確かめる。
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import worker from "../worker";
+import worker from "../server/worker";
 
 const ORIGIN = "http://localhost:3031";
 

@@ -1,5 +1,5 @@
 /**
- * 使われているかを数える部分（src/lib/usage.ts）。
+ * 使われているかを数える部分（server/usage.ts）。
  *
  * **書く項目に、個人を特定できるものが入らないこと**を確かめる。IP・生の `sub`・
  * 訪問者の id・検索した地名・座標・店は書かない。
@@ -7,8 +7,8 @@
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { describe, expect, it } from "vitest";
-import { createServer } from "../server";
-import { COUNTED_TOOLS, recordUsage, toDataPoint, usageEvent } from "../src/lib/usage";
+import { createServer } from "../server/server";
+import { COUNTED_TOOLS, recordUsage, toDataPoint, usageEvent } from "../server/usage";
 
 /** 書かれたものを貯める、偽の Analytics Engine。 */
 function fakeDataset() {

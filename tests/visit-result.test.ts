@@ -1,7 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/client";
 import { describe, expect, it } from "vitest";
 import { EMPTY_PAYLOAD, readPayload, readVisitResult } from "../src/lib/payload";
-import { StampResultSchema } from "../src/lib/schema";
+import { StampResultSchema } from "../server/schema";
 
 const snapshot = {
   visited: ["node/test"],

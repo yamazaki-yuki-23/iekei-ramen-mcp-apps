@@ -10,7 +10,7 @@ const plugin = JSON.parse(readFileSync(new URL("plugin.json", dir), "utf8"));
 const mcp = JSON.parse(readFileSync(new URL("mcp.json", dir), "utf8"));
 const openai = plugin.extensions["com.openai"];
 const ui = openai.interface;
-const server = readFileSync(new URL("../server.ts", import.meta.url), "utf8");
+const server = readFileSync(new URL("../server/server.ts", import.meta.url), "utf8");
 
 describe("ChatGPT の申請の中身（#47）", () => {
   it("掲載の文が上限に収まる", () => {

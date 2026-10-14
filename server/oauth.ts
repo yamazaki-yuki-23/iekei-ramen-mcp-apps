@@ -17,7 +17,7 @@
  * 人の身元確認は Google に委ねる。**パスワードは受け取らないし保存もしない。**
  */
 import type { ClientInfo, OAuthAuthorizationServer } from "@cloudflare/workers-oauth-provider";
-import { CONSENT_CSS } from "./src/generated/app-html";
+import { CONSENT_CSS } from "../src/generated/app-html";
 
 /**
  * 認可サーバーは**使うときに初めて読み込む**。

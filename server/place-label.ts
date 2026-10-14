@@ -1,5 +1,5 @@
-import { distanceKm } from "./geo";
-import type { Origin, Shop } from "./types";
+import { distanceKm } from "../src/lib/geo";
+import type { Origin, Shop } from "../src/lib/types";
 
 /** ここまで近ければ市区町村で呼ぶ。接続元の推定は市区町村より粗いことがあるので広めに。 */
 const CITY_KM = 20;
