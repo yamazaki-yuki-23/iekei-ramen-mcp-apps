@@ -5,11 +5,12 @@
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
-import { createServer, MEMBER_TOOLS } from "../server/server";
+import { createServer } from "../server/server";
+import { MEMBER_TOOLS } from "../server/utils/tool-metadata";
 import shopsData from "../data/shops.json" with { type: "json" };
 import type { AppPayload } from "../src/types";
 import { CONFIDENCE } from "../src/utils/labels";
-import { PayloadSchema } from "../server/schema";
+import { PayloadSchema } from "../server/lib/schema";
 
 // 実店舗データの結合・smoke検証。件数分布に依存する境界は server-boundaries.test.ts。
 let client: Client;

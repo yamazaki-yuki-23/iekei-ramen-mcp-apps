@@ -20,7 +20,7 @@ const NOTHING_YET = "まだ記録がありません。店を選んで「行っ�
 /**
  * 記録はあるのに出せる店が無いとき。**黙って 0 件にしない。**
  *
- * **モデルにも同じ文を渡す**（server.ts が使う）。別々に書くと、画面には
+ * **モデルにも同じ文を渡す**（server/tools/show-visited-iekei-ramen.ts が使う）。別々に書くと、画面には
  * 「記録は残っている」と出ているのにモデルは「1 軒も記録がない」と話す。
  */
 export const RECORDS_WITHOUT_SHOPS =

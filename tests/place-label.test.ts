@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { localizeOrigin, nearbyPlaceLabel } from "../server/place-label";
+import { localizeOrigin, nearbyPlaceLabel } from "../server/utils/place-label";
 
 // 横浜駅のそばの 1 軒と、さいたま市の 1 軒。
 const shops = [

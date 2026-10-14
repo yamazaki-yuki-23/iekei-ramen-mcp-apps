@@ -4,7 +4,7 @@ import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import data from "../data/shops.json" with { type: "json" };
 import { createServer } from "../server/server.ts";
-import { memoryVisits } from "../server/visits.ts";
+import { memoryVisits } from "../server/lib/visits.ts";
 
 const visitor = { id: "benchmark-only" };
 for (const initialVisits of [0, 100, data.length]) {

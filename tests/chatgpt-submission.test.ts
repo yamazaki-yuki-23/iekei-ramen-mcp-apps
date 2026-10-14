@@ -2,7 +2,7 @@
  * ChatGPT のディレクトリへの申請の中身（#47、submission/chatgpt/）。上限や形を外すと
  * アップロードの検査で止まるので、ここで先に見る。上限は developers.openai.com/plugins/deploy/submission。
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const dir = new URL("../submission/chatgpt/", import.meta.url);
@@ -10,7 +10,11 @@ const plugin = JSON.parse(readFileSync(new URL("plugin.json", dir), "utf8"));
 const mcp = JSON.parse(readFileSync(new URL("mcp.json", dir), "utf8"));
 const openai = plugin.extensions["com.openai"];
 const ui = openai.interface;
-const server = readFileSync(new URL("../server/server.ts", import.meta.url), "utf8");
+// tool は server/tools/ に 1 つずつある（#221）。名前が登録されているかを、全部をつないだ本文で見る。
+const toolsDir = new URL("../server/tools/", import.meta.url);
+const server = readdirSync(toolsDir)
+  .map((name) => readFileSync(new URL(name, toolsDir), "utf8"))
+  .join("\n");
 
 describe("ChatGPT の申請の中身（#47）", () => {
   it("掲載の文が上限に収まる", () => {

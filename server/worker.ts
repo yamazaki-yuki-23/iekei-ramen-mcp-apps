@@ -13,12 +13,14 @@ import {
   startSignIn,
   visitorOf,
   type AuthEnv,
-} from "./oauth.ts";
-import { createServer, MEMBER_TOOLS, type ServerDeps } from "./server.ts";
-import { GeocodeGate } from "./geocode-gate.ts";
-import { recordUsage, usageEvent } from "./usage.ts";
-import { d1Visits } from "./visits.ts";
-import { handleReport } from "./report-endpoint.ts";
+} from "./lib/oauth.ts";
+import { createServer } from "./server.ts";
+import type { ServerDeps } from "./types/deps.ts";
+import { MEMBER_TOOLS } from "./utils/tool-metadata.ts";
+import { GeocodeGate } from "./lib/geocode-gate.ts";
+import { recordUsage, usageEvent } from "./lib/usage.ts";
+import { d1Visits } from "./lib/visits.ts";
+import { handleReport } from "./lib/report-endpoint.ts";
 
 // wrangler が Durable Object のクラスを探すのは、入口のモジュールの export。
 export { GeocodeGate };
@@ -227,7 +229,7 @@ export default {
        * 使われているかを数える。**SDK が引数を検査して受け付けた呼び出しだけ**が
        * ここへ来る（引数が足りない・壊れた呼び出しは数えない）。401 を返した呼び出しは
        * 上で止めているので来ない——匿名でスタンプを押そうとしただけでは、まだ
-       * 使われていない。書くのは tool 名とサインインの有無だけ（server/usage.ts）。
+       * 使われていない。書くのは tool 名とサインインの有無だけ（server/lib/usage.ts）。
        */
       onToolCall: (name, args) => recordUsage(env.USAGE, usageEvent(name, args, Boolean(visitor))),
     });

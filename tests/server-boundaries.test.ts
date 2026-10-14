@@ -1,11 +1,12 @@
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { afterEach, expect, it } from "vitest";
-import { createServer, type ServerDeps } from "../server/server";
+import { createServer } from "../server/server";
+import type { ServerDeps } from "../server/types/deps";
 import fixture from "../e2e/fixtures/shops-boundaries.json" with { type: "json" };
 import realShops from "../data/shops.json" with { type: "json" };
 import type { AppPayload, Shop } from "../src/types";
-import { memoryVisits } from "../server/visits";
+import { memoryVisits } from "../server/lib/visits";
 
 const clients: Client[] = [];
 afterEach(async () => {

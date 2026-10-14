@@ -5,8 +5,10 @@
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createServer, normalizePlaceQuery, type ServerDeps } from "../server/server";
-import { GeocodeGate } from "../server/geocode-gate";
+import { createServer } from "../server/server";
+import { normalizePlaceQuery } from "../server/lib/geocode";
+import type { ServerDeps } from "../server/types/deps";
+import { GeocodeGate } from "../server/lib/geocode-gate";
 
 const YOKOHAMA = [{ display_name: "横浜駅, 西区, 横浜市", lat: "35.466", lon: "139.622" }];
 
