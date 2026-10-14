@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { STAMP_OF } from "../src/camera/camera-post";
-import { FRAMES, frameTexts, placeStamp } from "../src/camera/frames";
+import { STAMP_OF } from "../src/features/camera/utils/camera-post";
+import { FRAMES, frameTexts, placeStamp } from "../src/features/camera/lib/frames";
 
 const meta = {
   name: "横浜家系ラーメン 石川家",

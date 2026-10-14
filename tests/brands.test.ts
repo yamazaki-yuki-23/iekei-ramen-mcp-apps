@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { topBrands } from "../src/lib/brands";
-import type { Shop } from "../src/lib/types";
+import { topBrands } from "../src/utils/brands";
+import type { Shop } from "../src/types";
 
 const shop = (id: string, brand?: string): Shop => ({
   id,

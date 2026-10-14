@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import shopsData from "../data/shops.json" with { type: "json" };
-import { clusterShops } from "../src/lib/cluster";
-import type { Shop } from "../src/lib/types";
+import { clusterShops } from "../src/features/search/utils/cluster";
+import type { Shop } from "../src/types";
 
 const ALL_SHOPS = shopsData as unknown as Shop[];
 

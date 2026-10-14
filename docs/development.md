@@ -95,38 +95,40 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 
 **置き場と名前の決まりは [development/structure.md](development/structure.md)。** ファイルを足す・動かす前に読む（#220 で lint とテストの強制を入れる）。下の表は、いまの主なファイルの役割。
 
-| ファイル                      | 役割                                                                    |
-| ----------------------------- | ----------------------------------------------------------------------- |
-| `server/`                     | サーバー側（Workers と手元の Node）。ブラウザには載らない               |
-| `server/server.ts`            | MCP サーバー本体。UI 付き tool と補助 tool を登録                       |
-| `server/worker.ts`            | Cloudflare Workers エントリ（`/mcp` で Streamable HTTP を受ける）       |
-| `server/main.ts`              | ローカル実行エントリ（HTTP / stdio）                                    |
-| `src/mcp-app.tsx`             | MCP Apps の入口                                                         |
-| `src/web.tsx`                 | ブラウザで直接開く Web の入口                                           |
-| `src/iekei-app.tsx`           | 共通 UI の外側。作り直しをまたぐ状態（選択・まわる店・焦点）            |
-| `src/iekei-app-inner.tsx`     | 結果の画面。payload ごとに作り直す                                      |
-| `src/match/`                  | 家系マッチ（`/match/`）。Web だけの別ページ                             |
-| `src/shindan/`・`src/camera/` | 家系タイプ診断（`/shindan/`）・家系カメラ（`/camera/`）。同じく別ページ |
-| `src/shared/`                 | 2 つ以上の別ページで使う部品（店を探す接続 `feed.ts`・音 `sound.ts`）   |
-| `src/hosts/`                  | MCP Apps と Web の接続・tool 呼び出し・リンクの差し替え                 |
-| `src/components/`             | 検索フォーム / 一覧 / 現在地パネル / 地図 / 迷ったら / まわる店         |
-| `src/lib/shortlist.ts`        | 「迷ったら」の 3 軒の選び方。おすすめ順は作らない                       |
-| `src/lib/route.ts`            | 「まわる店」の順番と距離、地図アプリへ渡す URL                          |
-| `src/lib/model-context.ts`    | 選んだ 1 軒をモデルへ渡す列（順番・失敗・やり直し）                     |
-| `src/lib/shop-brief.ts`       | モデルに渡す文面。推定には但し書きを付ける                              |
-| `server/oauth.ts`             | Google サインインと、記録の tool に返す 401                             |
-| `server/visits.ts`            | 訪問記録の読み書き（D1）。SQL はここだけ                                |
-| `src/lib/progress.ts`         | 制覇率。順位も称号も作らない                                            |
-| `src/lib/same-name.ts`        | 同名の店が並ぶときだけ、名前の隣に出す地名を決める                      |
-| `migrations/`                 | D1 のスキーマ（デプロイ時に適用）                                       |
-| `scripts/overpass-query.mjs`  | Overpass のクエリと取得の手順。拾う条件を変えるならここだけ見る         |
-| `scripts/fetch-shops.mjs`     | OpenStreetMap から店舗データを取得                                      |
-| `scripts/judgments.mjs`       | TypeSafe に投げる質問と閾値。判定を変えるならここだけ見る               |
-| `scripts/judge-all.mjs`       | 家系判定を実行して `data/judged.json` に保存                            |
-| `scripts/find-duplicates.mjs` | 近い 2 件が同一店舗かを判定して `data/duplicates.json` に保存           |
-| `scripts/rescore.mjs`         | 保存済みの確率から判定だけ作り直す（API 不要）                          |
-| `scripts/fill-areas.mjs`      | 住所の欠けている店を座標から逆引き（Nominatim）                         |
-| `scripts/build-dataset.mjs`   | 判定結果を整形して `data/shops.json` を生成                             |
+| ファイル                                                                | 役割                                                                          |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `server/`                                                               | サーバー側（Workers と手元の Node）。ブラウザには載らない                     |
+| `server/server.ts`                                                      | MCP サーバー本体。UI 付き tool と補助 tool を登録                             |
+| `server/worker.ts`                                                      | Cloudflare Workers エントリ（`/mcp` で Streamable HTTP を受ける）             |
+| `server/main.ts`                                                        | ローカル実行エントリ（HTTP / stdio）                                          |
+| `src/features/search/main-mcp.tsx`                                      | MCP Apps の入口                                                               |
+| `src/features/search/main-web.tsx`                                      | ブラウザで直接開く Web の入口                                                 |
+| `src/features/search/iekei-app.tsx`                                     | 共通 UI の外側。作り直しをまたぐ状態（選択・まわる店・焦点）                  |
+| `src/features/search/components/iekei-app-inner.tsx`                    | 結果の画面。payload ごとに作り直す                                            |
+| `src/features/search/`                                                  | 探す（MCP の画面と Web のトップ）。部品は `components/`                       |
+| `src/features/search/components/McpConnection.tsx`・`WebConnection.tsx` | MCP Apps と Web の接続・tool 呼び出し・リンクの差し替え                       |
+| `src/features/match/`                                                   | 家系マッチ（`/match/`）。Web だけの別ページ                                   |
+| `src/features/shindan/`・`src/features/camera/`                         | 家系タイプ診断（`/shindan/`）・家系カメラ（`/camera/`）。同じく別ページ       |
+| `src/components/`・`src/hooks/`                                         | 2 つ以上の機能で使う部品・フック                                              |
+| `src/lib/`                                                              | 2 つ以上で使い、外部に触るもの（店を探す接続 `feed.ts`・音 `sound.ts`・位置） |
+| `src/utils/`・`src/types/`                                              | 2 つ以上で使い、外部に触らないもの・型（サーバーも使う）                      |
+| `src/utils/shortlist.ts`                                                | 「迷ったら」の 3 軒の選び方。おすすめ順は作らない                             |
+| `src/utils/route.ts`                                                    | 「まわる店」の順番と距離、地図アプリへ渡す URL                                |
+| `src/features/search/utils/model-context.ts`                            | 選んだ 1 軒をモデルへ渡す列（順番・失敗・やり直し）                           |
+| `src/features/search/utils/shop-brief.ts`                               | モデルに渡す文面。推定には但し書きを付ける                                    |
+| `server/oauth.ts`                                                       | Google サインインと、記録の tool に返す 401                                   |
+| `server/visits.ts`                                                      | 訪問記録の読み書き（D1）。SQL はここだけ                                      |
+| `src/utils/progress.ts`                                                 | 制覇率。順位も称号も作らない                                                  |
+| `src/features/search/utils/same-name.ts`                                | 同名の店が並ぶときだけ、名前の隣に出す地名を決める                            |
+| `migrations/`                                                           | D1 のスキーマ（デプロイ時に適用）                                             |
+| `scripts/overpass-query.mjs`                                            | Overpass のクエリと取得の手順。拾う条件を変えるならここだけ見る               |
+| `scripts/fetch-shops.mjs`                                               | OpenStreetMap から店舗データを取得                                            |
+| `scripts/judgments.mjs`                                                 | TypeSafe に投げる質問と閾値。判定を変えるならここだけ見る                     |
+| `scripts/judge-all.mjs`                                                 | 家系判定を実行して `data/judged.json` に保存                                  |
+| `scripts/find-duplicates.mjs`                                           | 近い 2 件が同一店舗かを判定して `data/duplicates.json` に保存                 |
+| `scripts/rescore.mjs`                                                   | 保存済みの確率から判定だけ作り直す（API 不要）                                |
+| `scripts/fill-areas.mjs`                                                | 住所の欠けている店を座標から逆引き（Nominatim）                               |
+| `scripts/build-dataset.mjs`                                             | 判定結果を整形して `data/shops.json` を生成                                   |
 
 ### tool 一覧
 
@@ -154,17 +156,17 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 Workerが返す。`wrangler.jsonc` の `assets.run_worker_first` にその経路を並べている。
 
 `npm run build:ui` はMCP用の単一HTMLを埋め込んだ後、`index.html` と
-`src/web.tsx` を `dist/web/` にビルドする。CIと通常のデプロイも同じコマンドを使う。
+`src/features/search/main-web.tsx` を `dist/web/` にビルドする。CIと通常のデプロイも同じコマンドを使う。
 Static Assetsはこのディレクトリだけを配信するので、MCPの埋め込みHTMLやソースは配信しない。
 **Webの最初のJSに入れないもの**（#154）: Leaflet（地図を開くまで要らない。`ResultView.tsx` の
 `React.lazy` で分け、結果を出した後の空き時間に先読みする）、zod（画面は報告の受付文
-`src/lib/report-accepted.ts` だけを読む）。MCPクライアントは `src/hosts/web.tsx` の読み込み時に取りに行く。
+`src/utils/report-accepted.ts` だけを読む）。MCPクライアントは `src/features/search/components/WebConnection.tsx` の読み込み時に取りに行く。
 未定義のURLには404を返し、MCPや認可の誤ったURLにWebのHTMLを返さない。ブラウザで開いた
 （`Accept: text/html` の GET）存在しないページにだけ、`worker.ts` が `ASSETS` から `404.html` を
 状態 404 で返す（#169。Worker があると `not_found_handling` は効かない）。`/.well-known/*` は除く。
 `/assets/*`（名前に中身のハッシュが入る）だけを `public/_headers` で1年・`immutable` にする。
 HTMLやハッシュの無いファイルは既定の `max-age=0` のまま（#153）。
-トップの `#root` は画面1枚分を空けておく（`src/web.css`）。JSより先に描かれる下のリンクが
+トップの `#root` は画面1枚分を空けておく（`src/features/search/styles/main-web.css`）。JSより先に描かれる下のリンクが
 押し下げられて CLS が 0.33 になっていた。接続できなかった画面（`data-connection="failed"`）は短いので空けない。つながった後の警告では空けたまま。
 本番は#41の決定に従い `https://iekeiramen.com/`。workers.devは再開しない。
 http で来たら https へ送る（#168）。Worker を通る経路（`run_worker_first`）は `worker.ts` が
@@ -217,7 +219,7 @@ Search Consoleの所有権は2026-10-04に確認済み。DNSのTXTレコード�
 
 正本は `docs/legal/*.md`。`npm run build:ui` の最後に `scripts/build-seo.mjs` が `legalPages`（`scripts/seo-pages.mjs`）で
 `dist/web/privacy.html`・`terms.html` を作る（静的アセットが `/privacy`・`/terms` で返す）。`【` が残っているとビルドが止まる。
-Web のすべてのページの下と `/connect` のフッターに 2 つへのリンクを出す（`src/lib/legal-links.ts`）。
+Web のすべてのページの下と `/connect` のフッターに 2 つへのリンクを出す（`src/utils/legal-links.ts`）。
 **保存するもの・外部に送る先・端末に残すものを変えたら、規約も直す**（直す箇所の表は [docs/legal/README.md](legal/README.md)）。
 
 ### ChatGPT のディレクトリへの申請（#47）
@@ -245,12 +247,12 @@ Claudeの本番URL追加は未確認であることをページにも明記す�
 
 ### 家系マッチ（`/match/`、#166・#181）
 
-Web だけの別ページ（`match/index.html` → `src/match/main.tsx`）。トップの大きな `iekei-app` には入れず、
+Web だけの別ページ（`match/index.html` → `src/features/match/main.tsx`）。トップの大きな `iekei-app` には入れず、
 同じ origin の `/mcp` を MCP クライアントで呼ぶ（トップと同じ。検索の決まりはサーバーの tool だけが持つ）。
 旧 URL の `/swipe/` は `public/_redirects` で `/match/` へ 301 で送る（#181。静的アセットの転送で、Worker は通らない）。
 
 - 店は `find-nearby-iekei-ramen` を `limit: 20` で近い順に取る。続きは `offset`。`facts: true` を渡すと、
-  レア札の理由（事実だけ、`src/lib/shop-facts.ts`）が各店に付く。ほかの経路は `facts` を頼まないので payload は変わらない
+  レア札の理由（事実だけ、`src/utils/shop-facts.ts`）が各店に付く。ほかの経路は `facts` を頼まないので payload は変わらない
 - 最初の範囲は接続元の推定（#152・#150 の「〇〇市付近」）。位置の許可は求めない。推定できないときだけブラウザの
   位置を 1 度試し、それも無ければトップの地名入力へ案内する（E2E はこの経路を通る）
 - いまの範囲の残りが 5 枚になったら次の 20 軒を先に取り、「範囲を広げる」で待たせない。無限には続けない
@@ -259,24 +261,24 @@ Web だけの別ページ（`match/index.html` → `src/match/main.tsx`）。ト
 - MCP（会話の中）には出していない（#166 の見本の後に決める）
 - **最初の表示を JavaScript に待たせない**（#203）。`match/index.html` の `#root` に上の行（ロゴと見出し）の骨組みを入れてあり、
   React が描くと丸ごと入れ替わる（ずれにならない）。上の行の見た目を変えたら骨組みも直す（E2E が位置のずれを見る）
-- 店を探す接続（`src/shared/feed.ts`）は、最初に店を頼んだときに始める。家系カメラは撮るボタンに触れたら始める（`warm`）。
+- 店を探す接続（`src/lib/feed.ts`）は、最初に店を頼んだときに始める。家系カメラは撮るボタンに触れたら始める（`warm`）。
   開いた直後に接続の部品（約 88KB）を読むと、最初の表示と回線を取り合っていた
 
 ### 家系タイプ診断（`/shindan/`、#167）
 
-Web だけの別ページ（`shindan/index.html` → `src/shindan/main.tsx`）。問い・タイプ・注文の呪文は `src/shindan/shindan.ts` が持つ。
+Web だけの別ページ（`shindan/index.html` → `src/features/shindan/main.tsx`）。問い・タイプ・注文の呪文は `src/utils/shindan.ts` が持つ。
 
 - 回答は送らず、残さない（画面の中だけで結果を出す。サーバーも呼ばない）
 - シェアの URL はタイプごとの紙 `/shindan/<タイプ>/`。中身は診断と同じページで、開くと 1 問目から始まる。
   `scripts/build-seo.mjs` がビルドの後に、OGP の題と画像だけを差し替えて作る
 - シェア画像（`public/og/shindan-<タイプ>.png`、1200×630）は `node scripts/shindan-og.mjs` で作ってコミットする。
   タイプ名か文言を変えたときだけ回す
-- 投稿画面の URL は `src/lib/share.ts`（#46 と共有。X を左、Threads を右に並べる）
+- 投稿画面の URL は `src/utils/share.ts`（#46 と共有。X を左、Threads を右に並べる）
 
 ### 家系カメラ（`/camera/`、#190）
 
-Web だけの別ページ（`camera/index.html` → `src/camera/main.tsx`）。投稿文のひな形は `src/camera/camera-post.ts`、
-写真の仕上げは `src/camera/photo.ts`。
+Web だけの別ページ（`camera/index.html` → `src/features/camera/main.tsx`）。投稿文のひな形は `src/features/camera/utils/camera-post.ts`、
+写真の仕上げは `src/features/camera/lib/photo.ts`。
 
 - 写真はサーバーに送らず、保存しない。加工は canvas で端末の中だけ。canvas から書き出すと EXIF（位置情報）は付かない
   （`e2e/camera.spec.ts` で、位置情報入りの写真から書き出したものに EXIF が無いこと・送った通信が小さいことを確かめる）
@@ -286,16 +288,16 @@ Web だけの別ページ（`camera/index.html` → `src/camera/main.tsx`）。�
 
 ### UI のホスト境界
 
-`src/iekei-app.tsx` は両方の入口が使う画面と状態を持つ。payload ごとに key で作り直す結果の画面は
-`src/iekei-app-inner.tsx`、作り直しをまたぐ state（焦点・読み上げ・「行った」の列など）は外側の
-`iekei-app.tsx` に置く（#171・#172）。`src/hosts/types.ts` が
+`src/features/search/iekei-app.tsx` は両方の入口が使う画面と状態を持つ。payload ごとに key で作り直す結果の画面は
+`src/features/search/components/iekei-app-inner.tsx`、作り直しをまたぐ state（焦点・読み上げ・「行った」の列など）は外側の
+`iekei-app.tsx` に置く（#171・#172）。`src/features/search/types/host.ts` が
 tool呼び出し・リンク・表示モード・モデルとの会話の契約を定義し、SDKのAppは
-`src/hosts/mcp.tsx` に閉じ込める。MCPの初期通知は従来どおり受け取り、Webでは
-`src/hosts/web.tsx` が同じoriginの `/mcp` にSDKクライアントを接続する。
+`src/features/search/components/McpConnection.tsx` に閉じ込める。MCPの初期通知は従来どおり受け取り、Webでは
+`src/features/search/components/WebConnection.tsx` が同じoriginの `/mcp` にSDKクライアントを接続する。
 Webの初期検索が揃ってから操作を許可するので、遅れた初回応答がユーザーの検索を
 上書きしない。破棄した接続の結果も画面へ反映しない。
 
-Webのテーマは `prefers-color-scheme`、ノッチは `src/web.css` の
+Webのテーマは `prefers-color-scheme`、ノッチは `src/features/search/styles/main-web.css` の
 `env(safe-area-inset-*)` から同じCSS変数へ渡す。Webの全画面ボタンは出さない。
 Playwrightは専用Vite preview（3134）を直接開き、匿名MCP fixture（3131）へ
 同じoriginで中継する。地名は既存fixtureで返し、公開Nominatimへは出ない。
@@ -362,7 +364,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
 `outputSchema` を併記しないとホストに弾かれる。
 
 **重要:** UI が `app.callServerTool()` で呼んだ結果には `ontoolresult` が発火しない。
-戻り値から自分で `setPayload` する必要がある（[use-server-tools.ts](../src/hooks/use-server-tools.ts) の `call`）。
+戻り値から自分で `setPayload` する必要がある（[use-server-tools.ts](../src/features/search/hooks/use-server-tools.ts) の `call`）。
 `ontoolresult` はホスト（モデル）発の呼び出しにだけ来る。
 
 ブラウザの位置取得はMCP呼び出し前に始まるので、通信の通し番号だけでは古い操作を
@@ -390,7 +392,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
 564 件の一覧は選択肢地獄で、人は理由の無い長い一覧からは決められない。
 3 軒まで落として、決める仕事はモデルに渡すのが `decide-iekei-ramen`。
 
-- 候補の選び方は [src/lib/shortlist.ts](../src/lib/shortlist.ts) に隔離してある。
+- 候補の選び方は [src/utils/shortlist.ts](../src/utils/shortlist.ts) に隔離してある。
   **勝手な「おすすめ順」を作らないこと。** このデータには評価も混雑も口コミも
   無いので、質の順位は付けられない。並べていいのは実際に持っている情報だけ
   （家系判定の段階・距離・営業時間の有無）。
@@ -411,7 +413,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
 決めたあと、ユーザーは必ずアプリを出て地図アプリを開く。そこが手作業のままだと
 体験が途切れるので、順番・距離・地図アプリへの受け渡しまでを UI で完結させる。
 
-- 順番の計算は [src/lib/route.ts](../src/lib/route.ts) に隔離してある。
+- 順番の計算は [src/utils/route.ts](../src/utils/route.ts) に隔離してある。
   上限 3 軒なので全順列（最大 6 通り）の総当たりで最短を選ぶ。**貪欲法は使わない**
   （1 軒目を間違えると戻る形になる）。同点は積んだ順を残すので、結果は決定的。
 - **距離は直線距離。徒歩◯分に換算しない。** 経路探索のデータを持っていないので、
@@ -474,7 +476,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
 - **UI から記録の tool を呼べるのはサインイン済みのときだけ。** 匿名で呼んでも
   401 を受けるだけで、ホストはサインインの画面を出さない（出すのはモデル発の
   呼び出しに対してだけ）。匿名の「行った」は `sendMessage` でモデルに頼み直す
-  （文面は [shop-brief.ts](../src/lib/shop-brief.ts)）
+  （文面は [shop-brief.ts](../src/features/search/utils/shop-brief.ts)）
 - **サインインしているかは `payload.visited` の有無で判る。** 匿名ではこの欄ごと
   落としてあるので、「1 軒も行っていない人」（空配列）と混ざらない
 - **スタンプの結果で画面を差し替えない。** `includeShops` は既定で `true`。
@@ -488,7 +490,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
   HTTP/SSEの付加分と圧縮後の転送量は含めない。記録はメモリだけで、本番のD1へは書かない
 - **保存するもの・外部に送る先を変えたら、規約の下書き（[docs/legal/](legal/README.md)）も直す。**
   プライバシーポリシーは実際の持ち方と 1 対 1 で書いてあり、ディレクトリの審査で照らし合わされる（#47）
-- 制覇率の計算は [src/lib/progress.ts](../src/lib/progress.ts)。**順位も称号も作らない**
+- 制覇率の計算は [src/utils/progress.ts](../src/utils/progress.ts)。**順位も称号も作らない**
   ——持っているのは軒数だけで、頑張りの度合いを語る材料が無い
 
 ### 使われているかを数える（Workers Analytics Engine）
@@ -525,7 +527,7 @@ tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[s
 ### 作り直しのあとの焦点と読み上げ（#156）
 
 `IekeiAppInner` は payload ごとに作り直すので、押したボタンも消え、待つ間は disabled にも
-なって焦点が body に落ちる。作り直されない `IekeiApp` で受け持つ（[src/hooks/use-result-handoff.ts](../src/hooks/use-result-handoff.ts)）。
+なって焦点が body に落ちる。作り直されない `IekeiApp` で受け持つ（[src/features/search/hooks/use-result-handoff.ts](../src/features/search/hooks/use-result-handoff.ts)）。
 
 - **キーボードで押したときだけ**、押したあとの 30 秒を毎フレーム見て、焦点が body に落ちていたら
   押せる状態の同じボタンへ戻す。Enter・Space の click は `detail` が 0 なのでマウスと見分けられる
@@ -557,7 +559,7 @@ tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[s
 ### 待つ間の見せ方（骨組み、#214）
 
 結果を待つ間も、結果の場所を空けない。届いても配置を変えない（CLS を増やさない）。決めるのは
-`src/hooks/use-result-state.ts`（`resultLook`）、出すのは `src/components/Pending.tsx`。見た目は `src/global.css` の
+`src/features/search/hooks/use-result-state.ts`（`resultLook`）、出すのは `src/components/Pending.tsx`。見た目は `src/styles/global.css` の
 `.pending-*`（別の CSS に分けると、トップで最初に読む CSS が 1 つ増えて FCP が 1.66 → 1.91 秒に遅れた）。
 
 | 見え方     | いつ                                                                 | 見た目                                                  |
@@ -567,7 +569,7 @@ tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[s
 | `reserve`  | 違う探し方へ移って 300ms まで                                        | その形の骨組みで場所だけ取り、見せない                  |
 | `skeleton` | 違う探し方へ移って 300ms 以降                                        | 骨組み。押せない。「読み込み中」を 1 回読む             |
 
-- **骨組みは、本物の部品に仮の店（`src/lib/skeleton.ts`）を渡して描き、文字を透明な帯にする。** 寸法を
+- **骨組みは、本物の部品に仮の店（`src/utils/skeleton.ts`）を渡して描き、文字を透明な帯にする。** 寸法を
   決め打ちすると、住所の行数などで本物と高さが違った（食券は 106〜131px）。光沢は付けない（動きは控えめ）
 - 骨組み・前の結果から本物へは、薄くせず一度に入れ替える（薄く現れる動きは店の詳細だけ）
 - 包む箱は `display: contents`。箱を作ると、親が並べるときの間隔が中から消えて高さが変わった（家系カメラで 36px）
@@ -579,9 +581,9 @@ tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[s
 - **待つ間に前の結果を押せない。** 古い結果の店を選ばせない（#146 の「後から押したものが勝つ」）
 - 件数の札は、件数が出る探し方では場所を先に取る（`AppHeader` の `reserve`。文字は置かず全角の空白で幅を取る）。
   届いた瞬間に札が差し込まれて約 20px ずれていた
-- 接続前の画面も、画面 1 枚分の高さを取る（`src/web.css`）。短いと下の規約のリンクが画面の中に出て、
+- 接続前の画面も、画面 1 枚分の高さを取る（`src/features/search/styles/main-web.css`）。短いと下の規約のリンクが画面の中に出て、
   結果が届くと押し出されてずれに数えられた（トップの CLS 0.078）
-- **Web はつながって最初の結果がそろうまでも、画面の本体を描く**（`src/hosts/connecting.ts` の仮のホスト、
+- **Web はつながって最初の結果がそろうまでも、画面の本体を描く**（`src/features/search/utils/connecting.ts` の仮のホスト、
   `IekeiAppInner` の `connecting`）。本体は押せない（`inert`）。見出し・探し方・券売機・「見つからないときは」・
   「家系とは」は最初から最終の位置に出て、結果の場所は骨組みが取る（見出しと札も本物と同じ長さの仮の文）。
   最初の結果がそろってから操作を許可する決まりは変えない。この間は最初の呼び出しを 1 件と数える
@@ -591,7 +593,7 @@ tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[s
 - 結果が届いて画面を自動で戻すのは、**3 軒が丸ごと画面より上にあるとき**（下の券売機で発券し直したとき）だけ。
   頭が少しはみ出ているだけで戻すと、「次の 3 軒を見る」を押すたびに画面が 160px 動いた
 - 家系カメラの店の候補も同じ骨組み。家系マッチは札を出す舞台の大きさが決まっているので、今の「探しています」の紙のまま
-- **音の仕組み（AudioContext）は、手が空いたときに先に作り、操作の中では再開だけする**（`src/shared/sound.ts`）。
+- **音の仕組み（AudioContext）は、手が空いたときに先に作り、操作の中では再開だけする**（`src/lib/sound.ts`）。
   最初に作るときだけ約 150ms 止まる（CPU 4 倍遅くして）ので、払う操作の中で作ると最初の 1 回の反応が 208ms
   かかった。**再開（`unlock`）は操作の中で直接呼ぶ**——iPhone の Safari は、操作の中で再開しないと音を
   出させない（画面を描いた後に回すと鳴らなくなる）。鳴らす処理だけは `afterPaint` で画面を描いた後に回す
@@ -602,7 +604,7 @@ tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[s
 UI で選んだ 1 軒は `app.updateModelContext()` でモデルに渡す。これが無いと、
 地図で店を選んだ直後に「この店は？」と聞かれてもモデルは何も知らない。
 
-- 文面は [src/lib/shop-brief.ts](../src/lib/shop-brief.ts) に集約する。判定も味も推定なので、
+- 文面は [src/features/search/utils/shop-brief.ts](../src/features/search/utils/shop-brief.ts) に集約する。判定も味も推定なので、
   **但し書きごとモデルに渡す。** ここを削るとモデルが推定を事実として話す。
 - 選択状態は外側の `IekeiApp` が持つ。`IekeiAppInner` は payload ごとに key で
   作り直されるので、内部に置くと検索のたびに消える。
@@ -613,7 +615,7 @@ UI で選んだ 1 軒は `app.updateModelContext()` でモデルに渡す。こ�
 ### ビルドチェーン
 
 ```
-src/mcp-app.tsx ─vite+singlefile→ dist/mcp-app.html ─embed-html.mjs→ src/generated/app-html.ts
+src/features/search/main-mcp.tsx ─vite+singlefile→ dist/mcp-app.html ─embed-html.mjs→ src/generated/app-html.ts
                                                                               ↓ server.ts が import
 data/shops.json ──────────────────────────────────────────────────→ wrangler が Worker にバンドル
 ```
@@ -819,7 +821,7 @@ CSS より強いので、ホストが 0 を送ってくるだけで見た目が�
 `.main` の `--space-4` がまるごと消えていた（Claude は `safeAreaInsets` を
 送ってこないため React が属性を省き、こちらでは正常に見えていた）。
 寸法は CSS 変数で渡し、足し算は CSS 側で `calc` する
-（[src/lib/safe-area.ts](../src/lib/safe-area.ts)）。**ホスト差は「片方で動いた」では
+（[src/features/search/utils/safe-area.ts](../src/features/search/utils/safe-area.ts)）。**ホスト差は「片方で動いた」では
 確かめられない。値を送ってこないホストは、間違いを隠す。**
 
 **外部通信には CSP 宣言が必要。** 地図タイルも位置情報も `uiResourceMeta` に
@@ -828,7 +830,7 @@ CSS より強いので、ホストが 0 を送ってくるだけで見た目が�
 
 ### 地図モード
 
-- 重なる店は塊にまとめる（[src/lib/cluster.ts](../src/lib/cluster.ts)）。**画面上の
+- 重なる店は塊にまとめる（[src/features/search/utils/cluster.ts](../src/features/search/utils/cluster.ts)）。**画面上の
   距離でまとめる。** 緯度経度の差で切ると、経度 1 度の長さが緯度で変わるので
   北と南で塊の大きさが変わる。並びは入力順のままで、乱数も並べ替えも使わない
 - **升目に振り分けたら終わりにしない。** 境目を挟んだ数 px の 2 軒が別々の塊に
@@ -843,7 +845,7 @@ CSS より強いので、ホストが 0 を送ってくるだけで見た目が�
   比べる。CIの `tests/cluster-work.test.ts` は時刻ではなく操作回数だけを検証する。
 - **外から来た文字を Leaflet にそのまま渡さない。** `bindTooltip` は文字列を
   HTML として描く。基準地点の表示名は tool の引数と geocode の結果なので、
-  文字として出す要素を組んでから渡す（[map-layers.ts](../src/components/map-layers.ts)
+  文字として出す要素を組んでから渡す（[map-layers.ts](../src/features/search/lib/map-layers.ts)
   の `textTooltip`）
 - **経度は丸めずに折り返す。** Leaflet は世界を横に繰り返して描くので、隣の
   複製まで動かすと経度が 480〜510 になる。両端を 180 に丸めると幅ゼロの範囲に
@@ -867,10 +869,10 @@ CSS より強いので、ホストが 0 を送ってくるだけで見た目が�
   （モデルは両方付きで呼べる）、絞り込みは両方の重なりになる。範囲だけを
   名乗ると、枠が県境をまたいだときに県外の店が黙って落ちているのに
   「見えている範囲の全部」と読めてしまう（「地図に出ている範囲（神奈川県）」）
-- **「どこ」を表す語は [src/lib/scope.ts](../src/lib/scope.ts) から取る。** 画面の
+- **「どこ」を表す語は [src/utils/scope.ts](../src/utils/scope.ts) から取る。** 画面の
   見出しとモデルへの文で同じものを使う。別々に書いたら、画面に「全国の家系
   ラーメン 489 件」と出ているのにモデルには「地図に出ている範囲」と伝わっていた
-- Leaflet に触る部分は [src/components/map-layers.ts](../src/components/map-layers.ts)
+- Leaflet に触る部分は [src/features/search/lib/map-layers.ts](../src/features/search/lib/map-layers.ts)
   に集める。MapView が持つのは「いつ描くか」だけ
 - **訪問印だけの更新ではピンと塊を作り直さない。** `drawShops()` の返す
   `updateVisited()` で行った印の点・tooltip・読み上げラベルを更新する。同じ訪問状態なら
@@ -884,7 +886,7 @@ CSS より強いので、ホストが 0 を送ってくるだけで見た目が�
   返る前に味を変えると、そのときの payload にはまだ範囲が入っていない。payload 頼りだと
   2 本目が全国検索になり、**あとから返った方が勝つ**ので範囲の結果が捨てられる
   （実測: 応答を 1.5 秒遅らせて味を押すと見出しが「全国」に戻った）。押した時点で
-  [use-mode-switch](../src/hooks/use-mode-switch.ts) が覚え、落とすときも同じ場所で落とす
+  [use-mode-switch](../src/features/search/hooks/use-mode-switch.ts) が覚え、落とすときも同じ場所で落とす
 - **範囲と基準地点は payload から地図の初期表示に渡す。** payload が差し替わると
   `IekeiAppInner` ごと作り直されるので、地図は毎回新品で生まれる。覚えていた
   つもりの画角は残らない（実測: 489 件に絞った直後、もう一度押すと 564 件）
@@ -1031,7 +1033,7 @@ shardごとに7日保存する。`e2e/evidence.spec.ts` が、使い捨ての子
 - **地図の枠が画面に見切れていると、押下が空振りしていた（#58・直した）。** Leaflet は
   押下で枠へ `focus()` し、ブラウザが外側のページをスクロールするので、離した位置が
   ずれていた。いまは Leaflet より先にスクロールさせずに焦点を置く
-  （[map-layers.ts](../src/components/map-layers.ts) の `focusWithoutScrolling`）。
+  （[map-layers.ts](../src/features/search/lib/map-layers.ts) の `focusWithoutScrolling`）。
   見切れた状態での押下は [e2e/map-offscreen.spec.ts](../e2e/map-offscreen.spec.ts) が
   高さ 720 で意図して作って確かめる。**Playwright の click は押す前に対象を画面へ
   収めようとしてページを動かす**ので、押下のせいと取り違えないよう先に収めてから測る。
@@ -1227,7 +1229,7 @@ flowchart LR
 
 デジタル庁デザインシステム（DADS）の基礎に倣った 3 段構造（プリミティブ →
 セマンティック → 部品）で、色だけ家系の茶赤に置き換えている。
-値は [src/global.css](../src/global.css) のトークンから取り、部品側に生の px と色を書かない。
+値は [src/styles/global.css](../src/styles/global.css) のトークンから取り、部品側に生の px と色を書かない。
 
 `npx react-doctor design` が UI 側の作法（見出しの絵文字など）を見る。
 
@@ -1236,5 +1238,5 @@ flowchart LR
 - コメントは日本語。「なぜそうしたか」を書く。何をしているかはコードで表す。
 - UI の文言も日本語。**続く 1 文は改行で分けない**（JSX の改行は空白 1 個に
   畳まれ、和文だと語の途中に隙間が空く）。長い文は定数に出す。
-- 型は [src/lib/types.ts](../src/lib/types.ts) に集約。zod スキーマは
+- 型は [src/types/index.ts](../src/types/index.ts) に集約。zod スキーマは
   [server/schema.ts](../server/schema.ts) で、両者は手で同期させている。

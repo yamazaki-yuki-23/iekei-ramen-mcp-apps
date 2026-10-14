@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { askMessageText, decideMessageText, describeShop } from "../src/lib/shop-brief";
-import type { Shop } from "../src/lib/types";
-import { CONFIDENCE } from "../src/lib/types";
+import {
+  askMessageText,
+  decideMessageText,
+  describeShop,
+} from "../src/features/search/utils/shop-brief";
+import type { Shop } from "../src/types";
+import { CONFIDENCE } from "../src/utils/labels";
 
 const YOSHIMURAYA: Shop = {
   id: "node/604269583",

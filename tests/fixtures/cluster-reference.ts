@@ -1,5 +1,5 @@
 // #83より前の実装を固定した比較用の正本。最適化側と共通化しない。
-import type { Shop } from "../../src/lib/types";
+import type { Shop } from "../../src/types";
 
 /**
  * 地図のマーカーをまとめる。

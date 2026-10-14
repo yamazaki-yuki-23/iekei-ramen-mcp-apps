@@ -4,7 +4,7 @@ import { afterEach, expect, it } from "vitest";
 import { createServer, type ServerDeps } from "../server/server";
 import fixture from "../e2e/fixtures/shops-boundaries.json" with { type: "json" };
 import realShops from "../data/shops.json" with { type: "json" };
-import type { AppPayload, Shop } from "../src/lib/types";
+import type { AppPayload, Shop } from "../src/types";
 import { memoryVisits } from "../server/visits";
 
 const clients: Client[] = [];

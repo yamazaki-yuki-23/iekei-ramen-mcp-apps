@@ -1,8 +1,8 @@
 import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
 import { legalPages, seoPages, siteHeader } from "./seo-pages.mjs";
-import { legalLinksHtml } from "../src/lib/legal-links.ts";
-import { tabBarHtml } from "../src/lib/tabbar.ts";
-import { TYPES, shareUrl } from "../src/shindan/shindan.ts";
+import { legalLinksHtml } from "../src/utils/legal-links.ts";
+import { tabBarHtml } from "../src/utils/tabbar.ts";
+import { TYPES, shareUrl } from "../src/utils/shindan.ts";
 
 const output = new URL("../dist/web/", import.meta.url);
 const shops = JSON.parse(await readFile(new URL("../data/shops.json", import.meta.url), "utf8"));
@@ -16,7 +16,10 @@ for (const [path, content] of [...files, ...legal]) {
   await mkdir(new URL(".", destination), { recursive: true });
   await writeFile(destination, content);
 }
-await copyFile(new URL("../src/global.css", import.meta.url), new URL("seo-tokens.css", output));
+await copyFile(
+  new URL("../src/styles/global.css", import.meta.url),
+  new URL("seo-tokens.css", output),
+);
 
 /*
  * 「チャットで使う方法」（/connect、#196）も、ほかの静的なページと同じヘッダーと下のタブバーにする。

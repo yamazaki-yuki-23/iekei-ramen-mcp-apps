@@ -13,8 +13,8 @@ const html = await fs.readFile(path.join(root, "dist", "mcp-app.html"), "utf-8")
 // 認可画面も同じトークンを使う。Worker/Nodeの両方で読める文字列にする。
 const consentCss = (
   await Promise.all([
-    fs.readFile(path.join(root, "src", "global.css"), "utf-8"),
-    fs.readFile(path.join(root, "src", "oauth-consent.css"), "utf-8"),
+    fs.readFile(path.join(root, "src", "styles", "global.css"), "utf-8"),
+    fs.readFile(path.join(root, "server", "styles", "oauth-consent.css"), "utf-8"),
   ])
 ).join("\n");
 const out = path.join(root, "src", "generated", "app-html.ts");

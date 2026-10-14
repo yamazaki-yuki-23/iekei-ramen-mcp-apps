@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { summarize } from "../src/lib/progress";
+import { summarize } from "../src/utils/progress";
 // @ts-expect-error データ作成スクリプトはJavaScript。
 import { applyCorrections } from "../scripts/corrections.mjs";
 const evidence = { reason: "公式情報で確認", source: "公式サイト", date: "2026-10-04" };

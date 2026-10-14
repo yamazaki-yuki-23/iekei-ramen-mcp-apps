@@ -6,7 +6,7 @@
  * 動いている（`IEKEI_DEV_VISITOR`。main.ts にしか無い道）。
  */
 import { expect, type FrameLocator, type Page } from "@playwright/test";
-import { resultCaveat } from "../src/lib/data-caveats";
+import { resultCaveat } from "../src/utils/data-caveats";
 import { test } from "./fixtures";
 import {
   afterDelivered,

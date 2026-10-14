@@ -15,7 +15,7 @@ test.beforeAll(async () => {
       {
         name: "count-clustering",
         transform(code, id) {
-          if (!id.endsWith("/src/lib/cluster.ts")) return;
+          if (!id.endsWith("/src/features/search/utils/cluster.ts")) return;
           // 本番ソースは変えず、テスト用バンドルだけで再計算の回数を測る。
           return code.replace("const cells =", "window.mapTest.counts.clusters++; const cells =");
         },

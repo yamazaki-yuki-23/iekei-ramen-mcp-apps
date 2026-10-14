@@ -1,4 +1,4 @@
-import { LEGAL_LINKS } from "../lib/legal-links";
+import { LEGAL_LINKS } from "../utils/legal-links";
 
 /** Web の各画面の下に置く、規約へのリンク（#198）。会話の中（MCP）には出さない。 */
 export function LegalLinks() {

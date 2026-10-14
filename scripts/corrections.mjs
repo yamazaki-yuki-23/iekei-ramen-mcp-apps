@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { ALL_PREFECTURES } from "../src/lib/prefectures.ts";
+import { ALL_PREFECTURES } from "../src/utils/prefectures.ts";
 
 const text = (value) => typeof value === "string" && value.trim().length > 0;
 const locationKey = (shop) => `${shop.name.trim()}@${shop.lat.toFixed(4)},${shop.lon.toFixed(4)}`;

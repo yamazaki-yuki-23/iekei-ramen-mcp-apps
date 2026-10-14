@@ -2,8 +2,8 @@ import L from "leaflet";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import data from "../../data/shops.json";
-import { MapView } from "../../src/components/MapView";
-import type { Shop } from "../../src/lib/types";
+import { MapView } from "../../src/features/search/components/MapView";
+import type { Shop } from "../../src/types";
 
 export interface MapTestApi {
   counts: { circles: number; markers: number; clusters: number };

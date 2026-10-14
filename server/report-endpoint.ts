@@ -1,5 +1,5 @@
 import shops from "../data/shops.json";
-import { REPORT_ACCEPTED } from "../src/lib/report-accepted";
+import { REPORT_ACCEPTED } from "../src/utils/report-accepted";
 import { receiveReport, ReportSchema } from "../src/lib/reports";
 
 interface ReportEnv {

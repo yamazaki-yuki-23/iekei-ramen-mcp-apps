@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import data from "../data/shops.json" with { type: "json" };
-import { clusterShops } from "../src/lib/cluster";
-import type { Shop } from "../src/lib/types";
+import { clusterShops } from "../src/features/search/utils/cluster";
+import type { Shop } from "../src/types";
 import { clusterShops as reference } from "./fixtures/cluster-reference";
 
 const shops = data as Shop[];

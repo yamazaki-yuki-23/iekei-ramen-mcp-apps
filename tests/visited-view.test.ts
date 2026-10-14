@@ -5,7 +5,7 @@
  * 店が消えると、記録は残ったまま一覧から落ちる（サーバーは実在する店だけを返す）。
  */
 import { describe, expect, it } from "vitest";
-import { visitedView } from "../src/lib/visited-view";
+import { visitedView } from "../src/utils/visited-view";
 
 describe("visitedView", () => {
   it("1 軒も記録が無いときは、消す導線を出さない", () => {

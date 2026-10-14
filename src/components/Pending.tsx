@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import type { ResultLook } from "../lib/skeleton";
-// 見た目は src/global.css の .pending-*（全ページが最初から読む CSS。別の CSS に分けると最初の表示が遅れた）。
+import type { ResultLook } from "../utils/skeleton";
+// 見た目は src/styles/global.css の .pending-*（全ページが最初から読む CSS。別の CSS に分けると最初の表示が遅れた）。
 const LOOK_CLASS: Record<ResultLook, string> = {
   live: "pending-wrap",
   hold: "pending-wrap",

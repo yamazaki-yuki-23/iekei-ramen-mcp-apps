@@ -6,8 +6,8 @@
  */
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { chromium } from "playwright";
-import { rarity, TYPES } from "../src/shindan/shindan.ts";
-import { faceSvg } from "../src/shindan/shindan-face.ts";
+import { rarity, TYPES } from "../src/utils/shindan.ts";
+import { faceSvg } from "../src/utils/shindan-face.ts";
 
 const out = new URL("../public/og/", import.meta.url);
 await mkdir(out, { recursive: true });
