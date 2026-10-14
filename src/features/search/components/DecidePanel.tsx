@@ -201,7 +201,7 @@ export function DecidePanel({
           className={styles.buttonSecondary}
           onClick={onReroll}
           disabled={busy || (info?.rounds ?? 1) <= 1}
-          // 文言が変わっても、キーボードの焦点を戻せるように（use-result-handoff.ts）。
+          // 文言が変わっても、キーボードの焦点を戻せるように（use-keyboard-focus-return.ts）。
           data-focus-key="decide-reroll"
         >
           {rerollLabel(info)}

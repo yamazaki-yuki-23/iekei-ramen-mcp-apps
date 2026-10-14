@@ -5,7 +5,7 @@ MCP Apps 対応ホストの中で UI が動く。
 
 ## 必須ルール
 
-作業前に [docs/development.md](docs/development.md) を読む。既存の設計上の制約、データ更新、検証、デプロイの詳細はこの開発ガイドが持つ。UIを触る前には [DESIGN.md](DESIGN.md) も読む。ファイルを足す・動かす・名前を付ける前には [docs/development/structure.md](docs/development/structure.md) を読む（置き場と名前の決まり。#220 で lint とテストの強制を入れる）。
+作業前に [docs/development.md](docs/development.md) を読む。既存の設計上の制約、データ更新、検証、デプロイの詳細はこの開発ガイドが持つ。UIを触る前には [DESIGN.md](DESIGN.md) も読む。ファイルを足す・動かす・名前を付ける前には [docs/development/structure.md](docs/development/structure.md) を読む（置き場と名前の決まり。lint とテストで強制している）。
 
 - 匿名の検索を維持する。訪問記録だけ認証を要求し、秘密の値をログ・チャット・issueに出さない。
 - 店舗の味・評判・混雑・移動時間を推測で補わない。距離は直線距離。家系判定の段階は画面に出さず、誤りの但し書き（報告の案内つき）と参考値の但し書きを維持する。

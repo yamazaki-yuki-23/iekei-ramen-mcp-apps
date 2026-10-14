@@ -22,7 +22,7 @@ interface Props {
   /** 次にできること（もう一度試す、など）。 */
   action?: { label: string; onClick: () => void };
   /**
-   * 結果が入れ替わったときに読み上げる文（use-result-handoff.ts）。画面の文をそのまま
+   * 結果が入れ替わったときに読み上げる文（use-result-announcement.ts）。画面の文をそのまま
    * 複製すると、同じ文が 2 か所に並ぶので、短い別の言い方を渡す。
    */
   announce?: string;

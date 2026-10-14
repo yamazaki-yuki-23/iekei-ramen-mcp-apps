@@ -17,6 +17,7 @@ import type {
   Shop,
   VisitResult,
 } from "../../../types";
+import type { StampQueue } from "../utils/stamp-queue";
 
 /*
  * 記録に失敗したときの文。**サインインの切れも同じ見え方になる。**
@@ -78,19 +79,6 @@ interface Options {
   stampQueue: StampQueue;
 }
 
-/** 渡した仕事を 1 本ずつ順に走らせる。失敗しても列は止めない。 */
-type StampQueue = (task: () => Promise<void>) => Promise<void>;
-
-export function createStampQueue(): StampQueue {
-  let tail: Promise<void> = Promise.resolve();
-  return (task) => {
-    const done = tail.then(task);
-    // 失敗で列を止めない。1 本落ちても、次の操作は投げられる。
-    tail = done.catch(() => {});
-    return done;
-  };
-}
-
 /**
  * サーバーの tool を呼ぶ側の一式。
  *
@@ -142,7 +130,7 @@ export function useServerTools({
    * 画面に出ている結果が、いまの操作より古いかどうか。
    *
    * 条件を変えて呼び直した瞬間に立てる。成功すれば payload が差し替わり、
-   * IekeiAppInner ごと作り直されるので、ここで戻す必要はない。失敗したときだけ
+   * SearchAppInner ごと作り直されるので、ここで戻す必要はない。失敗したときだけ
    * 立ったまま残り、前の結果を出さない判断に使う。
    *
    * これが無いと、都道府県を変えて呼び出しが落ちたときに、プルダウンは新しい

@@ -9,16 +9,22 @@ import type { SwipeDir } from "../../types";
 import type { Origin, Shop, TasteKey } from "../../types";
 import { CardStack, type StackHandle } from "./components/CardStack";
 import { createFx, type Fx } from "./lib/fx";
-import {
-  useFeed,
-  useFever,
-  useReducedMotion,
-  useSwipeKeys,
-  useTodayCount,
-  vibrate,
-} from "./hooks/hooks";
-import { AskLine, Controls, Counter, Gauge, Header } from "./components/Parts";
-import { EndSheet, PlaceSheet, StatusSheet, TodaySheet, WantsSheet } from "./components/Sheets";
+import { useFeed } from "./hooks/use-feed";
+import { useFever } from "./hooks/use-fever";
+import { useReducedMotion } from "./hooks/use-reduced-motion";
+import { useSwipeKeys } from "./hooks/use-swipe-keys";
+import { useTodayCount } from "./hooks/use-today-count";
+import { vibrate } from "./lib/vibrate";
+import { AskLine } from "./components/AskLine";
+import { Controls } from "./components/Controls";
+import { Counter } from "./components/Counter";
+import { Gauge } from "./components/Gauge";
+import { Header } from "./components/Header";
+import { EndSheet } from "./components/EndSheet";
+import { PlaceSheet } from "./components/PlaceSheet";
+import { StatusSheet } from "./components/StatusSheet";
+import { TodaySheet } from "./components/TodaySheet";
+import { WantsSheet } from "./components/WantsSheet";
 import { afterPaint, prepareWhenIdle, sound, unlock } from "../../lib/sound";
 import { loadWants, saveWants } from "./lib/storage";
 import styles from "./styles/match.module.css";
@@ -51,7 +57,7 @@ interface Step {
  * 右に払うと「行きたい」、左に払うとパス、「今日はここ」でその場で決まり。何軒で終えてもよい。
  * 見終わったら「範囲を広げる」か「行きたいリストを見る」で区切る（無限には続けない）。
  */
-export function SwipeApp() {
+export function MatchApp() {
   const reduce = useReducedMotion();
   const { shops, origin, status, exhausted, failed, prefetch, retry, searchPlace } = useFeed();
   // 音の仕組みは手が空いたときに先に作る。最初の払いを重くしない（#214）。

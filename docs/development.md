@@ -93,7 +93,7 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 
 ### 構成
 
-**置き場と名前の決まりは [development/structure.md](development/structure.md)。** ファイルを足す・動かす前に読む（#220 で lint とテストの強制を入れる）。下の表は、いまの主なファイルの役割。
+**置き場と名前の決まりは [development/structure.md](development/structure.md)。** ファイルを足す・動かす前に読む（lint とテストで強制している）。下の表は、いまの主なファイルの役割。
 
 | ファイル                                                                | 役割                                                                          |
 | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
@@ -103,8 +103,8 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 | `server/main.ts`                                                        | ローカル実行エントリ（HTTP / stdio）                                          |
 | `src/features/search/main-mcp.tsx`                                      | MCP Apps の入口                                                               |
 | `src/features/search/main-web.tsx`                                      | ブラウザで直接開く Web の入口                                                 |
-| `src/features/search/iekei-app.tsx`                                     | 共通 UI の外側。作り直しをまたぐ状態（選択・まわる店・焦点）                  |
-| `src/features/search/components/iekei-app-inner.tsx`                    | 結果の画面。payload ごとに作り直す                                            |
+| `src/features/search/SearchApp.tsx`                                     | 共通 UI の外側。作り直しをまたぐ状態（選択・まわる店・焦点）                  |
+| `src/features/search/components/SearchAppInner.tsx`                     | 結果の画面。payload ごとに作り直す                                            |
 | `src/features/search/`                                                  | 探す（MCP の画面と Web のトップ）。部品は `components/`                       |
 | `src/features/search/components/McpConnection.tsx`・`WebConnection.tsx` | MCP Apps と Web の接続・tool 呼び出し・リンクの差し替え                       |
 | `src/features/match/`                                                   | 家系マッチ（`/match/`）。Web だけの別ページ                                   |
@@ -247,7 +247,7 @@ Claudeの本番URL追加は未確認であることをページにも明記す�
 
 ### 家系マッチ（`/match/`、#166・#181）
 
-Web だけの別ページ（`match/index.html` → `src/features/match/main.tsx`）。トップの大きな `iekei-app` には入れず、
+Web だけの別ページ（`match/index.html` → `src/features/match/main.tsx`）。トップの大きな `SearchApp` には入れず、
 同じ origin の `/mcp` を MCP クライアントで呼ぶ（トップと同じ。検索の決まりはサーバーの tool だけが持つ）。
 旧 URL の `/swipe/` は `public/_redirects` で `/match/` へ 301 で送る（#181。静的アセットの転送で、Worker は通らない）。
 
@@ -288,9 +288,9 @@ Web だけの別ページ（`camera/index.html` → `src/features/camera/main.ts
 
 ### UI のホスト境界
 
-`src/features/search/iekei-app.tsx` は両方の入口が使う画面と状態を持つ。payload ごとに key で作り直す結果の画面は
-`src/features/search/components/iekei-app-inner.tsx`、作り直しをまたぐ state（焦点・読み上げ・「行った」の列など）は外側の
-`iekei-app.tsx` に置く（#171・#172）。`src/features/search/types/host.ts` が
+`src/features/search/SearchApp.tsx` は両方の入口が使う画面と状態を持つ。payload ごとに key で作り直す結果の画面は
+`src/features/search/components/SearchAppInner.tsx`、作り直しをまたぐ state（焦点・読み上げ・「行った」の列など）は外側の
+`SearchApp.tsx` に置く（#171・#172）。`src/features/search/types/host.ts` が
 tool呼び出し・リンク・表示モード・モデルとの会話の契約を定義し、SDKのAppは
 `src/features/search/components/McpConnection.tsx` に閉じ込める。MCPの初期通知は従来どおり受け取り、Webでは
 `src/features/search/components/WebConnection.tsx` が同じoriginの `/mcp` にSDKクライアントを接続する。
@@ -418,7 +418,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
   （1 軒目を間違えると戻る形になる）。同点は積んだ順を残すので、結果は決定的。
 - **距離は直線距離。徒歩◯分に換算しない。** 経路探索のデータを持っていないので、
   時間を出すと「間に合うか」の判断材料に化ける。画面にも直線距離だと書く。
-- 積んだ店は外側の `IekeiApp` が持ち、**検索し直しても消さない**。別の条件で
+- 積んだ店は外側の `SearchApp` が持ち、**検索し直しても消さない**。別の条件で
   見つけた店を足していくものなので、payload ごとに消すと組み立てられない。
   選択（1 軒・モデルに渡す）とは寿命も役割も別。
 - **出発点も一緒に持つ。今の payload から取らない。** 店だけ残して出発点を
@@ -526,8 +526,8 @@ tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[s
 
 ### 作り直しのあとの焦点と読み上げ（#156）
 
-`IekeiAppInner` は payload ごとに作り直すので、押したボタンも消え、待つ間は disabled にも
-なって焦点が body に落ちる。作り直されない `IekeiApp` で受け持つ（[src/features/search/hooks/use-result-handoff.ts](../src/features/search/hooks/use-result-handoff.ts)）。
+`SearchAppInner` は payload ごとに作り直すので、押したボタンも消え、待つ間は disabled にも
+なって焦点が body に落ちる。作り直されない `SearchApp` で受け持つ（[src/features/search/hooks/use-keyboard-focus-return.ts](../src/features/search/hooks/use-keyboard-focus-return.ts)・[use-result-announcement.ts](../src/features/search/hooks/use-result-announcement.ts)）。
 
 - **キーボードで押したときだけ**、押したあとの 30 秒を毎フレーム見て、焦点が body に落ちていたら
   押せる状態の同じボタンへ戻す。Enter・Space の click は `detail` が 0 なのでマウスと見分けられる
@@ -584,7 +584,7 @@ tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[s
 - 接続前の画面も、画面 1 枚分の高さを取る（`src/features/search/styles/main-web.css`）。短いと下の規約のリンクが画面の中に出て、
   結果が届くと押し出されてずれに数えられた（トップの CLS 0.078）
 - **Web はつながって最初の結果がそろうまでも、画面の本体を描く**（`src/features/search/utils/connecting.ts` の仮のホスト、
-  `IekeiAppInner` の `connecting`）。本体は押せない（`inert`）。見出し・探し方・券売機・「見つからないときは」・
+  `SearchAppInner` の `connecting`）。本体は押せない（`inert`）。見出し・探し方・券売機・「見つからないときは」・
   「家系とは」は最初から最終の位置に出て、結果の場所は骨組みが取る（見出しと札も本物と同じ長さの仮の文）。
   最初の結果がそろってから操作を許可する決まりは変えない。この間は最初の呼び出しを 1 件と数える
   （`data-pending-calls`。待つ仕組みが「済んだ」と取り違えない）。会話の中は、つながるのがすぐなので「読み込み中」のまま
@@ -606,7 +606,7 @@ UI で選んだ 1 軒は `app.updateModelContext()` でモデルに渡す。こ�
 
 - 文面は [src/features/search/utils/shop-brief.ts](../src/features/search/utils/shop-brief.ts) に集約する。判定も味も推定なので、
   **但し書きごとモデルに渡す。** ここを削るとモデルが推定を事実として話す。
-- 選択状態は外側の `IekeiApp` が持つ。`IekeiAppInner` は payload ごとに key で
+- 選択状態は外側の `SearchApp` が持つ。`SearchAppInner` は payload ごとに key で
   作り直されるので、内部に置くと検索のたびに消える。
 - 選択を外すときは `{ content: [] }` を送る。空の content が「消す」の意味になる。
 - `sendMessage` は即座にモデルを動かし、`updateModelContext` は次の発話まで待つ。
@@ -888,7 +888,7 @@ CSS より強いので、ホストが 0 を送ってくるだけで見た目が�
   （実測: 応答を 1.5 秒遅らせて味を押すと見出しが「全国」に戻った）。押した時点で
   [use-mode-switch](../src/features/search/hooks/use-mode-switch.ts) が覚え、落とすときも同じ場所で落とす
 - **範囲と基準地点は payload から地図の初期表示に渡す。** payload が差し替わると
-  `IekeiAppInner` ごと作り直されるので、地図は毎回新品で生まれる。覚えていた
+  `SearchAppInner` ごと作り直されるので、地図は毎回新品で生まれる。覚えていた
   つもりの画角は残らない（実測: 489 件に絞った直後、もう一度押すと 564 件）
 - 全画面は `requestDisplayMode`。**返ってきた mode を正とする**（要求と違う
   モードが返ることがある）。`availableDisplayModes` に無いホストでは釦ごと出さない
