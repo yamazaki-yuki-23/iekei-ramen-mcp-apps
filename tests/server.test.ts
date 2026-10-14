@@ -7,8 +7,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { createServer, MEMBER_TOOLS } from "../server/server";
 import shopsData from "../data/shops.json" with { type: "json" };
-import type { AppPayload } from "../src/lib/types";
-import { CONFIDENCE } from "../src/lib/types";
+import type { AppPayload } from "../src/types";
+import { CONFIDENCE } from "../src/utils/labels";
 import { PayloadSchema } from "../server/schema";
 
 // 実店舗データの結合・smoke検証。件数分布に依存する境界は server-boundaries.test.ts。

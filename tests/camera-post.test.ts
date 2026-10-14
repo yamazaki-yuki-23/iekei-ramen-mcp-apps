@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { body, COMMENTS, tagOf, threadsText, TONES, xText } from "../src/camera/camera-post";
+import {
+  body,
+  COMMENTS,
+  tagOf,
+  threadsText,
+  TONES,
+  xText,
+} from "../src/features/camera/utils/camera-post";
 
 const shop = { name: "横浜家系ラーメン 石川家", city: "横浜市", prefecture: "神奈川県" };
 

@@ -1,0 +1,366 @@
+/*
+ * デザイントークン。
+ *
+ * 組み立て方はデジタル庁デザインシステム（DADS）に倣って 3 段にしてある。
+ *   1. プリミティブ  色の階調そのもの。用途を持たない（--ramen-600 など）
+ *   2. セマンティック 用途に名前を付けたもの（--color-accent など）
+ *   3. コンポーネント CSS Modules 側で組み立てる
+ * 途中を飛ばしてプリミティブを直接使うと、ダークモードの差し替えが効かない。
+ *
+ * 数値の根拠は DADS の基礎（foundations）:
+ *   余白   8px グリッド
+ *   角丸   小 8px / 中 12px / 大 16px / 全 999px
+ *   字     本文 16px、最小 14px、行高 1.5 以上、小さい文字は字間 0.02em
+ *   焦点   黄（#ffd43d）＋黒の縁。背景が明でも暗でも見える組み合わせ
+ * 色だけは DADS の青ではなく家系（醤油豚骨の茶赤）を使う。
+ *
+ * 体験の芯は券売機（#144）。色は 3 つの役割（黒・茶赤・白と灰）だけ。ロゴもこの 3 色のラーメン丼。
+ * 熱は形と手応え（押すと沈むキー、切り欠きのある食券）で出す。詳しくは DESIGN.md 0 節。
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /*
+   * Fallbacks for host style variables used by this app.
+   * The host may provide these (and many more) via the host context.
+   */
+  --color-text-primary: light-dark(#1f2937, #f3f4f6);
+  --color-text-inverse: light-dark(#f3f4f6, #1f2937);
+  --color-text-info: light-dark(#1d4ed8, #60a5fa);
+  --color-background-primary: light-dark(#ffffff, #1a1a1a);
+  --color-background-inverse: light-dark(#1a1a1a, #ffffff);
+  --color-background-info: light-dark(#eff6ff, #1e3a5f);
+  --color-ring-primary: light-dark(#3b82f6, #60a5fa);
+  --border-radius-md: 6px;
+  --border-width-regular: 1px;
+  --font-sans:
+    ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+  --font-text-md-size: 1rem;
+  --font-text-md-line-height: 1.5;
+  --font-heading-3xl-size: 2.25rem;
+  --font-heading-3xl-line-height: 1.1;
+  --font-heading-2xl-size: 1.875rem;
+  --font-heading-2xl-line-height: 1.2;
+  --font-heading-xl-size: 1.5rem;
+  --font-heading-xl-line-height: 1.25;
+  --font-heading-lg-size: 1.25rem;
+  --font-heading-lg-line-height: 1.3;
+  --font-heading-md-size: 1rem;
+  --font-heading-md-line-height: 1.4;
+  --font-heading-sm-size: 0.875rem;
+  --font-heading-sm-line-height: 1.4;
+
+  /* --- プリミティブ: 家系（醤油豚骨の茶赤） ---------------------------- */
+  /*
+   * 600 が元からのブランド色。文字に使うと白地でコントラスト 5.4 しか出ず、
+   * 本文には足りないので、文字用に 700（7.2）を別に用意してある。
+   */
+  --ramen-50: #fdf4f1;
+  --ramen-100: #fae4dc;
+  --ramen-200: #f3c5b6;
+  --ramen-300: #e89d87;
+  --ramen-400: #da7256;
+  --ramen-500: #c85434;
+  --ramen-600: #b8442c;
+  --ramen-700: #9a3623;
+  --ramen-800: #7c2c1d;
+  --ramen-900: #5e2216;
+  --ramen-950: #33150f;
+
+  /* --- プリミティブ: 醤油の黒 ------------------------------------------ */
+  /* 黒の役割（--color-ink）の元。明暗で変えない。 */
+  --shoyu-900: #22150e;
+  --shoyu-950: #150c07;
+
+  /* --- プリミティブ: ニュートラル -------------------------------------- */
+  /* 家系色に合わせて僅かに暖色へ寄せた灰。純灰と混ぜると色が濁って見える。 */
+  --gray-0: #ffffff;
+  --gray-50: #f8f7f5;
+  --gray-100: #efedea;
+  --gray-200: #dedbd6;
+  --gray-300: #c4c0b9;
+  --gray-400: #a09b93;
+  --gray-500: #7d776e;
+  --gray-600: #635e57;
+  --gray-700: #4a4640;
+  --gray-800: #33302c;
+  --gray-900: #201e1b;
+  --gray-950: #141312;
+
+  /* --- セマンティック: 色 ---------------------------------------------- */
+  /* 線・アイコン・大きい文字に使う。面の上に置くだけなので明暗で振る。 */
+  --color-accent: light-dark(var(--ramen-600), var(--ramen-400));
+  /* 本文サイズの文字に使う。白地 7.2、暗地 7.6 でどちらも AAA。 */
+  --color-accent-strong: light-dark(var(--ramen-700), var(--ramen-300));
+  /*
+   * 塗り（ボタン・選択中のチップ）の色。白抜き文字を載せるので、明暗で
+   * 振らずに 600 で固定する。暗いテーマで明るい側へ振ると、白文字との
+   * コントラストが 3.2 まで落ちて読めなくなる。
+   */
+  --color-accent-fill: var(--ramen-600);
+  --color-accent-fill-hover: var(--ramen-700);
+  --color-accent-soft: light-dark(var(--ramen-50), #2a1510);
+  --color-accent-soft-strong: light-dark(var(--ramen-100), #3d1f16);
+  --color-accent-border: light-dark(var(--ramen-200), var(--ramen-800));
+  --color-text-on-accent: #ffffff;
+
+  /* 黒の役割: 文字・輪郭・判定の段階・選択中の枠・券売機と食券の線。 */
+  --color-ink: light-dark(var(--shoyu-900), #f6efe6);
+
+  --color-surface: light-dark(var(--gray-0), var(--gray-900));
+  --color-surface-muted: light-dark(var(--gray-50), var(--gray-950));
+  --color-border: light-dark(var(--gray-200), #3a3733);
+  --color-border-strong: light-dark(var(--gray-300), var(--gray-600));
+  --color-text-muted: light-dark(var(--gray-600), var(--gray-400));
+
+  /*
+   * 焦点リング。DADS の黄＋黒に倣う。色に意味を持たせない（成功・警告と
+   * 混ざらない）ので、明背景でも暗背景でも同じものが使える。
+   */
+  --color-focus-ring: #ffd43d;
+  --color-focus-edge: #141312;
+
+  /*
+   * 失敗の赤は家系の茶赤と別に持つ。ブランド色で失敗を出すと、
+   * 「強調」と「異常」が同じ色になって区別が付かない。
+   */
+  --color-error: light-dark(#ce0000, #ff9b9b);
+  --color-error-soft: light-dark(#fdecec, #3a1414);
+  --color-error-border: light-dark(#f0b4b4, #7a2424);
+
+  /* --- セマンティック: 余白（8px グリッド） ------------------------------ */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* --- セマンティック: 角丸 --------------------------------------------- */
+  /* 小さい図形ほど丸みが強く見えるので、部品の大きさごとに段を変える。 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --control-min-size: 44px;
+  /* 下のタブバー（#194、スマホ幅だけ）の高さ。safe area はこの下に足す。 */
+  --tabbar-height: 56px;
+  /* 券売機・食券・選択中の輪郭。通常の枠（1px）と分けて持つ。 */
+  --border-width-strong: 2px;
+
+  /* --- セマンティック: 影 ----------------------------------------------- */
+  /* 平常時は枠線だけ。影は「浮いている＝操作中」の合図に取っておく。 */
+  --elevation-1: 0 1px 2px rgb(20 19 18 / 6%), 0 2px 8px rgb(20 19 18 / 6%);
+  --elevation-2: 0 2px 4px rgb(20 19 18 / 8%), 0 8px 20px rgb(20 19 18 / 10%);
+
+  /* --- セマンティック: 文字 --------------------------------------------- */
+  /* DADS は 14px 未満を認めない。注記もここまでしか落とさない。 */
+  --font-size-note: 0.875rem;
+  /*
+   * 屋号の太さ。約束の一言・券売機・食券の数字にだけ使う。外部フォントは
+   * 読み込まない（単一 HTML と CSP）。900 が無い環境では 700 に落ちる。
+   */
+  --font-weight-display: 900;
+  --font-display-line-height: 1.25;
+  /* 小さい和文は字間を空けた方が読める（DADS: 2%）。 */
+  --letter-spacing-tight: -0.01em;
+  --letter-spacing-normal: 0.02em;
+
+  --duration-fast: 120ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0.1, 1);
+  /* 現れるもの（店の詳細。#212、DESIGN.md 7. 動き）。押したものの見た目の変化（--duration-fast）より少し長い。 */
+  --duration-transition: 200ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-text-md-size);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--font-text-md-line-height);
+  letter-spacing: var(--letter-spacing-normal);
+  color: var(--color-text-primary);
+  /*
+   * 背景も明示する（#156）。透明のままだと、検査ツールや一部の環境が暗いモードでも白地と
+   * 見なし、文字のコントラストを誤って測る。**値は Canvas**（ブラウザが今描いている地の色）
+   * にして、見た目は変えない。トークンにすると、暗いモードで .main の外の色が変わった。
+   */
+  background-color: Canvas;
+  /* 和文の約物が全角のまま並ぶと隙間だらけに見える。詰めて組む。 */
+  font-feature-settings: "palt" 1;
+}
+
+h1 {
+  font-size: var(--font-heading-3xl-size);
+  line-height: var(--font-heading-3xl-line-height);
+}
+h2 {
+  font-size: var(--font-heading-2xl-size);
+  line-height: var(--font-heading-2xl-line-height);
+}
+h3 {
+  font-size: var(--font-heading-xl-size);
+  line-height: var(--font-heading-xl-line-height);
+}
+h4 {
+  font-size: var(--font-heading-lg-size);
+  line-height: var(--font-heading-lg-line-height);
+}
+h5 {
+  font-size: var(--font-heading-md-size);
+  line-height: var(--font-heading-md-line-height);
+}
+h6 {
+  font-size: var(--font-heading-sm-size);
+  line-height: var(--font-heading-sm-line-height);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  /* 見出しは字を詰め、折り返しの行長を揃える。和文は文節で折り返す（対応していないブラウザは無視する。#205）。 */
+  letter-spacing: var(--letter-spacing-tight);
+  text-wrap: balance;
+  word-break: auto-phrase;
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--font-mono);
+  font-size: 1em;
+  letter-spacing: normal;
+}
+
+b,
+strong {
+  font-weight: var(--font-weight-bold);
+}
+
+/* 動きを減らす設定の人には、色の変化だけ残して移動と拡大を止める。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * 下のタブバー（#194）がある画面では、最後の中身がタブバーに隠れないよう下を空ける。
+ * --tabbar-space は、画面いっぱいの高さを使うページ（家系マッチ）が自分の高さから引くのにも使う。
+ */
+@media (max-width: 40rem) {
+  :root:has(nav[data-tabbar]) {
+    --tabbar-space: calc(var(--tabbar-height) + env(safe-area-inset-bottom, 0px));
+    /* safe area はタブバーが受け持つので、ページの下の余白からは外す（二重に空けない）。 */
+    --page-safe-bottom: 0px;
+  }
+
+  :root:has(nav[data-tabbar]) body {
+    padding-bottom: var(--tabbar-space);
+  }
+}
+
+/*
+ * 規約へのリンク（#198）。Web のすべてのページの下に出す（src/utils/legal-links.ts）。
+ * 静的なページもこのファイルを seo-tokens.css として読むので、両方ここで決める。
+ */
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--space-4);
+  /* リンク自体が 44px の高さを持つので、上下の余白はその分だけ減らす（#205）。 */
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  font-size: var(--font-size-note);
+}
+
+/* 文字は小さいままで、押せる高さは 44px にする（DESIGN.md。#202 の総点検では 21px だった）。 */
+.legal-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-min-size);
+  color: var(--color-text-muted);
+}
+
+/*
+ * 待つ間の結果の領域（#214、src/components/Pending.tsx）。全ページが最初から読むここに置く
+ * （別の CSS に分けると、トップで最初に読む CSS が 1 つ増え、FCP が 1.66 → 1.91 秒に遅れた）。
+ * - dim: 同じ探し方で取り直す間。前の結果を薄くして残し、高さを保つ
+ * - skeleton: 違う探し方へ移る間。本物の部品に仮の店を渡して描き、文字を透明な帯にする
+ *   （寸法を決め打ちしないので、届いて入れ替わっても配置が変わらない）。光沢は付けない（動きは控えめ）
+ * - reserve: 300ms までは場所だけ取って見せない（速く届いたときにちらつかせない）
+ * 骨組みから本物へは一度に入れ替える（薄く現れる動きは店の詳細だけ）。
+ */
+/*
+ * 包む箱は作らない（display: contents）。箱を作ると、親が縦に並べるときの間隔が中の部品の間から
+ * 消えて、届いて入れ替わったときに高さが変わった（家系カメラで 36px）。
+ */
+.pending-wrap {
+  display: contents;
+}
+
+/* 箱が無いので、薄くするのは中身の 1 つずつ。 */
+.pending-dim > * {
+  opacity: 0.45;
+}
+
+.pending-skeleton :is(strong, span, p, small, b, em, h2, h3, dd, dt, li, a, button) {
+  color: transparent !important;
+}
+
+/*
+ * 帯は枠と同じ --color-border。--color-surface-muted だと背景とのコントラストが明るい画面で 1.07、
+ * 暗い画面で 1.01 しかなく、ただの空白に見えた（デザイナーの確認）。--color-border なら 1.38 / 1.58 で、
+ * 場所取りだと分かり、本物の文字とは張り合わない。
+ */
+.pending-skeleton :is(strong, small, b, em, h2, h3, span:not(:has(*)), p:not(:has(*))) {
+  border-radius: var(--radius-sm);
+  background: var(--color-border);
+}
+
+.pending-skeleton :is(svg, img) {
+  visibility: hidden;
+}
+
+.pending-skeleton button {
+  border-color: var(--color-border) !important;
+  box-shadow: none !important;
+  background: var(--color-surface) !important;
+}
+
+/* visibility は受け継がれるので、箱が無くても中身ごと隠れる。 */
+.pending-reserve {
+  visibility: hidden;
+}
+
+/* 読み上げだけに出す（見た目には出さない）。 */
+.pending-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

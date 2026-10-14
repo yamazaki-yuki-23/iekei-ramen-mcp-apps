@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { seoPages } from "../scripts/seo-pages.mjs";
-import { CONFIDENCE, type Shop } from "../src/lib/types";
-import { webEntry } from "../src/lib/web-entry";
+import { type Shop } from "../src/types";
+import { CONFIDENCE } from "../src/utils/labels";
+import { webEntry } from "../src/features/search/utils/web-entry";
 
 const shop: Shop = {
   id: "node/123",

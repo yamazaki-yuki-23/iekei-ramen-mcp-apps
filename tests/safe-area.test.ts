@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeAreaStyle } from "../src/lib/safe-area";
+import { safeAreaStyle } from "../src/features/search/utils/safe-area";
 
 describe("safeAreaStyle", () => {
   it("padding を直接書かない（インラインは CSS より強く、0 のホストで余白が消える）", () => {

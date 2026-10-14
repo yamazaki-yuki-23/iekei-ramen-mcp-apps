@@ -1,7 +1,7 @@
-import { tabBarHtml } from "../src/lib/tabbar.ts";
-import { legalLinksHtml } from "../src/lib/legal-links.ts";
+import { tabBarHtml } from "../src/utils/tabbar.ts";
+import { legalLinksHtml } from "../src/utils/legal-links.ts";
 import { legalMarkdown } from "./legal-markdown.mjs";
-import { ALL_PREFECTURES } from "../src/lib/prefectures.ts";
+import { ALL_PREFECTURES } from "../src/utils/prefectures.ts";
 
 const origin = "https://iekeiramen.com";
 const slugs =

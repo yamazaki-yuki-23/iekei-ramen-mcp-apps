@@ -5,8 +5,8 @@
  * 実データでは東京都に町田商店が 14 店ある。
  */
 import { describe, expect, it } from "vitest";
-import { metaParts, sameNameLabels } from "../src/lib/same-name";
-import type { Shop } from "../src/lib/types";
+import { metaParts, sameNameLabels } from "../src/features/search/utils/same-name";
+import type { Shop } from "../src/types";
 
 const shop = (id: string, name: string, city?: string, address?: string): Shop =>
   ({ id, name, city, address, prefecture: "東京都" }) as Shop;

@@ -42,7 +42,351 @@
   ],
   "overrides": [
     {
-      "files": ["src/components/MapView.tsx"],
+      "files": ["src/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/server/**"],
+                "message": "ブラウザのコード（src/）は server/ を import しない（docs/development/structure.md）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/components/**", "src/hooks/**", "src/lib/**", "src/types/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/server/**"],
+                "message": "ブラウザのコード（src/）は server/ を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/features/**"],
+                "message": "共有（src/ のトップ）は機能を import しない（docs/development/structure.md）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/utils/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/server/**"],
+                "message": "ブラウザのコード（src/）は server/ を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/features/**"],
+                "message": "共有（src/ のトップ）は機能を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/lib/**", "**/hooks/**", "**/components/**"],
+                "message": "utils/ は外部に触らないので、lib/・hooks/・components/ の値を import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true
+              },
+              {
+                "message": "utils/ は外部に触らないので、外部のパッケージを import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true,
+                "regex": "^[^.]"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/search/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/server/**"],
+                "message": "ブラウザのコード（src/）は server/ を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/match/**", "**/camera/**", "**/shindan/**"],
+                "message": "機能どうしは import しない。2 つの機能で使うものは src/ のトップへ出す（docs/development/structure.md）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/search/utils/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/server/**"],
+                "message": "ブラウザのコード（src/）は server/ を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/match/**", "**/camera/**", "**/shindan/**"],
+                "message": "機能どうしは import しない。2 つの機能で使うものは src/ のトップへ出す（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/lib/**", "**/hooks/**", "**/components/**"],
+                "message": "utils/ は外部に触らないので、lib/・hooks/・components/ の値を import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true
+              },
+              {
+                "message": "utils/ は外部に触らないので、外部のパッケージを import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true,
+                "regex": "^[^.]"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/match/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/server/**"],
+                "message": "ブラウザのコード（src/）は server/ を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/search/**", "**/camera/**", "**/shindan/**"],
+                "message": "機能どうしは import しない。2 つの機能で使うものは src/ のトップへ出す（docs/development/structure.md）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/match/utils/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/server/**"],
+                "message": "ブラウザのコード（src/）は server/ を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/search/**", "**/camera/**", "**/shindan/**"],
+                "message": "機能どうしは import しない。2 つの機能で使うものは src/ のトップへ出す（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/lib/**", "**/hooks/**", "**/components/**"],
+                "message": "utils/ は外部に触らないので、lib/・hooks/・components/ の値を import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true
+              },
+              {
+                "message": "utils/ は外部に触らないので、外部のパッケージを import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true,
+                "regex": "^[^.]"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/camera/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/server/**"],
+                "message": "ブラウザのコード（src/）は server/ を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/search/**", "**/match/**", "**/shindan/**"],
+                "message": "機能どうしは import しない。2 つの機能で使うものは src/ のトップへ出す（docs/development/structure.md）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/camera/utils/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/server/**"],
+                "message": "ブラウザのコード（src/）は server/ を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/search/**", "**/match/**", "**/shindan/**"],
+                "message": "機能どうしは import しない。2 つの機能で使うものは src/ のトップへ出す（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/lib/**", "**/hooks/**", "**/components/**"],
+                "message": "utils/ は外部に触らないので、lib/・hooks/・components/ の値を import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true
+              },
+              {
+                "message": "utils/ は外部に触らないので、外部のパッケージを import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true,
+                "regex": "^[^.]"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/shindan/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/server/**"],
+                "message": "ブラウザのコード（src/）は server/ を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/search/**", "**/match/**", "**/camera/**"],
+                "message": "機能どうしは import しない。2 つの機能で使うものは src/ のトップへ出す（docs/development/structure.md）"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/shindan/utils/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/server/**"],
+                "message": "ブラウザのコード（src/）は server/ を import しない（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/search/**", "**/match/**", "**/camera/**"],
+                "message": "機能どうしは import しない。2 つの機能で使うものは src/ のトップへ出す（docs/development/structure.md）"
+              },
+              {
+                "group": ["**/lib/**", "**/hooks/**", "**/components/**"],
+                "message": "utils/ は外部に触らないので、lib/・hooks/・components/ の値を import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true
+              },
+              {
+                "message": "utils/ は外部に触らないので、外部のパッケージを import しない（型だけなら可）（docs/development/structure.md）",
+                "allowTypeImports": true,
+                "regex": "^[^.]"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/utils/**", "src/features/*/utils/**"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "window",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "document",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "navigator",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "localStorage",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "sessionStorage",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "fetch",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "location",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "history",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "AudioContext",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "matchMedia",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "requestAnimationFrame",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "requestIdleCallback",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "setTimeout",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "setInterval",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "indexedDB",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "crypto",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/**"],
+      "rules": {
+        "import/no-cycle": "error"
+      }
+    },
+    {
+      "files": ["src/features/search/components/MapView.tsx"],
       "rules": {
         "import/no-unassigned-import": "off"
       }

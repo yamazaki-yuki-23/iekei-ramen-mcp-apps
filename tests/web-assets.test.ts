@@ -177,7 +177,7 @@ describe("workerdのWeb静的配信と既存API", () => {
   });
 
   it("未定義のURLとMCPの埋め込みHTML・ソースを静的公開しない", async () => {
-    for (const path of ["/unknown", "/mcp-app.html", "/src/web.tsx"]) {
+    for (const path of ["/unknown", "/mcp-app.html", "/src/features/search/main-web.tsx"]) {
       const response = await request(path, {
         headers: { Accept: "text/html", "Sec-Fetch-Mode": "navigate" },
       });

@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { ICON_SVG, type TabKey, TABS } from "../lib/tabbar";
+import { ICON_SVG, type TabKey, TABS } from "../utils/tabbar";
 import styles from "./TabBar.module.css";
 
 const camel = (k: string) => k.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
@@ -11,7 +11,7 @@ const props = (o: Record<string, string | number>) =>
  * 目玉の機能を 1 回で開けるようにする（出すページはオーナーが決めた。/connect にも出す、#196）。
  * パソコン幅では出さない（上のナビに同じ入口がある）。会話の中（MCP）には出さない。
  * 「探し方」（迷ったら・店名で・現在地から・地図で）は「探す」の画面の中の切り替えに残す。
- * 中身（アイコンの絵）は src/lib/tabbar.ts。都道府県・店の静的なページも同じものから描く。
+ * 中身（アイコンの絵）は src/utils/tabbar.ts。都道府県・店の静的なページも同じものから描く。
  */
 export function TabBar({ current }: { current: TabKey }) {
   return (

@@ -1,5 +1,5 @@
 import { expect } from "@playwright/test";
-import { resultCaveat } from "../src/lib/data-caveats";
+import { resultCaveat } from "../src/utils/data-caveats";
 import { test } from "./fixtures";
 import { callTool, waitForApp, openMode } from "./helpers";
 

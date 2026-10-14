@@ -1,7 +1,7 @@
 /*
- * 都道府県・市区町村・店のページ（#152）。トップ（src/mcp-app.module.css）と同じ部品・
+ * 都道府県・市区町村・店のページ（#152）。トップ（src/features/search/styles/search.module.css）と同じ部品・
  * 同じ色の役割（黒＝輪郭と文字、茶赤＝押す操作、白と暖かい灰＝面）にそろえる。
- * 値はトークン（seo-tokens.css = src/global.css の写し）だけを使う。
+ * 値はトークン（seo-tokens.css = src/styles/global.css の写し）だけを使う。
  */
 .seo-page {
   margin: 0;
@@ -250,7 +250,7 @@
 
 /*
  * 下のタブバー（#194）。React の画面の src/components/TabBar.module.css と同じ見た目。
- * アイコンの絵は src/lib/tabbar.ts（両方がそこから描く）。下の余白は seo-tokens.css（global.css）が付ける。
+ * アイコンの絵は src/utils/tabbar.ts（両方がそこから描く）。下の余白は seo-tokens.css（global.css）が付ける。
  */
 .tabbar {
   display: none;

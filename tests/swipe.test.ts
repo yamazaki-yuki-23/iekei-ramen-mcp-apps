@@ -7,8 +7,8 @@ import {
   exitFor,
   LOAD_FAILED_ASK,
   shareText,
-} from "../src/lib/swipe";
-import type { Shop } from "../src/lib/types";
+} from "../src/features/match/utils/swipe";
+import type { Shop } from "../src/types";
 
 const shop = (km?: number): Shop => ({
   id: "node/1",

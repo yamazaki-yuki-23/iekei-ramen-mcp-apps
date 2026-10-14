@@ -1,8 +1,8 @@
 import { test } from "./fixtures";
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
-import type { AppPayload } from "../src/lib/types";
+import type { AppPayload } from "../src/types";
 import { openMode } from "./helpers";
-import { resultCaveat } from "../src/lib/data-caveats";
+import { resultCaveat } from "../src/utils/data-caveats";
 
 const WEB_URL = "http://localhost:3134";
 const cards = (page: Page) => page.locator("ul > li > button[data-shop-id]");

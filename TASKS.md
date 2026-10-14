@@ -33,9 +33,9 @@
 - [x] 選択解除・モード切り替え・再検索のときに context を消す
 - [x] カードを押すと即座に外部地図が開く挙動をやめ、選択パネルに行き先をまとめる
 
-実装: [src/lib/shop-brief.ts](src/lib/shop-brief.ts)（モデルに渡す文面）、
-[src/components/SelectedShop.tsx](src/components/SelectedShop.tsx)（選択パネル）、
-選択状態は [src/mcp-app.tsx](src/mcp-app.tsx) の外側コンポーネントが持つ
+実装: [src/features/search/utils/shop-brief.ts](src/features/search/utils/shop-brief.ts)（モデルに渡す文面）、
+[src/features/search/components/SelectedShop.tsx](src/features/search/components/SelectedShop.tsx)（選択パネル）、
+選択状態は [src/features/search/main-mcp.tsx](src/features/search/main-mcp.tsx) の外側コンポーネントが持つ
 （Inner は payload ごとに作り直されるため）。
 
 **UX:** 今は地図で店を選んでも、ユーザーが「この店どう？」と聞いた瞬間に
@@ -46,7 +46,7 @@
 `updateModelContext` は即応答を起こさず次の発話に乗る。`sendMessage` は
 即応答を起こす。選択は前者、ボタンは後者。
 
-対象: [src/mcp-app.tsx](src/mcp-app.tsx) の `selectedId`
+対象: [src/features/search/main-mcp.tsx](src/features/search/main-mcp.tsx) の `selectedId`
 目安: 1〜2 時間
 
 ## 2. 券売機の前で困らせない（注文カンペ）（完了）
@@ -56,8 +56,8 @@
 - [x] ライス・ほうれん草・のり・卓上調味料の扱いを一言で添える
 - [x] 店ごとの差はデータに無いので、一般的な作法だと明示する
 
-実装: [src/lib/order-guide.ts](src/lib/order-guide.ts)（文面のデータ）、
-[src/components/OrderGuide.tsx](src/components/OrderGuide.tsx)（表示）。
+実装: [src/features/search/utils/order-guide.ts](src/features/search/utils/order-guide.ts)（文面のデータ）、
+[src/features/search/components/OrderGuide.tsx](src/features/search/components/OrderGuide.tsx)（表示）。
 選択中の店のパネルに畳んで置いてある。既定は閉じた状態。
 
 **UX:** 家系で一番強い不安は「店が見つからない」ではなく
@@ -87,13 +87,13 @@
 
 ## 4. 行くところまで繋ぐ（完了 / 画面上の名前は「まわる店」）
 
-- [x] 2〜3 軒を選んで巡回順を出す（[src/lib/geo.ts](src/lib/geo.ts) の距離計算を流用）
+- [x] 2〜3 軒を選んで巡回順を出す（[src/utils/geo.ts](src/utils/geo.ts) の距離計算を流用）
 - [x] 地図に順路の線を引く
 - [x] Google Maps に `app.openLink()` で渡す（Apple Maps は経由地を渡せないため外した）
 
-実装: [src/lib/route.ts](src/lib/route.ts)（順番と外部地図の URL）、
-[src/components/RoutePanel.tsx](src/components/RoutePanel.tsx)（表示）。
-積んだ店は [src/mcp-app.tsx](src/mcp-app.tsx) の外側が持つ（検索をまたいで残す）。
+実装: [src/utils/route.ts](src/utils/route.ts)（順番と外部地図の URL）、
+[src/features/search/components/RoutePanel.tsx](src/features/search/components/RoutePanel.tsx)（表示）。
+積んだ店は [src/features/search/main-mcp.tsx](src/features/search/main-mcp.tsx) の外側が持つ（検索をまたいで残す）。
 
 **UX:** 決めたあと、ユーザーは必ずアプリを出て地図アプリを開く。
 そこが手作業のままだと体験が途切れる。2〜3 軒回るのは家系好きの実際の行動でもある。
@@ -208,7 +208,7 @@ ChatGPT で次を実測した。
 
 ## 9. 東京 162 件の団子を解く（完了 / 画面上の名前は「この範囲で探す」）
 
-- [x] マーカーのクラスタリング（[src/lib/cluster.ts](src/lib/cluster.ts)）
+- [x] マーカーのクラスタリング（[src/features/search/utils/cluster.ts](src/features/search/utils/cluster.ts)）
 - [x] 「この範囲で探す」（`show-iekei-ramen-map` に範囲を足した）
 
 **「動かしたら出す」にはしていない。** Leaflet は自分で寄せたときにも同じ通知を

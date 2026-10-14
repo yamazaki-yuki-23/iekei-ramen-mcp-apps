@@ -8,9 +8,15 @@ import { describe, expect, it } from "vitest";
  * 見た目で出るだけなので、目視でも気付きにくい（実際に `--color-text-secondary`
  * という存在しない名前で注記を書いており、ふつうの本文色のまま出ていた）。
  */
-const GLOBAL = readFileSync(new URL("../src/global.css", import.meta.url), "utf8");
-const MODULE = readFileSync(new URL("../src/mcp-app.module.css", import.meta.url), "utf8");
-const CONSENT = readFileSync(new URL("../src/oauth-consent.css", import.meta.url), "utf8");
+const GLOBAL = readFileSync(new URL("../src/styles/global.css", import.meta.url), "utf8");
+const MODULE = readFileSync(
+  new URL("../src/features/search/styles/search.module.css", import.meta.url),
+  "utf8",
+);
+const CONSENT = readFileSync(
+  new URL("../server/styles/oauth-consent.css", import.meta.url),
+  "utf8",
+);
 
 /**
  * 実行時に JS から差し込む変数。CSS には定義が無くてよい（--ticket-index は ShopList の style、

@@ -1,8 +1,8 @@
-import { ALL_PREFECTURES } from "../src/lib/prefectures.ts";
-import { topBrands, type BrandCount } from "../src/lib/brands.ts";
+import { ALL_PREFECTURES } from "../src/utils/prefectures.ts";
+import { topBrands, type BrandCount } from "../src/utils/brands.ts";
 import { localizeOrigin } from "./place-label.ts";
-import { brandCounts, shopFacts } from "../src/lib/shop-facts.ts";
-import { openingHoursLabel } from "../src/lib/opening-hours.ts";
+import { brandCounts, shopFacts } from "../src/utils/shop-facts.ts";
+import { openingHoursLabel } from "../src/utils/opening-hours.ts";
 /**
  * 家系ラーメンを探す MCP Apps サーバー。
  *
@@ -29,24 +29,21 @@ import {
 import { z } from "zod";
 import shopsData from "../data/shops.json" with { type: "json" };
 import { APP_HTML } from "../src/generated/app-html.ts";
-import { distanceKm, formatDistance, originLabel } from "../src/lib/geo.ts";
-import { dataCaveats } from "../src/lib/data-caveats.ts";
+import { distanceKm, formatDistance, originLabel } from "../src/utils/geo.ts";
+import { dataCaveats } from "../src/utils/data-caveats.ts";
 import { GEOCODE_MAX_WAIT_MS } from "./geocode-gate.ts";
 import {
   GEOCODE_RESPONSE_TIMEOUT_MS,
   GeocodeTimeoutError,
   withGeocodeTimeout,
 } from "./geocode-timeout.ts";
-import { summarize as summarizeVisits } from "../src/lib/progress.ts";
-import { RECORDS_WITHOUT_SHOPS } from "../src/lib/visited-view.ts";
+import { summarize as summarizeVisits } from "../src/utils/progress.ts";
+import { RECORDS_WITHOUT_SHOPS } from "../src/utils/visited-view.ts";
 import { BoundsSchema, PayloadSchema, StampResultSchema } from "./schema.ts";
-import { scopeLabel } from "../src/lib/scope.ts";
+import { scopeLabel } from "../src/utils/scope.ts";
 import type { VisitStore } from "./visits.ts";
-import { describeBasis, describeScope, shortlist } from "../src/lib/shortlist.ts";
+import { describeBasis, describeScope, shortlist } from "../src/utils/shortlist.ts";
 import {
-  CONFIDENCE,
-  ORIGIN_NOTES,
-  TASTES,
   type AppPayload,
   type Bounds,
   type DecideInfo,
@@ -54,7 +51,8 @@ import {
   type OriginSource,
   type Shop,
   type TasteKey,
-} from "../src/lib/types.ts";
+} from "../src/types";
+import { CONFIDENCE, ORIGIN_NOTES, TASTES } from "../src/utils/labels";
 
 const DEFAULT_SHOPS = shopsData as Shop[];
 
@@ -108,7 +106,7 @@ function mapSummary(shops: Shop[], prefecture?: string, bounds?: Bounds): string
    *
    * **どこを見ているかはモデルに分からない。** 画面に出ている範囲だと
    * 言っておかないと、モデルが「全国で 12 件しかない」と読んで話す。
-   * 語は UI の見出しと共通（[scope.ts](src/lib/scope.ts)）。
+   * 語は UI の見出しと共通（[scope.ts](src/utils/scope.ts)）。
    */
   const where = scopeLabel({ prefecture, bounds });
   if (shops.length === 0) return `${where}に該当する店舗はありませんでした。`;

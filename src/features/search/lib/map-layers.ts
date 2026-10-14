@@ -1,0 +1,409 @@
+import L from "leaflet";
+import { normalizeBounds } from "../utils/bounds";
+import { clusterShops } from "../utils/cluster";
+import { type Bounds, type Shop } from "../../../types";
+import { TASTES } from "../../../utils/labels";
+import styles from "../styles/search.module.css";
+
+/**
+ * 地図に何をどう描くか。
+ *
+ * **Leaflet を触る部分はここに集める。** React 側（MapView）は「いつ描くか」
+ * だけを持つ。混ぜると、地図の生成・後始末と画面の都合が同じ関数に溜まる。
+ *
+ * Leaflet は CSS 変数を受け取らないので、色の実値もここだけが持つ。
+ * global.css のパレットから取っているので、パレットを変えたらここも合わせる。
+ */
+
+const TASTE_COLORS: Record<Shop["taste"], string> = {
+  rich: "#b8442c",
+  creamy: "#e0a04a",
+  chain: "#4a7fb8",
+  unknown: "#7d776e",
+};
+
+/** 選択中のピンの縁。地図タイルのどの色の上でも輪郭が出る濃さ。 */
+const SELECTED_STROKE = "#141312";
+/** ピンの縁と、行った店の印の白。 */
+const HOLLOW = "#ffffff";
+
+/**
+ * 選択中のピンを置くペイン。
+ *
+ * **塊（divIcon）は markerPane（z-index 600）に、店のピン（circleMarker）は
+ * overlayPane（400）に載る。** 別のペインなので bringToFront では追い越せず、
+ * 選んだ店が 36px の塊に覆われて見えなくなる。実測で、選んだ 1 軒と残りの塊の
+ * 中心が 0.4〜3.3px（zoom 12〜15）＝ほぼ同じ位置に来る組があった。
+ * 選択中だけ上のペインに出して、`keepId` の約束（選んだ店は必ず見える）を守る。
+ */
+export const SELECTED_PANE = "selectedShop";
+
+/**
+ * 順路の番号を置くペイン。
+ *
+ * **選択中のピンより上。** 番号は「何軒目か」を読むためのもので、選んだ店が
+ * そのまま順路に入っていることも多い。選択のペインを上げたとき、ここを
+ * 決めておかないと番号が選択ピンの下に潜る（元は markerPane で上にあった）。
+ */
+export const ROUTE_PANE = "routeOrder";
+
+/**
+ * 基準地点の印と同心円を置くペイン。
+ *
+ * **店のピンより下。** 基準地点が店と同じ場所に来ることはある（その店の名前で
+ * 地点を調べたときなど）。同じペインに置くと、あとから描いた基準地点が上に乗って
+ * 店のクリックを奪い、その店を選べなくなる。**レイヤーを作る順番では決まらない**
+ * ——Leaflet は同じペインの図形を 1 つの SVG にまとめて描くため。
+ */
+export const ORIGIN_PANE = "originArea";
+
+/**
+ * 店 1 軒のピン。**形はどの店も同じ**（#144。判定の段階は画面に出さない）。
+ * 色は味の傾向。縁は白（地図タイルの上で浮かせる。黒い縁は地図の線と紛れた）。
+ * **点線は使わない。** 破線は順路の線（道のりではない）の印なので、意味が混ざる。
+ */
+function pinStyle(shop: Shop, selected: boolean): L.CircleMarkerOptions {
+  const base = { color: HOLLOW, fillColor: TASTE_COLORS[shop.taste], fillOpacity: 1 };
+  // 選択中は大きくし、縁を濃くする（淡い地図タイルの上でも、どの店を選んだか見える）。
+  return selected
+    ? { ...base, color: SELECTED_STROKE, radius: 11, weight: 3 }
+    : { ...base, radius: 7, weight: 2 };
+}
+
+/*
+ * 行った店の印。**色を増やさず、中心に白い点を足す。**
+ * 色で表すと味のパレットと衝突し、縁で表すと「選択中」と見分けが付かない。
+ * `interactive: false` なので、下のピンがそのまま押せる。
+ */
+const VISITED_DOT = {
+  radius: 2.5,
+  weight: 0,
+  fillOpacity: 1,
+  interactive: false,
+} as const;
+
+/**
+ * 順路の線。
+ *
+ * **破線なのは、道のりではないことを見た目でも示すため。** 引いているのは
+ * 店と店を直線で結んだだけのもので、経路探索の結果ではない。実線にすると
+ * 「この道を通る」と読めてしまう。
+ */
+const ROUTE_LINE = { color: SELECTED_STROKE, weight: 2, opacity: 0.55, dashArray: "6 6" };
+
+/**
+ * 基準地点の印と同心円。
+ *
+ * **半径は直線距離。徒歩◯分に換算しない**（経路探索のデータを持っていない。
+ * 時間を出すと「間に合うか」の判断材料に化ける）。500m と 1km にしてあるのは、
+ * 歩くかどうかを決める境目がこのあたりだから。
+ */
+const RANGE_RINGS = [500, 1000] as const;
+const ORIGIN_COLOR = "#1f6f4a";
+const RING = { color: ORIGIN_COLOR, weight: 1, opacity: 0.5, fill: false, dashArray: "4 6" };
+
+/** 日本全体が収まる初期表示。 */
+export const JAPAN_BOUNDS = L.latLngBounds([24.0, 122.5], [45.7, 146.0]);
+
+/**
+ * 文字として出すツールチップの中身。
+ *
+ * **文字列を渡さない。** Leaflet は渡された文字列を HTML として描くので、
+ * 店名や地名に markup が入っていればそのまま解釈される。基準地点の表示名は
+ * tool の引数と geocode の結果（どちらも外から来る）なので、素通しにできない。
+ */
+function textTooltip(text: string): HTMLElement {
+  const el = document.createElement("span");
+  el.textContent = text;
+  return el;
+}
+
+/**
+ * 地図上の印を釦として扱えるようにする。
+ *
+ * **キーボードから押せないと、その店には辿り着けない。** 一覧は 20 件で
+ * 切れるので、地図が唯一の入口になる店が出る。Leaflet は円（SVG の path）に
+ * tabindex も Enter も付けないので、ここで足す。
+ */
+function makeActivatable(
+  el: Element | null | undefined,
+  label: string,
+  activate: (viaKeyboard: boolean) => void,
+) {
+  if (!el) return;
+  el.setAttribute("role", "button");
+  el.setAttribute("tabindex", "0");
+  el.setAttribute("aria-label", label);
+  // 要素は描き直しのたびに捨てられるので、外す先は無い。
+  el.addEventListener("keydown", (e) => {
+    const key = (e as KeyboardEvent).key;
+    if (key !== "Enter" && key !== " ") return;
+    e.preventDefault();
+    activate(true);
+  });
+}
+
+/**
+ * 塊を押したときに寄る上限。
+ *
+ * これ以上寄せても、塊が解けるとは限らない（5.2m しか離れていない 2 軒がある）。
+ * 街の様子が見える程度で止める。
+ */
+const CLUSTER_ZOOM_CAP = 17;
+
+/** 基準地点。表示名は無いこともある。 */
+export interface MapOrigin {
+  lat: number;
+  lon: number;
+  label?: string;
+}
+
+/**
+ * 地図の上で押したときに、外側のページをスクロールさせない（#58）。
+ *
+ * Leaflet は地図に焦点が無いときに押されると、地図の枠へ `focus()` する
+ * （`Map.Keyboard` の `_onMouseDown`）。`focus()` は枠を見せようとして祖先を
+ * スクロールするので、枠が画面の下に見切れていると**ホスト側のページ**が動く。
+ * Leaflet は自分の `window` のスクロールしか戻さないので、押してから離すまでの
+ * 間に中身がずれたまま残り、`mouseup` が地図の地に落ちて塊もピンも空振りする
+ * （実測: 高さ 720 で外側のページが 0 → 133px 動いた）。
+ *
+ * **Leaflet より先に、スクロールさせずに焦点を置く。** 捕捉段階で
+ * `focus({ preventScroll: true })` すると、その場で Leaflet の `_onFocus` が走って
+ * 「焦点あり」になり、Leaflet 自身の `focus()` は呼ばれない。矢印キーで動かす
+ * 操作も、焦点が枠にあるので今までどおり使える。
+ *
+ * 焦点が枠の中の印（キーボードで押せるピンや塊）にあるときも、Leaflet にとっては
+ * 「焦点なし」なので同じように置き直す。
+ */
+export function focusWithoutScrolling(map: L.Map): () => void {
+  const container = map.getContainer();
+  const onPress = () => {
+    if (document.activeElement !== container) container.focus({ preventScroll: true });
+  };
+  container.addEventListener("mousedown", onPress, true);
+  return () => container.removeEventListener("mousedown", onPress, true);
+}
+
+/** いま地図に出ている範囲。丸め方は [bounds.ts](../lib/bounds.ts) に隔離してある。 */
+export function viewBounds(map: L.Map): Bounds {
+  const b = map.getBounds();
+  return normalizeBounds({
+    north: b.getNorth(),
+    south: b.getSouth(),
+    east: b.getEast(),
+    west: b.getWest(),
+  });
+}
+
+/** 店の一覧を囲む枠。 */
+export function boundsOf(points: Array<{ lat: number; lon: number }>): L.LatLngBounds {
+  return L.latLngBounds(points.map((p) => [p.lat, p.lon] as [number, number]));
+}
+
+/** payload から来た範囲を Leaflet の形に直す。 */
+export function toLatLngBounds(bounds: Bounds): L.LatLngBounds {
+  return L.latLngBounds([bounds.south, bounds.west], [bounds.north, bounds.east]);
+}
+
+/**
+ * 店のピンを描く。近すぎるものは塊にまとめる。
+ *
+ * ピンの対応表と、訪問印だけを更新する口を返す。
+ * 塊にまとめた店は単独のピンを持たないので、対応表には入らない。
+ */
+export function drawShops(
+  layer: L.LayerGroup,
+  map: L.Map,
+  opts: {
+    shops: Shop[];
+    zoom: number;
+    selectedId?: string;
+    onSelect: (shop: Shop, viaKeyboard: boolean) => void;
+    /** 塊を押したときに、その中身を外へ渡す。キーボード由来かも伝える。 */
+    onCluster: (shops: Shop[], viaKeyboard: boolean) => void;
+  },
+) {
+  const markers = new Map<string, L.CircleMarker>();
+  const singles = new Map<
+    string,
+    { shop: Shop; marker: L.CircleMarker; visited: boolean; dot?: L.CircleMarker }
+  >();
+  let previousVisitedIds: ReadonlySet<string> | undefined;
+
+  for (const cluster of clusterShops(opts.shops, opts.zoom, opts.selectedId)) {
+    // 1 軒だけの塊は、ふつうの店のピンとして描く。
+    if (cluster.shops.length === 1) {
+      const shop = cluster.shops[0];
+      const selected = shop.id === opts.selectedId;
+      // 印の意味は読み上げにも載せる。色と点は見えない人に届かない。
+      const label = shopLabel(shop, false);
+      const marker = L.circleMarker([shop.lat, shop.lon], {
+        ...pinStyle(shop, selected),
+        ...(selected ? { pane: SELECTED_PANE } : {}),
+      })
+        .bindTooltip(textTooltip(label))
+        .on("click", () => opts.onSelect(shop, false));
+      marker.addTo(layer);
+      markers.set(shop.id, marker);
+      singles.set(shop.id, { shop, marker, visited: false });
+      makeActivatable(marker.getElement(), label, (viaKeyboard) =>
+        opts.onSelect(shop, viaKeyboard),
+      );
+      continue;
+    }
+
+    /*
+     * 塊は件数を出す。押すと、その塊が画面いっぱいになるまで寄る。
+     *
+     * 何軒か分からない丸を押させると、開いてみるまで何が起きるか読めない。
+     * 番号（.routePin）と紛れないよう、面ではなく縁で色を持たせている。
+     */
+    const bounds = boundsOf(cluster.shops);
+    const expand = (viaKeyboard = false) => {
+      /*
+       * **引き戻さない。** 上限を固定にすると、すでに 18〜19 まで寄っている
+       * ところで押したときに 17 まで戻される（実測: 18 → 17）。寄り切っても
+       * 解けない塊はあるので、開くたびに遠ざかることになる。
+       * いまより遠くへは行かせない。
+       */
+      const maxZoom = Math.max(map.getZoom(), CLUSTER_ZOOM_CAP);
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom, animate: false });
+      opts.onCluster(cluster.shops, viaKeyboard);
+    };
+    const marker = L.marker([cluster.lat, cluster.lon], {
+      icon: L.divIcon({
+        /*
+         * CSS モジュールのクラス名は毎ビルド変わるので、掴む先として
+         * 素のクラスも 1 つ付けておく（E2E が塊だけを数えるため）。
+         */
+        className: `${styles.clusterPin} cluster-pin`,
+        html: String(cluster.shops.length),
+        iconSize: [36, 36],
+      }),
+      /*
+       * **キーボードでも開けるようにする。** 「読み上げは一覧が担う」と
+       * していたが、一覧は 20 件で切れるので、塊を開けないと大半の店に
+       * 辿り着けない。
+       *
+       * keyboard: true が付けるのは tabindex だけで、**Enter で開く処理は
+       * Leaflet に無い**（keypress を見ているのはポップアップの都合）。
+       * 下で自分で受ける。
+       */
+      keyboard: true,
+    })
+      /*
+       * 寄るだけでなく、**中身を一覧にも出す。**
+       *
+       * 寄れば解ける、とは限らない。実データには 5.2m しか離れていない 2 軒が
+       * あり（ろくの家 / 稲和家ラーメン）、地図の最大ズーム 19 でも 21.1px で、
+       * まとめる下限 36px を下回ったままになる。寄せるだけだと、その 2 軒は
+       * 地図から永久に選べない。押した塊の中身は必ず一覧に出す。
+       *
+       * **アニメーションさせない。** 動いている途中に「この範囲で探す」を
+       * 押されると、中途半端な画角で探してしまう。DESIGN.md の
+       * 「アニメーションで情報を伝えない」にも合う。
+       */
+      .on("click", () => expand())
+      .addTo(layer);
+
+    /*
+     * 名前は件数で名乗る。数字だけの丸は、読み上げでは「12」としか聞こえず、
+     * 押すと何が起きるのか分からない。要素は addTo のあとでないと取れない。
+     */
+    makeActivatable(marker.getElement(), `この地点の ${cluster.shops.length} 軒を開く`, expand);
+  }
+
+  return {
+    markers,
+    dispose() {
+      // 登録したハンドラと保持するピンは、描画を作った側で片付ける。
+      for (const marker of markers.values()) marker.off("click");
+      layer.clearLayers();
+      markers.clear();
+      singles.clear();
+    },
+    updateVisited(visitedIds?: ReadonlySet<string>) {
+      if (visitedIds === previousVisitedIds) return;
+      previousVisitedIds = visitedIds;
+      for (const [id, pin] of singles) {
+        const visited = visitedIds?.has(id) ?? false;
+        if (pin.visited === visited) continue;
+        pin.visited = visited;
+        const label = shopLabel(pin.shop, visited);
+        pin.marker.setTooltipContent(textTooltip(label));
+        pin.marker.getElement()?.setAttribute("aria-label", label);
+        if (visited) {
+          // 選択ピンを前に出したあとで描く。同じペインで白い点が上に残る。
+          pin.dot = L.circleMarker(pin.marker.getLatLng(), {
+            ...VISITED_DOT,
+            color: HOLLOW,
+            fillColor: HOLLOW,
+            pane: pin.marker.options.pane,
+          }).addTo(layer);
+        } else if (pin.dot) {
+          layer.removeLayer(pin.dot);
+          pin.dot = undefined;
+        }
+      }
+    },
+  };
+}
+
+function shopLabel(shop: Shop, visited: boolean): string {
+  // 段階も読み上げに載せる。形は見えない人に届かない。
+  return `${shop.name}（${TASTES[shop.taste].label}${visited ? "・行った" : ""}）`;
+}
+
+/** 基準地点の印と同心円。**地図は動かさない。** */
+export function drawOrigin(layer: L.LayerGroup, origin: MapOrigin): void {
+  for (const radius of RANGE_RINGS) {
+    L.circle([origin.lat, origin.lon], { ...RING, radius, pane: ORIGIN_PANE }).addTo(layer);
+  }
+  L.circleMarker([origin.lat, origin.lon], {
+    radius: 5,
+    color: "#ffffff",
+    weight: 2,
+    fillColor: ORIGIN_COLOR,
+    fillOpacity: 1,
+    pane: ORIGIN_PANE,
+  })
+    .bindTooltip(textTooltip(origin.label ? `基準地点: ${origin.label}` : "基準地点"))
+    .addTo(layer);
+}
+
+/**
+ * 順路の線と番号。
+ *
+ * 番号は divIcon（ただの HTML）で描く。Leaflet の既定アイコンは PNG を
+ * 外部参照するので、単一 HTML に固められない（AGENTS.md の制約）。
+ *
+ * 戻り値は線が通る点。呼ぶ側がここへ寄せるのに使う。
+ */
+export function drawRoute(
+  layer: L.LayerGroup,
+  route: Shop[],
+  origin?: { lat: number; lon: number },
+): Array<[number, number]> {
+  const points: Array<[number, number]> = route.map((s) => [s.lat, s.lon]);
+  // 出発点が分かっているなら、そこから 1 軒目までも引く。
+  const line = origin ? [[origin.lat, origin.lon] as [number, number], ...points] : points;
+  if (line.length > 1) L.polyline(line, ROUTE_LINE).addTo(layer);
+
+  route.forEach((shop, i) => {
+    L.marker([shop.lat, shop.lon], {
+      icon: L.divIcon({
+        // 素のクラスは E2E が順路の番号だけを数えるため（塊と紛れる）。
+        className: `${styles.routePin} route-pin`,
+        html: String(i + 1),
+        iconSize: [24, 24],
+      }),
+      pane: ROUTE_PANE,
+      // 番号は順路を読むためのもの。押す先は店のピンに任せる。
+      interactive: false,
+      keyboard: false,
+    }).addTo(layer);
+  });
+
+  return line;
+}

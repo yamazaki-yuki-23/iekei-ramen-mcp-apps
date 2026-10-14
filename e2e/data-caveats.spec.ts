@@ -1,12 +1,12 @@
 import { expect } from "@playwright/test";
 import { test } from "./fixtures";
-import { CONFIDENCE, TASTES } from "../src/lib/types";
+import { CONFIDENCE, TASTES } from "../src/utils/labels";
 import {
   DATA_CREDIT,
   DATA_FOOTNOTE,
   TASTE_REFERENCE_NOTE,
   resultCaveat,
-} from "../src/lib/data-caveats";
+} from "../src/utils/data-caveats";
 import { callTool, waitForApp } from "./helpers";
 
 test("今回の 3 軒が確定店だけでも、UI から母集団の可能性の注意書きをモデルへ送る", async ({
