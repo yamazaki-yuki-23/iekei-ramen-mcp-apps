@@ -55,6 +55,12 @@
 - `tools/<tool 名>.ts` に、1 tool 1 ファイルで置く（例: `tools/decide-iekei-ramen.ts`）。どの tool も、`server.ts` が 1 回だけ作る材料（`ToolContext`。店舗データ・都道府県・地点の割り出し・payload の出口）を受け取る
 - `lib/` は外部（D1・KV・Analytics Engine・Durable Object・Nominatim・`zod` などのパッケージ）に触るもの、`utils/` は触らない文面づくり・検査
 
+### 5. テストの置き場
+
+- **1 つのソースを確かめる単体テストは、そのソースの隣に `<ソース名>.test.ts` で置く**（例: `src/utils/geo.ts` と `src/utils/geo.test.ts`）。ソースを動かすとテストも一緒に動き、どのソースのテストかを名前で探さずに済む。確かめる相手が 1 つであればよく、型（`src/types`）・`tests/fixtures/`・期待する値を作るためのほかのソース（距離の表示を `formatDistance` で作る、など）を読むのは構わない。ほかのソースの動きそのものも確かめるなら、2 つのソースの組み合わせなので `tests/` に置く
+- 2 つ以上のソースの組み合わせ、サーバー全体・Worker、ビルドや設定・スクリプト・ワークフロー、この文書の決まり（`tests/structure-*.test.ts`）を確かめるテストと、テストの補助（`tests/fixtures/`）は `tests/` に置く
+- 隣のテストは、置き場の確かめ方（使う範囲・種類のフォルダの中身・名前）の対象に入れない。製品のコードではなく、`vitest` も読むため
+
 ## 名前の決まり
 
 | 種類                                                     | 規則                                                                                                                                                                                                                                         | 例                                              |
@@ -141,6 +147,7 @@ iekei-ramen/
 | サーバーが返す画面だけが読む CSS は `server/styles/` に kebab-case で置く                                                                                                                                                   | 単体テスト                             |
 | `server/` の直下は `worker.ts`・`main.ts`・`server.ts` と種類のフォルダ・`tools/` だけ                                                                                                                                      | 単体テスト                             |
 | `server/tools/<名前>.ts` は、その名前の tool を 1 つだけ登録する                                                                                                                                                            | 単体テスト                             |
+| ソースの隣の単体テストは `<ソース名>.test.ts` で、同じ名前のソースが隣にある                                                                                                                                                | 単体テスト                             |
 
 ## よくある迷い
 

@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  describeBasis,
-  describeScope,
-  pickRange,
-  shortlist,
-  SHORTLIST_SIZE,
-} from "../src/utils/shortlist";
-import type { Origin, Shop } from "../src/types";
+import { describeBasis, describeScope, pickRange, shortlist, SHORTLIST_SIZE } from "./shortlist";
+import type { Origin, Shop } from "../types";
 
 /** テスト用の店。指定しない項目は「情報が無い」側に倒す。 */
 function shop(id: string, over: Partial<Shop> = {}): Shop {

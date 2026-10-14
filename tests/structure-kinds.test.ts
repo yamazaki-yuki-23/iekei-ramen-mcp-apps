@@ -21,8 +21,10 @@ function walk(dir: string): string[] {
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 /** 種類のフォルダ（src/ のトップ・各機能・server/）の中のファイル。 */
 const inKind = (kind: string) =>
-  [...walk("src"), ...walk("server")].filter((path) =>
-    new RegExp(`^(src/(features/[^/]+/)?|server/)${kind}/`).test(path),
+  [...walk("src"), ...walk("server")].filter(
+    (path) =>
+      new RegExp(`^(src/(features/[^/]+/)?|server/)${kind}/`).test(path) &&
+      !path.endsWith(".test.ts"),
   );
 
 /**

@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  GEOCODE_MAX_WAIT_MS,
-  GEOCODE_SPACING_MS,
-  GeocodeGate,
-  reserveSlot,
-} from "../server/lib/geocode-gate";
+import { GEOCODE_MAX_WAIT_MS, GEOCODE_SPACING_MS, GeocodeGate, reserveSlot } from "./geocode-gate";
 
 describe("reserveSlot", () => {
   it("空いていればすぐ通し、次の枠を 1 間隔あとに置く", () => {
@@ -124,7 +119,9 @@ describe("GeocodeGate", () => {
     async (ahead) => {
       const sentAt = stubNominatim();
       const state = memoryStorage();
-      await state.storage.put("nextFree", T0 + ahead);
+      // storage は GeocodeGate に渡すため型を消してある。ここでは置き場として直接書く
+      const storage = state.storage as unknown as { put(k: string, v: unknown): Promise<void> };
+      await storage.put("nextFree", T0 + ahead);
       const reply = ask(new GeocodeGate(state), "a");
       await vi.runAllTimersAsync();
       await reply;

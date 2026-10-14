@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  createDeliveryQueue,
-  deliverSelection,
-  type ContextHost,
-} from "../src/features/search/utils/model-context";
-import type { Shop } from "../src/types";
+import { createDeliveryQueue, deliverSelection, type ContextHost } from "./model-context";
+import type { Shop } from "../../../types";
 
 const SHOP: Shop = {
   id: "node/1",

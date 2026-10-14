@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatDistance } from "../src/utils/geo";
-import { describeLeg, googleMapsRouteUrl, MAX_STOPS, planRoute } from "../src/utils/route";
-import type { Origin, Shop } from "../src/types";
+import { formatDistance } from "./geo";
+import { describeLeg, googleMapsRouteUrl, MAX_STOPS, planRoute } from "./route";
+import type { Origin, Shop } from "../types";
 
 /** 横浜駅あたり。 */
 const ORIGIN: Origin = { lat: 35.4657, lon: 139.622, label: "横浜駅", source: "place" };

@@ -30,7 +30,10 @@ function walk(dir: string): string[] {
 const MEASURE_ONLY = /^scripts\/benchmark-[^/]+\.mjs$/;
 const sources = [...walk("src"), ...walk("server"), ...walk("scripts")].filter(
   (path) =>
-    /\.(ts|tsx|mjs)$/.test(path) && !path.startsWith("src/generated/") && !MEASURE_ONLY.test(path),
+    /\.(ts|tsx|mjs)$/.test(path) &&
+    !path.startsWith("src/generated/") &&
+    !MEASURE_ONLY.test(path) &&
+    !path.endsWith(".test.ts"),
 );
 
 /** そのファイルが相対で import しているファイル（拡張子を補って解決する）。 */

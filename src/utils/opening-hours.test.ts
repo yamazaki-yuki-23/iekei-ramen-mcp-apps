@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatOpeningHours, openingHoursLabel } from "../src/utils/opening-hours";
+import { formatOpeningHours, openingHoursLabel } from "./opening-hours";
 
 describe("営業時間を人が読める表記にする", () => {
   it.each([
