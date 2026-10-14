@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FEVER_MS, PREFETCH_AT, SWIPE_STEP } from "../lib/swipe";
 import type { Origin, Shop } from "../lib/types";
-import { createFeed } from "./client";
+import { createFeed } from "../shared/feed";
 import type { Fx } from "./fx";
-import { sound, unlock } from "./sound";
+import { sound, unlock } from "../shared/sound";
 import { addMet, loadMet } from "./storage";
 
 type Status = "loading" | "ready" | "noplace" | "error";

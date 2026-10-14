@@ -93,36 +93,38 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 
 ### 構成
 
-| ファイル                      | 役割                                                              |
-| ----------------------------- | ----------------------------------------------------------------- |
-| `server/`                     | サーバー側（Workers と手元の Node）。ブラウザには載らない         |
-| `server/server.ts`            | MCP サーバー本体。UI 付き tool と補助 tool を登録                 |
-| `server/worker.ts`            | Cloudflare Workers エントリ（`/mcp` で Streamable HTTP を受ける） |
-| `server/main.ts`              | ローカル実行エントリ（HTTP / stdio）                              |
-| `src/mcp-app.tsx`             | MCP Apps の入口                                                   |
-| `src/web.tsx`                 | ブラウザで直接開く Web の入口                                     |
-| `src/iekei-app.tsx`           | 共通 UI の外側。作り直しをまたぐ状態（選択・まわる店・焦点）      |
-| `src/iekei-app-inner.tsx`     | 結果の画面。payload ごとに作り直す                                |
-| `src/swipe/`                  | 家系マッチ（`/match/`）。Web だけの別ページ                       |
-| `src/hosts/`                  | MCP Apps と Web の接続・tool 呼び出し・リンクの差し替え           |
-| `src/components/`             | 検索フォーム / 一覧 / 現在地パネル / 地図 / 迷ったら / まわる店   |
-| `src/lib/shortlist.ts`        | 「迷ったら」の 3 軒の選び方。おすすめ順は作らない                 |
-| `src/lib/route.ts`            | 「まわる店」の順番と距離、地図アプリへ渡す URL                    |
-| `src/lib/model-context.ts`    | 選んだ 1 軒をモデルへ渡す列（順番・失敗・やり直し）               |
-| `src/lib/shop-brief.ts`       | モデルに渡す文面。推定には但し書きを付ける                        |
-| `server/oauth.ts`             | Google サインインと、記録の tool に返す 401                       |
-| `server/visits.ts`            | 訪問記録の読み書き（D1）。SQL はここだけ                          |
-| `src/lib/progress.ts`         | 制覇率。順位も称号も作らない                                      |
-| `src/lib/same-name.ts`        | 同名の店が並ぶときだけ、名前の隣に出す地名を決める                |
-| `migrations/`                 | D1 のスキーマ（デプロイ時に適用）                                 |
-| `scripts/overpass-query.mjs`  | Overpass のクエリと取得の手順。拾う条件を変えるならここだけ見る   |
-| `scripts/fetch-shops.mjs`     | OpenStreetMap から店舗データを取得                                |
-| `scripts/judgments.mjs`       | TypeSafe に投げる質問と閾値。判定を変えるならここだけ見る         |
-| `scripts/judge-all.mjs`       | 家系判定を実行して `data/judged.json` に保存                      |
-| `scripts/find-duplicates.mjs` | 近い 2 件が同一店舗かを判定して `data/duplicates.json` に保存     |
-| `scripts/rescore.mjs`         | 保存済みの確率から判定だけ作り直す（API 不要）                    |
-| `scripts/fill-areas.mjs`      | 住所の欠けている店を座標から逆引き（Nominatim）                   |
-| `scripts/build-dataset.mjs`   | 判定結果を整形して `data/shops.json` を生成                       |
+| ファイル                      | 役割                                                                    |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| `server/`                     | サーバー側（Workers と手元の Node）。ブラウザには載らない               |
+| `server/server.ts`            | MCP サーバー本体。UI 付き tool と補助 tool を登録                       |
+| `server/worker.ts`            | Cloudflare Workers エントリ（`/mcp` で Streamable HTTP を受ける）       |
+| `server/main.ts`              | ローカル実行エントリ（HTTP / stdio）                                    |
+| `src/mcp-app.tsx`             | MCP Apps の入口                                                         |
+| `src/web.tsx`                 | ブラウザで直接開く Web の入口                                           |
+| `src/iekei-app.tsx`           | 共通 UI の外側。作り直しをまたぐ状態（選択・まわる店・焦点）            |
+| `src/iekei-app-inner.tsx`     | 結果の画面。payload ごとに作り直す                                      |
+| `src/match/`                  | 家系マッチ（`/match/`）。Web だけの別ページ                             |
+| `src/shindan/`・`src/camera/` | 家系タイプ診断（`/shindan/`）・家系カメラ（`/camera/`）。同じく別ページ |
+| `src/shared/`                 | 2 つ以上の別ページで使う部品（店を探す接続 `feed.ts`・音 `sound.ts`）   |
+| `src/hosts/`                  | MCP Apps と Web の接続・tool 呼び出し・リンクの差し替え                 |
+| `src/components/`             | 検索フォーム / 一覧 / 現在地パネル / 地図 / 迷ったら / まわる店         |
+| `src/lib/shortlist.ts`        | 「迷ったら」の 3 軒の選び方。おすすめ順は作らない                       |
+| `src/lib/route.ts`            | 「まわる店」の順番と距離、地図アプリへ渡す URL                          |
+| `src/lib/model-context.ts`    | 選んだ 1 軒をモデルへ渡す列（順番・失敗・やり直し）                     |
+| `src/lib/shop-brief.ts`       | モデルに渡す文面。推定には但し書きを付ける                              |
+| `server/oauth.ts`             | Google サインインと、記録の tool に返す 401                             |
+| `server/visits.ts`            | 訪問記録の読み書き（D1）。SQL はここだけ                                |
+| `src/lib/progress.ts`         | 制覇率。順位も称号も作らない                                            |
+| `src/lib/same-name.ts`        | 同名の店が並ぶときだけ、名前の隣に出す地名を決める                      |
+| `migrations/`                 | D1 のスキーマ（デプロイ時に適用）                                       |
+| `scripts/overpass-query.mjs`  | Overpass のクエリと取得の手順。拾う条件を変えるならここだけ見る         |
+| `scripts/fetch-shops.mjs`     | OpenStreetMap から店舗データを取得                                      |
+| `scripts/judgments.mjs`       | TypeSafe に投げる質問と閾値。判定を変えるならここだけ見る               |
+| `scripts/judge-all.mjs`       | 家系判定を実行して `data/judged.json` に保存                            |
+| `scripts/find-duplicates.mjs` | 近い 2 件が同一店舗かを判定して `data/duplicates.json` に保存           |
+| `scripts/rescore.mjs`         | 保存済みの確率から判定だけ作り直す（API 不要）                          |
+| `scripts/fill-areas.mjs`      | 住所の欠けている店を座標から逆引き（Nominatim）                         |
+| `scripts/build-dataset.mjs`   | 判定結果を整形して `data/shops.json` を生成                             |
 
 ### tool 一覧
 
@@ -241,7 +243,7 @@ Claudeの本番URL追加は未確認であることをページにも明記す�
 
 ### 家系マッチ（`/match/`、#166・#181）
 
-Web だけの別ページ（`match/index.html` → `src/swipe/main.tsx`）。トップの大きな `iekei-app` には入れず、
+Web だけの別ページ（`match/index.html` → `src/match/main.tsx`）。トップの大きな `iekei-app` には入れず、
 同じ origin の `/mcp` を MCP クライアントで呼ぶ（トップと同じ。検索の決まりはサーバーの tool だけが持つ）。
 旧 URL の `/swipe/` は `public/_redirects` で `/match/` へ 301 で送る（#181。静的アセットの転送で、Worker は通らない）。
 
@@ -255,12 +257,12 @@ Web だけの別ページ（`match/index.html` → `src/swipe/main.tsx`）。ト
 - MCP（会話の中）には出していない（#166 の見本の後に決める）
 - **最初の表示を JavaScript に待たせない**（#203）。`match/index.html` の `#root` に上の行（ロゴと見出し）の骨組みを入れてあり、
   React が描くと丸ごと入れ替わる（ずれにならない）。上の行の見た目を変えたら骨組みも直す（E2E が位置のずれを見る）
-- 店を探す接続（`src/swipe/client.ts`）は、最初に店を頼んだときに始める。家系カメラは撮るボタンに触れたら始める（`warm`）。
+- 店を探す接続（`src/shared/feed.ts`）は、最初に店を頼んだときに始める。家系カメラは撮るボタンに触れたら始める（`warm`）。
   開いた直後に接続の部品（約 88KB）を読むと、最初の表示と回線を取り合っていた
 
 ### 家系タイプ診断（`/shindan/`、#167）
 
-Web だけの別ページ（`shindan/index.html` → `src/shindan/main.tsx`）。問い・タイプ・注文の呪文は `src/lib/shindan.ts` が持つ。
+Web だけの別ページ（`shindan/index.html` → `src/shindan/main.tsx`）。問い・タイプ・注文の呪文は `src/shindan/shindan.ts` が持つ。
 
 - 回答は送らず、残さない（画面の中だけで結果を出す。サーバーも呼ばない）
 - シェアの URL はタイプごとの紙 `/shindan/<タイプ>/`。中身は診断と同じページで、開くと 1 問目から始まる。
@@ -271,7 +273,7 @@ Web だけの別ページ（`shindan/index.html` → `src/shindan/main.tsx`）�
 
 ### 家系カメラ（`/camera/`、#190）
 
-Web だけの別ページ（`camera/index.html` → `src/camera/main.tsx`）。投稿文のひな形は `src/lib/camera-post.ts`、
+Web だけの別ページ（`camera/index.html` → `src/camera/main.tsx`）。投稿文のひな形は `src/camera/camera-post.ts`、
 写真の仕上げは `src/camera/photo.ts`。
 
 - 写真はサーバーに送らず、保存しない。加工は canvas で端末の中だけ。canvas から書き出すと EXIF（位置情報）は付かない
@@ -587,7 +589,7 @@ tool の呼び出しを受け付けるたびに、worker.ts が 1 件書く（[s
 - 結果が届いて画面を自動で戻すのは、**3 軒が丸ごと画面より上にあるとき**（下の券売機で発券し直したとき）だけ。
   頭が少しはみ出ているだけで戻すと、「次の 3 軒を見る」を押すたびに画面が 160px 動いた
 - 家系カメラの店の候補も同じ骨組み。家系マッチは札を出す舞台の大きさが決まっているので、今の「探しています」の紙のまま
-- **音の仕組み（AudioContext）は、手が空いたときに先に作り、操作の中では再開だけする**（`src/swipe/sound.ts`）。
+- **音の仕組み（AudioContext）は、手が空いたときに先に作り、操作の中では再開だけする**（`src/shared/sound.ts`）。
   最初に作るときだけ約 150ms 止まる（CPU 4 倍遅くして）ので、払う操作の中で作ると最初の 1 回の反応が 208ms
   かかった。**再開（`unlock`）は操作の中で直接呼ぶ**——iPhone の Safari は、操作の中で再開しないと音を
   出させない（画面を描いた後に回すと鳴らなくなる）。鳴らす処理だけは `afterPaint` で画面を描いた後に回す

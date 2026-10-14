@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
 import { legalPages, seoPages, siteHeader } from "./seo-pages.mjs";
 import { legalLinksHtml } from "../src/lib/legal-links.ts";
 import { tabBarHtml } from "../src/lib/tabbar.ts";
-import { TYPES, shareUrl } from "../src/lib/shindan.ts";
+import { TYPES, shareUrl } from "../src/shindan/shindan.ts";
 
 const output = new URL("../dist/web/", import.meta.url);
 const shops = JSON.parse(await readFile(new URL("../data/shops.json", import.meta.url), "utf8"));

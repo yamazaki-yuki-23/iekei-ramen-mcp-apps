@@ -16,8 +16,8 @@ import {
   tableTip,
   TYPES,
   typeFor,
-} from "../lib/shindan";
-import { afterPaint, isMuted, prepareWhenIdle, setMuted, sound, unlock } from "../swipe/sound";
+} from "./shindan";
+import { afterPaint, isMuted, prepareWhenIdle, setMuted, sound, unlock } from "../shared/sound";
 import { Card } from "./Card";
 import styles from "./shindan.module.css";
 

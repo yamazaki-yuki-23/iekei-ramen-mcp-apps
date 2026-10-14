@@ -8,7 +8,7 @@ import {
   type Tone,
   TONES,
   xText,
-} from "../lib/camera-post";
+} from "./camera-post";
 import type { Shop } from "../lib/types";
 import styles from "./camera.module.css";
 import { ManualPost } from "./ManualPost";

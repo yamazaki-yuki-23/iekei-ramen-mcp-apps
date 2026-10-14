@@ -10,7 +10,7 @@ import { createFx, type Fx } from "./fx";
 import { useFeed, useFever, useReducedMotion, useSwipeKeys, useTodayCount, vibrate } from "./hooks";
 import { AskLine, Controls, Counter, Gauge, Header } from "./Parts";
 import { EndSheet, PlaceSheet, StatusSheet, TodaySheet, WantsSheet } from "./Sheets";
-import { afterPaint, prepareWhenIdle, sound, unlock } from "./sound";
+import { afterPaint, prepareWhenIdle, sound, unlock } from "../shared/sound";
 import { loadWants, saveWants } from "./storage";
 import styles from "./swipe.module.css";
 
