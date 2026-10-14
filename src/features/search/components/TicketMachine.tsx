@@ -67,7 +67,7 @@ export function TicketMachine({
   const [where, setWhere] = useState<Where>(() => initialWhere(form, origin, wantsNear));
   /*
    * 発券の操作番号。位置取得は MCP の呼び出しより前に始まるので、通信の通し番号では
-   * 古い発券を捨てられない（NearbyPanel と同じ。docs/development.md）。別の発券・
+   * 古い発券を捨てられない（NearbyPanel と同じ。docs/development/architecture.md）。別の発券・
    * 地図へ移動・画面の切り替え（アンマウント）で番号を進め、遅れて届いた位置を捨てる。
    */
   const operation = useRef(0);

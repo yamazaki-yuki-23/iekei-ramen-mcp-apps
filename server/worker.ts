@@ -109,7 +109,7 @@ export default {
     /*
      * http で来たら https へ送る（#168）。送らないと、認可のメタデータが http の URL を
      * 案内してしまう。POST は 301 だと GET に変わるので 308 にする。静的ページは Worker より
-     * 先に返るので、ゾーンの「Always Use HTTPS」で送る（docs/development.md）。
+     * 先に返るので、ゾーンの「Always Use HTTPS」で送る（docs/development/web-pages.md）。
      *
      * **Cloudflare が付ける X-Forwarded-Proto で見る。** `wrangler dev` は URL と Host を routes の
      * ホスト名（http://iekeiramen.com）に書き換えて渡し、返した Location は localhost に戻すので、
