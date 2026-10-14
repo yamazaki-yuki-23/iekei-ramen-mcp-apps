@@ -11,7 +11,7 @@ import path from "node:path";
 
 // ドット始まりのディレクトリに置くと express の sendFile が dotfile 扱いで
 // 拒否するため、e2e-host/ という通常のディレクトリ名にしている。
-const ROOT = path.join(import.meta.dirname, "..");
+const ROOT = path.join(import.meta.dirname, "..", "..");
 const REPO_DIR = path.join(ROOT, "e2e-host", "ext-apps");
 const STATE_FILE = path.join(ROOT, "e2e-host", "setup-state.json");
 const lock = JSON.parse(fs.readFileSync(path.join(ROOT, "package-lock.json"), "utf8"));

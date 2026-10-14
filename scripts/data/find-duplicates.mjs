@@ -15,7 +15,7 @@ import { TypeSafeClient } from "@typesafe-ai/sdk";
 import { nearbyPairs, pairFingerprint } from "./classify.mjs";
 import { PAIR_QUESTION, PAIR_RADIUS_M, pairState, SAME_SHOP_AT } from "./judgments.mjs";
 
-const DIR = path.join(import.meta.dirname, "..", "data");
+const DIR = path.join(import.meta.dirname, "..", "..", "data");
 const raw = JSON.parse(await fs.readFile(path.join(DIR, "osm-raw.json"), "utf-8"));
 const pairs = nearbyPairs(raw, PAIR_RADIUS_M);
 console.error(`${PAIR_RADIUS_M}m 以内のペア ${pairs.length} 組`);

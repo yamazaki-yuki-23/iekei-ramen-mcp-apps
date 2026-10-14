@@ -1,15 +1,15 @@
 import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
 import { legalPages, seoPages, siteHeader } from "./seo-pages.mjs";
-import { legalLinksHtml } from "../src/utils/legal-links.ts";
-import { tabBarHtml } from "../src/utils/tabbar.ts";
-import { TYPES, shareUrl } from "../src/utils/shindan.ts";
+import { legalLinksHtml } from "../../src/utils/legal-links.ts";
+import { tabBarHtml } from "../../src/utils/tabbar.ts";
+import { TYPES, shareUrl } from "../../src/utils/shindan.ts";
 
-const output = new URL("../dist/web/", import.meta.url);
-const shops = JSON.parse(await readFile(new URL("../data/shops.json", import.meta.url), "utf8"));
+const output = new URL("../../dist/web/", import.meta.url);
+const shops = JSON.parse(await readFile(new URL("../../data/shops.json", import.meta.url), "utf8"));
 const { files, counts } = seoPages(shops);
 const legal = legalPages({
-  privacy: await readFile(new URL("../docs/legal/privacy-policy.md", import.meta.url), "utf8"),
-  terms: await readFile(new URL("../docs/legal/terms.md", import.meta.url), "utf8"),
+  privacy: await readFile(new URL("../../docs/legal/privacy-policy.md", import.meta.url), "utf8"),
+  terms: await readFile(new URL("../../docs/legal/terms.md", import.meta.url), "utf8"),
 });
 for (const [path, content] of [...files, ...legal]) {
   const destination = new URL(`.${path}${path.endsWith("/") ? "index.html" : ""}`, output);
@@ -17,7 +17,7 @@ for (const [path, content] of [...files, ...legal]) {
   await writeFile(destination, content);
 }
 await copyFile(
-  new URL("../src/styles/global.css", import.meta.url),
+  new URL("../../src/styles/global.css", import.meta.url),
   new URL("seo-tokens.css", output),
 );
 

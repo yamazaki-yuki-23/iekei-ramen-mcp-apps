@@ -9,7 +9,7 @@ import { TypeSafeClient } from "@typesafe-ai/sdk";
 import { knownFacts } from "./classify.mjs";
 import { decide, QUESTIONS, shopState } from "./judgments.mjs";
 
-const DIR = path.join(import.meta.dirname, "..", "data");
+const DIR = path.join(import.meta.dirname, "..", "..", "data");
 const cases = JSON.parse(await fs.readFile(path.join(DIR, "eval-iekei.json"), "utf-8"));
 const client = new TypeSafeClient();
 

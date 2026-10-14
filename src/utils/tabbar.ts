@@ -1,6 +1,6 @@
 /*
  * 下のタブバー（#194）の中身。React の画面（src/components/TabBar.tsx）と、都道府県・店の静的なページ
- * （scripts/seo-pages.mjs）の両方がここから描く（アイコンの絵を 2 か所に持たない）。
+ * （scripts/build/seo-pages.mjs）の両方がここから描く（アイコンの絵を 2 か所に持たない）。
  */
 
 export type TabKey = "search" | "match" | "camera" | "shindan";

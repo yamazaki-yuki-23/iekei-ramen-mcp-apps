@@ -9,7 +9,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-const root = path.join(import.meta.dirname, "..");
+const root = path.join(import.meta.dirname, "..", "..");
 const resultsDir = path.join(root, "test-results");
 const out = path.join(root, "docs", "demo.gif");
 

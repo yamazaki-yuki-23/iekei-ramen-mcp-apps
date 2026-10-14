@@ -7,7 +7,7 @@
     "src/features/camera/main.tsx",
     "mcp-app.html",
     "src/features/search/main-mcp.tsx",
-    "scripts/*.mjs",
+    "scripts/**/*.mjs",
     "tests/**/*.test.ts",
     "src/**/*.test.ts",
     "server/**/*.test.ts",

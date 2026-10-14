@@ -1,5 +1,5 @@
 <!--
-  正本。/privacy で公開している（#198。scripts/legal-markdown.mjs が HTML にする）。
+  正本。/privacy で公開している（#198。scripts/build/legal-markdown.mjs が HTML にする）。
   中身はコードの実際の振る舞いと揃えてあるので、データの持ち方を変えたらここも直すこと（docs/legal/README.md）。
 -->
 

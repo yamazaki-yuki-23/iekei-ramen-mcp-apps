@@ -1,7 +1,7 @@
 /*
  * プライバシーポリシーと利用規約へのリンク（#198）。Web のすべてのページの下に出し、使い始める前に
  * 規約が目に入るようにする（docs/legal/README.md、民法 548 条の 2）。React の画面
- * （src/components/LegalLinks.tsx）と静的なページ（scripts/seo-pages.mjs・build-seo.mjs）の両方がここから描く。
+ * （src/components/LegalLinks.tsx）と静的なページ（scripts/build/seo-pages.mjs・build-seo.mjs）の両方がここから描く。
  * 見た目は src/styles/global.css の `.legal-links`（静的なページも seo-tokens.css として読む）。
  */
 

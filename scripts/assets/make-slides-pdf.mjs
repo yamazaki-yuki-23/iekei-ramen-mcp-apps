@@ -5,9 +5,9 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 
 const PORT = 8765;
-const OUT = ".slides/iekei-deck.pdf";
+const OUT = "docs/slides/iekei-deck.pdf";
 
-const server = spawn("python3", [".slides/serve.py"], { stdio: "ignore" });
+const server = spawn("python3", ["docs/slides/serve.py"], { stdio: "ignore" });
 const stop = () => server.kill();
 process.on("exit", stop);
 

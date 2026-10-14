@@ -12,7 +12,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const DIR = path.join(import.meta.dirname, "..", "data");
+const DIR = path.join(import.meta.dirname, "..", "..", "data");
 const raw = JSON.parse(await fs.readFile(path.join(DIR, "osm-raw.json"), "utf-8"));
 const judged = JSON.parse(await fs.readFile(path.join(DIR, "judged.json"), "utf-8"));
 

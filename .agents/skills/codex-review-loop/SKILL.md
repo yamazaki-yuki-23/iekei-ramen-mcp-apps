@@ -48,12 +48,12 @@ PR を出したあとの「レビュー待ち → 指摘対応 → 返信 → �
 
 ## 1〜2. レビューの到着を待ち、未返信の指摘を出す
 
-**待ち方はその場で書かない。** [scripts/wait-codex-review.sh](../../../scripts/wait-codex-review.sh) を
+**待ち方はその場で書かない。** [scripts/dev/wait-codex-review.sh](../../../scripts/dev/wait-codex-review.sh) を
 `run_in_background: true` で呼ぶ（Bash の前景実行は 600 秒で切れる）。PR 番号は省略すると
 今のブランチの PR。
 
 ```bash
-scripts/wait-codex-review.sh        # または PR 番号を付ける
+scripts/dev/wait-codex-review.sh        # または PR 番号を付ける
 ```
 
 | 終了コード | 意味                                                         | 次                                           |

@@ -89,7 +89,7 @@
       "vars": {},
       "assets": {
         // 確認用は検索エンジンに載せない robots.txt と X-Robots-Tag を足した複製を上げる
-        // （scripts/deploy-staging.mjs が作る）。
+        // （scripts/dev/deploy-staging.mjs が作る）。
         "directory": "./dist/staging",
         "binding": "ASSETS",
         "not_found_handling": "none",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { summarize } from "../src/utils/progress";
 // @ts-expect-error データ作成スクリプトはJavaScript。
-import { applyCorrections } from "../scripts/corrections.mjs";
+import { applyCorrections } from "../scripts/data/corrections.mjs";
 const evidence = { reason: "公式情報で確認", source: "公式サイト", date: "2026-10-04" };
 const shop = { id: "node/1", name: "試験家", prefecture: "神奈川県", lat: 35.46, lon: 139.62 };
 describe("個別補正", () => {

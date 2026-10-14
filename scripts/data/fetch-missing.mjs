@@ -1,7 +1,7 @@
 /**
  * 取得に失敗した都道府県だけを再取得して data/osm-raw.json にマージする。
  *
- * 使い方: node scripts/fetch-missing.mjs 京都府 宮城県
+ * 使い方: node scripts/data/fetch-missing.mjs 京都府 宮城県
  *
  * **クエリと取得の手順は overpass-query.mjs から取る。** ここに写しを置くと、
  * 条件を足したときに全国取得側だけが新しくなり、取り直した県だけ古い基準で
@@ -12,9 +12,10 @@ import path from "node:path";
 import { fetchPref, toElement } from "./overpass-query.mjs";
 
 const TARGETS = process.argv.slice(2);
-if (TARGETS.length === 0) throw new Error("usage: node scripts/fetch-missing.mjs 京都府 宮城県");
+if (TARGETS.length === 0)
+  throw new Error("usage: node scripts/data/fetch-missing.mjs 京都府 宮城県");
 
-const file = path.join(import.meta.dirname, "..", "data", "osm-raw.json");
+const file = path.join(import.meta.dirname, "..", "..", "data", "osm-raw.json");
 const existing = JSON.parse(await fs.readFile(file, "utf-8"));
 
 let failed = 0;

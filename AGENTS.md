@@ -35,7 +35,7 @@ issue がたまる）。項目は [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLA
 [.github/LABELS.md](.github/LABELS.md)。
 
 **issue を対応するときは `/ship-issue <番号…>`。** 読む → 作る → PR → Codex レビュー
-（`scripts/wait-codex-review.sh` で待つ）→ squash してマージ → 本番で確かめる → 証拠を
+（`scripts/dev/wait-codex-review.sh` で待つ）→ squash してマージ → 本番で確かめる → 証拠を
 書いて閉じる、までを通す。部品は `/codex-review-loop` と `/squash-and-merge`。
 共通スキルの正本は `.agents/skills/`。Claude Code は `.claude/skills/` の相対シンボリックリンクから同じ本文を読む。Codex では `$ship-issue` のように呼び、Claude Code では `/ship-issue` のように呼ぶ。
 

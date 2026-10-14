@@ -2,7 +2,7 @@
  * OpenStreetMap (Overpass API) から全国の家系ラーメン店候補を取得し、
  * 都道府県つきの静的データ data/shops.json を生成する。
  *
- * 実行: node scripts/fetch-shops.mjs
+ * 実行: node scripts/data/fetch-shops.mjs
  * OSM データは ODbL。出典表示が必要。
  */
 import fs from "node:fs/promises";
@@ -85,7 +85,7 @@ async function worker(slot) {
 
 await Promise.all(Array.from({ length: CONCURRENCY }, (_, i) => worker(i)));
 
-const file = path.join(import.meta.dirname, "..", "data", "osm-raw.json");
+const file = path.join(import.meta.dirname, "..", "..", "data", "osm-raw.json");
 await fs.writeFile(file, JSON.stringify(out, null, 1));
 console.error(`\ntotal raw: ${out.length} -> ${file}`);
 
@@ -99,7 +99,7 @@ console.error(`\ntotal raw: ${out.length} -> ${file}`);
 if (failed.length > 0) {
   console.error(
     `\n${failed.length} 県が取れませんでした。` +
-      `次を実行して埋めてください:\n  node scripts/fetch-missing.mjs ${failed.join(" ")}`,
+      `次を実行して埋めてください:\n  node scripts/data/fetch-missing.mjs ${failed.join(" ")}`,
   );
   process.exitCode = 1;
 }
