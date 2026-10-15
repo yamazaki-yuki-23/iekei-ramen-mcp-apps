@@ -3,7 +3,7 @@
 #
 #   scripts/dev/wait-codex-review.sh [PR番号]     # 省略時は今のブランチの PR
 #
-# 終了コード: 0 = 指摘なし / 3 = 指摘あり（下に一覧） / 4 = 時間切れ
+# 終了コード: 0 = 指摘なし / 3 = 指摘あり（下に一覧。行ごとのコメントとレビューの本文の両方） / 4 = 時間切れ
 #             5 = 待っている間に PR の先頭が変わった（新しい先頭でもう一度待つ）
 #
 # 待ち方を毎回その場で書いていて、2 回踏んだ。
@@ -60,6 +60,21 @@ findings=$(gh api "repos/$REPO/pulls/$PR/comments" --paginate --slurp | jq -r --
   ([.[] | .in_reply_to_id | select(.)] | map(tostring)) as $replied |
   .[] | select(.in_reply_to_id == null and .user.login == $bot and ((.id | tostring) | IN($replied[]) | not)) |
   "id=\(.id) \(.path):\(.line // .original_line)\n\(.body)\n---"')
+
+# レビューの本文に書かれた指摘。**Codex は行ごとのコメントを付けず、本文にだけ指摘を書くことがある。**
+# 行ごとのコメントだけを数えていたので、本文の P2 を「指摘なし」として読み落とし、マージした（#218）。
+# 今の先頭へのレビューのうち、いちばん新しい依頼より後のものだけを見る。前の巡の本文や、
+# 古いコミットへの本文は、反論して依頼し直した後も残るので数えない。返信のスレッドへの答え
+# （印の無い本文）は指摘にしない。
+body_findings=$(gh api "repos/$REPO/pulls/$PR/reviews" --paginate --slurp | jq -r \
+  --arg bot "$BOT" --arg sha "$SHA" --arg since "$REQ_AT" '
+  add // [] |
+  .[] | select(.user.login == $bot and .commit_id == $sha and (.submitted_at // "") > $since) |
+  select(.body // "" | test("P[0-3] Badge")) |
+  "review=\(.id)（レビューの本文）\n\(.body | split("<details>")[0] | rtrimstr("\n"))\n---"')
+if [ -n "$body_findings" ]; then
+  findings=$(printf '%s\n%s' "$findings" "$body_findings" | sed '/./,$!d')
+fi
 
 gh api "repos/$REPO/issues/$PR/comments" --paginate --slurp |
   jq -r --arg bot "$BOT" '[add[] | select(.user.login == $bot)] | last | .body // ""' |
