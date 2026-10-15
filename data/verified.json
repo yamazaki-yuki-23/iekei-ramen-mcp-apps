@@ -459,5 +459,6 @@
   {"id":"node/11314897726","basis":"chain","chain":"町田商店","status":"open","checked":"2026-10-15","source":"chain-list","url":"https://shop.machidashoten.com/japan/all/"},
   {"id":"node/5041439638","basis":"chain","chain":"町田商店","status":"open","checked":"2026-10-15","source":"chain-list","url":"https://shop.machidashoten.com/japan/all/"},
   {"id":"way/895354412","basis":"chain","chain":"町田商店","status":"open","checked":"2026-10-15","source":"chain-list","url":"https://shop.machidashoten.com/japan/all/"},
-  {"id":"node/9099751962","basis":"chain","chain":"町田商店","status":"open","checked":"2026-10-15","source":"chain-list","url":"https://shop.machidashoten.com/japan/all/"}
+  {"id":"node/9099751962","basis":"chain","chain":"町田商店","status":"open","checked":"2026-10-15","source":"chain-list","url":"https://shop.machidashoten.com/japan/all/"},
+  {"id":"way/447963487","basis":"self","status":"open","checked":"2026-10-15","source":"official-sns","url":"https://page.line.me/616kjfkv"}
 ]
