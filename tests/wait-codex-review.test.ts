@@ -178,4 +178,53 @@ describe("wait-codex-review.sh — 届いたかの見分け方", () => {
     expect(r.status).toBe(5);
     expect(r.stdout).not.toContain("未返信の指摘: なし");
   });
+
+  /** 届いた（総評の Completed 行に今の SHA）うえで、レビューの本文だけに指摘がある PR。 */
+  const withBodyFinding = (review: { commit: string; at: string }): Fixture => {
+    const fixture = base({ at: "2026-10-03T10:05:00Z", thumbsUp: false });
+    fixture[`repos/${REPO}/issues/${PR}/comments`] = [
+      { id: 9, body: "@codex review", created_at: "2026-10-03T10:05:00Z", user: { login: "me" } },
+      {
+        id: 10,
+        updated_at: "2026-10-03T10:09:00Z",
+        body: completed(HEAD),
+        user: { login: BOT },
+      },
+    ];
+    fixture[`repos/${REPO}/pulls/${PR}/reviews`] = [
+      {
+        id: 501,
+        commit_id: review.commit,
+        submitted_at: review.at,
+        user: { login: BOT },
+        body:
+          "### 💡 Codex Review\n\nhttps://github.com/o/r/blob/x/server/main.ts#L3\n" +
+          "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  起動の例が古いパス**\n\n" +
+          "<details> <summary>About Codex in GitHub</summary></details>",
+      },
+    ];
+    return fixture;
+  };
+
+  it("行ごとのコメントが無くても、レビューの本文に指摘があれば指摘あり（exit 3）", () => {
+    /*
+     * Codex は本文にだけ指摘を書くことがある。行ごとのコメントだけを数えていたので、
+     * 「未返信の指摘: なし」と出て、指摘の残った PR をマージした（#218）。
+     */
+    const r = run(withBodyFinding({ commit: HEAD, at: "2026-10-03T10:09:00Z" }));
+    expect(r.status).toBe(3);
+    expect(r.stdout).toContain("レビューの本文");
+    expect(r.stdout).toContain("起動の例が古いパス");
+    expect(r.stdout).not.toContain("未返信の指摘: なし");
+    expect(r.stdout).not.toContain("About Codex");
+  });
+
+  it.each([
+    ["古いコミットへのレビュー", { commit: OLD, at: "2026-10-03T10:09:00Z" }],
+    ["前の依頼のときのレビュー", { commit: HEAD, at: "2026-10-03T10:01:00Z" }],
+  ])("%sの本文の指摘は数えない（exit 0）", (_, review) => {
+    const r = run(withBodyFinding(review));
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("未返信の指摘: なし");
+  });
 });
