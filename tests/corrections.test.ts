@@ -15,6 +15,10 @@ describe("個別補正", () => {
     expect(applyCorrections(original, corrections)).toEqual([original[2]]);
     expect(original).toHaveLength(3);
   });
+  it("確かめた記録から足した店（verified/）は、verified.json で直すよう案内して止める", () => {
+    const correction = { action: "closed", id: "verified/0123456789abcdef0123", ...evidence };
+    expect(() => applyCorrections([], [correction])).toThrow(/verified\.json/);
+  });
   it("未掲載の店を安定IDと味情報なしで追加し、後のOSM取得では二重登録しない", () => {
     const correction = { action: "add", ...shop, ...evidence };
     const added = applyCorrections([], [correction]);

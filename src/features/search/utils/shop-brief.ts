@@ -31,10 +31,10 @@ export function describeShop(shop: Shop): string {
   if (shop.distanceKm !== undefined) {
     lines.push(`基準地点からの直線距離: ${formatDistance(shop.distanceKm)}`);
   }
-  lines.push(`OSM: ${shop.osmUrl}`);
+  if (shop.osmUrl) lines.push(`OSM: ${shop.osmUrl}`);
   lines.push(
-    "出典は OpenStreetMap で、味・混雑・評判のデータは持っていない。" +
-      "知らないことは、このアプリのデータには無いと答えること。",
+    `${shop.id.startsWith("verified/") ? "店名と住所の出典は系列の公式の店舗一覧" : "出典は OpenStreetMap"}で、` +
+      "味・混雑・評判のデータは持っていない。知らないことは、このアプリのデータには無いと答えること。",
   );
 
   return lines.join("\n");

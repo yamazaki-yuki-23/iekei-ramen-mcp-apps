@@ -71,7 +71,7 @@ export function pickArea(address, prefecture) {
   return { city, area };
 }
 
-async function reverse(lat, lon, prefecture) {
+export async function reverse(lat, lon, prefecture) {
   const params = new URLSearchParams({
     lat: String(lat),
     lon: String(lon),

@@ -13,6 +13,7 @@
     "data:dedupe": "node --env-file-if-exists=.dev.vars scripts/data/find-duplicates.mjs",
     "data:rescore": "node scripts/data/rescore.mjs",
     "data:areas": "node scripts/data/fill-areas.mjs",
+    "data:geocode": "node scripts/data/geocode-verified.mjs",
     "data:build": "node scripts/data/build-dataset.mjs",
     "reports": "node scripts/dev/reports.mjs",
     "build:ui": "cross-env NODE_ENV=production vite build && node scripts/build/embed-html.mjs && cross-env NODE_ENV=production vite build --mode web && node scripts/build/build-seo.mjs",

@@ -50,7 +50,7 @@ const ShopSchema = z.object({
   openingHours: z.string().optional(),
   website: z.string().optional(),
   phone: z.string().optional(),
-  osmUrl: z.string(),
+  osmUrl: z.string().optional(),
   /** 「近くを探す」のときだけ入る、現在地からの直線距離 (km)。 */
   distanceKm: z.number().optional(),
   /** 家系マッチのレア札の理由（#166）。事実だけ。頼まれたときだけ入る。 */

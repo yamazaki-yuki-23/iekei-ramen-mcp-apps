@@ -3,7 +3,7 @@ import type { VisitSummary } from "../utils/progress";
 
 /** 家系ラーメン店の1件分。OSMのタグと確認済みの個別補正から生成する。 */
 export interface Shop {
-  /** OSMまたは手動追加の安定ID。例: "node/604269583", "manual/<hash>" */
+  /** OSM・手動追加・確かめた記録の安定ID。例: "node/604269583", "manual/<hash>", "verified/<hash>" */
   id: string;
   name: string;
   nameEn?: string;
@@ -21,7 +21,8 @@ export interface Shop {
   openingHours?: string;
   website?: string;
   phone?: string;
-  osmUrl: string;
+  /** OSM にある店だけ。系列の公式の一覧から足した店（verified/）には無いことがある。 */
+  osmUrl?: string;
   /** 「近くを探す」の結果にだけ入る、現在地からの直線距離 (km)。 */
   distanceKm?: number;
   /** 家系マッチのレア札の理由（#166）。事実だけ。find-nearby に facts を頼んだときだけ入る。 */
