@@ -20,6 +20,11 @@ export function applyCorrections(shops, corrections) {
     )
       fail("date");
     if (["exclude", "closed"].includes(correction.action)) {
+      // 足した店の正本は verified.json。こちらに書いても効かないので、黙って通さない。
+      if (String(correction.id).startsWith("verified/"))
+        throw new Error(
+          `corrections.json[${i}]: verified/ の店は data/verified.json の status を直してください（closed／unlisted）`,
+        );
       if (!/^(?:(node|way|relation)\/\d+|manual\/[0-9a-f]{20})$/.test(correction.id)) fail("id");
     } else if (correction.action === "add") {
       for (const field of ["name", "prefecture"]) if (!text(correction[field])) fail(field);

@@ -203,11 +203,14 @@ test("札が飛んでいる間は、味の傾向も変えられない（山の�
 
 test("味で絞っても上の札が同じなら、指で払うと絞った山の 2 枚目へ進む", async ({ page }) => {
   await open(page);
-  for (let i = 0; i < 3; i++) await swipeBy(page, /^← パス/);
+  // 上の札が直系・濃厚になるまで払う。その札が、絞った山の 1 枚目にそのままなる（指の操作が付け直されない形）。
+  // 何枚目かは近くの店の並びで変わるので、枚数は決め打ちしない。
+  await swipeBy(page, /^← パス/);
+  for (let i = 0; i < 20 && !(await top(page).textContent())?.includes("味: 直系・濃厚"); i++)
+    await swipeBy(page, /^← パス/);
   const before = await top(page).getAttribute("data-shop-id");
   await page.getByRole("button", { name: "直系・濃厚" }).click();
   await expect(top(page)).toHaveAttribute("aria-label", /^1枚目、/);
-  // 横浜駅では、絞る前の 4 枚目がそのまま絞った山の 1 枚目になる（指の操作が付け直されない形）。
   expect(await top(page).getAttribute("data-shop-id")).toBe(before);
   const box = (await top(page).boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

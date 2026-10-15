@@ -18,6 +18,8 @@ Webの店舗詳細で「家系ではない」「閉店している」を、一�
    都道府県を確かめる。Threadsの返信はオーナーが渡せば、この確認から同じ手順に入る。
 3. 裏が取れたものだけ`data/corrections.json`に追記する。除外は`exclude`、閉店は
    `closed`と既存店舗のID（OSMまたは`manual/...`）、追加は`add`と店名・緯度・経度・都道府県。
+   **`verified/...` の店（系列の公式の一覧から足した店）は`data/verified.json`で直す。** その店の記録の
+   `status`を`closed`（閉店）か`unlisted`（公式の一覧から消えた）にすれば、`data:build`が足さなくなる。
    `reason`・`source`・`date`（YYYY-MM-DD）は全種類で必須。確認した市区町村・住所も
    追加に含められる。追加は確認済みの家系だけで、味は`unknown`。仮の情報は追加しない。
    `npm run data:build`を実行し、補正ファイルと生成データのPRを作る。

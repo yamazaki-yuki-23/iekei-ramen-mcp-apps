@@ -9,6 +9,7 @@ import path from "node:path";
 import { findAmbiguous } from "./labels.mjs";
 import { readJson } from "./read-json.mjs";
 import { applyCorrections } from "./corrections.mjs";
+import { maybeSameShop, nearbyShops, verifiedShops } from "./verified-shops.mjs";
 import {
   nearbyPairs,
   pairFingerprint,
@@ -146,7 +147,32 @@ for (const el of raw) {
 // 確度の高い順、その中は都道府県・店名順。
 const ORDER = { confirmed: 0, likely: 1, candidate: 2 };
 const corrections = JSON.parse(await fs.readFile(path.join(DIR, "corrections.json"), "utf-8"));
-const sorted = applyCorrections(shops, corrections).toSorted(
+const corrected = applyCorrections(shops, corrections);
+/*
+ * 系列の公式の一覧で確かめた、今のデータに無い店（data/verified.json）。座標は
+ * data:geocode が公式の住所から引いたもの（data/verified-geo.json）で、番地の精度で
+ * 引けた店だけを足す。
+ */
+const verified = await readJson(new URL("../../data/verified.json", import.meta.url));
+const candidates = verifiedShops(
+  verified,
+  await readJson(new URL("../../data/verified-geo.json", import.meta.url), { optional: true }),
+);
+/*
+ * **同じ店かもしれない今の店が近くにあれば、足さない**（決まりは maybeSameShop）。足すと
+ * 1 店が 2 回載る。どちらを残すかは人が確かめて verified.json を直す。近くの店は全部出す。
+ */
+const unlisted = new Set(verified.filter((r) => r.status === "unlisted").map((r) => r.id));
+const skipped = new Set();
+for (const { added: a, existing: e, distanceM } of nearbyShops(candidates, corrected)) {
+  const skip = maybeSameShop(a, e, unlisted);
+  if (skip) skipped.add(a.id);
+  console.error(
+    `${distanceM}m 以内に今の店: ${a.name}（${skip ? "足さない" : "足す"}）/ ${e.name} ${e.id}`,
+  );
+}
+const added = candidates.filter((shop) => !skipped.has(shop.id));
+const sorted = [...corrected, ...added].toSorted(
   (a, b) =>
     ORDER[a.confidence] - ORDER[b.confidence] ||
     a.prefecture.localeCompare(b.prefecture, "ja") ||
@@ -193,7 +219,11 @@ for (const s of sorted) {
 }
 const byConfidence = {};
 for (const s of sorted) byConfidence[s.confidence] = (byConfidence[s.confidence] ?? 0) + 1;
-console.error(`shops: ${sorted.length}`, byConfidence, `/ 重複除去 ${duplicates.size} 件`);
+console.error(
+  `shops: ${sorted.length}`,
+  byConfidence,
+  `/ 重複除去 ${duplicates.size} 件 / 確かめた記録から ${added.length} 件`,
+);
 console.error("taste:", byTaste);
 console.error(
   "top prefectures:",

@@ -41,10 +41,11 @@ export function dataCaveats(
  * 判定の段階ごとの定義まで全部並べると長くなり、読まれずに不安だけが残る
  * （2026-10-04 に本番で確認）。定義は DATA_DEFINITIONS に分け、開いて読めるようにする。
  */
-export const DATA_FOOTNOTE = `店舗データは OpenStreetMap（ODbL）由来です。家系の判定は地図の記載と既知のブランドからの推定です。${TASTE_REFERENCE_NOTE}距離は直線距離です。営業時間は変わることがあるため、訪問前にご確認ください。`;
+export const DATA_FOOTNOTE = `店舗データは OpenStreetMap（ODbL）由来で、一部の店は系列の公式の店舗一覧から足しています（位置は国土地理院の住所検索で求めました）。家系の判定は地図の記載と既知のブランドからの推定です。${TASTE_REFERENCE_NOTE}距離は直線距離です。営業時間は変わることがあるため、訪問前にご確認ください。`;
 
 /** 画面の下に常に見せる出典（ODbL の表示義務）。説明は「データについて」の中。 */
-export const DATA_CREDIT = "店舗データ: © OpenStreetMap contributors（ODbL）";
+export const DATA_CREDIT =
+  "店舗データ: © OpenStreetMap contributors（ODbL）・一部の位置: 国土地理院";
 
 /**
  * 結果のすぐ下に 1 回だけ出す但し書き（#152）。推定であること・並びがおすすめ度では
