@@ -103,6 +103,23 @@ const ORIGIN_COLOR = "#1f6f4a";
 const RING = { color: ORIGIN_COLOR, weight: 1, opacity: 0.5, fill: false, dashArray: "4 6" };
 
 /** 日本全体が収まる初期表示。 */
+/**
+ * 背景は国土地理院の淡色地図（#244）。標準の地図は道路・建物・店名が多く、店のピンが埋もれる。
+ * 淡色地図のタイルは 2〜18 だけなので、それより寄せたら 18 を拡大し、引いたら 2 を縮小して描く
+ * （無い番号を取りに行かない）。リアルタイムに読み込むので申請は不要、出典の表示が要る。
+ * 店のデータは OpenStreetMap 由来なので、その表示も残す。
+ */
+export function addBaseTiles(map: L.Map): void {
+  L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    maxNativeZoom: 18,
+    minNativeZoom: 2,
+    attribution:
+      '出典: <a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a> | ' +
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+}
+
 export const JAPAN_BOUNDS = L.latLngBounds([24.0, 122.5], [45.7, 146.0]);
 
 /**

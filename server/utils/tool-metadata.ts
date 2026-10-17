@@ -11,7 +11,8 @@ export const UI_RESOURCE_META = {
     domain: "https://iekeiramen.com",
     csp: {
       connectDomains: ["https://*.openstreetmap.org"],
-      resourceDomains: ["https://*.openstreetmap.org", "https://*.tile.openstreetmap.org"],
+      // 地図の背景は国土地理院の淡色地図（#244）。
+      resourceDomains: ["https://cyberjapandata.gsi.go.jp"],
     },
     permissions: { geolocation: {} },
     prefersBorder: true,

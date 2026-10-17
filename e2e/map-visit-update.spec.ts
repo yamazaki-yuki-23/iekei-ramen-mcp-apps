@@ -47,7 +47,7 @@ test("訪問印だけの更新はクラスタとピンを保持し、焦点・�
   page,
 }) => {
   page.on("pageerror", (error) => console.error(error.message));
-  await page.route("https://tile.openstreetmap.org/**", (route) => route.abort());
+  await page.route("https://cyberjapandata.gsi.go.jp/**", (route) => route.abort());
   await page.setContent('<div id="root"></div>');
   await page.addStyleTag({ content: css });
   await page.addScriptTag({ content: script });

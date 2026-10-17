@@ -11,6 +11,7 @@ import {
   drawRoute,
   drawShops,
   focusWithoutScrolling,
+  addBaseTiles,
   JAPAN_BOUNDS,
   ORIGIN_PANE,
   ROUTE_PANE,
@@ -146,11 +147,7 @@ export function MapView({
      * 決める。寄せてから足すと、その瞬間は上限が無い状態で寸法を測ることに
      * なり、面積ゼロの範囲では寄せ先が無限大になりうる。
      */
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
+    addBaseTiles(map);
     map.fitBounds(initialBounds ? toLatLngBounds(initialBounds) : JAPAN_BOUNDS);
     /*
      * 重なり順を明示する。**レイヤーを足す前に作ること。**

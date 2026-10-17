@@ -1683,7 +1683,9 @@ test.describe("塊の中身に行き着けること", () => {
     const zoom = () =>
       app.locator("div[role=application]").evaluate((el) => {
         const tile = el.querySelector("img.leaflet-tile") as HTMLImageElement | null;
-        return Number(tile?.src.replace("https://tile.openstreetmap.org/", "").split("/")[0]);
+        return Number(
+          tile?.src.replace("https://cyberjapandata.gsi.go.jp/xyz/pale/", "").split("/")[0],
+        );
       });
     await expect.poll(zoom).toBeGreaterThan(17);
     const before = await zoom();

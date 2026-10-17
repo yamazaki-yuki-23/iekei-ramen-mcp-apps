@@ -194,7 +194,7 @@ describe("UI リソース", () => {
       };
     };
     expect(meta.ui.domain).toBe("https://iekeiramen.com");
-    expect(meta.ui.csp.resourceDomains).toContain("https://*.tile.openstreetmap.org");
+    expect(meta.ui.csp.resourceDomains).toContain("https://cyberjapandata.gsi.go.jp");
     expect(meta.ui.permissions).toHaveProperty("geolocation");
   });
 });
