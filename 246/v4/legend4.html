@@ -1,0 +1,88 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><style>
+body{margin:0;background:#f7f2e8;font:14px "Hiragino Maru Gothic ProN","Hiragino Sans";color:#22150e}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px 6px;padding:18px 12px}
+.cell{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;line-height:1.4}
+h1{font-size:16px;margin:16px 16px 0}
+</style></head><body><h1>地図の上の印（押せる範囲はどれも 44px 以上）</h1><div class="grid" id="g"></div><script>
+const PINS = "B"; const M = { ink: "#22150e" };
+const PR = 2;
+const TASTE = {
+  rich: { color: "#b8442c", word: "濃厚" },
+  creamy: { color: "#c98a2e", word: "クリーミー" },
+  chain: { color: "#3f72aa", word: "チェーン" },
+  unknown: { color: "#22150e", word: "" },
+};
+function canvas(size) { const c = document.createElement("canvas"); c.width = c.height = size * PR; const g = c.getContext("2d"); g.scale(PR, PR); return [c, g]; }
+const IMG = {}; function add(id, size, draw) { const [c, g] = canvas(size); draw(g, size); IMG[id] = c; }
+// 丼の絵（ファビコンの丼を単純にしたもの）。
+function bowl(g, cx, cy, s, fill, rim) {
+  g.save(); g.translate(cx, cy); g.scale(s, s);
+  g.fillStyle = rim; g.beginPath(); g.roundRect(-9, -3, 18, 3, 1.5); g.fill();
+  g.fillStyle = fill; g.beginPath(); g.moveTo(-8, 0); g.lineTo(8, 0); g.quadraticCurveTo(7.5, 8, 0, 8); g.quadraticCurveTo(-7.5, 8, -8, 0); g.fill();
+  g.fillRect(-3, 7.5, 6, 2);
+  g.restore();
+}
+function glyph(g, cx, cy, text, color, px) { g.fillStyle = color; g.font = `700 ${px}px "Hiragino Maru Gothic ProN", "Hiragino Sans"`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, cx, cy + 0.5); }
+
+function makeImages() {
+  // 店のピン: 味の色で塗った丸（直径 32px）に白い縁と影、中に家系の丼。押せる範囲は透明な余白で 44px。
+  // 順路の店は、丼の代わりに番号を入れる（番号の札をピンに重ねない）。
+  const face = (g, c, fill, r) => {
+    g.fillStyle = "rgba(34,21,14,.28)"; g.beginPath(); g.arc(c, c + 2, r + 1, 0, 7); g.fill();
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(c, c, r + 2.5, 0, 7); g.fill();
+    g.fillStyle = fill; g.beginPath(); g.arc(c, c, r, 0, 7); g.fill();
+  };
+  for (const [k, t] of Object.entries(TASTE)) {
+    add(`pin-${k}`, 44, (g) => { face(g, 22, t.color, 16); bowl(g, 22, 20, 0.95, "#fff", "#fff"); });
+    for (const n of [1, 2, 3, 4, 5]) add(`stop-${k}-${n}`, 44, (g) => { face(g, 22, t.color, 16); glyph(g, 22, 22, String(n), "#fff", 19); });
+    // 選択中: しずく形（地図アプリでおなじみの「ここ」）。先端が店の位置。
+    add(`sel-${k}`, 60, (g) => {
+      const drop = (r, cy) => { g.beginPath(); g.arc(30, cy, r, Math.PI * 0.78, Math.PI * 2.22); g.lineTo(30, cy + r * 1.8); g.closePath(); };
+      g.fillStyle = "rgba(34,21,14,.3)"; g.save(); g.translate(1.5, 2.5); drop(21, 23); g.fill(); g.restore();
+      g.fillStyle = "#fff"; drop(22.5, 22); g.fill();
+      g.fillStyle = t.color; drop(19, 22); g.fill();
+      bowl(g, 30, 20, 1.2, "#fff", "#fff");
+    });
+  }
+  // 塊: 茶赤の丸に白い数字。件数で 3 段。
+  // 塊: 丸を 2 枚ずらして重ねた形（「何軒かが重なっている」を形で示す。順路の番号の丸と、色に頼らず見分ける）。
+  for (const [k, r] of [["s", 16], ["m", 20], ["l", 25]]) add(`cluster-${k}`, r * 2 + 14, (g, sz) => {
+    const c = sz / 2, dx = 4, dy = -4;
+    g.fillStyle = "rgba(34,21,14,.25)"; g.beginPath(); g.arc(c, c + 2, r, 0, 7); g.fill();
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(c + dx, c + dy, r, 0, 7); g.fill();
+    g.fillStyle = "#e89d87"; g.beginPath(); g.arc(c + dx, c + dy, r - 2.5, 0, 7); g.fill();
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(c, c, r, 0, 7); g.fill();
+    g.fillStyle = "#b8442c"; g.beginPath(); g.arc(c, c, r - 2.5, 0, 7); g.fill();
+  });
+  // 味の言葉（ピンの下）。白い縁取りの文字だけ（札にすると、ピンより目立つ）。
+  for (const [k, t] of Object.entries(TASTE)) {
+    if (!t.word) continue;
+    const ink = { rich: "#9a3623", creamy: "#7a4f0e", chain: "#2f5a8a" }[k];
+    const [c0, g0] = canvas(10); g0.font = `700 12px "Hiragino Maru Gothic ProN"`; const wd = Math.ceil(g0.measureText(t.word).width) + 8;
+    const [c, g] = (() => { const c = document.createElement("canvas"); c.width = wd * PR; c.height = 18 * PR; const g = c.getContext("2d"); g.scale(PR, PR); return [c, g]; })();
+    g.font = `700 12px "Hiragino Maru Gothic ProN"`; g.textAlign = "center"; g.textBaseline = "middle"; g.lineJoin = "round";
+    g.lineWidth = 4; g.strokeStyle = "#fff"; g.strokeText(t.word, wd / 2, 9.5); g.fillStyle = ink; g.fillText(t.word, wd / 2, 9.5);
+    IMG[`word-${k}`] = c;
+  }
+  // 駅名の札: 券売機のボタンの形を残しつつ弱める（影なし・淡い縁）。店より目立たせない。
+  add("key", 24, (g) => {
+    g.fillStyle = "#fff"; g.beginPath(); g.roundRect(1, 1, 22, 20, 5); g.fill();
+    g.lineWidth = 1; g.strokeStyle = "#b9ab95"; g.beginPath(); g.roundRect(1.5, 1.5, 21, 19, 4.5); g.stroke();
+  }, { stretchX: [[7 * PR, 17 * PR]], stretchY: [[7 * PR, 15 * PR]], content: [6 * PR, 4 * PR, 18 * PR, 18 * PR] });
+}
+
+
+makeImages();
+const cells = [[["pin-unknown"],"味は未判定"],[["pin-rich","word-rich"],"直系・濃厚"],[["pin-creamy","word-creamy"],"クリーミー"],[["pin-chain","word-chain"],"チェーン"],
+ [["sel-unknown"],"選択中"],[["stop-unknown-2"],"順路の 2 軒目"],[["cluster-m"],"塊（件数）"],[["key"],"駅名の札"]];
+const g = document.getElementById("g");
+for (const [ids, label] of cells) {
+  const box = document.createElement("div"); box.className = "cell";
+  for (const id of ids) { const c = IMG[id]; c.style.width = c.width / PR * 1.3 + "px"; box.append(c);
+    if (id === "cluster-m") { const x = c.getContext("2d"); x.fillStyle = "#fff"; x.font = "700 16px 'Hiragino Sans'"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("12", c.width / PR / 2, c.height / PR / 2 + 0.5); }
+    if (id === "key") { const x = c.getContext("2d"); x.fillStyle = "#4a4640"; x.font = "700 10px 'Hiragino Sans'"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("駅", 12, 11); }
+  }
+  box.insertAdjacentHTML("beforeend", "<div>" + label + "</div>"); g.append(box);
+}
+document.body.dataset.ready = 1;
+</script></body></html>
