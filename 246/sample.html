@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; font-family: "Hiragino Sans", sans-serif; }
+  #map { position: absolute; inset: 0; }
+  .route { width: 26px; height: 26px; border-radius: 50%; background: #b8442c; color: #fff; font: 700 14px "Hiragino Sans"; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #fff; font-variant-numeric: tabular-nums; }
+  .cluster { width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #22150e; font: 700 14px "Hiragino Sans"; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #b8442c, 0 1px 3px rgba(34,21,14,.25); }
+  .tag { position: absolute; left: 8px; top: 8px; z-index: 5; background: #22150e; color: #fff; font: 700 14px "Hiragino Sans"; padding: 4px 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="tag" id="tag"></div>
+<script>
+/*
+ * 見本を撮るための使い捨ての HTML（#246）。アプリのコードではない。
+ * 地図のデータは OpenFreeMap（OpenMapTiles の形）。本番は Protomaps なので、層の名前は違う。
+ * 色の指定は「何を・どの色で」の対応で渡す。
+ */
+const q = new URLSearchParams(location.search);
+const T = {
+  "gray-0": "#ffffff", "gray-50": "#f8f7f5", "gray-100": "#efedea", "gray-200": "#dedbd6", "gray-300": "#c4c0b9",
+  "gray-400": "#a09b93", "gray-500": "#7d776e", "gray-600": "#635e57", "gray-700": "#4a4640",
+  "ramen-50": "#fdf4f1", "ramen-100": "#fae4dc", "ramen-200": "#f3c5b6", "ramen-300": "#e89d87", "ramen-400": "#da7256",
+  "shoyu-900": "#22150e",
+};
+const PALETTES = {
+  // 案 1: 生成り（淡い茶赤）の地に白い道。道の縁を茶赤の淡い段で描き、全体を暖かくする。水辺は暖かい灰。
+  1: { land: "ramen-50", park: "gray-100", water: "gray-200", waterText: "gray-500", building: "gray-50",
+       road: "gray-0", roadCase: "ramen-100", major: "gray-0", majorCase: "ramen-200", motor: "gray-0", motorCase: "ramen-300",
+       rail: "gray-400", boundary: "gray-300", place: "gray-600", station: "shoyu-900", roadText: "gray-500", halo: "gray-0" },
+  // 案 2: 暖かい灰の地に、建物は一段明るく、主な道は茶赤。水辺と文字は醤油色。
+  2: { land: "gray-100", park: "gray-200", water: "shoyu-900", waterText: "gray-300", building: "gray-50",
+       road: "gray-0", roadCase: "gray-300", major: "ramen-100", majorCase: "ramen-300", motor: "ramen-200", motorCase: "ramen-400",
+       rail: "gray-600", boundary: "gray-400", place: "shoyu-900", station: "shoyu-900", roadText: "gray-700", halo: "gray-50" },
+};
+const plan = q.get("plan");
+const c = (k) => T[PALETTES[plan][k]];
+const name = ["coalesce", ["get", "name:ja"], ["get", "name"]];
+const font = ["Noto Sans Regular"];
+const bold = ["Noto Sans Bold"];
+const w = (a, b) => ["interpolate", ["exponential", 1.6], ["zoom"], 8, a, 17, b];
+
+function vectorStyle() {
+  return {
+    version: 8,
+    glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+    sources: { omt: { type: "vector", url: "https://tiles.openfreemap.org/planet" } },
+    layers: [
+      { id: "land", type: "background", paint: { "background-color": c("land") } },
+      { id: "park", type: "fill", source: "omt", "source-layer": "park", paint: { "fill-color": c("park") } },
+      { id: "green", type: "fill", source: "omt", "source-layer": "landcover", filter: ["in", ["get", "class"], ["literal", ["grass", "wood"]]], paint: { "fill-color": c("park") } },
+      { id: "water", type: "fill", source: "omt", "source-layer": "water", paint: { "fill-color": plan === "2" ? ["interpolate", ["linear"], ["zoom"], 9, T["shoyu-900"], 12, T["gray-400"]] : c("water") } },
+      { id: "river", type: "line", source: "omt", "source-layer": "waterway", minzoom: 10, paint: { "line-color": plan === "2" ? T["gray-400"] : c("water"), "line-width": w(0.5, 4) } },
+      { id: "building", type: "fill", source: "omt", "source-layer": "building", minzoom: 15, paint: { "fill-color": c("building") } },
+      { id: "boundary", type: "line", source: "omt", "source-layer": "boundary", filter: ["==", ["get", "admin_level"], 4], maxzoom: 10, paint: { "line-color": c("boundary"), "line-width": 1, "line-dasharray": [3, 2] } },
+      // 道路は 3 段（細い道・主な道・高速）。縁（case）を先に描いて、面を重ねる。
+      { id: "road-case", type: "line", source: "omt", "source-layer": "transportation", minzoom: 13, filter: ["in", ["get", "class"], ["literal", ["minor", "tertiary", "service"]]], paint: { "line-color": c("roadCase"), "line-width": w(1, 10) } },
+      { id: "road", type: "line", source: "omt", "source-layer": "transportation", minzoom: 13, filter: ["in", ["get", "class"], ["literal", ["minor", "tertiary", "service"]]], paint: { "line-color": c("road"), "line-width": w(0.5, 8) } },
+      { id: "major-case", type: "line", source: "omt", "source-layer": "transportation", minzoom: 9, filter: ["in", ["get", "class"], ["literal", ["primary", "secondary", "trunk"]]], paint: { "line-color": c("majorCase"), "line-width": w(1.5, 16) } },
+      { id: "major", type: "line", source: "omt", "source-layer": "transportation", minzoom: 9, filter: ["in", ["get", "class"], ["literal", ["primary", "secondary", "trunk"]]], paint: { "line-color": c("major"), "line-width": w(1, 13) } },
+      { id: "motor-case", type: "line", source: "omt", "source-layer": "transportation", minzoom: 6, filter: ["==", ["get", "class"], "motorway"], paint: { "line-color": c("motorCase"), "line-width": w(1.5, 18) } },
+      { id: "motor", type: "line", source: "omt", "source-layer": "transportation", minzoom: 6, filter: ["==", ["get", "class"], "motorway"], paint: { "line-color": c("motor"), "line-width": w(0.8, 14) } },
+      { id: "rail", type: "line", source: "omt", "source-layer": "transportation", minzoom: 10, filter: ["==", ["get", "class"], "rail"], paint: { "line-color": c("rail"), "line-width": w(0.6, 2.5) } },
+      // 文字: 地名・駅名・主な道路名だけ。交番・郵便局などの記号（poi）は出さない。
+      { id: "road-name", type: "symbol", source: "omt", "source-layer": "transportation_name", minzoom: 14, filter: ["in", ["get", "class"], ["literal", ["primary", "secondary", "trunk", "motorway"]]],
+        layout: { "symbol-placement": "line", "text-field": name, "text-font": font, "text-size": 12 }, paint: { "text-color": c("roadText"), "text-halo-color": c("halo"), "text-halo-width": 2 } },
+      { id: "water-name", type: "symbol", source: "omt", "source-layer": "water_name", minzoom: 9, layout: { "text-field": name, "text-font": font, "text-size": 12 }, paint: { "text-color": c("waterText"), "text-halo-color": c("halo"), "text-halo-width": 1.5 } },
+      { id: "place-ward", type: "symbol", source: "omt", "source-layer": "place", minzoom: 10, maxzoom: 14, filter: ["==", ["get", "class"], "suburb"],
+        layout: { "text-field": name, "text-font": bold, "text-size": 13 }, paint: { "text-color": c("place"), "text-halo-color": c("halo"), "text-halo-width": 2 } },
+      { id: "place-minor", type: "symbol", source: "omt", "source-layer": "place", minzoom: 13, filter: ["in", ["get", "class"], ["literal", ["quarter", "neighbourhood"]]],
+        layout: { "text-field": name, "text-font": font, "text-size": 12 }, paint: { "text-color": c("place"), "text-halo-color": c("halo"), "text-halo-width": 2 } },
+      { id: "place-city", type: "symbol", source: "omt", "source-layer": "place", minzoom: 6, maxzoom: 13, filter: ["in", ["get", "class"], ["literal", ["city", "town"]]],
+        layout: { "text-field": name, "text-font": bold, "text-size": ["interpolate", ["linear"], ["zoom"], 6, 12, 12, 16] }, paint: { "text-color": c("place"), "text-halo-color": c("halo"), "text-halo-width": 2 } },
+      { id: "place-pref", type: "symbol", source: "omt", "source-layer": "place", maxzoom: 7, filter: ["==", ["get", "class"], "state"],
+        layout: { "text-field": name, "text-font": font, "text-size": 12 }, paint: { "text-color": c("place"), "text-halo-color": c("halo"), "text-halo-width": 2 } },
+      { id: "station", type: "symbol", source: "omt", "source-layer": "poi", minzoom: 12, filter: ["all", ["==", ["get", "class"], "railway"], ["==", ["get", "subclass"], "station"]],
+        layout: { "text-field": name, "text-font": bold, "text-size": ["interpolate", ["linear"], ["zoom"], 12, 12, 16, 15] }, paint: { "text-color": c("station"), "text-halo-color": c("halo"), "text-halo-width": 2.5 } },
+    ],
+  };
+}
+// 今の地図（OSM の標準タイル）と並べるための比較用。
+const osmStyle = { version: 8, sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256 } }, layers: [{ id: "osm", type: "raster", source: "osm" }] };
+
+const VIEWS = { yokohama: [139.6222, 35.4658, 14], tokyo: [139.7671, 35.6812, 14], city: [139.62, 35.46, 11.5], japan: [137.6, 36.6, 4.6] };
+const [lon, lat, zoom] = VIEWS[q.get("view")];
+document.getElementById("tag").textContent = plan === "now" ? "今（OSM 標準）" : `案 ${plan}`;
+const map = new maplibregl.Map({ container: "map", style: plan === "now" ? osmStyle : vectorStyle(), center: [lon, lat], zoom, attributionControl: false, fadeDuration: 0, localIdeographFontFamily: "'Hiragino Sans', sans-serif", canvasContextAttributes: { preserveDrawingBuffer: true } });
+
+const TASTE = { rich: "#b8442c", creamy: "#e0a04a", chain: "#4a7fb8", unknown: "#7d776e" };
+map.on("load", async () => {
+  const data = await (await fetch("shops.json")).json();
+  const view = q.get("view");
+  const shops = view === "tokyo" ? data.tokyo : view === "japan" ? data.japan : data.yokohama;
+  // 選択中と順路の番号は、画面の真ん中に近い店から選ぶ。
+  const byCenter = [...shops].sort((a, b) => Math.hypot(a.lon - lon, a.lat - lat) - Math.hypot(b.lon - lon, b.lat - lat));
+  // 日本全体と市の広さでは、アプリと同じく近い店を塊にまとめる（36px の格子で近似）。
+  if (view === "japan" || view === "city") {
+    const cells = new Map();
+    for (const s of shops) {
+      const p = map.project([s.lon, s.lat]);
+      const k = `${Math.floor(p.x / 36)},${Math.floor(p.y / 36)}`;
+      (cells.get(k) ?? cells.set(k, []).get(k)).push(s);
+    }
+    const singles = [];
+    for (const g of cells.values()) {
+      if (g.length === 1) { singles.push(g[0]); continue; }
+      const el = document.createElement("div"); el.className = "cluster"; el.textContent = g.length;
+      const lon = g.reduce((a, s) => a + s.lon, 0) / g.length, lat = g.reduce((a, s) => a + s.lat, 0) / g.length;
+      new maplibregl.Marker({ element: el }).setLngLat([lon, lat]).addTo(map);
+    }
+    addPins(singles, null);
+  } else {
+    // 駅周辺: 1 軒ずつのピン、選択中 1 軒、順路の番号 3 つ。
+    addPins(shops, byCenter[0]);
+    byCenter.slice(1, 4).forEach((s, i) => { const el = document.createElement("div"); el.className = "route"; el.textContent = i + 1; new maplibregl.Marker({ element: el }).setLngLat([s.lon, s.lat]).addTo(map); });
+  }
+  map.once("idle", () => (document.body.dataset.ready = "1"));
+});
+function addPins(shops, selected) {
+  const fc = { type: "FeatureCollection", features: shops.map((s) => ({ type: "Feature", properties: { c: TASTE[s.t], sel: s === selected }, geometry: { type: "Point", coordinates: [s.lon, s.lat] } })) };
+  map.addSource("shops", { type: "geojson", data: fc });
+  map.addLayer({ id: "pins", type: "circle", source: "shops", paint: {
+    "circle-color": ["get", "c"], "circle-radius": ["case", ["get", "sel"], 11, 7],
+    "circle-stroke-color": ["case", ["get", "sel"], "#141312", "#ffffff"], "circle-stroke-width": ["case", ["get", "sel"], 3, 2],
+  } });
+}
+</script>
+</body>
+</html>
