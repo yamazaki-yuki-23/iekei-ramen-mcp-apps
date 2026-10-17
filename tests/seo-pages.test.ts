@@ -34,9 +34,11 @@ describe("静的SEOページ", () => {
   it("県・市・店を生成し、未判定だけnoindexとsitemap除外にする", () => {
     const { files, counts } = seoPages(shops);
     // 市区町村は未判定でない店が 1 軒だけなので載せない（#169）。
-    expect(counts).toEqual({ prefectures: 1, municipalities: 1, shops: 2, indexed: 6 });
-    // 固定の 4 枚（トップ・家系マッチ #181・家系タイプ診断 #167・都道府県の一覧）も載せる。
+    expect(counts).toEqual({ prefectures: 1, municipalities: 1, shops: 2, indexed: 7 });
+    // 固定の 5 枚（トップ・家系マッチ #181・家系カメラ #242・家系タイプ診断 #167・都道府県の一覧）も載せる。
     expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/match/");
+    // 家系カメラも検索に載せる（#242）。見本の段階は終わった。
+    expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/camera/");
     expect(files.get("/area/kanagawa/")).toContain("判定した結果の2軒");
     expect(files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toContain("未判定家");
     expect(files.get("/shop/node-123/")).not.toContain('name="robots" content="noindex"');
@@ -145,7 +147,7 @@ describe("静的SEOページ", () => {
       (s) => `${s.prefecture}/${s.city}`,
     );
     expect(counts.indexed).toBe(
-      4 +
+      5 +
         [...byPref.values()].filter(indexedPages).length +
         // 市区町村は、未判定でない店が 2 軒以上のときだけ載せる（#169）。
         [...byCity.values()].filter(
@@ -216,7 +218,7 @@ describe("検索結果と共有のための追加（#155）", () => {
       'name="robots" content="noindex"',
     );
     expect(files.get("/sitemap.xml")).not.toContain("/area/kanagawa/");
-    expect(counts.indexed).toBe(4);
+    expect(counts.indexed).toBe(5);
     // 1 軒でも未判定以外があれば今どおり index する。
     expect(seoPages(shops).files.get("/area/kanagawa/")).not.toContain("noindex");
   });
@@ -264,5 +266,15 @@ describe("検索結果と共有のための追加（#155）", () => {
     expect(connect).toContain('property="og:url" content="https://iekeiramen.com/connect"');
     expect(connect).toContain('property="og:image" content="https://iekeiramen.com/og-card.png"');
     expect(connect).toContain('name="twitter:card" content="summary_large_image"');
+  });
+
+  it("sitemap に入れる機能のページ（マッチ・カメラ・診断）は noindex を持たない", () => {
+    for (const page of ["match", "camera", "shindan"]) {
+      const html = readFileSync(new URL(`../${page}/index.html`, import.meta.url), "utf8");
+      expect(html, page).not.toMatch(/name="robots"[^>]*noindex/);
+      expect(html, page).toContain(
+        `<link rel="canonical" href="https://iekeiramen.com/${page}/" />`,
+      );
+    }
   });
 });
