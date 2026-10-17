@@ -228,8 +228,8 @@ test.describe("地図から探す", () => {
 
     const map = app.getByRole("application", { name: "家系ラーメン店の地図" });
     await expect(map).toBeVisible();
-    // Leaflet の circleMarker は SVG path として描かれる
-    await expect(map.locator("svg path").first()).toBeVisible();
+    // 印の見た目は canvas。押せるボタン（単独のピンか塊）が重なっている。
+    await expect(map.locator(".shop-pin, .cluster-pin").first()).toBeVisible();
     /*
      * 重なる店は塊にまとまるので、ピンの数は店の数と一致しない。
      * **塊の件数を足すと全件になる**——そこを見張る。
@@ -237,11 +237,14 @@ test.describe("地図から探す", () => {
     expect(await plottedShops(app)).toBe(TOTAL);
   });
 
-  test("OpenStreetMap の出典を表示する", async ({ page }) => {
+  test("OpenStreetMap と Protomaps の出典を表示する", async ({ page }) => {
     const app = await callTool(page, "show-iekei-ramen-map");
     await waitForApp(app);
 
-    await expect(app.getByRole("link", { name: "OpenStreetMap" }).first()).toBeVisible();
+    // 出典は最初から畳んだ「i」（開いたままだと、下の端のピンに重なる）。開くと読める。
+    await app.locator(".maplibregl-ctrl-attrib-button").click();
+    await expect(app.getByRole("link", { name: /OpenStreetMap/ }).first()).toBeVisible();
+    await expect(app.getByRole("link", { name: "Protomaps" })).toBeVisible();
   });
 
   test("地図モードではキーワード欄を出さない", async ({ page }) => {
@@ -1340,26 +1343,16 @@ test.describe("まわる店（順路）", () => {
       await app.getByRole("button", { name: "まわる店に追加" }).click();
     }
 
-    // 破線は「道のりではない」ことを見た目でも示すためのもの。
-    const line = app.locator("svg path[stroke-dasharray]");
-    await expect(line).toHaveCount(1);
-    await expect(line).toHaveAttribute("stroke-dasharray", "6 6");
-    // 番号のピンは順路の軒数だけ出る。
-    const pins = app.locator(".route-pin");
-    await expect(pins).toHaveCount(2);
     /*
-     * **番号は選択中のピンより上。** 選んだ店はそのまま順路に入ることが多く、
-     * 下に潜ると何軒目か読めなくなる（選択中のピンを塊より上へ出したときに、
-     * 番号が巻き添えで下がった）。
-     *
-     * 番号は `interactive: false`＝`pointer-events: none` なので、
-     * **elementFromPoint では測れない**（当たり判定から外れて下の要素が返る）。
-     * 置かれているペインと、その重なり順で見る。
+     * 順路の店は、ピンの中の丼が番号になる（番号の札をピンに重ねない、#246）。選んだ店が
+     * そのまま順路に入っていても、しずく形の中に番号が出る。線と番号は canvas に描くので、
+     * 押せるボタンに付けた番号（data-stop）で数える。
      */
-    await expect(pins.first().locator("xpath=..")).toHaveClass(/leaflet-routeOrder-pane/);
-    const zIndexOf = (pane: string) =>
-      app.locator(`.leaflet-${pane}-pane`).evaluate((el) => Number(getComputedStyle(el).zIndex));
-    expect(await zIndexOf("routeOrder")).toBeGreaterThan(await zIndexOf("selectedShop"));
+    const pins = app.locator(".shop-pin[data-stop]");
+    await expect(pins).toHaveCount(2);
+    expect(
+      await pins.evaluateAll((els) => els.map((el) => el.getAttribute("data-stop")).toSorted()),
+    ).toEqual(["1", "2"]);
     /*
      * 直前に選んだ店へズームしたままだと、足した順路が地図の外に出て、
      * 線を引いても見えない。順路の全体が入るところまで寄せ直す。
@@ -1463,7 +1456,7 @@ test.describe("基準地点が店の邪魔をしないこと", () => {
     });
     await waitForApp(app);
 
-    const pin = app.locator('path[aria-label^="たかさご家"]');
+    const pin = app.locator('button.shop-pin[aria-label^="たかさご家"]');
     await expect(pin).toHaveCount(1);
 
     /*
@@ -1537,7 +1530,7 @@ test.describe("地図の塊", () => {
      * 寄った先に、押した塊と同じ大きさの塊が残っていなければ解けている。
      */
     await pin.click();
-    const map = (await app.locator(".leaflet-container").boundingBox())!;
+    const map = (await app.locator(".maplibregl-map").boundingBox())!;
     await expect
       .poll(async () => {
         const inView: number[] = [];
@@ -1573,16 +1566,17 @@ test.describe("選んだ店が塊に隠れないこと", () => {
     await waitForApp(app);
 
     await shopCards(app).first().click();
-    // 選んだピンは専用のペインに出る（縁の色は段階ごとに違うので、色では探さない）。
-    const pin = app.locator(".leaflet-selectedShop-pane path[role=button]");
+    // 選んだピンはしずく形のボタン（色では探さない）。
+    const pin = app.locator(".shop-pin-selected");
     await expect(pin).toBeVisible();
 
     /** 選択中のピンの中心が塊に覆われているか、その位置で手前に出ているか。 */
     const inspect = () =>
       pin.evaluate((el) => {
         const r = el.getBoundingClientRect();
+        // しずく形は先端が店の位置。先端の近く（店の位置）で、手前に出ているかを見る。
         const x = r.x + r.width / 2;
-        const y = r.y + r.height / 2;
+        const y = r.y + r.height - 8;
         const covered = [...document.querySelectorAll(".cluster-pin")].some((c) => {
           const b = c.getBoundingClientRect();
           return x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height;
@@ -1593,7 +1587,7 @@ test.describe("選んだ店が塊に隠れないこと", () => {
     // 重なる状態になるまで引く。塊が離れていては、この検査に意味が無い。
     let state = await inspect();
     for (let i = 0; i < 5 && !state.covered; i++) {
-      await app.locator(".leaflet-control-zoom-out").click();
+      await app.locator(".maplibregl-ctrl-zoom-out").click();
       await waitForMapSettled(app);
       state = await inspect();
     }
@@ -1620,8 +1614,8 @@ test.describe("塊の中身に行き着けること", () => {
     const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "神奈川県" });
     await waitForApp(app);
 
-    const pin = app.locator(".leaflet-overlay-pane path[role=button]").first();
-    await expect(pin).toHaveAttribute("tabindex", "0");
+    const pin = app.locator(".shop-pin").first();
+    await expect(pin).toHaveJSProperty("tabIndex", 0);
     const label = await pin.getAttribute("aria-label");
     expect(label).toMatch(/（(直系・濃厚|クリーミー|チェーン・万人向け|味は未判定)）$/);
 
@@ -1656,13 +1650,27 @@ test.describe("塊の中身に行き着けること", () => {
     });
     await waitForApp(app);
 
-    await app.locator(".cluster-pin").first().focus();
+    const cluster = app.locator(".cluster-pin").first();
+    const size = Number(await cluster.textContent());
+    await cluster.focus();
     await page.keyboard.press("Enter");
-    await expect(app.getByText("この地点の 3 軒")).toBeVisible();
-    await expect.poll(() => shopCards(app).count()).toBe(3);
+    await expect(app.getByText(`この地点の ${size} 軒`)).toBeVisible();
+    await expect.poll(() => shopCards(app).count()).toBe(size);
 
-    // その塊に入っていない店をキーボードで選ぶ。
-    await app.locator('path[aria-label^="寿々喜家 曙町店"]').focus();
+    // その塊に入っていない店（開いた一覧に出ていない店）を、地図のピンからキーボードで選ぶ。
+    const inCluster = (await shopCards(app).allTextContents()).join("\n");
+    const outside = app.locator(".shop-pin").filter({
+      hasNot: app.locator("[aria-current]"),
+    });
+    let target = outside.first();
+    for (const pin of await outside.all()) {
+      const name = (await pin.getAttribute("aria-label"))!.replace(/（.*$/, "");
+      if (!inCluster.includes(name)) {
+        target = pin;
+        break;
+      }
+    }
+    await target.focus();
     await page.keyboard.press("Enter");
 
     await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
@@ -1680,12 +1688,10 @@ test.describe("塊の中身に行き着けること", () => {
       bounds: { north: 34.3344, south: 34.3334, east: 134.0707, west: 134.0697 },
     });
     await waitForApp(app);
-    const zoom = () =>
-      app.locator("div[role=application]").evaluate((el) => {
-        const tile = el.querySelector("img.leaflet-tile") as HTMLImageElement | null;
-        return Number(tile?.src.replace("https://tile.openstreetmap.org/", "").split("/")[0]);
-      });
-    await expect.poll(zoom).toBeGreaterThan(17);
+    const zoom = async () =>
+      Number(await app.locator("div[role=application]").getAttribute("data-zoom"));
+    // MapLibre の 16 は Leaflet の 17 と同じ縮尺（塊を押したときに寄る上限）。
+    await expect.poll(zoom).toBeGreaterThan(16);
     const before = await zoom();
 
     /*
@@ -1712,7 +1718,7 @@ test.describe("塊の中身に行き着けること", () => {
     const size = Number(await cluster.textContent());
 
     await expect(cluster).toHaveAttribute("aria-label", `この地点の ${size} 軒を開く`);
-    await expect(cluster).toHaveAttribute("tabindex", "0");
+    await expect(cluster).toHaveJSProperty("tabIndex", 0);
 
     await cluster.focus();
     await page.keyboard.press("Enter");
@@ -1826,7 +1832,7 @@ test.describe("隣の世界まで動かしたとき", () => {
      * worldCopyJump を切った実装でも通った）。以前は 3 回押していたが、動いている
      * 最中の縮小は Leaflet が黙って捨てるので、実際には 1 回分しか縮んでいなかった。
      */
-    await app.locator(".leaflet-control-zoom-out").click();
+    await app.locator(".maplibregl-ctrl-zoom-out").click();
     await waitForMapSettled(app);
     const box = (await map.boundingBox())!;
     const y = box.y + box.height / 2;
@@ -1862,7 +1868,7 @@ test.describe("外から来た文字の扱い", () => {
     const app = await callTool(page, "find-nearby-iekei-ramen", {
       lat: 35.4657,
       lon: 139.622,
-      label: '<img src=x onerror="window.__pwned=1">横浜駅',
+      label: '<img src=x onerror="window.pwned=1">横浜駅',
       source: "place",
     });
     await waitForApp(app);
@@ -1870,17 +1876,13 @@ test.describe("外から来た文字の扱い", () => {
     await expect(app.getByText(/直線距離 500m と 1km/)).toBeVisible();
 
     /*
-     * 基準地点の印にカーソルが乗るとツールチップが開く。印は 5px と小さく、
-     * 同心円や店のピンと重なって hover の当たり判定を取りづらいので、
-     * イベントを直接送る。
+     * 基準地点の印は canvas に描き、名前は同じ位置の見えない札（読み上げと触れたときの title）に
+     * 持たせる。名前は属性に文字として入れるので、img が生えない＝HTML として解釈されていない。
      */
-    await app.locator('path[fill="#1f6f4a"]').dispatchEvent("mouseover");
-    const tip = app.locator(".leaflet-tooltip");
-    await expect(tip).toBeVisible();
-
-    // 中身は文字。img が生えていない＝HTML として解釈されていない。
-    await expect(tip).toContainText("<img");
-    expect(await tip.locator("img").count()).toBe(0);
+    const origin = app.locator(".origin-pin");
+    await expect(origin).toHaveAttribute("aria-label", /<img src=x/);
+    expect(await origin.locator("img").count()).toBe(0);
+    expect(await origin.evaluate(() => (window as { pwned?: number }).pwned)).toBeUndefined();
   });
 });
 
@@ -2072,7 +2074,7 @@ test.describe("まわる店と範囲の両立", () => {
     await expect
       .poll(async () => {
         const box = await app.locator("div[role=application]").boundingBox();
-        const origin = await app.locator('path[fill="#1f6f4a"]').boundingBox();
+        const origin = await app.locator(".origin-pin").boundingBox();
         if (!box || !origin) return false;
         return (
           origin.x >= box.x &&
@@ -2138,7 +2140,7 @@ test.describe("まわる店と範囲の両立", () => {
 
     // **順路から離れた広い画角にする。** 同じ場所のままだと、飛んでも
     // 結果が変わらず、この不具合を捕まえられない。
-    for (let i = 0; i < 6; i++) await app.locator(".leaflet-control-zoom-out").click();
+    for (let i = 0; i < 6; i++) await app.locator(".maplibregl-ctrl-zoom-out").click();
 
     await search.click();
     const area = await count();
@@ -2167,7 +2169,118 @@ test.describe("基準地点の同心円", () => {
     // 地図モードへ移っても、どこから見ているかは消えない。
     await app.getByRole("tab", { name: "地図から探す" }).click();
     await expect(app.getByText(/直線距離 500m と 1km/)).toBeVisible();
-    // 円は 2 本（500m / 1km）。Leaflet は円も path で描く。
-    await expect.poll(() => app.locator("path[stroke-dasharray='4 6']").count()).toBe(2);
+    // 円（500m / 1km）と印は canvas に描く。基準地点の名前の札が 1 つ出る。
+    await expect(app.locator(".origin-pin")).toHaveCount(1);
+    await expect(app.locator(".origin-pin")).toHaveAttribute("aria-label", "基準地点: 横浜駅");
+  });
+});
+
+test.describe("地図を描けない画面", () => {
+  /*
+   * ホストの枠が地図の描画に使う Worker（blob:）を止めると、地図は描けない（#246）。
+   * 空白や壊れた地図を出さず、地図の場所で一覧と Web 版へ案内する。一覧はそのまま使える。
+   */
+  test("Worker を作れないホストでも、地図の場所で案内し、一覧から選べる", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.Worker = function () {
+        throw new DOMException("blocked by CSP", "SecurityError");
+      } as unknown as typeof Worker;
+    });
+    // 地図の canvas は置かれないので、地図を待つ waitForApp は使わない。
+    // 基準地点つきで開く（描けていれば、地図の下に同心円の説明が出る条件）。
+    const app = await callTool(page, "show-iekei-ramen-map", {
+      prefecture: "神奈川県",
+      lat: 35.4657,
+      lon: 139.622,
+      label: "横浜駅",
+      source: "place",
+    });
+    await expect(app.getByText("この画面では地図を描けませんでした", { exact: false })).toBeVisible(
+      { timeout: 30_000 },
+    );
+    await expect(app.locator(".maplibregl-map")).toHaveCount(0);
+    // 地図の道具も外す（押しても何も起きないため）。
+    await expect(app.getByRole("button", { name: "この範囲で発券" })).toHaveCount(0);
+    await expect(app.getByRole("button", { name: "地図を広げる" })).toHaveCount(0);
+    // 地図の上の印の説明も出さない（説明する印が無い）。
+    await expect(app.getByText(/直線距離 500m と 1km/)).toHaveCount(0);
+    await shopCards(app).first().click();
+    await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+  });
+});
+
+test.describe("地図を描けない画面（黙って止まる Worker）", () => {
+  /*
+   * Worker が作れても返事をしない（止められて黙る）と、店のピンのデータがいつまでも読めない。
+   * 見張りの時間（15 秒）が過ぎたら、地図を壊してから案内に切り替える。壊さないと、地図と
+   * Worker が外れた入れ物の上で生き続ける（#247 のレビュー）。
+   */
+  test("返事をしない Worker でも、時間が過ぎたら地図を壊して案内する", async ({ page }) => {
+    test.setTimeout(60_000);
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.addInitScript(() => {
+      const w = window as unknown as { mapsRemoved: number };
+      w.mapsRemoved = 0;
+      window.Worker = function () {
+        return {
+          // 地図を壊すと、地図の部品が Worker に「地図を外す」（RM）を送る。
+          postMessage(message: { type?: string }) {
+            if (message?.type === "RM") w.mapsRemoved += 1;
+          },
+          addEventListener() {},
+          removeEventListener() {},
+          terminate() {},
+        };
+      } as unknown as typeof Worker;
+    });
+    const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "神奈川県" });
+    await expect(app.getByText("この画面では地図を描けませんでした", { exact: false })).toBeVisible(
+      { timeout: 30_000 },
+    );
+    // あとから描けないと分かったときも、地図の道具を外す（壊した地図の範囲を読みに行かない）。
+    await expect(app.getByRole("button", { name: "この範囲で発券" })).toHaveCount(0);
+    // 地図の入れ物も、地図の本体（canvas）も残っていない。地図を壊した（Worker に外す知らせが届いた）。
+    await expect(app.locator(".maplibregl-map, .maplibregl-canvas")).toHaveCount(0);
+    expect(
+      await app
+        .locator("body")
+        .evaluate(() => (window as unknown as { mapsRemoved: number }).mapsRemoved),
+    ).toBeGreaterThan(0);
+    await shopCards(app).first().click();
+    await expect(app.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe("結果に無い順路の店", () => {
+  /*
+   * 順路（まわる店）は検索をまたいで残り、線は全部の店まで引く。いまの結果に入っていない
+   * 順路の店も、番号のピンを出す（出さないと、線の端に番号が無くなる。#247 のレビュー）。
+   */
+  test("味で絞って外れた順路の店も、番号のピンが出る", async ({ page }) => {
+    const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    // 味が未判定の店を積む（直系・濃厚に絞ると外れる）。
+    const card = shopCards(app).filter({ hasText: "味は未判定" }).first();
+    const id = await shopId(card);
+    await card.click();
+    await app.getByRole("button", { name: "まわる店に追加" }).click();
+    await expect(app.locator(".shop-pin[data-stop='1']")).toHaveCount(1);
+
+    await app.getByRole("button", { name: "直系・濃厚", exact: true }).click();
+    // 絞り込みの応答が反映され、積んだ店が結果から外れるのを待つ。
+    await expect
+      .poll(async () => Promise.all((await shopCards(app).all()).map(shopId)))
+      .not.toContain(id);
+    await expect(app.locator("main[data-pending-calls]")).toHaveAttribute(
+      "data-pending-calls",
+      "0",
+    );
+    // 結果から外れた店は押せない印（押しても一覧に無く、詳細を出せない）。番号と名前は持つ。
+    const outside = app.locator(".route-stop-pin[data-stop='1']");
+    await expect(outside).toHaveCount(1);
+    await expect(outside).toHaveAttribute("aria-label", /^まわる店の 1 軒目: /);
+    await expect(app.locator(".shop-pin[data-stop='1']")).toHaveCount(0);
   });
 });

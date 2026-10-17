@@ -1,7 +1,18 @@
 import { test as base, type Frame } from "@playwright/test";
 import { frameLocation } from "./frame-location";
 
-export const test = base.extend<{ frameEvidence: void }>({
+export const test = base.extend<{ frameEvidence: void; noMapData: void }>({
+  /*
+   * 地図のデータ（PMTiles）と文字は取りに行かない（E2E から外部の地図サービスに問い合わせない）。
+   * ピン・塊・順路は GeoJSON なので、背景が無くても描かれる。
+   */
+  noMapData: [
+    async ({ page }, use) => {
+      await page.route(/\/map\/(japan\.pmtiles|fonts\/)/, (route) => route.abort());
+      await use();
+    },
+    { auto: true },
+  ],
   frameEvidence: [
     async ({ page }, use, testInfo) => {
       const started = performance.now();

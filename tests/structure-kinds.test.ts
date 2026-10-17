@@ -57,6 +57,7 @@ const EXTERNAL_GLOBALS = [
   "AnalyticsEngineDataset",
   "DurableObjectState",
   "DurableObjectNamespace",
+  "R2Bucket",
 ];
 
 /** 値として import している先（`import type` は数えない）。 */

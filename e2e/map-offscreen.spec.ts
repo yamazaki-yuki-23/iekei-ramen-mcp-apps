@@ -31,7 +31,7 @@ test("地図が画面の下に見切れていても、塊を押せば開く", as
    * テストは何も見ない。ホストは iframe の高さをあとから決めるので、見切れる
    * ところまで伸びるのを待つ。塊を画面へ収めたあとで確かめる。
    */
-  const container = app.locator(".leaflet-container");
+  const container = app.locator(".maplibregl-map");
   await expect
     .poll(
       async () => {

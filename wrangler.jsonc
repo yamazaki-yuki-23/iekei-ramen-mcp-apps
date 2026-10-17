@@ -20,6 +20,7 @@
       "/token",
       "/register",
       "/.well-known/*",
+      "/map/japan.pmtiles",
     ],
   },
   "observability": { "enabled": true },
@@ -65,6 +66,12 @@
   // 読み取り 1 日 1 万回。書くのは tool 名とサインインの有無だけで、個人は特定しない。
   // 週ごとの件数は `npm run usage`。
   "analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "iekei_ramen_usage" }],
+  /*
+   * 地図のデータ（日本の範囲の PMTiles、#246）。Worker が /map/japan.pmtiles で範囲指定に答えて返す。
+   * **binding は env へ引き継がれない**ので、確認用（staging）にも要るなら env.staging にも書く。
+   * 置き方は docs/development/map.md。
+   */
+  "r2_buckets": [{ "binding": "MAP_TILES", "bucket_name": "iekei-ramen-map" }],
   // 本番の Worker ではプレビュー版（Version URLs）を使わない。Durable Object を持つ Worker には
   // 作られないため（#192。公式: Version URLs are not generated for Workers that implement a Durable Object）。
   // 本番の前に確かめる場所は、下の確認用の環境（staging）。
@@ -103,8 +110,11 @@
           "/token",
           "/register",
           "/.well-known/*",
+          "/map/japan.pmtiles",
         ],
       },
+      // 地図のデータ（#246）。読むだけなので、本番と同じバケットを使う（binding は引き継がれない）。
+      "r2_buckets": [{ "binding": "MAP_TILES", "bucket_name": "iekei-ramen-map" }],
       "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "d0e99b4c70ec41588a54d33dd8b80a90" }],
       "d1_databases": [
         {

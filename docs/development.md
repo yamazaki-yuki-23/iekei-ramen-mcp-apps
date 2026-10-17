@@ -12,6 +12,7 @@
 | Web の静的ページと外向けの案内 | [web-pages.md](development/web-pages.md)       | 静的ページ・検索エンジン向けのページ・規約・ChatGPT への申請・チャットへの接続案内                                                |
 | 計測                           | [measurement.md](development/measurement.md)   | 使われているかを数える（Workers Analytics Engine）                                                                                |
 | 店舗データ                     | [data.md](development/data.md)                 | 店舗データの作り方・更新・家系判定の段階                                                                                          |
+| 地図                           | [map.md](development/map.md)                   | 地図の作り（MapLibre＋Protomaps）・PMTiles の作り直し方と R2 への置き方・出典・費用                                               |
 | 気をつけること                 | [pitfalls.md](development/pitfalls.md)         | これまでに踏んだ問題と、その避け方                                                                                                |
 | テスト                         | [testing.md](development/testing.md)           | テストの置き場・コマンド・静的解析                                                                                                |
 | 動作確認                       | [running.md](development/running.md)           | セットアップとローカルで動かす方法                                                                                                |

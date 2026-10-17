@@ -94,7 +94,7 @@ export async function waitForApp(app: FrameLocator, timeoutMs = 15_000) {
    */
   if (mode === "map") {
     await test.step("地図: 初期寄せと描画の完了を確認", async () => {
-      await expect(app.locator(".leaflet-map-pane")).toBeAttached();
+      await expect(app.locator(".maplibregl-canvas")).toBeAttached();
       await waitForMapSettled(app);
     });
   }
@@ -169,11 +169,8 @@ export async function shopMetaFields(card: Locator): Promise<string[]> {
  * 取りこぼしていないことの証拠になる。
  */
 export async function plottedShops(app: FrameLocator): Promise<number> {
-  /*
-   * **重なりレイヤーの中だけを数える。** 地図全体から svg path を拾うと、
-   * 出典表示に入っている旗（3 枚）まで数えて 3 件多くなる。
-   */
-  const singles = await app.locator(".leaflet-overlay-pane path").count();
+  // 単独の店は、押せるボタン（.shop-pin）を数える。見た目は canvas なので DOM に無い。
+  const singles = await app.locator(".shop-pin").count();
   const groups = await app.locator(".cluster-pin").allTextContents();
   return singles + groups.reduce((sum, text) => sum + Number(text), 0);
 }
@@ -199,39 +196,36 @@ export async function afterDelivered(app: FrameLocator, delivered: Promise<unkno
  * 地図のズームと慣性が止まり、描き直しまで済むのを待つ。
  *
  * **時間で待たない。** 遅い CI ではアニメーションが延び、固定の待ちが先に切れる。
- * Leaflet は動いている間だけ地図の面に `leaflet-zoom-anim` / `leaflet-pan-anim`
- * を付け、ズームの途中の縮尺を `.leaflet-proxy` の transform に持つ。
+ * 地図（MapView）は動いている間だけ枠に `data-moving` を付ける（MapLibre の movestart〜moveend）。
  *
  * **「動いていない」を一瞬見ただけで抜けない。** 押した直後や開いた直後は、
- * Leaflet がまだ動き出していない（次の描画の頭で動き出す）。そこで見ると、
+ * 地図がまだ動き出していない（次の描画の頭で動き出す）。そこで見ると、
  * 動き出す前の静けさに一致して待たずに抜ける。動いていない状態が 5 描画かつ
  * 100ms 続いたら止まったと見なす。止まった後に、zoomend を受けたアプリが塊を
  * 描き直す分もこの間に済む。
  */
-export async function waitForMapSettled(app: FrameLocator) {
-  await app.locator(".leaflet-map-pane").evaluate(
-    (pane) =>
-      new Promise<void>((resolve) => {
-        const proxy = pane.querySelector(".leaflet-proxy") as HTMLElement | null;
-        let last = "";
-        let frames = 0;
-        let since = performance.now();
-        const tick = () => {
-          const moving = /leaflet-(zoom|pan)-anim/.test(pane.className);
-          const scale = proxy?.style.transform ?? "";
-          if (moving || scale !== last) {
-            frames = 0;
-            since = performance.now();
-          } else {
-            frames += 1;
-          }
-          last = scale;
-          if (frames >= 5 && performance.now() - since >= 100) resolve();
-          else requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      }),
-  );
+export async function waitForMapSettled(app: FrameLocator | Page) {
+  await app
+    .locator("[role=application][aria-label='家系ラーメン店の地図']")
+    .first()
+    .evaluate(
+      (frame) =>
+        new Promise<void>((resolve) => {
+          let frames = 0;
+          let since = performance.now();
+          const tick = () => {
+            if ((frame as HTMLElement).dataset.moving) {
+              frames = 0;
+              since = performance.now();
+            } else {
+              frames += 1;
+            }
+            if (frames >= 5 && performance.now() - since >= 100) resolve();
+            else requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }),
+    );
 }
 
 const MODE_TAB = {

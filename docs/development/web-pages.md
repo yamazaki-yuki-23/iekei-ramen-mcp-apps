@@ -10,7 +10,7 @@ Workerが返す。`wrangler.jsonc` の `assets.run_worker_first` にその経路
 `npm run build:ui` はMCP用の単一HTMLを埋め込んだ後、`index.html` と
 `src/features/search/main-web.tsx` を `dist/web/` にビルドする。CIと通常のデプロイも同じコマンドを使う。
 Static Assetsはこのディレクトリだけを配信するので、MCPの埋め込みHTMLやソースは配信しない。
-**Webの最初のJSに入れないもの**（#154）: Leaflet（地図を開くまで要らない。`ResultView.tsx` の
+**Webの最初のJSに入れないもの**（#154）: MapLibre（地図を開くまで要らない。`ResultView.tsx` の
 `React.lazy` で分け、結果を出した後の空き時間に先読みする）、zod（画面は報告の受付文
 `src/utils/report-accepted.ts` だけを読む）。MCPクライアントは `src/features/search/components/WebConnection.tsx` の読み込み時に取りに行く。
 未定義のURLには404を返し、MCPや認可の誤ったURLにWebのHTMLを返さない。ブラウザで開いた

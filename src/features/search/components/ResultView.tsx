@@ -15,9 +15,7 @@ import type { ResultLook } from "../../../utils/skeleton";
  */
 const RING_NOTE = "点線の円は基準地点からの直線距離 500m と 1km です。";
 /* 印の意味は画面に書く。色や形だけでは伝わらない。 */
-const VISITED_NOTE = "中心に点のあるピンは、行ったことのある店です。";
-/* ピンの色は味の傾向（推定）。形はどの店も同じ（#144）。 */
-const PIN_NOTE = "ピンの色は味の傾向です。";
+const VISITED_NOTE = "右上に印のあるピンは、行ったことのある店です。";
 
 const EMPTY_MESSAGE: Record<SearchMode, string> = {
   form: "条件に合う店舗が見つかりませんでした。",
@@ -67,6 +65,19 @@ function mapMainProps(look: ResultLook) {
     className: look === "dim" ? `${styles.mapMain} pending-dim` : styles.mapMain,
     inert: waiting,
   };
+}
+
+/**
+ * 地図の下の、印の説明。同心円は基準地点があるとき、行った印は出ている店に 1 軒でも記録が
+ * あるときだけ書く（無いと読む意味が無い）。
+ */
+function MapNotes({ rings, visited }: { rings: boolean; visited: boolean }) {
+  return (
+    <>
+      {rings && <p className={styles.mapNote}>{RING_NOTE}</p>}
+      {visited && <p className={styles.mapNote}>{VISITED_NOTE}</p>}
+    </>
+  );
 }
 
 /**
@@ -139,6 +150,11 @@ export function ResultView({
    */
   const [focused, setFocused] = useState<Shop[] | null>(null);
   /*
+   * この画面では地図を描けない（#246）。地図の場所は案内に替わるので、地図の道具（範囲で発券・
+   * 全画面）も外す。残すと、押しても何も起きないか、壊した地図の範囲を読みに行く。
+   */
+  const [mapFailed, setMapFailed] = useState(false);
+  /*
    * 塊をキーボードで開いたとき、焦点の行き先。
    *
    * **開くと地図が寄り、塊ごと描き直されるので、押していた要素は消える。**
@@ -177,17 +193,19 @@ export function ResultView({
                 fullscreen={fullscreen}
                 onSearchArea={onSearchArea}
               >
-                <MapToolbar
-                  fullscreen={fullscreen}
-                  busy={busy}
-                  onSearchArea={
-                    onSearchArea &&
-                    (() => {
-                      const shown = getBoundsRef.current?.();
-                      if (shown) onSearchArea(shown);
-                    })
-                  }
-                />
+                {!mapFailed && (
+                  <MapToolbar
+                    fullscreen={fullscreen}
+                    busy={busy}
+                    onSearchArea={
+                      onSearchArea &&
+                      (() => {
+                        const shown = getBoundsRef.current?.();
+                        if (shown) onSearchArea(shown);
+                      })
+                    }
+                  />
+                )}
                 <div className={styles.mapStage}>
                   <MapView
                     shops={shops}
@@ -213,14 +231,20 @@ export function ResultView({
                     refit={!bounds}
                     origin={origin}
                     visitedIds={visitedIds}
+                    onCannotDraw={() => {
+                      getBoundsRef.current = null;
+                      setMapFailed(true);
+                      if (fullscreen?.expanded) fullscreen.onToggle();
+                    }}
                   />
                 </div>
               </MapArea>
-              <p className={styles.mapNote}>{PIN_NOTE}</p>
-              {origin && <p className={styles.mapNote}>{RING_NOTE}</p>}
-              {/* 出ている店に 1 軒でも記録があるときだけ書く。無いと読む意味が無い。 */}
-              {shops.some((s) => visitedIds?.has(s.id)) && (
-                <p className={styles.mapNote}>{VISITED_NOTE}</p>
+              {/* 描けないときは、地図の上の印の説明を出さない（説明する印が無い）。 */}
+              {!mapFailed && (
+                <MapNotes
+                  rings={Boolean(origin)}
+                  visited={shops.some((s) => visitedIds?.has(s.id))}
+                />
               )}
             </>
           )}

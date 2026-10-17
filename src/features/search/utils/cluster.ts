@@ -18,14 +18,15 @@ import type { Shop } from "../../../types";
 const CELL_PX = 64;
 
 /**
- * 塊の印（36px）どうしが重ならない最低の間隔。
+ * 塊の印どうしが重ならない最低の間隔。#246 で塊の印が大きくなった（件数で 3 段、最大 64px）ので、
+ * デザイナーの見本どおり 46px にした（36px では日本全体で 543 と 31 の塊が重なった）。
  *
  * **升目の識別だけで切ると、境目を挟んだ数 px の 2 軒が別々の塊になる。**
  * 印は重なって読めないのに、まとまってもいない——いちばん悪い形になる
  * （実測: 全国表示 zoom 5 で 5 組が重なり、最接近は 9.9px だった）。
  * 升目は下ごしらえで、最後に代表点どうしの距離で寄せ直す。
  */
-const MIN_GAP_PX = 36;
+const MIN_GAP_PX = 46;
 
 /** タイル 1 枚の大きさ。Web メルカトルの座標をピクセルに直すのに使う。 */
 const TILE_PX = 256;
@@ -51,15 +52,20 @@ function project(lat: number, lon: number, zoom: number): { x: number; y: number
 /**
  * ズームに応じて店をまとめる。
  *
- * `keepId` の店だけは 1 軒でも単独で返す。選択中の店が塊に飲まれると、
+ * `keepId` の店（1 つでも、複数でも）は 1 軒でも単独で返す。選択中の店が塊に飲まれると、
  * 選んだ手応えが消えて、地図とパネルのどちらを見ても位置が分からなくなる。
  */
-export function clusterShops(shops: Shop[], zoom: number, keepId?: string): ShopCluster[] {
+export function clusterShops(
+  shops: Shop[],
+  zoom: number,
+  keepId?: string | ReadonlySet<string>,
+): ShopCluster[] {
+  const keep = typeof keepId === "string" ? new Set([keepId]) : keepId;
   const cells = new Map<string, Shop[]>();
   const singles: ShopCluster[] = [];
 
   for (const shop of shops) {
-    if (shop.id === keepId) {
+    if (keep?.has(shop.id)) {
       singles.push({ lat: shop.lat, lon: shop.lon, shops: [shop] });
       continue;
     }

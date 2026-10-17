@@ -21,6 +21,7 @@ import { GeocodeGate } from "./lib/geocode-gate.ts";
 import { recordUsage, usageEvent } from "./lib/usage.ts";
 import { d1Visits } from "./lib/visits.ts";
 import { handleReport } from "./lib/report-endpoint.ts";
+import { MAP_TILES_PATH, serveMapTiles } from "./lib/map-tiles.ts";
 
 // wrangler が Durable Object のクラスを探すのは、入口のモジュールの export。
 export { GeocodeGate };
@@ -42,6 +43,8 @@ interface Env extends AuthEnv {
    * vars に書くと CI のデプロイのたびに wrangler.jsonc の値で上書きされるため）。
    */
   OPENAI_APPS_CHALLENGE?: string;
+  /** 地図のデータ（日本の範囲の PMTiles、#246）。R2 をつなぐまでは無い。 */
+  MAP_TILES?: R2Bucket;
 }
 
 /**
@@ -123,6 +126,7 @@ export default {
     const origin = url.origin;
 
     if (url.pathname === "/reports") return handleReport(request, env);
+    if (url.pathname === MAP_TILES_PATH) return serveMapTiles(request, env.MAP_TILES);
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });

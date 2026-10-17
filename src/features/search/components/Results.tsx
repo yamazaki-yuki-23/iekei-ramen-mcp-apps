@@ -246,7 +246,7 @@ export function Results({
   onSignIn,
 }: Props) {
   /*
-   * 結果が出た後に、地図（Leaflet）を先に読んでおく（lazy-map.ts の preloadMapView・#154）。
+   * 結果が出た後に、地図（MapLibre）を先に読んでおく（lazy-map.ts の preloadMapView・#154）。
    * 「迷ったら」は ResultView を描かないので、どのモードでも描くここで始める。
    * つながる前も骨組みでここを描くので、結果が出るまで（live になるまで）待つ。最初の結果を
    * 取りに行く通信と帯域を取り合わせない（#214 のレビュー）。import は 2 回目から手元のものを返す。

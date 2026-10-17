@@ -81,7 +81,7 @@ describe("clusterShops", () => {
   });
 
   it("同じ入力なら毎回同じ並びで返る", () => {
-    const shops = [shopAt("a", 0), shopAt("b", 5_000), shopAt("c", 50)];
+    const shops = [shopAt("a", 0), shopAt("b", 10_000), shopAt("c", 50)];
     const once = clusterShops(shops, 10).map((c) => c.shops.map((s) => s.id));
 
     expect(clusterShops(shops, 10).map((c) => c.shops.map((s) => s.id))).toEqual(once);

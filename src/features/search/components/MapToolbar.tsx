@@ -26,7 +26,7 @@ interface Props {
 /**
  * 地図の上に置く操作列。
  *
- * 地図そのもの（Leaflet）と操作は別々にしてある。MapView に釦を足すと、
+ * 地図そのもの（MapLibre）と操作は別々にしてある。MapView に釦を足すと、
  * 地図の生成と後始末に画面の都合が混ざる。
  */
 export function MapToolbar({ fullscreen, onSearchArea, busy = false }: Props) {
@@ -35,7 +35,7 @@ export function MapToolbar({ fullscreen, onSearchArea, busy = false }: Props) {
   return (
     <div className={styles.mapToolbar}>
       {/*
-        動かしたかどうかでは出し分けない。Leaflet は自分で寄せたときにも
+        動かしたかどうかでは出し分けない。地図は自分で寄せたときにも
         同じ通知を出すので、「ユーザーが動かした」を見分けようとすると、
         取りこぼした側（釦が出ない／出っぱなし）が必ず残る。
         いつでも押せて、押せば出ている範囲を探す、で揃える。

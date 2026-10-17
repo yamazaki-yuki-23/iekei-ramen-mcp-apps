@@ -3,15 +3,15 @@ export const RESOURCE_URI = "ui://iekei-ramen/mcp-app.html";
 
 /**
  * UI リソースのメタデータ。
- * - csp: 地図タイルを OSM から読むために必要
+ * - csp: 地図のデータ（PMTiles）と文字を本番のドメインから取るため（#246。fetch なので connect-src）
  * - permissions.geolocation: 「現在地から探す」で navigator.geolocation を使うため
  */
 export const UI_RESOURCE_META = {
   ui: {
     domain: "https://iekeiramen.com",
     csp: {
-      connectDomains: ["https://*.openstreetmap.org"],
-      resourceDomains: ["https://*.openstreetmap.org", "https://*.tile.openstreetmap.org"],
+      connectDomains: ["https://iekeiramen.com"],
+      resourceDomains: ["https://iekeiramen.com"],
     },
     permissions: { geolocation: {} },
     prefersBorder: true,

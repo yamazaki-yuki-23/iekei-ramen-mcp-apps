@@ -8,3 +8,8 @@
 # 持っていないので includeSubDomains・preload は付けない（外すのに何か月もかかる）。
 /*
   Strict-Transport-Security: max-age=31536000
+
+# 地図の文字（#246）。会話の中（MCP）はホストの別のドメインの枠から取りに来るので、CORS を付ける。
+# 名前にハッシュが無いので、キャッシュは既定のまま（毎回確かめる）。
+/map/fonts/*
+  Access-Control-Allow-Origin: *
