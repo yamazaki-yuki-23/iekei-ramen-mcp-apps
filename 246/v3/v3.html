@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; }
+  #map { position: absolute; inset: 0; }
+  .tag { position: absolute; left: 8px; top: 8px; z-index: 5; background: #22150e; color: #fff; font: 700 14px "Hiragino Sans"; padding: 4px 10px; border-radius: 8px; }
+  /* 今の地図の比較用（DOM の印）。 */
+  .old-route { width: 26px; height: 26px; border-radius: 50%; background: #b8442c; color: #fff; font: 700 14px "Hiragino Sans"; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #fff; }
+  .old-cluster { width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #22150e; font: 700 14px "Hiragino Sans"; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #b8442c, 0 1px 3px rgba(34,21,14,.25); }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="tag" id="tag"></div>
+<script>
+/*
+ * 見本を撮るための使い捨ての HTML（#246、3 回目）。アプリのコードではない。
+ * 地図のデータは Protomaps の basemap（本番と同じ形）。手元のサーバーが範囲指定で中継する。
+ * ?map=now|v3 &pins=A|B|C &view=yokohama|tokyo|city|japan
+ */
+const q = new URLSearchParams(location.search);
+const MAPMODE = q.get("map") ?? "v3";
+const PINS = q.get("pins") ?? "B";
+const pm = new pmtiles.Protocol(); maplibregl.addProtocol("pmtiles", pm.tile);
+
+// ---- 地図の背景の色（地図の背景だけ。UI の部品には使わない） ----
+const M = {
+  land: "#f7f2e8", building: "#ece5d8", green: "#d3e8bd", wood: "#dcebc8", water: "#b7dcf0", waterText: "#3f7aa0",
+  road: "#ffffff", roadCase: "#e3d8c6", major: "#ffffff", majorCase: "#d6c4a9", motor: "#f3c5b6", motorCase: "#e89d87",
+  rail: "#635e57", boundary: "#cdbfa8", place: "#5b544c", placeMinor: "#8a8278", ink: "#22150e", halo: "#ffffff",
+};
+const name = ["coalesce", ["get", "name:ja"], ["get", "name"]];
+const R = ["Noto Sans Regular"], B = ["Noto Sans Medium"];
+const w = (a, b) => ["interpolate", ["exponential", 1.6], ["zoom"], 8, a, 17, b];
+const round = { "line-cap": "round", "line-join": "round" };
+const kind = (...k) => ["in", ["get", "kind"], ["literal", k]];
+const detail = (...k) => ["in", ["get", "kind_detail"], ["literal", k]];
+const src = { source: "pm" };
+
+function v3Layers() {
+  return [
+    { id: "bg", type: "background", paint: { "background-color": M.land } },
+    { id: "earth", type: "fill", ...src, "source-layer": "earth", paint: { "fill-color": M.land } },
+    { id: "landcover", type: "fill", ...src, "source-layer": "landcover", filter: kind("forest", "grassland", "scrub"), paint: { "fill-color": M.wood, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 4, 1, 9, 0.6] } },
+    { id: "wood", type: "fill", ...src, "source-layer": "landuse", filter: kind("forest", "wood", "nature_reserve", "national_park"), paint: { "fill-color": M.wood } },
+    { id: "park", type: "fill", ...src, "source-layer": "landuse", minzoom: 10, filter: kind("park", "grass", "garden", "recreation_ground", "pitch", "cemetery"), paint: { "fill-color": M.green } },
+    // 反町川の面が、このビルドではタイルの幅いっぱいの帯になって壊れている。見本では外す（本番のデータで要確認）。
+    { id: "water", type: "fill", ...src, "source-layer": "water", filter: ["!=", ["get", "name"], "反町川"], paint: { "fill-color": M.water } },
+    { id: "river", type: "line", ...src, "source-layer": "water", minzoom: 10, filter: ["==", ["geometry-type"], "LineString"], layout: round, paint: { "line-color": M.water, "line-width": w(0.8, 5) } },
+    { id: "building", type: "fill", ...src, "source-layer": "buildings", minzoom: 15, paint: { "fill-color": M.building } },
+    { id: "boundary", type: "line", ...src, "source-layer": "boundaries", maxzoom: 11, filter: kind("region"), layout: round, paint: { "line-color": M.boundary, "line-width": 1.2, "line-dasharray": [2, 2] } },
+    { id: "minor-case", type: "line", ...src, "source-layer": "roads", minzoom: 13, filter: kind("minor_road"), layout: round, paint: { "line-color": M.roadCase, "line-width": w(1.2, 11) } },
+    { id: "minor", type: "line", ...src, "source-layer": "roads", minzoom: 13, filter: kind("minor_road"), layout: round, paint: { "line-color": M.road, "line-width": w(0.6, 9) } },
+    { id: "major-case", type: "line", ...src, "source-layer": "roads", minzoom: 9, filter: kind("major_road"), layout: round, paint: { "line-color": M.majorCase, "line-width": w(1.8, 18) } },
+    { id: "major", type: "line", ...src, "source-layer": "roads", minzoom: 9, filter: kind("major_road"), layout: round, paint: { "line-color": M.major, "line-width": w(1.1, 15) } },
+    { id: "motor-case", type: "line", ...src, "source-layer": "roads", minzoom: 6, filter: ["all", kind("highway"), ["!", detail("motorway_link")]], layout: round, paint: { "line-color": M.motorCase, "line-width": w(1.6, 19) } },
+    { id: "motor", type: "line", ...src, "source-layer": "roads", minzoom: 6, filter: ["all", kind("highway"), ["!", detail("motorway_link")]], layout: round, paint: { "line-color": M.motor, "line-width": w(0.9, 15) } },
+    // 線路: 白黒の破線（日本の地図でおなじみの形）。側線・車庫は出さない。
+    { id: "rail", type: "line", ...src, "source-layer": "roads", minzoom: 10, filter: ["all", kind("rail"), detail("rail")], paint: { "line-color": M.rail, "line-width": w(1, 3) } },
+    { id: "rail-dash", type: "line", ...src, "source-layer": "roads", minzoom: 12, filter: ["all", kind("rail"), detail("rail")], paint: { "line-color": "#ffffff", "line-width": w(0.5, 1.6), "line-dasharray": [3, 3] } },
+    { id: "road-name", type: "symbol", ...src, "source-layer": "roads", minzoom: 14, filter: ["all", kind("major_road"), detail("primary", "trunk", "secondary")],
+      layout: { "symbol-placement": "line", "text-field": name, "text-font": R, "text-size": 12 }, paint: { "text-color": M.place, "text-halo-color": M.halo, "text-halo-width": 2 } },
+    { id: "water-name", type: "symbol", ...src, "source-layer": "water", minzoom: 13.5, filter: ["has", "name"], layout: { "text-field": name, "text-font": R, "text-size": 12 }, paint: { "text-color": M.waterText, "text-halo-color": M.water, "text-halo-width": 1 } },
+    { id: "pref", type: "symbol", ...src, "source-layer": "places", minzoom: 5, maxzoom: 7, filter: kind("region"), layout: { "text-field": name, "text-font": B, "text-size": 12 }, paint: { "text-color": M.place, "text-halo-color": M.halo, "text-halo-width": 2 } },
+    { id: "city", type: "symbol", ...src, "source-layer": "places", minzoom: 7, maxzoom: 12.5, filter: ["all", kind("locality"), detail("city")], layout: { "text-field": name, "text-font": B, "text-size": ["interpolate", ["linear"], ["zoom"], 7, 12, 11, 15] }, paint: { "text-color": M.place, "text-halo-color": M.halo, "text-halo-width": 2 } },
+    { id: "ward", type: "symbol", ...src, "source-layer": "places", minzoom: 10, maxzoom: 14, filter: ["all", kind("neighbourhood"), detail("suburb")], layout: { "text-field": name, "text-font": B, "text-size": 14 }, paint: { "text-color": M.place, "text-halo-color": M.halo, "text-halo-width": 2 } },
+    { id: "town", type: "symbol", ...src, "source-layer": "places", minzoom: 14.5, filter: ["all", kind("neighbourhood"), detail("neighbourhood")], layout: { "text-field": name, "text-font": R, "text-size": 12 }, paint: { "text-color": M.placeMinor, "text-halo-color": M.halo, "text-halo-width": 2 } },
+  ];
+}
+const osmStyle = { version: 8, sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256 } }, layers: [{ id: "osm", type: "raster", source: "osm" }] };
+const v3Style = { version: 8, glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+  sources: { pm: { type: "vector", url: "pmtiles://http://localhost:8835/pm", attribution: "" } }, layers: v3Layers() };
+
+const VIEWS = { yokohama: [139.6222, 35.4658, 14], tokyo: [139.7671, 35.6812, 14], city: [139.62, 35.46, 11.5], japan: [137.6, 36.6, 4.6] };
+const view = q.get("view");
+const [lon, lat, zoom] = VIEWS[view];
+document.getElementById("tag").textContent = MAPMODE === "now" ? "今の地図" : `新しい地図${q.get("label") ? "（" + q.get("label") + "）" : ""}`;
+const map = new maplibregl.Map({ container: "map", style: MAPMODE === "now" ? osmStyle : v3Style, center: [lon, lat], zoom, attributionControl: false, fadeDuration: 0,
+  localIdeographFontFamily: "'Hiragino Maru Gothic ProN', 'Hiragino Sans', sans-serif", canvasContextAttributes: { preserveDrawingBuffer: true } });
+
+// ---- 絵（canvas で作る。本番はスプライト） ----
+const PR = 2;
+const TASTE = {
+  rich: { color: "#b8442c", glyph: "濃", label: "直系・濃厚" },
+  creamy: { color: "#c98a2e", glyph: "ク", label: "クリーミー" },
+  chain: { color: "#3f72aa", glyph: "チ", label: "チェーン" },
+  unknown: { color: "#22150e", glyph: null, label: "味は未判定" },
+};
+function canvas(size) { const c = document.createElement("canvas"); c.width = c.height = size * PR; const g = c.getContext("2d"); g.scale(PR, PR); return [c, g]; }
+function add(id, size, draw, opts = {}) { const [c, g] = canvas(size); draw(g, size); map.addImage(id, g.getImageData(0, 0, size * PR, size * PR), { pixelRatio: PR, ...opts }); }
+// 丼の絵（ファビコンの丼を単純にしたもの）。
+function bowl(g, cx, cy, s, fill, rim) {
+  g.save(); g.translate(cx, cy); g.scale(s, s);
+  g.fillStyle = rim; g.beginPath(); g.roundRect(-9, -3, 18, 3, 1.5); g.fill();
+  g.fillStyle = fill; g.beginPath(); g.moveTo(-8, 0); g.lineTo(8, 0); g.quadraticCurveTo(7.5, 8, 0, 8); g.quadraticCurveTo(-7.5, 8, -8, 0); g.fill();
+  g.fillRect(-3, 7.5, 6, 2);
+  g.restore();
+}
+function glyph(g, cx, cy, text, color, px) { g.fillStyle = color; g.font = `700 ${px}px "Hiragino Maru Gothic ProN", "Hiragino Sans"`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, cx, cy + 0.5); }
+
+function makeImages() {
+  for (const [k, t] of Object.entries(TASTE)) {
+    if (PINS === "B") {
+      // B: 白い面・味の色の輪・中に 1 文字（未判定は丼）。
+      add(`pin-${k}`, 30, (g) => {
+        g.fillStyle = "rgba(34,21,14,.18)"; g.beginPath(); g.arc(15, 16, 12, 0, 7); g.fill();
+        g.fillStyle = "#fff"; g.beginPath(); g.arc(15, 15, 12, 0, 7); g.fill();
+        g.lineWidth = 3; g.strokeStyle = t.color; g.beginPath(); g.arc(15, 15, 10.5, 0, 7); g.stroke();
+        t.glyph ? glyph(g, 15, 15, t.glyph, t.color, 13) : bowl(g, 15, 14, 0.62, "#b8442c", t.color);
+      });
+      // 選択中: 地図アプリでおなじみの「しずく形のピン」。塊（丸）と形で見分ける。先端が店の位置。
+      add(`sel-${k}`, 44, (g) => {
+        const drop = (r, cy) => { g.beginPath(); g.arc(22, cy, r, Math.PI * 0.8, Math.PI * 2.2); g.lineTo(22, cy + r * 1.75); g.closePath(); };
+        g.fillStyle = "rgba(34,21,14,.22)"; drop(15, 17); g.save(); g.translate(1, 1.5); g.fill(); g.restore();
+        g.fillStyle = "#fff"; drop(16.5, 16); g.fill();
+        g.fillStyle = t.color; drop(13.5, 16); g.fill();
+        t.glyph ? glyph(g, 22, 16, t.glyph, "#fff", 15) : bowl(g, 22, 15, 0.72, "#fff", "#fff");
+      }, { });
+    } else if (PINS === "C") {
+      // C: 丼の形のピン。味は丼の色だけ（色に頼る。比べるための案）。
+      add(`pin-${k}`, 30, (g) => { bowl(g, 15, 13, 1.25, "#fff", "#fff"); bowl(g, 15, 13, 1.05, t.color === "#22150e" ? "#7d776e" : t.color, "#22150e"); });
+      add(`sel-${k}`, 44, (g) => { bowl(g, 22, 19, 1.9, "#fff", "#fff"); bowl(g, 22, 19, 1.65, t.color === "#22150e" ? "#7d776e" : t.color, "#22150e"); });
+    } else {
+      // A: 今の丸（味の色の面・白い縁）。
+      const old = { rich: "#b8442c", creamy: "#e0a04a", chain: "#4a7fb8", unknown: "#7d776e" }[k];
+      add(`pin-${k}`, 18, (g) => { g.fillStyle = "#fff"; g.beginPath(); g.arc(9, 9, 9, 0, 7); g.fill(); g.fillStyle = old; g.beginPath(); g.arc(9, 9, 7, 0, 7); g.fill(); });
+      add(`sel-${k}`, 28, (g) => { g.fillStyle = "#141312"; g.beginPath(); g.arc(14, 14, 14, 0, 7); g.fill(); g.fillStyle = old; g.beginPath(); g.arc(14, 14, 11, 0, 7); g.fill(); });
+    }
+  }
+  // 塊: 家系の茶赤の面に白い数字。件数で大きさを 3 段に。
+  for (const [k, r] of [["s", 15], ["m", 18], ["l", 22]]) add(`cluster-${k}`, r * 2 + 6, (g, s) => {
+    g.fillStyle = "rgba(34,21,14,.2)"; g.beginPath(); g.arc(s / 2, s / 2 + 1.5, r, 0, 7); g.fill();
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(s / 2, s / 2, r, 0, 7); g.fill();
+    g.fillStyle = "#b8442c"; g.beginPath(); g.arc(s / 2, s / 2, r - 2.5, 0, 7); g.fill();
+  });
+  // 順路の番号: 食券の半券の形（醤油色の角丸の四角）。ピンの右上に付ける。
+  add("route", 24, (g) => { g.fillStyle = "#fff"; g.beginPath(); g.roundRect(0, 0, 24, 24, 6); g.fill(); g.fillStyle = "#22150e"; g.beginPath(); g.roundRect(2, 2, 20, 20, 4.5); g.fill(); });
+  // 駅名の札: 券売機のボタンの形（白い面・醤油色の縁・下の影）。9 分割で伸びる。
+  add("key", 24, (g) => {
+    g.fillStyle = "#22150e"; g.beginPath(); g.roundRect(1, 2.5, 22, 20, 5); g.fill();
+    g.fillStyle = "#fff"; g.beginPath(); g.roundRect(1, 1, 22, 20, 5); g.fill();
+    g.lineWidth = 1.25; g.strokeStyle = "#22150e"; g.beginPath(); g.roundRect(1.6, 1.6, 20.8, 18.8, 4.5); g.stroke();
+  }, { stretchX: [[7 * PR, 17 * PR]], stretchY: [[7 * PR, 15 * PR]], content: [6 * PR, 4 * PR, 18 * PR, 18 * PR] });
+}
+
+map.on("load", async () => {
+  const data = await (await fetch("shops.json")).json();
+  const shops = view === "tokyo" ? data.tokyo : view === "japan" ? data.japan : data.yokohama;
+  const byCenter = [...shops].sort((a, b) => Math.hypot(a.lon - lon, a.lat - lat) - Math.hypot(b.lon - lon, b.lat - lat));
+  const sel = view === "yokohama" || view === "tokyo" ? byCenter[0] : null;
+  const route = view === "yokohama" || view === "tokyo" ? byCenter.slice(1, 4) : [];
+  if (MAPMODE === "now") return drawOld(shops, sel, route);
+  makeImages();
+  await new Promise((ok) => map.once("idle", ok));
+  addStations();
+  const feats = shops.map((s) => ({ type: "Feature", properties: { t: s.t, sel: s === sel, n: route.indexOf(s) + 1 }, geometry: { type: "Point", coordinates: [s.lon, s.lat] } }));
+  // 塊はアプリと同じく、近い店を画面の上でまとめる（GeoJSON の塊の機能）。
+  map.addSource("shops", { type: "geojson", data: { type: "FeatureCollection", features: feats }, cluster: true, clusterRadius: 30, clusterMaxZoom: 13 });
+  // ピン・塊は symbol 層で描く。重なりを避ける場所を取り、駅名・地名がピンを避けて置かれる。
+  map.addLayer({ id: "clusters", type: "symbol", source: "shops", filter: ["has", "point_count"], layout: {
+    "icon-image": ["step", ["get", "point_count"], "cluster-s", 10, "cluster-m", 50, "cluster-l"], "icon-allow-overlap": true,
+    "text-field": ["get", "point_count_abbreviated"], "text-font": B, "text-size": 14, "text-allow-overlap": true }, paint: { "text-color": "#fff" } });
+  map.addLayer({ id: "pins", type: "symbol", source: "shops", filter: ["all", ["!", ["has", "point_count"]], ["!", ["coalesce", ["get", "sel"], false]]], layout: {
+    "icon-image": ["concat", "pin-", ["get", "t"]], "icon-allow-overlap": true, "symbol-sort-key": ["match", ["get", "t"], "unknown", 0, 1] } });
+  map.addLayer({ id: "route", type: "symbol", source: "shops", filter: [">", ["coalesce", ["get", "n"], 0], 0], layout: {
+    "icon-image": "route", "icon-offset": [12, -12], "icon-allow-overlap": true, "text-field": ["to-string", ["get", "n"]], "text-font": B, "text-size": 13, "text-offset": [0.86, -0.86], "text-allow-overlap": true }, paint: { "text-color": "#fff" } });
+  map.addLayer({ id: "selected", type: "symbol", source: "shops", filter: ["coalesce", ["get", "sel"], false], layout: { "icon-image": ["concat", "sel-", ["get", "t"]], "icon-allow-overlap": true, "icon-anchor": "bottom", "icon-offset": [0, 4] } });
+  map.once("idle", () => (document.body.dataset.ready = "1"));
+});
+
+// 駅: 同じ名前の駅（路線ごとに別の点）を 1 つにまとめ、括弧を外す。本番は作る段階で 1 つにしておく。
+function addStations() {
+  const raw = map.querySourceFeatures("pm", { sourceLayer: "pois", filter: ["==", ["get", "kind"], "station"] });
+  const out = [];
+  for (const f of raw) {
+    const n = String(f.properties["name:ja"] ?? f.properties.name).replace(/\s*[（(].*[)）]\s*$/, "");
+    const [x, y] = f.geometry.coordinates;
+    if (out.some((o) => o.properties.n === n && Math.hypot((o.geometry.coordinates[0] - x) * 91, (o.geometry.coordinates[1] - y) * 111) < 0.7)) continue;
+    out.push({ type: "Feature", properties: { n, mz: f.properties.min_zoom ?? 14 }, geometry: f.geometry });
+  }
+  map.addSource("stations", { type: "geojson", data: { type: "FeatureCollection", features: out } });
+  map.addLayer({ id: "station", type: "symbol", source: "stations", minzoom: 11.5, filter: ["<=", ["get", "mz"], ["max", 11, ["-", ["zoom"], 1]]], layout: {
+    "text-variable-anchor": ["center", "top", "bottom", "left", "right"], "text-radial-offset": 1.4, "icon-text-fit-padding": [2, 6, 4, 6],
+    "text-field": ["get", "n"], "text-font": B, "text-size": ["interpolate", ["linear"], ["zoom"], 12, 11.5, 16, 13],
+    "icon-image": "key", "icon-text-fit": "both", "symbol-sort-key": ["get", "mz"], "text-padding": 8 }, paint: { "text-color": M.ink } });
+}
+
+function drawOld(shops, sel, route) {
+  const old = { rich: "#b8442c", creamy: "#e0a04a", chain: "#4a7fb8", unknown: "#7d776e" };
+  if (view === "japan" || view === "city") {
+    const cells = new Map();
+    for (const s of shops) { const p = map.project([s.lon, s.lat]); const k = `${Math.floor(p.x / 36)},${Math.floor(p.y / 36)}`; (cells.get(k) ?? cells.set(k, []).get(k)).push(s); }
+    const singles = [];
+    for (const g of cells.values()) {
+      if (g.length === 1) { singles.push(g[0]); continue; }
+      const el = document.createElement("div"); el.className = "old-cluster"; el.textContent = g.length;
+      new maplibregl.Marker({ element: el }).setLngLat([g.reduce((a, s) => a + s.lon, 0) / g.length, g.reduce((a, s) => a + s.lat, 0) / g.length]).addTo(map);
+    }
+    shops = singles;
+  }
+  map.addSource("shops", { type: "geojson", data: { type: "FeatureCollection", features: shops.map((s) => ({ type: "Feature", properties: { c: old[s.t], sel: s === sel }, geometry: { type: "Point", coordinates: [s.lon, s.lat] } })) } });
+  map.addLayer({ id: "pins", type: "circle", source: "shops", paint: { "circle-color": ["get", "c"], "circle-radius": ["case", ["get", "sel"], 11, 7], "circle-stroke-color": ["case", ["get", "sel"], "#141312", "#ffffff"], "circle-stroke-width": ["case", ["get", "sel"], 3, 2] } });
+  route.forEach((s, i) => { const el = document.createElement("div"); el.className = "old-route"; el.textContent = i + 1; new maplibregl.Marker({ element: el }).setLngLat([s.lon, s.lat]).addTo(map); });
+  map.once("idle", () => (document.body.dataset.ready = "1"));
+}
+</script>
+</body>
+</html>

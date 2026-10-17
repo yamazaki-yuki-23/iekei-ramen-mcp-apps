@@ -1,0 +1,87 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><style>
+body{margin:0;background:#f7f2e8;font:14px "Hiragino Maru Gothic ProN","Hiragino Sans";color:#22150e}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px 10px;padding:22px 16px}
+.cell{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;line-height:1.4}
+.cell canvas{width:auto}
+h1{font-size:16px;margin:16px 16px 0}
+</style></head><body><h1>ピン・塊・選択中・順路（地図の上の印）</h1><div class="grid" id="g"></div><script>
+const PINS = "B"; const M = { ink: "#22150e" };
+const PR = 2;
+const TASTE = {
+  rich: { color: "#b8442c", glyph: "濃", label: "直系・濃厚" },
+  creamy: { color: "#c98a2e", glyph: "ク", label: "クリーミー" },
+  chain: { color: "#3f72aa", glyph: "チ", label: "チェーン" },
+  unknown: { color: "#22150e", glyph: null, label: "味は未判定" },
+};
+function canvas(size) { const c = document.createElement("canvas"); c.width = c.height = size * PR; const g = c.getContext("2d"); g.scale(PR, PR); return [c, g]; }
+const IMG = {}; function add(id, size, draw) { const [c, g] = canvas(size); draw(g, size); IMG[id] = c; }
+// 丼の絵（ファビコンの丼を単純にしたもの）。
+function bowl(g, cx, cy, s, fill, rim) {
+  g.save(); g.translate(cx, cy); g.scale(s, s);
+  g.fillStyle = rim; g.beginPath(); g.roundRect(-9, -3, 18, 3, 1.5); g.fill();
+  g.fillStyle = fill; g.beginPath(); g.moveTo(-8, 0); g.lineTo(8, 0); g.quadraticCurveTo(7.5, 8, 0, 8); g.quadraticCurveTo(-7.5, 8, -8, 0); g.fill();
+  g.fillRect(-3, 7.5, 6, 2);
+  g.restore();
+}
+function glyph(g, cx, cy, text, color, px) { g.fillStyle = color; g.font = `700 ${px}px "Hiragino Maru Gothic ProN", "Hiragino Sans"`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, cx, cy + 0.5); }
+
+function makeImages() {
+  for (const [k, t] of Object.entries(TASTE)) {
+    if (PINS === "B") {
+      // B: 白い面・味の色の輪・中に 1 文字（未判定は丼）。
+      add(`pin-${k}`, 30, (g) => {
+        g.fillStyle = "rgba(34,21,14,.18)"; g.beginPath(); g.arc(15, 16, 12, 0, 7); g.fill();
+        g.fillStyle = "#fff"; g.beginPath(); g.arc(15, 15, 12, 0, 7); g.fill();
+        g.lineWidth = 3; g.strokeStyle = t.color; g.beginPath(); g.arc(15, 15, 10.5, 0, 7); g.stroke();
+        t.glyph ? glyph(g, 15, 15, t.glyph, t.color, 13) : bowl(g, 15, 14, 0.62, "#b8442c", t.color);
+      });
+      // 選択中: 地図アプリでおなじみの「しずく形のピン」。塊（丸）と形で見分ける。先端が店の位置。
+      add(`sel-${k}`, 44, (g) => {
+        const drop = (r, cy) => { g.beginPath(); g.arc(22, cy, r, Math.PI * 0.8, Math.PI * 2.2); g.lineTo(22, cy + r * 1.75); g.closePath(); };
+        g.fillStyle = "rgba(34,21,14,.22)"; drop(15, 17); g.save(); g.translate(1, 1.5); g.fill(); g.restore();
+        g.fillStyle = "#fff"; drop(16.5, 16); g.fill();
+        g.fillStyle = t.color; drop(13.5, 16); g.fill();
+        t.glyph ? glyph(g, 22, 16, t.glyph, "#fff", 15) : bowl(g, 22, 15, 0.72, "#fff", "#fff");
+      }, { });
+    } else if (PINS === "C") {
+      // C: 丼の形のピン。味は丼の色だけ（色に頼る。比べるための案）。
+      add(`pin-${k}`, 30, (g) => { bowl(g, 15, 13, 1.25, "#fff", "#fff"); bowl(g, 15, 13, 1.05, t.color === "#22150e" ? "#7d776e" : t.color, "#22150e"); });
+      add(`sel-${k}`, 44, (g) => { bowl(g, 22, 19, 1.9, "#fff", "#fff"); bowl(g, 22, 19, 1.65, t.color === "#22150e" ? "#7d776e" : t.color, "#22150e"); });
+    } else {
+      // A: 今の丸（味の色の面・白い縁）。
+      const old = { rich: "#b8442c", creamy: "#e0a04a", chain: "#4a7fb8", unknown: "#7d776e" }[k];
+      add(`pin-${k}`, 18, (g) => { g.fillStyle = "#fff"; g.beginPath(); g.arc(9, 9, 9, 0, 7); g.fill(); g.fillStyle = old; g.beginPath(); g.arc(9, 9, 7, 0, 7); g.fill(); });
+      add(`sel-${k}`, 28, (g) => { g.fillStyle = "#141312"; g.beginPath(); g.arc(14, 14, 14, 0, 7); g.fill(); g.fillStyle = old; g.beginPath(); g.arc(14, 14, 11, 0, 7); g.fill(); });
+    }
+  }
+  // 塊: 家系の茶赤の面に白い数字。件数で大きさを 3 段に。
+  for (const [k, r] of [["s", 15], ["m", 18], ["l", 22]]) add(`cluster-${k}`, r * 2 + 6, (g, s) => {
+    g.fillStyle = "rgba(34,21,14,.2)"; g.beginPath(); g.arc(s / 2, s / 2 + 1.5, r, 0, 7); g.fill();
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(s / 2, s / 2, r, 0, 7); g.fill();
+    g.fillStyle = "#b8442c"; g.beginPath(); g.arc(s / 2, s / 2, r - 2.5, 0, 7); g.fill();
+  });
+  // 順路の番号: 食券の半券の形（醤油色の角丸の四角）。ピンの右上に付ける。
+  add("route", 24, (g) => { g.fillStyle = "#fff"; g.beginPath(); g.roundRect(0, 0, 24, 24, 6); g.fill(); g.fillStyle = "#22150e"; g.beginPath(); g.roundRect(2, 2, 20, 20, 4.5); g.fill(); });
+  // 駅名の札: 券売機のボタンの形（白い面・醤油色の縁・下の影）。9 分割で伸びる。
+  add("key", 24, (g) => {
+    g.fillStyle = "#22150e"; g.beginPath(); g.roundRect(1, 2.5, 22, 20, 5); g.fill();
+    g.fillStyle = "#fff"; g.beginPath(); g.roundRect(1, 1, 22, 20, 5); g.fill();
+    g.lineWidth = 1.25; g.strokeStyle = "#22150e"; g.beginPath(); g.roundRect(1.6, 1.6, 20.8, 18.8, 4.5); g.stroke();
+  }, { stretchX: [[7 * PR, 17 * PR]], stretchY: [[7 * PR, 15 * PR]], content: [6 * PR, 4 * PR, 18 * PR, 18 * PR] });
+}
+
+
+makeImages();
+const cells = [["pin-unknown","味は未判定<br>（丼の絵・醤油色の輪）"],["pin-rich","直系・濃厚<br>（濃）"],["pin-creamy","クリーミー<br>（ク）"],["pin-chain","チェーン<br>（チ）"],
+ ["sel-unknown","選択中<br>（未判定）"],["sel-creamy","選択中<br>（クリーミー）"],["cluster-m","塊<br>（件数）"],["route","順路の番号<br>（ピンの右上に付く）"]];
+const g = document.getElementById("g");
+for (const [id, label] of cells) {
+  const c = IMG[id]; const box = document.createElement("div"); box.className = "cell";
+  c.style.width = (c.width / PR) * 1.6 + "px";
+  box.append(c); box.insertAdjacentHTML("beforeend", "<div>" + label + "</div>");
+  if (id === "cluster-m") { const x = c.getContext("2d"); x.fillStyle = "#fff"; x.font = "700 15px 'Hiragino Sans'"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("12", c.width / PR / 2, c.height / PR / 2 + 0.5); }
+  if (id === "route") { const x = c.getContext("2d"); x.fillStyle = "#fff"; x.font = "700 14px 'Hiragino Sans'"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("2", c.width / PR / 2, c.height / PR / 2 + 0.5); }
+  g.append(box);
+}
+document.body.dataset.ready = 1;
+</script></body></html>
