@@ -112,9 +112,9 @@ test("Webの地図では、絞り込みを地図と一覧の間に置く", async
   await page.goto(WEB_URL);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
   await openMode(page, "map");
-  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await expect(page.locator(".maplibregl-map")).toBeVisible();
   const order = await page.evaluate(() => {
-    const map = document.querySelector(".leaflet-container")!;
+    const map = document.querySelector(".maplibregl-map")!;
     const select = document.querySelector("select")!;
     const card = document.querySelector("button[data-shop-id]")!;
     const following = Node.DOCUMENT_POSITION_FOLLOWING;
@@ -131,7 +131,7 @@ test("Webの地図で条件の取得に失敗しても、絞り込みは消さ�
   await page.goto(WEB_URL);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
   await openMode(page, "map");
-  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await expect(page.locator(".maplibregl-map")).toBeVisible();
   // ここから先の検索だけ落とす。失敗した条件を変え直す口が残っていること。
   await page.route("**/mcp", async (route) => {
     const body = route.request().postData() ?? "";
@@ -142,7 +142,7 @@ test("Webの地図で条件の取得に失敗しても、絞り込みは消さ�
   // キーボードで選んだ選択肢から焦点を落とさない（置き場所を変えると作り直されて消える）。
   await page.getByLabel("都道府県").focus();
   await page.getByLabel("都道府県").selectOption("神奈川県");
-  await expect(page.locator(".leaflet-container")).toHaveCount(0);
+  await expect(page.locator(".maplibregl-map")).toHaveCount(0);
   await expect(page.getByLabel("都道府県")).toBeVisible();
   await expect(page.getByLabel("都道府県")).toBeFocused();
   await expect(page.getByRole("button", { name: "こだわらない" })).toBeVisible();
@@ -185,7 +185,7 @@ for (const width of [390, 768, 1280]) {
     const select = await page.getByRole("combobox", { name: "都道府県" }).boundingBox();
     expect(select?.height).toBeGreaterThanOrEqual(44);
     await openMode(page, "map");
-    await expect(page.locator(".leaflet-container")).toBeVisible();
+    await expect(page.locator(".maplibregl-map")).toBeVisible();
     expect(await overflow()).toBe(0);
   });
 }

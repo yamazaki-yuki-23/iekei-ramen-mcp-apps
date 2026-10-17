@@ -28,7 +28,7 @@ const synthetic = Array.from({ length: 80 }, (_, i) => {
     atPixel(`d-${i}`, edge + 64),
   ];
 }).flat();
-const boundary = [35.999999, 36, 36.000001, -35.999999, -36, -36.000001].flatMap((gap, i) => [
+const boundary = [45.999999, 46, 46.000001, -45.999999, -46, -46.000001].flatMap((gap, i) => [
   atPixel(`edge-a-${i}`, 3_700_032 + i * 256 - 1),
   atPixel(`edge-b-${i}`, 3_700_032 + i * 256 - 1 + gap),
 ]);

@@ -151,15 +151,15 @@ test("Web: 地図の範囲で発券し直す間は、前の結果の地図も一
     .getByRole("button", { name: "地図で", exact: true })
     .click();
   await settled(page);
-  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await expect(page.locator(".maplibregl-map")).toBeVisible();
   await slowDown(page, "**/mcp", 1500);
   await page.getByRole("button", { name: /この範囲/ }).click();
   await expect(page.getByRole("status").filter({ hasText: "読み込み中…" })).toHaveCount(1);
   // 古いピンを選ぶと、取り直しが失敗したときに選んだ店がモデルに残る（#214 のレビュー）。
-  await expect(page.locator(".leaflet-container:not([inert] *)")).toHaveCount(0);
+  await expect(page.locator(".maplibregl-map:not([inert] *)")).toHaveCount(0);
   await expect(page.locator("button[data-shop-id]:not([inert] *)")).toHaveCount(0);
   await settled(page);
-  await expect(page.locator(".leaflet-container:not([inert] *)")).toHaveCount(1);
+  await expect(page.locator(".maplibregl-map:not([inert] *)")).toHaveCount(1);
 });
 
 test("Web: 次の 3 軒を押しても画面を戻さず、押したボタンが上へ逃げない（オーナーの指摘）", async ({

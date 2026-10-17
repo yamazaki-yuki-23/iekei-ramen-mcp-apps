@@ -1,5 +1,5 @@
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import type { ErrorEvent, Map as MapLibreMap } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { useMarkerFocus } from "../hooks/use-marker-focus";
 import { useVisitedMarkers } from "../hooks/use-visited-markers";
@@ -7,18 +7,24 @@ import type { Bounds, Shop } from "../../../types";
 import styles from "../styles/search.module.css";
 import {
   boundsOf,
+  canStartWorker,
+  createMap,
   drawOrigin,
   drawRoute,
   drawShops,
+  FIT_MAX_ZOOM,
   focusWithoutScrolling,
   JAPAN_BOUNDS,
-  ORIGIN_PANE,
-  ROUTE_PANE,
-  SELECTED_PANE,
-  toLatLngBounds,
+  ROUTE_MAX_ZOOM,
+  SELECT_ZOOM,
   viewBounds,
   type MapOrigin,
 } from "../lib/map-layers";
+import { MapLegend } from "./MapLegend";
+import { StateNote } from "./StateNote";
+
+/** 店のピンのデータが読めるまで待つ上限。過ぎたら、この画面では地図を描けないと見なす。 */
+const DRAW_TIMEOUT_MS = 15_000;
 
 interface Props {
   shops: Shop[];
@@ -57,8 +63,10 @@ interface Props {
    * 範囲で探し直した直後は false。ユーザーが自分で決めた画角を動かさない。
    */
   refit?: boolean;
-  /** 行った店。ピンの中心に点を打つ。匿名なら渡ってこない。 */
+  /** 行った店。ピンの右上に印を付ける。匿名なら渡ってこない。 */
   visitedIds?: ReadonlySet<string>;
+  /** この画面では地図を描けないと分かったとき。親は地図の道具（範囲で発券・全画面）を外す。 */
+  onCannotDraw?: () => void;
 }
 
 /**
@@ -80,107 +88,144 @@ export function MapView({
   initialBounds,
   refit = true,
   visitedIds,
+  onCannotDraw,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const layerRef = useRef<L.LayerGroup | null>(null);
-  // 順路は店のマーカーとは別のレイヤーに置く。検索し直しても順路は残るので、
-  // 店の描き直しで一緒に消えないようにする。
-  const routeLayerRef = useRef<L.LayerGroup | null>(null);
-  // 基準地点も店のマーカーとは別のレイヤー。描き直しで消えないようにする。
-  const originLayerRef = useRef<L.LayerGroup | null>(null);
-  const markersRef = useRef<Map<string, L.CircleMarker>>(new Map());
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const buttonsRef = useRef<Map<string, HTMLButtonElement>>(new Map());
   const shopDrawingRef = useRef<ReturnType<typeof drawShops> | null>(null);
   /*
    * 最後に線を引いたときの順路と出発点。**変わったときだけ寄せる**ために比べる。
-   *
-   * 初期値は作り直したときの値にしておく。**作り直しの 1 回目は寄せない。** 範囲で探した直後は、ユーザーが決めた
-   * 画角が初期表示に入っている。そこへ順路が割り込むと、見出しと結果は範囲の
-   * ものなのに地図だけ順路へ飛び、もう一度「この範囲で発券」を押すと見当違いの
-   * 場所を探すことになる（実測: 同じ操作の 2 回目で 3 件 → 2 件）。
-   */
-  /*
-   * 「1 回目か」の真偽値で持つと、開発版の StrictMode が effect を 2 回走らせたときに
-   * 2 回目を「順路が変わった」と見なして寄せてしまう（#157）。値を比べればそうならない。
+   * 初期値は作り直したときの値にしておく。**作り直しの 1 回目は寄せない。** 範囲で探した直後は、
+   * ユーザーが決めた画角が初期表示に入っている。そこへ順路が割り込むと、見出しと結果は範囲の
+   * ものなのに地図だけ順路へ飛ぶ（実測: 同じ操作の 2 回目で 3 件 → 2 件）。
+   * 「1 回目か」の真偽値で持つと、StrictMode が effect を 2 回走らせたときに誤る（#157）。
    */
   const lastRoute = useRef({ route, routeOrigin });
-  const { remember, restore } = useMarkerFocus(markersRef);
+  const { remember, restore } = useMarkerFocus(buttonsRef);
   /*
-   * いまのズーム。塊の大きさはこれで決まるので、state で持って描き直す。
-   * ref だと変わっても再描画が起きず、寄っても塊が解けない。
+   * 地図の準備ができたか（スタイルと重ねる層を足し終えたか）と、いまのズーム。塊の大きさは
+   * ズームで決まるので、state で持って描き直す。ref だと変わっても再描画が起きず、寄っても
+   * 塊が解けない。
    */
+  const [ready, setReady] = useState(false);
   const [zoom, setZoom] = useState(5);
+  /*
+   * この画面では地図を描けない（WebGL が無い、地図の描画に使う Worker が止められた）。
+   * 空白や壊れた地図を出さず、地図の場所で一覧と Web 版へ案内する。背景の地図データが
+   * 取れないだけなら、店のピンは出るので、ここには来ない。
+   */
+  const [cannotDraw, setCannotDraw] = useState(false);
 
-  // マーカーのクリックハンドラは 1 度だけ登録するので、最新の onSelect を
-  // ref 経由で参照する。ref の更新は render 中ではなく effect で行う。
+  // ハンドラは 1 度だけ登録するので、最新の関数を ref 経由で参照する。
   const onSelectRef = useRef(onSelect);
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
-  // 塊の中身を渡す先も ref 経由。ハンドラは描き直しのたびに付け替えない。
   const onClusterRef = useRef(onClusterSelect);
   useEffect(() => {
     onClusterRef.current = onClusterSelect;
   }, [onClusterSelect]);
-  // 読み取り口を渡す相手も ref 経由。親が描き直しても渡し直さない。
   const onReadyRef = useRef(onReady);
   useEffect(() => {
     onReadyRef.current = onReady;
   }, [onReady]);
-
-  // 地図の生成は 1 度だけ。以降はレイヤーだけ差し替える。
+  const onCannotDrawRef = useRef(onCannotDraw);
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-    /*
-     * **worldCopyJump で正規の世界へ戻す。** Leaflet はタイルを横に繰り返して
-     * 描くが、店のピン（ベクタ層）は複製しない。隣の複製まで動かすと、地図には
-     * 日本が見えているのにピンが 1 つも無い、という状態になる。
-     * そのまま「この範囲で発券」を押すと当然 0 件で、理由が画面から分からない。
-     */
-    const map = L.map(containerRef.current, {
-      attributionControl: true,
-      worldCopyJump: true,
-    });
-    /*
-     * **タイル層を先に足してから寄せる。** 地図の最大ズームはタイル層が
-     * 決める。寄せてから足すと、その瞬間は上限が無い状態で寸法を測ることに
-     * なり、面積ゼロの範囲では寄せ先が無限大になりうる。
-     */
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
-    map.fitBounds(initialBounds ? toLatLngBounds(initialBounds) : JAPAN_BOUNDS);
-    /*
-     * 重なり順を明示する。**レイヤーを足す前に作ること。**
-     *
-     *   基準地点 390 < 店のピン 400 < 塊 600 < 選択中 640 < 順路の番号 645 < ツールチップ 650
-     *
-     * 塊は divIcon なので markerPane（600）に載り、店のピンは circleMarker で
-     * overlayPane（400）に載る。別のペインは bringToFront では追い越せないので、
-     * 選択中だけ上に出す。番号はさらに上——選んだ店がそのまま順路に入っている
-     * ことが多く、下に潜ると何軒目か読めなくなる。
-     */
-    map.createPane(ORIGIN_PANE).style.zIndex = "390";
-    map.createPane(SELECTED_PANE).style.zIndex = "640";
-    map.createPane(ROUTE_PANE).style.zIndex = "645";
-    // 同心円は店のピンより下。上に置くと、線が店に重なって押しにくくなる。
-    originLayerRef.current = L.layerGroup().addTo(map);
-    layerRef.current = L.layerGroup().addTo(map);
-    // 順路は店のピンより上に置く。下だと線がピンに隠れて追えない。
-    routeLayerRef.current = L.layerGroup().addTo(map);
+    onCannotDrawRef.current = onCannotDraw;
+  }, [onCannotDraw]);
+
+  // 地図の生成は 1 度だけ。以降はデータだけ差し替える。
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || mapRef.current) return;
+    let map: ReturnType<typeof createMap>;
+    try {
+      // 店のピンを重ねる層ができたら描き始める（背景の地図データを待たない）。
+      map = createMap(container, initialBounds, () => {
+        setZoom(map.getZoom());
+        setReady(true);
+      });
+    } catch {
+      // 作る時点で失敗する（WebGL が無い、Worker を作れない）。
+      setCannotDraw(true);
+      onCannotDrawRef.current?.();
+      return;
+    }
     mapRef.current = map;
-    setZoom(map.getZoom());
+    /*
+     * 描けないと分かったら、**案内に切り替える前に地図を壊す。** 切り替えると地図の入れ物は
+     * 消えるが、この節の後片付けは部品ごと外れるまで走らないので、地図・Worker・受け口が
+     * 外れた入れ物の上で生き続ける。
+     */
+    let alive = true;
+    const giveUp = () => {
+      if (!alive) return;
+      alive = false;
+      // 先に案内へ切り替える。Worker が壊れていると、地図を壊す途中で例外が出ることがある。
+      setReady(false);
+      setCannotDraw(true);
+      onCannotDrawRef.current?.();
+      mapRef.current = null;
+      try {
+        map.remove();
+      } catch {
+        // 壊せなかった地図は、外れた入れ物ごと捨てる（ほかに手は無い）。
+      }
+    };
+    // 描画の Worker が動くかを、地図とは別に確かめる（6 系は動かなくても地図の側でエラーにならない）。
+    void canStartWorker().then((ok) => {
+      if (!ok) giveUp();
+    });
+    // Worker が止められたことは、地図のエラーとして届くこともある。
+    const onError = (e: ErrorEvent) => {
+      if (/worker/i.test(e.error?.message ?? "")) giveUp();
+    };
+    // 黙って止まることもあるので、店のピンのデータが読めたかを時間で確かめる。
+    const watchdog = setTimeout(() => {
+      if (!map.getSource("shops") || !map.isSourceLoaded("shops")) giveUp();
+    }, DRAW_TIMEOUT_MS);
+    /*
+     * **1 回でも読めたら見張りをやめる。** 描けた後も見張りが残ると、ちょうど 15 秒の頃に店のデータを
+     * 差し替えたとき（ズーム・選択・結果の入れ替え）、差し替え中の「まだ読めていない」をつかまえて、
+     * 動いている地図を案内に置き換えてしまう。
+     */
+    const onSourceData = (e: { sourceId?: string }) => {
+      if (e.sourceId !== "shops" || !map.isSourceLoaded("shops")) return;
+      clearTimeout(watchdog);
+      map.off("sourcedata", onSourceData);
+    };
+    map.on("sourcedata", onSourceData);
+    /*
+     * 動いている間は枠に印を付ける。E2E が「止まった」を待つのに使う（時間では待たない）。
+     * いまのズームも出しておく（E2E が「寄った・引き戻されない」を測るのに使う）。
+     */
+    const onMoveStart = () => (container.dataset.moving = "true");
+    const onMoveEnd = () => {
+      delete container.dataset.moving;
+      container.dataset.zoom = map.getZoom().toFixed(2);
+    };
     // 寄ったら塊を解き直す。
-    map.on("zoomend", () => setZoom(map.getZoom()));
+    const onZoomEnd = () => setZoom(map.getZoom());
+    map.on("error", onError);
+    map.on("movestart", onMoveStart);
+    map.on("moveend", onMoveEnd);
+    map.on("zoomend", onZoomEnd);
     // 「この範囲で発券」は、押した瞬間にここから読む。
     onReadyRef.current?.(() => viewBounds(map));
     // 見切れた地図を押したときに、外側のページが動いて押下が空振りしないように（#58）。
     const releaseFocus = focusWithoutScrolling(map);
     return () => {
+      clearTimeout(watchdog);
       releaseFocus();
-      map.off("zoomend");
+      map.off("error", onError);
+      map.off("movestart", onMoveStart);
+      map.off("moveend", onMoveEnd);
+      map.off("zoomend", onZoomEnd);
+      map.off("sourcedata", onSourceData);
+      // 描けずに壊した後なら、もう壊さない。
+      if (!alive) return;
+      alive = false;
       map.remove();
       mapRef.current = null;
     };
@@ -189,175 +234,130 @@ export function MapView({
   }, []);
 
   /*
-   * マーカーを描き直す。
-   *
-   * **ズームが変わるたびに描き直す。** 塊の大きさは画面上の距離で決まるので、
-   * 寄ったら解け、引いたらまとまる。
+   * ピンと塊を描き直す。**ズームが変わるたびに描き直す。** 塊の大きさは画面上の距離で
+   * 決まるので、寄ったら解け、引いたらまとまる。順路が変わったときも描き直す（番号はピンの中）。
    */
   useEffect(() => {
-    const layer = layerRef.current;
     const map = mapRef.current;
-    if (!layer || !map) return;
-    const drawing = drawShops(layer, map, {
+    if (!map || !ready) return;
+    const drawing = drawShops(map, {
       shops,
-      zoom,
       selectedId,
+      route,
       onSelect: (shop, viaKeyboard) => {
         if (viaKeyboard) remember(shop.id);
         onSelectRef.current(shop);
       },
       onCluster: (group, viaKeyboard) => onClusterRef.current?.(group, viaKeyboard),
     });
-    const { markers } = drawing;
     shopDrawingRef.current = drawing;
-    markersRef.current = markers;
-
+    buttonsRef.current = drawing.buttons;
     // キーボードで選んだ直後だけ、描き直したピンへ焦点を戻す。
     restore(selectedId);
-
     return () => {
       drawing.dispose();
       shopDrawingRef.current = null;
     };
-  }, [shops, zoom, selectedId, remember, restore]);
+  }, [ready, shops, zoom, selectedId, route, remember, restore]);
 
   /*
    * 結果が変わったら、その全体が入るところまで寄せ直す。
    *
-   * **描き直し（ズーム）とは別の節にしてある。** 同じ節に置くと、ユーザーが
-   * 手で寄せるたびに結果の全体へ引き戻され、地図を動かせなくなる。
+   * **描き直し（ズーム）とは別の節にしてある。** 同じ節に置くと、ユーザーが手で寄せるたびに
+   * 結果の全体へ引き戻され、地図を動かせなくなる。
    */
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-    // 範囲で探し直した直後は、ユーザーが決めた画角をそのまま残す。
-    if (!refit) return;
+    if (!map || !refit) return;
+    map.resize();
     map.fitBounds(shops.length > 0 ? boundsOf(shops) : JAPAN_BOUNDS, {
-      padding: [24, 24],
-      maxZoom: 14,
+      padding: 24,
+      maxZoom: FIT_MAX_ZOOM,
+      duration: 0,
     });
-    // 親の高さが後から確定する場合に備えて再計測する。
-    const resize = setTimeout(() => map.invalidateSize(), 0);
-    // 同じ tick で外れたときに、消えた地図を触りに行かないようにする。
-    return () => clearTimeout(resize);
   }, [shops, refit]);
 
   /*
-   * 枠の寸法が変わったら Leaflet に測り直させる。
-   *
-   * Leaflet は生成時に測った寸法を持ち続けるので、全画面にして枠が伸びても
-   * 内部の寸法は古いまま。タイルが途中までしか描かれず、下半分が灰色になる。
-   *
-   * **全画面の切り替えを見張るのではなく、枠そのものを見張る。** 高さが変わる
-   * のは全画面のときだけではない（ホストの窓の伸縮、セーフエリアの変化）。
+   * 枠の寸法が変わったら測り直させる。全画面にして枠が伸びても、内部の寸法が古いままだと
+   * 下半分が描かれない。**枠そのものを見張る**（ホストの窓の伸縮、セーフエリアの変化もある）。
    */
   useEffect(() => {
-    const map = mapRef.current;
     const el = containerRef.current;
-    if (!map || !el) return;
-    const observer = new ResizeObserver(() => map.invalidateSize());
+    if (!mapRef.current || !el) return;
+    // 描けずに地図を壊した後は触らない（いまの地図を見る）。
+    const observer = new ResizeObserver(() => mapRef.current?.resize());
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
   /*
-   * 選んだ店へ 1 度だけ寄せる。
-   *
-   * **ズームを見ない。** 描き直しと同じ依存にすると、ユーザーが引いた瞬間に
-   * 選択中の店へ寄せ直され、広げる操作ができなくなる。
+   * 選んだ店へ 1 度だけ寄せる。**ズームを見ない。** 描き直しと同じ依存にすると、
+   * ユーザーが引いた瞬間に選択中の店へ寄せ直され、広げる操作ができなくなる。
    */
   useEffect(() => {
     const map = mapRef.current;
-    const marker = selectedId ? markersRef.current.get(selectedId) : undefined;
-    if (!map || !marker) return;
-    marker.bringToFront().openTooltip();
-    map.setView(marker.getLatLng(), Math.max(map.getZoom(), 14));
-
-    /*
-     * ここでも戻す。**`bringToFront` は要素を DOM に付け替える**ので、
-     * 描き直しの直後に戻しただけでは外れてしまう。
-     */
+    const shop = selectedId ? shops.find((s) => s.id === selectedId) : undefined;
+    if (!map || !ready || !shop) return;
+    map.jumpTo({ center: [shop.lon, shop.lat], zoom: Math.max(map.getZoom(), SELECT_ZOOM) });
     restore(selectedId);
-  }, [selectedId, restore]);
+    // 結果の一覧（shops）が変わっただけでは寄せ直さない。
+    // oxlint-disable-next-line react/exhaustive-deps
+  }, [ready, selectedId, restore]);
 
-  // 訪問状態は塊の所属・位置を変えない。既存のピンと焦点を保ち、印だけを更新する。
-  // 選択ピンをbringToFrontしたあとに点を描き、白い点が下に隠れないようにする。
+  // 行った印は塊の所属・位置を変えない。既存のボタンと焦点を保ち、印だけを更新する。
   useVisitedMarkers(shopDrawingRef, visitedIds);
 
   /*
-   * 基準地点の印と同心円。
-   *
-   * **地図は動かさない。** ここで寄せると、結果の全体や順路へ寄せた直後に
-   * 基準地点へ引き戻され、どこを見ているのか分からなくなる。
+   * 基準地点の印と同心円。**地図は動かさない。** ここで寄せると、結果の全体や順路へ寄せた
+   * 直後に基準地点へ引き戻され、どこを見ているのか分からなくなる。
    */
   useEffect(() => {
-    const layer = originLayerRef.current;
-    if (!layer || !origin) return;
-    drawOrigin(layer, origin);
-    return () => {
-      layer.clearLayers();
-    };
-  }, [origin]);
+    const map = mapRef.current;
+    if (!map || !ready || !origin) return;
+    return drawOrigin(map, origin);
+  }, [ready, origin]);
 
   /*
-   * **この節は「選んだ店へ寄せる」より後に置くこと。** 同じ更新で両方走ると、
-   * 後に置いた方の地図移動が勝つ。順路を足した直後は順路の全体が見たいので、
-   * こちらが後。店を選んだだけのときは順路が変わらず、この effect は走らない。
+   * 順路の線。**この節は「選んだ店へ寄せる」より後に置くこと。** 同じ更新で両方走ると、
+   * 後に置いた方の地図移動が勝つ。順路を足した直後は順路の全体が見たいので、こちらが後。
+   *
+   * **寄せるのは順路が変わったときだけ。作り直しの 1 回目は線を引くに留める。**
+   * 記録は早期 return より前で行う（空の順路で作り直されたあと、最初の 1 軒を積んだときを
+   * 「1 回目」と誤解し、寄せ直しが飛んでいた）。
    */
   useEffect(() => {
-    const layer = routeLayerRef.current;
     const map = mapRef.current;
-    if (!layer || !map) return;
-
-    /*
-     * **寄せるのは順路が変わったときだけ。作り直しの 1 回目は線を引くに留める。**
-     *
-     * 作り直しは結果が入れ替わったときに起きる。そこで順路へ寄せると、結果は
-     * 新しいのに地図だけ古い順路を指すことになる。順路は変わっていないのだから、
-     * 寄せる理由が無い。
-     *
-     * 条件を refit で分けていたが、「結果へ寄せる節が後に走れば上書きされる」
-     * という並び順頼みになっていた。並び順に頼らず「変わったときだけ」にしてある。
-     *
-     * **記録は早期 return より前で行う。** 空の順路で作り直されたあと、最初の
-     * 1 軒を積んだときが「1 回目」と誤解され、寄せ直しが飛んでいた（実測:
-     * 出発点が 250km 先にあるのに、選んだ店の周りのまま動かなかった）。
-     */
+    if (!map || !ready) return;
     const changed =
       lastRoute.current.route !== route || lastRoute.current.routeOrigin !== routeOrigin;
     lastRoute.current = { route, routeOrigin };
-
     if (!route || route.length === 0) return;
-    const line = drawRoute(layer, route, routeOrigin);
-    const clear = () => {
-      layer.clearLayers();
-    };
-    if (!changed) return clear;
-
-    /*
-     * 順路の全体が入るように寄せる。直前に選んだ店へズームしたままだと、
-     * 足した順路が画面の外に出て、線を引いても見えない。
-     *
-     * **`animate: false` は外さないこと。** 直前に「選んだ店へ寄せる」の
-     * ズームが走っていると、Leaflet はアニメーション中の移動要求を捨てる。
-     * 動かしたつもりで動かず、13km 離れた 2 軒目が枠の外に描かれたままになる
-     * （実測: 1.5 秒待っても zoom 15・bounds は 1 軒目の周辺のまま）。
-     *
-     * 寸法も先に取り直す。初期化時の値を持ち続けていると、収まるかどうかの
-     * 判定がその古い寸法で行われる。
-     */
-    map.invalidateSize();
-    map.fitBounds(L.latLngBounds(line), { padding: [32, 32], maxZoom: 15, animate: false });
-
+    const { points, clear } = drawRoute(map, route, routeOrigin);
+    if (changed) {
+      // 寸法を先に取り直す。初期化時の値のままだと、収まるかの判定を古い寸法で行う。
+      map.resize();
+      map.fitBounds(boundsOf(points), { padding: 32, maxZoom: ROUTE_MAX_ZOOM, duration: 0 });
+    }
     return clear;
-  }, [route, routeOrigin]);
+  }, [ready, route, routeOrigin]);
+
+  if (cannotDraw)
+    return (
+      <StateNote kind="error">
+        この画面では地図を描けませんでした。下の一覧から選べます。地図はブラウザで Web
+        版（iekeiramen.com）を開くと使えます。
+      </StateNote>
+    );
 
   return (
-    <div
-      className={expanded ? `${styles.map} ${styles.mapExpanded}` : styles.map}
-      ref={containerRef}
-      role="application"
-      aria-label="家系ラーメン店の地図"
-    />
+    <div className={expanded ? `${styles.map} ${styles.mapExpanded}` : styles.map}>
+      <div
+        className={styles.mapCanvas}
+        ref={containerRef}
+        role="application"
+        aria-label="家系ラーメン店の地図"
+      />
+      <MapLegend />
+    </div>
   );
 }

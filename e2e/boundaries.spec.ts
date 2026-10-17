@@ -56,11 +56,12 @@ test("ピンはどの店も同じ形で、判定の段階を読み上げにも�
   // 固定fixtureの山形県には「家系か未判定」が 1 軒だけあり、塊にならない。
   const app = await callTool(page, "show-iekei-ramen-map", { prefecture: "山形県" });
   await waitForApp(app);
-  const pin = app.locator(".leaflet-overlay-pane path[role=button]").first();
+  const pin = app.locator(".shop-pin").first();
   await expect(pin).not.toHaveAttribute("aria-label", /（家系(の可能性|か未判定)?・/);
   await pin.focus();
   await page.keyboard.press("Enter");
-  const selected = app.locator(".leaflet-selectedShop-pane path[role=button]");
-  await expect(selected).toHaveAttribute("stroke", "#141312");
-  await expect(selected).toHaveAttribute("stroke-width", "3");
+  // 選んだ店はしずく形。形はどの店も同じで、読み上げにも段階を出さない。
+  const selected = app.locator(".shop-pin-selected");
+  await expect(selected).toHaveAttribute("aria-current", "true");
+  await expect(selected).not.toHaveAttribute("aria-label", /（家系(の可能性|か未判定)?・/);
 });

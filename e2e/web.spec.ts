@@ -130,7 +130,7 @@ test("Webを直接開いて検索・現在地・地図・まわる店を使え�
     .toContain("https://www.google.com/maps/dir/");
 
   await openMode(page, "map");
-  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await expect(page.locator(".maplibregl-map")).toBeVisible();
   await page.getByLabel("都道府県").selectOption("神奈川県");
   const map = await tool(request, "show-iekei-ramen-map", { prefecture: "神奈川県" });
   // 地図の一覧は既存の仕様どおり先頭20件。全件数は見出しでも確認する。
@@ -273,9 +273,9 @@ test("地図を読み込む間は「この範囲で」を押せず、地図が�
   await page.getByRole("button", { name: "地図で", exact: true }).click();
   const searchArea = page.getByRole("button", { name: /この範囲で/ });
   await expect(searchArea).toBeDisabled();
-  await expect(page.locator(".leaflet-container")).toHaveCount(0);
+  await expect(page.locator(".maplibregl-map")).toHaveCount(0);
   release();
-  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await expect(page.locator(".maplibregl-map")).toBeVisible();
   await expect(searchArea).toBeEnabled();
 });
 
@@ -291,4 +291,48 @@ test("地図のファイルを読めなくても、地図の場所で知らせ�
   // アプリ全体は残り、ほかの探し方へ移れる。
   await page.getByRole("button", { name: "店名で", exact: true }).click();
   await expect(page.locator("#kw")).toBeVisible();
+});
+
+test("地図の印の見方は「?」で開き、Esc・閉じる・札の外で閉じて、焦点を戻す（#246）", async ({
+  page,
+}) => {
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  await openMode(page, "map");
+  const opener = page.getByRole("button", { name: "地図の印の見方" });
+  await expect(opener).toHaveAttribute("aria-expanded", "false");
+  // 押せる範囲は 44px 以上。
+  const box = (await opener.boundingBox())!;
+  expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(44);
+
+  await opener.click();
+  const heading = page.getByRole("heading", { name: "地図の印" });
+  await expect(heading).toBeFocused();
+  // 味の分け方は参考値（AGENTS.md の参考値の但し書き）。判定の段階は出さない。
+  await expect(page.getByText("味の分け方は参考です。")).toBeVisible();
+  // 行った店の行は、記録が無いとき（匿名）も出す。
+  for (const label of [
+    "味が濃厚",
+    "味がクリーミー",
+    "チェーン店",
+    "味はまだ分けていない",
+    "行った店（記録した店）",
+  ])
+    await expect(page.getByText(label, { exact: true })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(heading).toHaveCount(0);
+  await expect(opener).toBeFocused();
+
+  await opener.click();
+  await page.getByRole("button", { name: "閉じる" }).click();
+  await expect(heading).toHaveCount(0);
+  await expect(opener).toBeFocused();
+
+  // 札の外（地図）を押しても閉じる。
+  await opener.click();
+  await expect(heading).toBeVisible();
+  const map = (await page.locator(".maplibregl-map").boundingBox())!;
+  await page.mouse.click(map.x + 60, map.y + map.height - 60);
+  await expect(heading).toHaveCount(0);
 });

@@ -39,6 +39,17 @@ describe("本番デプロイ", () => {
     expect(scripts["db:migrate"]).toContain(`wrangler d1 migrations apply ${name} --remote`);
   });
 
+  it("本番の設定に、地図のデータ（R2）の binding と、Worker を通す道がある（#246）", () => {
+    // binding は env へ引き継がれないので、本番の分は env より前（トップレベル）に要る。無いと地図の背景が
+    // ずっと 404 になる（#247 のレビュー）。
+    const config = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
+    const top = config.slice(0, config.indexOf('"env"'));
+    expect(top).toMatch(
+      /"r2_buckets"[^\]]*"binding":\s*"MAP_TILES"[^\]]*"bucket_name":\s*"iekei-ramen-map"/,
+    );
+    expect(top).toContain('"/map/japan.pmtiles"');
+  });
+
   it("手元から出すときも、表を作ってから出す", () => {
     /*
      * **CI だけ直しても足りない。** 新しい環境へ手元から `npm run deploy` した

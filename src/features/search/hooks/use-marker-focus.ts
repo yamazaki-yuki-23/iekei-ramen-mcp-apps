@@ -1,4 +1,3 @@
-import type { CircleMarker } from "leaflet";
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 
 /**
@@ -13,12 +12,12 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
  * そのたびに戻し、焦点が他所へ移ったら印を落とす（拡大縮小の釦へ移ったあとに
  * 引き戻さないため）。
  */
-export function useMarkerFocus(markers: RefObject<Map<string, CircleMarker>>) {
+export function useMarkerFocus(markers: RefObject<Map<string, HTMLButtonElement>>) {
   const wanted = useRef<string | null>(null);
 
   useEffect(() => {
     const onFocusIn = (e: FocusEvent) => {
-      const intended = wanted.current ? markers.current.get(wanted.current)?.getElement() : null;
+      const intended = wanted.current ? markers.current.get(wanted.current) : null;
       // 要素が消えて body へ落ちるときは focusin が出ないので、戻す機会は残る。
       if (e.target !== intended) wanted.current = null;
     };
@@ -35,8 +34,7 @@ export function useMarkerFocus(markers: RefObject<Map<string, CircleMarker>>) {
   const restore = useCallback(
     (selectedId?: string) => {
       if (!selectedId || wanted.current !== selectedId) return;
-      // circleMarker の実体は SVG の path。focus は HTMLElement 側の型にしか無い。
-      (markers.current.get(selectedId)?.getElement() as SVGElement | null)?.focus();
+      markers.current.get(selectedId)?.focus();
     },
     [markers],
   );
