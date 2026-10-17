@@ -3,7 +3,7 @@ export const RESOURCE_URI = "ui://iekei-ramen/mcp-app.html";
 
 /**
  * UI リソースのメタデータ。
- * - csp: 地図タイルを OSM から読むために必要
+ * - csp.resourceDomains: 地図の背景（国土地理院の淡色地図、#244）を読むために必要
  * - permissions.geolocation: 「現在地から探す」で navigator.geolocation を使うため
  */
 export const UI_RESOURCE_META = {
