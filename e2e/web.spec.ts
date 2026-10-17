@@ -292,3 +292,28 @@ test("地図のファイルを読めなくても、地図の場所で知らせ�
   await page.getByRole("button", { name: "店名で", exact: true }).click();
   await expect(page.locator("#kw")).toBeVisible();
 });
+
+test("小縮尺の淡色地図（ズーム 8 以下）の間だけ、海岸線の出所（VMAP0）を出典に出す（#244）", async ({
+  page,
+}) => {
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  await page.getByRole("button", { name: "地図で", exact: true }).click();
+  const credit = page.locator(".leaflet-control-attribution");
+  await expect(credit).toContainText("国土地理院");
+  await expect(credit).toContainText("OpenStreetMap");
+  // 日本全体を開いたところはズーム 8 以下。
+  await expect(credit).toContainText("VMAP0");
+  // ズームの動きの途中に押した分は受け付けられないので、1 回ずつ動き終わるのを待つ。
+  const map = page.locator(".leaflet-container").first();
+  const step = async (name: string) => {
+    await page.getByRole("button", { name }).click();
+    await expect(map).not.toHaveClass(/leaflet-zoom-anim/);
+    await page.waitForTimeout(300);
+  };
+  for (let i = 0; i < 5; i++) await step("Zoom in");
+  await expect(credit).not.toContainText("VMAP0");
+  await expect(credit).toContainText("国土地理院");
+  for (let i = 0; i < 5; i++) await step("Zoom out");
+  await expect(credit).toContainText("VMAP0");
+});

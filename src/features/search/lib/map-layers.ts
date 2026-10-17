@@ -104,6 +104,14 @@ const RING = { color: ORIGIN_COLOR, weight: 1, opacity: 0.5, fill: false, dashAr
 
 /** 日本全体が収まる初期表示。 */
 /**
+ * 淡色地図のズーム 8 以下は小縮尺の地図（500万分1日本とその周辺）で、国土地理院の出典に加えて
+ * 海岸線の出所も明示する決まり（地理院タイル一覧の淡色地図の備考）。
+ */
+const SHORELINE_CREDIT =
+  'Shoreline data is derived from: United States. National Imagery and Mapping Agency. "Vector Map Level 0 (VMAP0)." Bethesda, MD: Denver, CO: The Agency; USGS Information Services, 1997.';
+const SMALL_SCALE_MAX_ZOOM = 8;
+
+/**
  * 背景は国土地理院の淡色地図（#244）。標準の地図は道路・建物・店名が多く、店のピンが埋もれる。
  * 淡色地図のタイルは 2〜18 だけなので、それより寄せたら 18 を拡大し、引いたら 2 を縮小して描く
  * （無い番号を取りに行かない）。リアルタイムに読み込むので申請は不要、出典の表示が要る。
@@ -118,6 +126,21 @@ export function addBaseTiles(map: L.Map): void {
       '出典: <a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a> | ' +
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
+  /*
+   * 海岸線の出所は、小縮尺の地図が出ている間だけ足す（寄せた地図には出さない）。
+   * **足したかを覚えておく。** Leaflet は addAttribution の回数を数えるので、動かすたびに足すと
+   * 寄せたときに 1 回外しても消えない。
+   */
+  let shown = false;
+  const showShoreline = () => {
+    const small = map.getZoom() <= SMALL_SCALE_MAX_ZOOM;
+    if (small === shown || !map.attributionControl) return;
+    if (small) map.attributionControl.addAttribution(SHORELINE_CREDIT);
+    else map.attributionControl.removeAttribution(SHORELINE_CREDIT);
+    shown = small;
+  };
+  map.on("zoomend", showShoreline);
+  map.whenReady(showShoreline);
 }
 
 export const JAPAN_BOUNDS = L.latLngBounds([24.0, 122.5], [45.7, 146.0]);
