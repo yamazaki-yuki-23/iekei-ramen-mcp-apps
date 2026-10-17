@@ -1,7 +1,7 @@
 import { test } from "./fixtures";
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import type { AppPayload } from "../src/types";
-import { openMode } from "./helpers";
+import { openMode, waitForMapSettled } from "./helpers";
 import { resultCaveat } from "../src/utils/data-caveats";
 
 const WEB_URL = "http://localhost:3134";
@@ -304,12 +304,10 @@ test("小縮尺の淡色地図（ズーム 8 以下）の間だけ、海岸線�
   await expect(credit).toContainText("OpenStreetMap");
   // 日本全体を開いたところはズーム 8 以下。
   await expect(credit).toContainText("VMAP0");
-  // ズームの動きの途中に押した分は受け付けられないので、1 回ずつ動き終わるのを待つ。
-  const map = page.locator(".leaflet-container").first();
+  // ズームの動きの途中に押した分は受け付けられないので、1 回ずつ動き終わるのを待つ（時間では待たない）。
   const step = async (name: string) => {
     await page.getByRole("button", { name }).click();
-    await expect(map).not.toHaveClass(/leaflet-zoom-anim/);
-    await page.waitForTimeout(300);
+    await waitForMapSettled(page);
   };
   for (let i = 0; i < 5; i++) await step("Zoom in");
   await expect(credit).not.toContainText("VMAP0");

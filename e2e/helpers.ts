@@ -208,7 +208,7 @@ export async function afterDelivered(app: FrameLocator, delivered: Promise<unkno
  * 100ms 続いたら止まったと見なす。止まった後に、zoomend を受けたアプリが塊を
  * 描き直す分もこの間に済む。
  */
-export async function waitForMapSettled(app: FrameLocator) {
+export async function waitForMapSettled(app: FrameLocator | Page) {
   await app.locator(".leaflet-map-pane").evaluate(
     (pane) =>
       new Promise<void>((resolve) => {
