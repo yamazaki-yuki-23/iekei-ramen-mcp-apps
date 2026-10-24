@@ -52,6 +52,15 @@ test("public/_headers の CSP に frame-ancestors 'none' がある", () => {
   expect(CSP).toContain("default-src 'self'");
 });
 
+/*
+ * Cloudflare Web Analytics は、ダッシュボードの設定でエッジが全ページにスクリプトを差し込む（リポジトリにも
+ * E2E にも出てこない）。CSP で止めると、本番だけで計測が消える（#268 のマージ直後に実測）。
+ */
+test("CSP が Cloudflare Web Analytics のスクリプトと送信先を許している", () => {
+  expect(CSP).toMatch(/script-src [^;]*https:\/\/static\.cloudflareinsights\.com/);
+  expect(CSP).toMatch(/connect-src [^;]*https:\/\/cloudflareinsights\.com/);
+});
+
 for (const path of [
   "/",
   "/match/",

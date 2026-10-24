@@ -28,7 +28,9 @@ Always Use HTTPS」をオンにして送る。HSTS は `public/_headers`（`incl
 
 静的ページには `public/_headers` で CSP と `frame-ancestors 'none'`（`X-Frame-Options: DENY`）を付ける（#268）。
 読み込むのは自分の origin だけで、例外は地図（MapLibre）のワーカーとカメラの画像に要る `blob:`・`data:` と、
-React と `/match/` のインラインのスタイル。**読み込み先を足したら CSP も足す。** vite preview は `_headers`
+React と `/match/` のインラインのスタイルと、Cloudflare Web Analytics（`static.cloudflareinsights.com` の
+スクリプトと `cloudflareinsights.com` への送信）。Web Analytics はエッジが差し込むので E2E には出ず、
+許し忘れると本番だけ計測が消える（#268 で一度止めた）。**読み込み先を足したら CSP も足す。** vite preview は `_headers`
 を読まないので、`e2e/csp.spec.ts` が同じ値を付けて主なページを開き、違反 0 件を確かめる。zod は eval を
 試して違反を出すので、Web の入口の最初で `src/utils/zod-jitless.ts` を読み込む。会話の中（MCP Apps）の
 画面はホストの枠で動き、`_headers` は効かない。
