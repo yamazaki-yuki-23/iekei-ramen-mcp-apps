@@ -355,11 +355,8 @@ test("パソコン幅は上のナビに 7 項目、スマホ幅は探し方の 4
   await expect(page.getByRole("heading", { level: 1, name: "家系マッチ" })).toBeVisible();
 });
 
-test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はその下。いまの探し方は塗って示す（#204）", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("http://localhost:3134/");
+/** 探す画面の本物の食券 3 枚が、動きの後の最終の位置で、下のタブバーより上にあることを確かめる。 */
+async function expectTicketsAboveTabBar(page: Page) {
   /*
    * つながる前は、操作できない本体（inert）に仮の食券（skeleton-*）が 3 枚出る。それを数えると、
    * 仮の食券を測り、押せない券売機で発券して焦点が渡らない（#267。CI で下端 810 > 787、
@@ -385,6 +382,15 @@ test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はそ�
     return els.map((el) => el.getBoundingClientRect().bottom);
   });
   for (const box of bottoms) expect(box).toBeLessThanOrEqual(tabTop);
+  return tickets;
+}
+
+test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はその下。いまの探し方は塗って示す（#204）", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("http://localhost:3134/");
+  const tickets = await expectTicketsAboveTabBar(page);
   // 読む順（焦点の順）も食券が先。見た目だけ入れ替えない。
   const order = await page.evaluate(() => {
     const ticket = document.querySelector("ul > li > button[data-shop-id]")!;
@@ -431,6 +437,19 @@ test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はそ�
     "true",
   );
 });
+
+for (const [width, height] of [
+  [375, 812],
+  [360, 800],
+] as const) {
+  test(`幅 384px 以下（${width}×${height}）でも、最初の画面に食券 3 枚が入る（#279）`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("http://localhost:3134/");
+    await expectTicketsAboveTabBar(page);
+  });
+}
 
 test("スマホ幅でも、下の規約のリンクは 44px で押せ、見出しは文節の途中で割れない（#205）", async ({
   page,
