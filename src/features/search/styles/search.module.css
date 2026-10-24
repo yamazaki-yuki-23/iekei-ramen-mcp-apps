@@ -407,6 +407,26 @@
   }
 }
 
+/*
+ * 幅 384px 以下（375×812・360×800）では営業時間が折り返して食券が 1 枚 21px 高くなり、3 枚目が下の
+ * タブバーにかかった（#279）。一言を小さくし、段の間を詰め、説明文を隠す。説明文が指す券売機は
+ * スマホでは食券の下にあり、最初の画面には見えない。
+ */
+@media (max-width: 24rem) {
+  .main,
+  .modePanel {
+    gap: var(--space-2);
+  }
+
+  .heroCatch {
+    font-size: var(--font-heading-xl-size);
+  }
+
+  .heroLead {
+    display: none;
+  }
+}
+
 /* 但し書きは最初の画面でも見える場所に残す（推定・直線距離）。 */
 .heroCaveat {
   margin: 0;
