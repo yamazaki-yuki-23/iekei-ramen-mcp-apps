@@ -28,9 +28,9 @@ jobs:
     # 既定は 360 分。固まると、その分だけランナーを占有する。いつもは 1 分弱。
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -77,9 +77,9 @@ jobs:
         # 89〜109 秒で、上限まで余裕が無かった。3 つにすると 37 件ずつになる。
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -93,7 +93,7 @@ jobs:
 
       - name: Cache E2E host
         id: cache-e2e-host
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: e2e-host
           key: e2e-host-${{ steps.e2e-host-version.outputs.version }}-${{ hashFiles('scripts/dev/setup-e2e.mjs', 'package-lock.json', '.nvmrc') }}
@@ -112,7 +112,7 @@ jobs:
         run: npx playwright test --shard=${{ matrix.shard }}/3
 
       # 再試行で成功した初回失敗も保存する。HTMLと全試行のtrace/画像/JSONを一緒に残す。
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: always() && (steps.e2e-tests.outcome == 'success' || steps.e2e-tests.outcome == 'failure')
         with:
           name: playwright-report-${{ matrix.shard }}
@@ -156,9 +156,9 @@ jobs:
       group: deploy-production
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
