@@ -7,19 +7,18 @@
     "city": "盛岡市"
   },
   "岩手県一関市山目字泥田61-1": {
-    "precise": false,
-    "title": "岩手県一関市山目泥田"
-  },
-  "岩手県奥州市水沢佐倉河川原田109-2": {
-    "precise": true,
-    "title": "岩手県奥州市水沢佐倉河川原田１０９番地",
-    "lat": 39.144756,
-    "lon": 141.14917,
-    "city": "奥州市"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 38.9376344,
+    "lon": 141.113132,
+    "city": "一関市"
   },
   "岩手県北上市 北上市町分2地割522-1": {
-    "precise": false,
-    "title": "岩手県北上市北鬼柳"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 39.30081878,
+    "lon": 141.1070699,
+    "city": "北上市"
   },
   "東京都千代田区麹町6-2-1": {
     "precise": true,
@@ -175,13 +174,6 @@
     "lon": 139.727737,
     "city": "新宿区"
   },
-  "東京都杉並区上荻1-6-11 胡同101ビル": {
-    "precise": true,
-    "title": "東京都杉並区上荻一丁目６番１１号",
-    "lat": 35.705128,
-    "lon": 139.621567,
-    "city": "杉並区"
-  },
   "東京都豊島区東池袋1-7-10 クリオネJr.1Ｆ": {
     "precise": true,
     "title": "東京都豊島区東池袋一丁目７番１０号",
@@ -237,13 +229,6 @@
     "lat": 35.681194,
     "lon": 139.540604,
     "city": "三鷹市"
-  },
-  "東京都町田市常盤町3198-1": {
-    "precise": true,
-    "title": "東京都町田市常盤町３１９８番地",
-    "lat": 35.585735,
-    "lon": 139.39476,
-    "city": "町田市"
   },
   "東京都狛江市東和泉一丁目33番6号": {
     "precise": true,
@@ -302,12 +287,18 @@
     "city": "横浜市"
   },
   "神奈川県横浜市緑区寺山町63": {
-    "precise": false,
-    "title": "神奈川県横浜市緑区寺山町"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 35.506275,
+    "lon": 139.539688,
+    "city": "横浜市"
   },
   "神奈川県横浜市戸塚区東俣野町字大塚1028-1": {
-    "precise": false,
-    "title": "神奈川県横浜市戸塚区東俣野町"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 35.36739069,
+    "lon": 139.498859,
+    "city": "横浜市"
   },
   "神奈川県小田原市成田795-1": {
     "precise": true,
@@ -331,8 +322,11 @@
     "city": "相模原市"
   },
   "神奈川県藤沢市菖蒲沢1058": {
-    "precise": false,
-    "title": "神奈川県藤沢市菖蒲沢"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 35.39359302,
+    "lon": 139.4438691,
+    "city": "藤沢市"
   },
   "神奈川県平塚市唐ケ原82-1": {
     "precise": true,
@@ -377,8 +371,11 @@
     "city": "船橋市"
   },
   "千葉県習志野市茜浜2-19-3": {
-    "precise": false,
-    "title": "千葉県習志野市茜浜二丁目"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 35.66672343,
+    "lon": 140.0145378,
+    "city": "習志野市"
   },
   "千葉県柏市大青田741-6": {
     "precise": true,
@@ -521,8 +518,11 @@
     "city": "富士宮市"
   },
   "愛知県蒲郡市八百富町2-226": {
-    "precise": false,
-    "title": null
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 34.82311217,
+    "lon": 137.2332906,
+    "city": "蒲郡市"
   },
   "愛知県安城市南町4-36": {
     "precise": true,
@@ -539,8 +539,11 @@
     "city": "碧南市"
   },
   "愛知県刈谷市港町7-12-1": {
-    "precise": false,
-    "title": "愛知県刈谷市港町七丁目"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 34.97912426,
+    "lon": 136.9871623,
+    "city": "刈谷市"
   },
   "愛知県名古屋市西区二方町47 mozoワンダーシティ": {
     "precise": true,
@@ -557,10 +560,10 @@
     "city": "名古屋市"
   },
   "愛知県名古屋市瑞穂区弥富通4-57": {
-    "precise": true,
-    "title": "愛知県名古屋市瑞穂区彌富通四丁目５７番地",
-    "lat": 35.118832,
-    "lon": 136.953842,
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 35.11893937,
+    "lon": 136.9542039,
     "city": "名古屋市"
   },
   "愛知県日進市赤池町箕ノ手2-379": {
@@ -620,8 +623,11 @@
     "city": "蟹江町"
   },
   "岐阜県本巣郡 北方町高屋字紙木原道西1327": {
-    "precise": false,
-    "title": "岐阜県北方町高屋"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 35.42003066,
+    "lon": 136.6831285,
+    "city": "北方町"
   },
   "岐阜県大垣市中野町2-87": {
     "precise": true,
@@ -631,8 +637,11 @@
     "city": "大垣市"
   },
   "岐阜県美濃加茂市新池町1-50-1": {
-    "precise": false,
-    "title": "岐阜県美濃加茂市新池町一丁目"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 35.45333493,
+    "lon": 137.0241643,
+    "city": "美濃加茂市"
   },
   "岐阜県多治見市幸町3-8-1": {
     "precise": true,
@@ -670,8 +679,11 @@
     "city": "門真市"
   },
   "大阪府八尾市沼4丁目51": {
-    "precise": false,
-    "title": "大阪府八尾市沼四丁目"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 34.587932389789295,
+    "lon": 135.60846846792876,
+    "city": "八尾市"
   },
   "大阪府堺市南区豊田1186-1": {
     "precise": true,
@@ -715,13 +727,6 @@
     "lon": 135.741272,
     "city": "河合町"
   },
-  "兵庫県神戸市中央区中山手通1-9-24": {
-    "precise": true,
-    "title": "兵庫県神戸市中央区中山手通一丁目９番２４号",
-    "lat": 34.695686,
-    "lon": 135.192444,
-    "city": "神戸市"
-  },
   "兵庫県伊丹市中野西3-109-1": {
     "precise": true,
     "title": "兵庫県伊丹市中野西三丁目１０９番地",
@@ -751,8 +756,11 @@
     "city": "春日市"
   },
   "新潟県上越市土橋784-1": {
-    "precise": false,
-    "title": "新潟県上越市土橋"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 37.160131,
+    "lon": 138.211066,
+    "city": "上越市"
   },
   "新潟県新潟市東区竹尾580-1": {
     "precise": true,
@@ -783,8 +791,11 @@
     "city": "福島市"
   },
   "福島県福島市鳥谷野南光原2-1": {
-    "precise": false,
-    "title": "福島県福島市鳥谷野南光原"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 37.728539,
+    "lon": 140.467121,
+    "city": "福島市"
   },
   "福島県須賀川市山寺町１５": {
     "precise": true,
@@ -794,8 +805,11 @@
     "city": "須賀川市"
   },
   "福島県郡山市八山田5丁目230": {
-    "precise": false,
-    "title": "福島県郡山市八山田五丁目"
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 37.42715265742398,
+    "lon": 140.38247795229984,
+    "city": "郡山市"
   },
   "宮城県仙台市青葉区中央2-11-28 りんくすビル": {
     "precise": true,
@@ -1416,13 +1430,6 @@
     "lat": 35.657078,
     "lon": 139.312592,
     "city": "八王子市"
-  },
-  "東京都武蔵野市吉祥寺南町1-1-2": {
-    "precise": true,
-    "title": "東京都武蔵野市吉祥寺南町一丁目１番２号",
-    "lat": 35.702747,
-    "lon": 139.5793,
-    "city": "武蔵野市"
   },
   "東京都調布市国領2-5-15": {
     "precise": false,
