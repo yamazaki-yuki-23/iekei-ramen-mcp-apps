@@ -111,6 +111,7 @@ export function SearchAppInner({
   introduction,
   hero: Hero,
   primaryMode,
+  entryNear,
   app,
   connecting = false,
   payload,
@@ -199,7 +200,7 @@ export function SearchAppInner({
    * 見えないまま効いてしまうため。
    */
   const activeKeyword = payload.mode === "decide" ? payload.query.keyword : undefined;
-  const wantsNear = payload.decide?.needsOrigin;
+  const wantsNear = payload.decide?.needsOrigin || entryNear;
 
   // 広げられるのは地図だけ。他のモードでは畳む（釦がその画面に無いため）。
   const fullscreen = useFullscreen(hostContext, onDisplayMode, mode === "map");
