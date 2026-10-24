@@ -11,13 +11,13 @@ import { webEntry } from "./utils/web-entry";
 
 function WebApp() {
   const [introOpen, setIntroOpen] = useState(initialIntroOpen);
+  const entry = webEntry(window.location.search);
   return (
     <>
       <SearchApp
         Connection={WebConnection}
-        primaryMode={
-          webEntry(window.location.search).name === "search-iekei-ramen" ? "form" : "decide"
-        }
+        primaryMode={entry.name === "search-iekei-ramen" ? "form" : "decide"}
+        entryNear={"near" in entry.arguments && entry.arguments.near === "auto"}
         hero={PromiseHero}
         introduction={<IekeiIntro open={introOpen} onToggle={setIntroOpen} />}
       />

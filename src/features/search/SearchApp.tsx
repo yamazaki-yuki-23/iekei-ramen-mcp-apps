@@ -47,6 +47,12 @@ export interface PresentationProps {
    */
   hero?: ComponentType;
   primaryMode?: SearchMode;
+  /**
+   * 最初の検索が「近く」を頼むか（Web のトップ。near: "auto"、#251）。つながる前の券売機で
+   * 「近くで」を点けておく。点けないと基準地点の無い骨組みが「全国」を点け、結果が届くと
+   * 「近くで」に変わってちらつく。画面の本体には、つながる前の間だけ渡す。
+   */
+  entryNear?: boolean;
 }
 
 export function SearchApp({
@@ -54,6 +60,7 @@ export function SearchApp({
   introduction,
   hero,
   primaryMode,
+  entryNear,
 }: { Connection: ComponentType<HostConnectionProps> } & PresentationProps) {
   const [payload, setPayload] = useState<AppPayload | null>(null);
   // payload が差し替わるたびに増える。Inner の key にして状態を初期化する。
@@ -224,6 +231,7 @@ export function SearchApp({
               introduction={introduction}
               hero={hero}
               primaryMode={primaryMode}
+              entryNear={entryNear}
               app={host ?? CONNECTING_HOST}
               connecting={!host}
               payload={payload}
@@ -283,6 +291,7 @@ function SearchAppConnected({
   introduction,
   hero,
   primaryMode,
+  entryNear,
   app,
   connecting = false,
   payload,
@@ -445,6 +454,7 @@ function SearchAppConnected({
       introduction={introduction}
       hero={hero}
       primaryMode={primaryMode}
+      entryNear={connecting && entryNear}
       app={app}
       connecting={connecting}
       // つながる前は、最初に出す探し方の骨組みを描く。

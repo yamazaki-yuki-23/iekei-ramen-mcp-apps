@@ -318,3 +318,35 @@ test("会話の中: 0 件の結果から同じ探し方で探し直す間も、�
   await expect(empty).toBeAttached();
   await settled(app);
 });
+
+test("Web: トップはつながる前から券売機の「近くで」が点いていて、「全国」が一瞬も点かない（#251）", async ({
+  page,
+}) => {
+  // 最初の検索（near: "auto"）の応答を遅らせ、つながる前の骨組みを見る。
+  await slowDown(page, "**/mcp", 1500);
+  await page.goto(WEB);
+  const where = page.getByRole("group", { name: "① どこで" });
+  await expect(where.getByRole("button", { name: /^近くで/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(where.getByRole("button", { name: /^全国/ })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  // まだ押せない（結果がそろってから操作を許す順序は変えない）。
+  await expect(page.locator("main[inert]")).toHaveCount(1);
+  await settled(page);
+});
+
+test("Web: 県で開いたときは、つながる前に「近くで」を点けない（#251）", async ({ page }) => {
+  await slowDown(page, "**/mcp", 1500);
+  await page.goto(`${WEB}/?prefecture=${encodeURIComponent("神奈川県")}`);
+  const where = page.getByRole("group", { name: "① どこで" });
+  await expect(where).toBeVisible();
+  await expect(where.getByRole("button", { name: /^近くで/ })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await settled(page);
+});
