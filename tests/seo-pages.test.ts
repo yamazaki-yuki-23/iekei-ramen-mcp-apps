@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { seoPages } from "../scripts/build/seo-pages.mjs";
+import { domesticPhone, REPORT_KINDS, seoPages } from "../scripts/build/seo-pages.mjs";
+import { ReportSchema } from "../src/lib/reports";
 import { type Shop } from "../src/types";
 import { CONFIDENCE } from "../src/utils/labels";
 import { webEntry } from "../src/features/search/utils/web-entry";
@@ -65,12 +66,12 @@ describe("静的SEOページ", () => {
     expect(html).toContain(
       "家系かどうかは地図の記載と既知のブランドからの推定、味の傾向は既知のブランドからの参考値で、実食に基づくものではありません。",
     );
-    // 段階を出さない代わりに、誤りを直す道（アプリの報告）へ案内する。
+    // 段階を出さない代わりに、誤りを直す道（店のページの報告、#255）へ案内する。
     expect(html).toContain(
-      '<a href="/">アプリ</a>でその店を開き「店舗情報を報告する」から教えてください。',
+      "違う店があれば、その店のページの「この店の情報、違っていませんか？」から教えてください。",
     );
   });
-  it("未信頼の文字列をHTMLとJSON-LDの両方で安全に扱い、評価や営業時間を付けない", () => {
+  it("未信頼の文字列をHTMLとJSON-LDの両方で安全に扱い、JSON-LD に評価や営業時間を付けない", () => {
     const hostile = {
       ...shop,
       name: '</script><script>alert("x")</script>&',
@@ -127,12 +128,13 @@ describe("静的SEOページ", () => {
       titles.push(html.match(/<title>(.*?)<\/title>/)![1]);
       descriptions.push(html.match(/name="description" content="([^"]*)"/)![1]);
       canonicals.push(html.match(/rel="canonical" href="([^"]*)"/)![1]);
-      expect(html).toContain("味の傾向は既知のブランドからの参考値");
+      expect(html).toContain("既知のブランドからの参考値");
       // 座標の行は出さない。利用者には意味が無く、地図のリンクで足りる（#152）。
       expect(html).not.toContain("座標：");
       // 但し書きと誤りの報告の案内は、どのページも 1 回だけ（#152）。
       expect(html.split("参考値").length - 1).toBe(1);
-      expect(html.split("店舗情報を報告する").length - 1).toBe(1);
+      // 報告の口（店のページはその場の報告、一覧は店のページへの案内）。
+      expect(html).toContain("この店の情報、違っていませんか？");
       expect(html).toContain("OpenStreetMap contributors");
       expect(html).toContain("ODbL");
       expect(html).toContain('rel="icon"');
@@ -155,6 +157,90 @@ describe("静的SEOページ", () => {
         ).length +
         data.filter((s) => s.confidence !== "candidate").length,
     );
+  });
+});
+
+const near = (id: string, name: string, lat: number) => ({ ...shop, id, name, lat });
+const shopPage = (list: Shop[]) => seoPages(list).files.get("/shop/node-123/")!;
+
+describe("初めて来た人向けの店のページ（#255）", () => {
+  it("営業時間・電話は持っている店だけ、地図の記載と添えて出す", () => {
+    const html = shopPage([{ ...shop, openingHours: "10:30-25:00", phone: "+81-0564-31-7060" }]);
+    expect(html).toContain(
+      "<dt>営業時間</dt><dd><b>10:30〜翌 1:00</b><small>（地図の記載）</small>",
+    );
+    expect(html).toContain("<dt>電話</dt><dd><b>0564-31-7060</b><small>（地図の記載）</small>");
+    expect(shopPage([shop])).not.toContain("<dt>営業時間</dt>");
+    expect(shopPage([shop])).not.toContain("<dt>電話</dt>");
+  });
+
+  it("主のボタンは Google マップの道順、2 番目は注文のしかた（券売機の見出しは出さない）", () => {
+    const html = shopPage([shop]);
+    expect(html).toContain(
+      '<a class="seo-primary" href="https://www.google.com/maps/dir/?api=1&amp;destination=35.46%2C139.62" target="_blank" rel="noopener noreferrer">Google マップで道順を見る</a>',
+    );
+    expect(html).toContain("注文のしかたを見る<small>まわる店にも追加できます</small>");
+    expect(html).not.toContain("この店の券売機");
+    expect(html).not.toContain("この店をアプリで開く");
+  });
+
+  it("近い家系を直線距離の近い順に 3 軒だけ、店名・市区町村・距離で出す（自分は除く）", () => {
+    const html = shopPage([
+      shop,
+      near("node/4", "四番家", 35.5),
+      near("node/2", "二番家", 35.47),
+      near("node/3", "三番家", 35.48),
+      near("node/5", "五番家", 35.6),
+    ]);
+    const names = [...html.matchAll(/class="seo-near"[^>]*><span><strong>([^<]+)/g)].map(
+      (m) => m[1],
+    );
+    expect(names).toEqual(["二番家", "三番家", "四番家"]);
+    expect(html).toContain("この店から近い家系（直線距離）");
+    expect(html).toContain("<span>横浜市</span></span><b>1.1km</b>");
+  });
+
+  it("報告の 3 つのボタンは、受け口が受け取る種類だけを送る", () => {
+    const html = shopPage([shop]);
+    expect(html).toContain('data-report-shop="node/123"');
+    for (const { kind, label } of REPORT_KINDS) {
+      expect(html).toContain(`<button type="button" data-kind="${kind}">${label}</button>`);
+      expect(ReportSchema.safeParse({ kind, shopId: "node/123" }).success).toBe(true);
+    }
+    expect(html).toContain('<script src="/shop-report.js" defer></script>');
+  });
+
+  it("但し書きは「この情報について」の表にし、中身（推定・参考値・地図の記載・報告の口）を残す", () => {
+    const html = shopPage([shop]);
+    for (const term of ["家系かどうか", "味の分類", "営業時間・電話", "違っていたら"])
+      expect(html).toContain(`<dt>${term}</dt>`);
+    expect(html).toContain("地図の記載と既知のブランドからの推定");
+    expect(html).toContain("既知のブランドからの参考値");
+  });
+
+  it("電話番号は +81 を国内の書き方にし、区切りは推し量らない", () => {
+    expect(domesticPhone("+81-0564-31-7060")).toBe("0564-31-7060");
+    expect(domesticPhone("+81 22 253 6899")).toBe("022-253-6899");
+    expect(domesticPhone("+81453929498")).toBe("0453929498");
+    expect(domesticPhone("0668501701")).toBe("0668501701");
+  });
+});
+
+describe("県・市区町村のページ（#255）", () => {
+  it("見出しは「〇〇の家系ラーメン」、札は軒数だけ。題名と説明文は変えない", () => {
+    const html = seoPages(shops).files.get("/area/kanagawa/")!;
+    expect(html).toContain(
+      '<h1>神奈川県の<wbr>家系ラーメン</h1><span class="seo-count">2 軒</span>',
+    );
+    expect(html).toContain("<title>神奈川県の家系ラーメンの候補一覧</title>");
+    expect(html).toContain("神奈川県で判定した結果の2軒。");
+    expect(html).toContain(
+      "地図の記載とブランドから集めた一覧です。違う店を見つけたら、店のページから教えてください。",
+    );
+    expect(html).toContain(">神奈川県から 3 軒に絞る</a>");
+    expect(html).not.toContain("押して、発券");
+    const city = seoPages(shops).files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")!;
+    expect(city).toContain(">横浜市の店を一覧で見る</a>");
   });
 });
 

@@ -119,7 +119,7 @@ export function NearbyPanel({
           onClick={() => void startFromCurrentPosition()}
           disabled={busy}
         >
-          現在地で発券
+          現在地の近くを探す
         </button>
         <span className={styles.meta}>
           {origin
@@ -156,7 +156,7 @@ export function NearbyPanel({
           onClick={() => void searchPlace()}
           disabled={busy || place.trim() === ""}
         >
-          この場所で発券
+          この場所の近くを探す
         </button>
       </div>
       {/*

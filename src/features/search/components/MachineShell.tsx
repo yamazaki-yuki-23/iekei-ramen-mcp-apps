@@ -4,8 +4,8 @@ import styles from "../styles/search.module.css";
 interface Props {
   /** 券売機の名前（「家系 券売機」「店名の券売機」など）。 */
   title: string;
-  /** 右上の短い案内（「押して、発券」など）。 */
-  hint: string;
+  /** 右上の短い案内（「押すか、店名を打つ」）。ボタンの名前が何が起きるかを言う枠には付けない（#256）。 */
+  hint?: string;
   /** 会話の中では小さく出す（見出しの帯と但し書きを省く）。 */
   compact?: boolean;
   children: ReactNode;
@@ -13,7 +13,7 @@ interface Props {
 
 /**
  * 券売機の枠（#144）。迷ったら・店名で・現在地からの 3 つが同じ枠を使う。
- * どの探し方も「キーを選んで、発券すると食券が出る」体験にそろえる。
+ * どの探し方も「キーを選んで、押すと食券が出る」体験にそろえる。
  */
 export function MachineShell({ title, hint, compact, children }: Props) {
   const id = useId();
@@ -23,7 +23,7 @@ export function MachineShell({ title, hint, compact, children }: Props) {
         <h2 className={styles.machineTitle} id={id}>
           {title}
         </h2>
-        <span className={styles.machineHint}>{hint}</span>
+        {hint && <span className={styles.machineHint}>{hint}</span>}
       </div>
       <div className={styles.machinePanel}>{children}</div>
       {/* 但し書きは券売機の下ではなく、出てきた結果の下に 1 回（#152）。 */}

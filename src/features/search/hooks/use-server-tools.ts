@@ -533,9 +533,8 @@ export function useServerTools({
 
   const openInMaps = useCallback(
     (shop: Shop) => {
-      openExternal(
-        `https://www.openstreetmap.org/?mlat=${shop.lat}&mlon=${shop.lon}#map=18/${shop.lat}/${shop.lon}`,
-      );
+      // 押す前の名前が「Google マップで道順を見る」（#255）。家系マッチ・店のページと同じ地図アプリへ。
+      openExternal(`https://www.google.com/maps/dir/?api=1&destination=${shop.lat}%2C${shop.lon}`);
     },
     [openExternal],
   );

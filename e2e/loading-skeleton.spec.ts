@@ -40,7 +40,7 @@ test("Web: 次の 3 軒を待つ間も前の 3 軒を残し、下の券売機を
   await page.goto(WEB);
   await settled(page);
   await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
-  const issue = page.getByRole("button", { name: /^発券する/ });
+  const issue = page.getByRole("button", { name: /^この条件で 3 軒を出す/ });
   const before = await top(issue);
   await slowDown(page, "**/mcp", 1500);
   await page.getByRole("button", { name: /次の 3 軒/ }).click();
@@ -105,7 +105,7 @@ test("会話の中: 次の 3 軒を待つ間も、券売機を押し下げない
     label: "横浜駅",
   });
   await waitForApp(app);
-  const issue = app.getByRole("button", { name: /^発券する/ });
+  const issue = app.getByRole("button", { name: /^この条件で 3 軒を出す/ });
   const before = await top(issue);
   await slowDown(page, E2E_SERVER_URL, 1500);
   await app.getByRole("button", { name: /次の 3 軒/ }).click();
@@ -213,7 +213,7 @@ test("Web: つながる前から、見出し・探し方・券売機・「見つ
   const nav = page.locator("nav[aria-label='探し方']");
   await expect(nav).toBeVisible();
   await expect(page.getByText("お探しの家系が見つからないときは", { exact: true })).toBeVisible();
-  await expect(page.locator("button", { hasText: /^発券する/ })).toBeVisible();
+  await expect(page.locator("button", { hasText: /^この条件で 3 軒を出す/ })).toBeVisible();
   const navTop = await nav.evaluate((el) => Math.round(el.getBoundingClientRect().top + scrollY));
   await expect(page.locator("main:not([inert])")).toHaveCount(1, { timeout: 20_000 });
   expect(await nav.evaluate((el) => Math.round(el.getBoundingClientRect().top + scrollY))).toBe(
@@ -304,12 +304,12 @@ test("会話の中: 0 件の結果から同じ探し方で探し直す間も、�
   const app = await callTool(page, "search-iekei-ramen");
   await waitForApp(app);
   await app.locator("#kw").fill("存在しない店名ZZZ");
-  await app.getByRole("button", { name: "発券する", exact: true }).click();
+  await app.getByRole("button", { name: "この条件で探す", exact: true }).click();
   const empty = app.getByText("条件に合う店舗が見つかりませんでした。");
   await expect(empty).toBeVisible();
   await slowDown(page, E2E_SERVER_URL, 2500);
   await app.locator("#kw").fill("存在しない店名YYY");
-  await app.getByRole("button", { name: "発券する", exact: true }).click();
+  await app.getByRole("button", { name: "この条件で探す", exact: true }).click();
   // 返事は 2.5 秒後。届く前（1 秒以内）に、骨組みの店が並んでいないこと。
   await expect(app.getByRole("status").filter({ hasText: "読み込み中…" })).toHaveCount(1, {
     timeout: 1000,

@@ -61,7 +61,7 @@ export function RoutePanel({ route, origin, onRemove, onClear, onOpenLink }: Pro
               type="button"
               className={styles.chip}
               onClick={() => onRemove(leg.shop)}
-              aria-label={`${leg.shop.name}をまわる店から外す`}
+              aria-label={`${leg.shop.name}をまわる店リストから外す`}
             >
               外す
             </button>

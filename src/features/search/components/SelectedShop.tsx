@@ -97,7 +97,7 @@ export function SelectedShop({
        */}
       <div className={styles.selectedActions}>
         <button type="button" className={styles.button} onClick={onOpenMap}>
-          地図で開く
+          Google マップで道順を見る
         </button>
         {onAsk && (
           <button
@@ -116,7 +116,7 @@ export function SelectedShop({
           disabled={routeFull}
           title={routeFull ? FULL_HINT : undefined}
         >
-          {inRoute ? "まわる店から外す" : "まわる店に追加"}
+          {inRoute ? "まわる店リストから外す" : "まわる店リストに入れる"}
         </button>
       </div>
 

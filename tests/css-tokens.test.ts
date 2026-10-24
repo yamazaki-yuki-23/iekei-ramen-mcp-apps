@@ -20,9 +20,9 @@ const CONSENT = readFileSync(
 
 /**
  * 実行時に JS から差し込む変数。CSS には定義が無くてよい（--ticket-index は ShopList の style、
- * --tickets-min は Results.tsx の DecideStage が測って差し込む）。
+ * --tickets-min は Results.tsx の DecideStage が測って差し込む。--taste-ink は ShopList の味の言葉の色、#255）。
  */
-const FROM_RUNTIME = /^--(safe-area-|ticket-index$|tickets-min$)/;
+const FROM_RUNTIME = /^--(safe-area-|ticket-index$|tickets-min$|taste-ink$)/;
 
 function definedNames(css: string): Set<string> {
   return new Set([...css.matchAll(/^\s*(--[\w-]+)\s*:/gm)].map((m) => m[1]));

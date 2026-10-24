@@ -1,7 +1,7 @@
 import styles from "../styles/match.module.css";
 
 /*
- * 山の上に重ねる紙。見終わったとき・「今日はここ」・行きたいリスト・読み込み中・失敗。
+ * 山の上に重ねる紙。見終わったとき・「この店に決める」・行きたいリスト・読み込み中・失敗。
  * 見出しに焦点を移して、何が出たかを読み上げる。
  */
 const focusHeading = (el: HTMLHeadingElement | null) => el?.focus();

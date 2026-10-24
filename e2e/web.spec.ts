@@ -95,16 +95,16 @@ test("Webを直接開いて検索・現在地・地図・まわる店を使え�
   await openMode(page, "form");
   await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
   await page.getByLabel("キーワード").fill("吉村");
-  await page.getByRole("button", { name: "発券する", exact: true }).click();
+  await page.getByRole("button", { name: "この条件で探す", exact: true }).click();
   const search = await tool(request, "search-iekei-ramen", { keyword: "吉村" });
   await expect.poll(() => ids(page)).toEqual(search.shops.map((shop) => shop.id));
   await cards(page).first().click();
-  await page.getByRole("button", { name: "まわる店に追加" }).click();
+  await page.getByRole("button", { name: "まわる店リストに入れる" }).click();
   const route = page.getByRole("region", { name: "まわる店", exact: true });
   await expect(route).toContainText(search.shops[0].name);
 
   await openMode(page, "nearby");
-  await page.getByRole("button", { name: "現在地で発券", exact: true }).click();
+  await page.getByRole("button", { name: "現在地の近くを探す", exact: true }).click();
   const nearby = await tool(request, "find-nearby-iekei-ramen", {
     lat: 35.466,
     lon: 139.622,
@@ -113,7 +113,7 @@ test("Webを直接開いて検索・現在地・地図・まわる店を使え�
   });
   await expect.poll(() => ids(page)).toEqual(nearby.shops.map((shop) => shop.id));
   await cards(page).filter({ hasNotText: search.shops[0].name }).first().click();
-  await page.getByRole("button", { name: "まわる店に追加" }).click();
+  await page.getByRole("button", { name: "まわる店リストに入れる" }).click();
   await expect(route.getByRole("heading")).toHaveText("まわる店（2 / 3 軒）");
   await expect(route).toContainText("直線距離");
 
@@ -160,7 +160,7 @@ test("Webの地名検索は公開Nominatimへ出ず既存fixtureで解決する"
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
   await openMode(page, "nearby");
   await page.getByLabel("地名で指定").fill("横浜駅");
-  await page.getByRole("button", { name: "この場所で発券" }).click();
+  await page.getByRole("button", { name: "この場所の近くを探す" }).click();
   await expect(cards(page)).toHaveCount(5);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("横浜駅");
 });
@@ -181,7 +181,7 @@ test("Webは会話・記録の未対応操作を出さず、3候補と次の候�
   await expect(page.getByRole("button", { name: "行った", exact: true })).toHaveCount(0);
   // 接続案内へのリンクはWebにも出す。未対応の会話操作はアプリ本体に出さない。
   await expect(page.locator("main")).not.toContainText("チャット");
-  await expect(page.getByRole("button", { name: "まわる店に追加" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "まわる店リストに入れる" })).toBeVisible();
   await page.getByRole("button", { name: "次の 3 軒を見る" }).click();
   const next = await tool(request, "decide-iekei-ramen", { round: 1 });
   await expect.poll(() => ids(page)).toEqual(next.shops.map((shop) => shop.id));
@@ -239,7 +239,7 @@ test("0件でも未掲載店を報告でき、連打の理由と再送の結果�
   await openMode(page, "form");
   await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
   await page.getByLabel("キーワード").fill("存在しない試験店0123");
-  await page.getByRole("button", { name: "発券する", exact: true }).click();
+  await page.getByRole("button", { name: "この条件で探す", exact: true }).click();
   await expect(cards(page)).toHaveCount(0);
   await page.getByText("お探しの家系が見つからないときは", { exact: true }).click();
   await page.getByLabel("店名", { exact: true }).fill("<b>試験家</b>");
@@ -259,7 +259,9 @@ test("0件でも未掲載店を報告でき、連打の理由と再送の結果�
   expect(sent[2]).toEqual({ kind: "missing", name: "2件目の試験家", location: "新横浜駅" });
 });
 
-test("地図を読み込む間は「この範囲で」を押せず、地図が出たら押せる（#154）", async ({ page }) => {
+test("地図を読み込む間は「この範囲の店を出す」を押せず、地図が出たら押せる（#154）", async ({
+  page,
+}) => {
   /*
    * 地図（Leaflet）は後から読む。道具の帯だけ先に出ると、地図の範囲を読めないうちに
    * 押せてしまい、押しても何も起きなかった。地図の chunk を遅らせて確かめる。
@@ -271,7 +273,7 @@ test("地図を読み込む間は「この範囲で」を押せず、地図が�
   });
   await page.goto(WEB_URL);
   await page.getByRole("button", { name: "地図で", exact: true }).click();
-  const searchArea = page.getByRole("button", { name: /この範囲で/ });
+  const searchArea = page.getByRole("button", { name: "この範囲の店を出す" });
   await expect(searchArea).toBeDisabled();
   await expect(page.locator(".maplibregl-map")).toHaveCount(0);
   release();

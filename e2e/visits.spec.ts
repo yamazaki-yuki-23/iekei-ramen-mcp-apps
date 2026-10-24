@@ -304,9 +304,7 @@ test.describe("サインイン済み", () => {
     await afterDelivered(app, stale);
 
     // タブを移らずに数える（移ると取り直してしまい、画面の嘘が消える）。
-    await expect(
-      app.locator("ul > li button span span").filter({ hasText: /^行った$/ }),
-    ).toHaveCount(2);
+    await expect(app.locator("ul > li button").getByText("行った", { exact: true })).toHaveCount(2);
   });
 
   test("送っている間にホストから結果が届いて画面が作り直されても、先に押した応答が後の記録を消さない（#171）", async ({
@@ -402,9 +400,7 @@ test.describe("サインイン済み", () => {
     await afterDelivered(app, stale);
     // あとで押した店の印が、先に押した方の古い写しで消えていない。
     await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
-    await expect(
-      app.locator("ul > li button span span").filter({ hasText: /^行った$/ }),
-    ).toHaveCount(2);
+    await expect(app.locator("ul > li button").getByText("行った", { exact: true })).toHaveCount(2);
   });
 
   test("「行った店」で取り消したら、モデルに渡した店も手放す", async ({ page }) => {

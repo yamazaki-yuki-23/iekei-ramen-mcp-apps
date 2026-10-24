@@ -12,7 +12,7 @@ interface Props {
 /**
  * 店名の券売機のブランドのキー（#144）。白紙の入力欄で手が止まらないように、
  * 判定した結果の軒数が多いブランドを並べる。押すとキーワードに入るだけで、
- * 取りに行かない（「発券する」で出す）。もう一度押すと外れる。
+ * 取りに行かない（「この条件で探す」で出す）。もう一度押すと外れる。
  */
 export function BrandKeys({ brands, keyword, onPick }: Props) {
   if (brands.length === 0) return null;

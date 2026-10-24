@@ -62,7 +62,7 @@ test("まわる店", async ({ page }) => {
 
   for (const i of [1, 0]) {
     await shopCards(app).nth(i).click();
-    await app.getByRole("button", { name: "まわる店に追加" }).click();
+    await app.getByRole("button", { name: "まわる店リストに入れる" }).click();
   }
   // 選択中のパネルを畳んで、順路だけを見せる。
   await app.getByRole("button", { name: "選択を解除" }).click();

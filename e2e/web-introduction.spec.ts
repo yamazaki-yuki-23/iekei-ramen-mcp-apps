@@ -24,7 +24,7 @@ test("初回は家系の3行説明を開き、次回は畳む。候補を変え�
   const nav = page.getByRole("navigation", { name: "探し方" });
   await expect(nav.getByRole("button").first()).toHaveText("迷ったら");
   await expect(nav.getByRole("button").first()).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("button", { name: /発券する/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /この条件で 3 軒を出す/ })).toBeVisible();
   await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
 
   await intro.getByText("直系・資本系・インスパイア系とは", { exact: true }).click();
@@ -163,7 +163,7 @@ test("取得に失敗したら、原因と「もう一度試す」を出し、�
     }
     return route.continue();
   });
-  await page.getByRole("button", { name: "発券する", exact: true }).click();
+  await page.getByRole("button", { name: "この条件で探す", exact: true }).click();
   const error = page.getByRole("alert").filter({ hasText: "結果を取得できませんでした" });
   await expect(error).toBeVisible();
   await error.getByRole("button", { name: "もう一度試す" }).click();
@@ -210,7 +210,7 @@ test("現在地の取得に失敗したら、「もう一度試す」は同じ�
     return route.continue();
   });
   await openMode(page, "nearby");
-  await page.getByRole("button", { name: "現在地で発券", exact: true }).click();
+  await page.getByRole("button", { name: "現在地の近くを探す", exact: true }).click();
   const error = page.getByRole("alert").filter({ hasText: "結果を取得できませんでした" });
   await expect(error).toBeVisible();
   // 1 回の失敗で、読み上げる失敗は 1 つだけ。
@@ -235,15 +235,15 @@ test("キーボードだけで、券売機で選んで発券し、食券を開�
     "data-shop-id",
     before!,
   );
-  await page.getByRole("button", { name: /発券する/ }).focus();
+  await page.getByRole("button", { name: /この条件で 3 軒を出す/ }).focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
   await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
   await expect(page.locator("button[data-shop-id]").first()).toContainText("クリーミー");
-  // 食券を Enter で開き、地図で開くへ進める。
+  // 食券を Enter で開き、「Google マップで道順を見る」へ進める。
   await page.locator("button[data-shop-id]").first().focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: "地図で開く" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Google マップで道順を見る" })).toBeVisible();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("button", { name: "地図で開く" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Google マップで道順を見る" })).toBeFocused();
 });

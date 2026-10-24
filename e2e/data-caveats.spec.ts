@@ -58,7 +58,7 @@ test("キーワード付きで開いた「迷ったら」は、発券しても�
   const app = await callTool(page, "decide-iekei-ramen", { keyword: "横濱家" });
   await waitForApp(app);
   await expect(app.getByRole("button", { name: "このキーワードを外す" })).toBeVisible();
-  await app.getByRole("button", { name: /^発券する/ }).click();
+  await app.getByRole("button", { name: /^この条件で 3 軒を出す/ }).click();
   await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
   await expect(app.getByText("キーワード「横濱家」")).toBeVisible();
   await expect(app.getByRole("button", { name: "このキーワードを外す" })).toBeVisible();

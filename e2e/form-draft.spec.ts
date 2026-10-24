@@ -56,7 +56,7 @@ for (const web of [true, false]) {
     const app = await openDecide(page, web);
     const held = await holdSearch(page, url, "decide-iekei-ramen");
     try {
-      await app.getByRole("button", { name: /^発券する/ }).click();
+      await app.getByRole("button", { name: /^この条件で 3 軒を出す/ }).click();
       await held.started;
       await app.getByRole("button", { name: "クリーミー", exact: true }).click();
       held.release();
@@ -68,10 +68,12 @@ for (const web of [true, false]) {
       );
       // 失敗ではない。古い発券をやり直す「もう一度試す」ではなく、発券へ案内する。
       await expect(
-        app.getByText("条件が変わりました。「発券する」を押してください。", { exact: true }),
+        app.getByText("条件が変わりました。「この条件で 3 軒を出す」を押してください。", {
+          exact: true,
+        }),
       ).toBeVisible();
       await expect(app.getByRole("button", { name: "もう一度試す" })).toHaveCount(0);
-      await app.getByRole("button", { name: /^発券する/ }).click();
+      await app.getByRole("button", { name: /^この条件で 3 軒を出す/ }).click();
       await expect(app.locator("button[data-shop-id]").first()).toBeVisible();
       await expect(app.getByRole("button", { name: "クリーミー", exact: true })).toHaveAttribute(
         "aria-pressed",
@@ -108,9 +110,11 @@ for (const web of [true, false]) {
       // 下書きと条件が違う古い結果は、再検索するまで選べない。
       await expect(app.locator("button[data-shop-id]")).toHaveCount(0);
       await expect(
-        app.getByText("条件が変わりました。「発券する」を押してください。", { exact: true }),
+        app.getByText("条件が変わりました。「この条件で探す」を押してください。", {
+          exact: true,
+        }),
       ).toBeVisible();
-      await app.getByRole("button", { name: "発券する", exact: true }).click();
+      await app.getByRole("button", { name: "この条件で探す", exact: true }).click();
       await expect(app.locator("button[data-shop-id]")).toHaveCount(1);
       await expect(app.locator("button[data-shop-id]").first()).toContainText("吉村家");
       await expect(app.getByLabel("キーワード")).toHaveValue("吉村");
@@ -126,7 +130,7 @@ for (const web of [true, false]) {
     await app.getByLabel("キーワード").fill("吉村");
     const held = await holdSearch(page, url);
     try {
-      await app.getByRole("button", { name: "発券する", exact: true }).click();
+      await app.getByRole("button", { name: "この条件で探す", exact: true }).click();
       await held.started;
       await app.getByLabel("キーワード").fill("");
       held.release();
@@ -135,16 +139,20 @@ for (const web of [true, false]) {
       await expect(app.getByLabel("キーワード")).toHaveValue("");
       await expect(app.locator("button[data-shop-id]")).toHaveCount(0);
       await expect(
-        app.getByText("条件が変わりました。「発券する」を押してください。", { exact: true }),
+        app.getByText("条件が変わりました。「この条件で探す」を押してください。", {
+          exact: true,
+        }),
       ).toBeVisible();
       // 再検索の案内は、検索ボタンがあるフォームにだけ表示する。
       await openMode(app, "nearby");
       await expect(
-        app.getByText("条件が変わりました。「発券する」を押してください。", { exact: true }),
+        app.getByText("条件が変わりました。「この条件で探す」を押してください。", {
+          exact: true,
+        }),
       ).toHaveCount(0);
       await openMode(app, "form");
       await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
-      await app.getByRole("button", { name: "発券する", exact: true }).click();
+      await app.getByRole("button", { name: "この条件で探す", exact: true }).click();
       await expect(app.locator("button[data-shop-id]")).toHaveCount(200);
     } finally {
       held.release();

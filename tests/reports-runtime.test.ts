@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -54,8 +54,9 @@ afterEach(async () => {
     if (root) rmSync(root, { recursive: true, force: true });
   }
 }, 30000);
-it("3種類の匿名報告を保存し、読み取り口は公開しない", async () => {
-  for (const kind of ["not-iekei", "closed"]) {
+it("4種類の匿名報告を保存し、読み取り口は公開しない", async () => {
+  // wrong-location は店のページの「場所が違う」（#255）。
+  for (const kind of ["not-iekei", "closed", "wrong-location"]) {
     const response = await send({ kind, shopId: "node/1774529495" });
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ message: REPORT_ACCEPTED });
@@ -64,8 +65,8 @@ it("3種類の匿名報告を保存し、読み取り口は公開しない", asy
     (await send({ kind: "missing", name: "<b>試験家</b>", location: "横浜駅' OR 1=1 --" })).status,
   ).toBe(201);
   const saved = (await rows()).results;
-  expect(saved).toHaveLength(3);
-  expect(saved[2]).toMatchObject({
+  expect(saved).toHaveLength(4);
+  expect(saved[3]).toMatchObject({
     kind: "missing",
     name: "<b>試験家</b>",
     location: "横浜駅' OR 1=1 --",
@@ -80,6 +81,39 @@ it("3種類の匿名報告を保存し、読み取り口は公開しない", asy
     "received_at",
   ]);
   expect((await harness.fetch("http://localhost/reports")).status).toBe(405);
+});
+it("「場所が違う」を足す表の作り直し（0003）で、前からある報告を消さない（#255）", async () => {
+  const statements = (file: string) =>
+    readFileSync(new URL(`../migrations/${file}`, import.meta.url), "utf8")
+      .replace(/^--.*$/gm, "")
+      .split(";")
+      .map((sql) => sql.trim())
+      .filter(Boolean)
+      .map((sql) => db.prepare(sql));
+  // 0002 の時点の表に戻し、報告を 2 件入れてから 0003 を当てる。
+  await db.prepare("DROP TABLE reports").run();
+  await db.batch(statements("0002_reports.sql"));
+  await db.batch([
+    db.prepare(
+      "INSERT INTO reports (id, kind, shop_id, received_at) VALUES ('a', 'closed', 'node/1', '2026-10-24T00:00:00.000Z')",
+    ),
+    db.prepare(
+      "INSERT INTO reports (id, kind, name, location, received_at) VALUES ('b', 'missing', '試験家', '横浜駅', '2026-10-24T00:00:01.000Z')",
+    ),
+  ]);
+  await expect(
+    db
+      .prepare(
+        "INSERT INTO reports (id, kind, shop_id, received_at) VALUES ('c', 'wrong-location', 'node/1', '2026-10-24T00:00:02.000Z')",
+      )
+      .run(),
+  ).rejects.toThrow();
+  await db.batch(statements("0003_reports_wrong_location.sql"));
+  expect((await rows()).results.map((row) => [row.id, row.kind])).toEqual([
+    ["a", "closed"],
+    ["b", "missing"],
+  ]);
+  expect((await send({ kind: "wrong-location", shopId: "node/1774529495" })).status).toBe(201);
 });
 it("新しい受付時に30日より前だけを消し、訪問記録には触れない", async () => {
   await db

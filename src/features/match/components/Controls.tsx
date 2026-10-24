@@ -39,8 +39,15 @@ export function Controls({
           行きたい →<small>右に払う</small>
         </button>
       </div>
-      <button type="button" className={styles.today} onClick={onToday} disabled={!canSwipe}>
-        今日はここ（Enter）
+      {/* キーの添え書きは、キーボードのある端末だけ（#255。指で触れる端末に「Enter」は無い）。 */}
+      <button
+        type="button"
+        className={styles.today}
+        onClick={onToday}
+        disabled={!canSwipe}
+        aria-keyshortcuts="Enter"
+      >
+        この店に決める<span className={styles.keyHint}>（Enter）</span>
       </button>
       <p className={styles.caveat}>
         家系かどうかは推定、味の傾向は参考値で、並び順は近い順（おすすめ度ではありません）。距離は直線距離です。違う店があれば、

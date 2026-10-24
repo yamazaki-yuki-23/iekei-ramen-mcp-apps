@@ -20,21 +20,30 @@ import { VisitedPanel } from "./VisitedPanel";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
 const LOADING = "読み込み中…";
-const NEEDS_SEARCH = "条件が変わりました。「発券する」を押してください。";
+/** 条件を変えたあとの案内。押すボタンの名前と同じ言葉にする（#256）。 */
+const NEEDS_SEARCH = {
+  decide: "条件が変わりました。「この条件で 3 軒を出す」を押してください。",
+  form: "条件が変わりました。「この条件で探す」を押してください。",
+};
 const UNAVAILABLE = "結果を取得できませんでした。通信が切れたか、サーバーが応答しませんでした。";
 
 /**
  * 揃うまでの表示。読み込み中・検索待ち・失敗（もう一度試す）を StateNote でそろえる。
  * 失敗の理由があれば、同じ表示の中に添える（別の欄に分けると、1 回の失敗で 2 つ読み上げる）。
  */
+/** 押し直しを案内するのは、ボタンで取りに行く探し方（店名で・迷ったら）だけ。 */
+function needsSearchNote(needsSearch: boolean, mode: SearchMode) {
+  return needsSearch && (mode === "form" || mode === "decide") ? NEEDS_SEARCH[mode] : undefined;
+}
+
 function notReadyState(
   busy: boolean | undefined,
-  needsSearch: boolean,
+  needsSearch: string | undefined,
   failure: string | null,
   onRetry: () => void,
 ) {
   if (busy) return <StateNote kind="loading">{LOADING}</StateNote>;
-  if (needsSearch) return <StateNote kind="empty">{NEEDS_SEARCH}</StateNote>;
+  if (needsSearch) return <StateNote kind="empty">{needsSearch}</StateNote>;
   return (
     <StateNote
       kind="error"
@@ -159,7 +168,7 @@ interface Props {
   belowMap?: ReactNode;
   /**
    * 「迷ったら」で食券の隣に置くもの（Web の券売機、#144）。揃うまでの間も同じ位置に
-   * 残し、押した「発券する」から焦点を落とさない。
+   * 残し、押した「この条件で 3 軒を出す」から焦点を落とさない。
    */
   aside?: ReactNode;
   /** 食券の列の見出し（Web の「迷ったら」）。ページの見出しから移したもの。 */
@@ -290,9 +299,9 @@ export function Results({
    */
   const status = ready
     ? undefined
-    : // 券売機（decide）も、押し直したキーで古い応答を捨てたら「発券する」へ案内する。
+    : // 券売機（decide）も、押し直したキーで古い応答を捨てたら「この条件で 3 軒を出す」へ案内する。
       // 失敗の「もう一度試す」にすると、古い発券をやり直して押し直したキーが戻る（#144）。
-      notReadyState(busy, needsSearch && (mode === "form" || mode === "decide"), failure, onRetry);
+      notReadyState(busy, needsSearchNote(needsSearch, mode), failure, onRetry);
   const reportHint = reports ? REPORT_HINT : undefined;
   /*
    * Web の地図は絞り込みを地図の下に持つので、揃うまでの間も ResultView に描かせて

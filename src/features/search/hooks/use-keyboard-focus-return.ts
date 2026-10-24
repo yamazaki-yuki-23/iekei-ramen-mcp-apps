@@ -92,7 +92,7 @@ export function useKeyboardFocusReturn() {
         const active = document.activeElement;
         /*
          * 押したものそのものか、押せない状態のものに焦点があるうちは待つ。待つ間は文言が
-         * 変わる（「発券する」→「発券中…」）ので、名前ではなく要素で比べる。それ以外に
+         * 変わる（「この条件で探す」→「探しています…」）ので、名前ではなく要素で比べる。それ以外に
          * 焦点があれば、利用者が自分で移した。
          */
         const waiting = active === control || (active as HTMLButtonElement | null)?.disabled;

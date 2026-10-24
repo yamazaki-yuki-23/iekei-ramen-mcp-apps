@@ -54,7 +54,7 @@ export function Header({
           </svg>
         </button>
         <button type="button" className={styles.round} onClick={onWants}>
-          行きたい <b>{wants}</b>
+          行きたいリスト <b>{wants}</b>
         </button>
       </div>
     </div>
