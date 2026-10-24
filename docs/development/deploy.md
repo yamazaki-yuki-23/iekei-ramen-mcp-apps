@@ -84,3 +84,13 @@ npm run deploy
 `GOOGLE_CLIENT_ID` は `wrangler.jsonc` の `vars`、`GOOGLE_CLIENT_SECRET` と
 `VISITOR_ID_PEPPER` は `npx wrangler secret put` で登録します。
 **`VISITOR_ID_PEPPER` は変えられません**（変えると全員の記録が迷子になります）。
+
+認証なしで叩ける入口のうち、外部や KV へ書くものには、接続元（`CF-Connecting-IP`）ごとの連打止めを付けています（`wrangler.jsonc` の `ratelimits`）。
+
+| binding            | 入口                     | 上限       | 理由                                                                                                                                                  |
+| ------------------ | ------------------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GEOCODE_LIMITER`  | `geocode-place`          | 5 回 / 分  | Nominatim の利用規約。キャッシュに無い地名だけ数える                                                                                                  |
+| `REPORT_LIMITER`   | `POST /reports`          | 5 回 / 分  | 誤りの報告を D1 へ書く                                                                                                                                |
+| `REGISTER_LIMITER` | `POST /register`（#259） | 30 回 / 分 | 登録 1 回ごとに KV へ書く。連打で書き込み枠を使い切らせない。Claude・ChatGPT は自社のサーバーから登録し、多くの利用者が同じ IP になるので緩くしてある |
+
+`REGISTER_LIMITER` は数えられないときは通します（止めるとサインインの入口が塞がるため）。

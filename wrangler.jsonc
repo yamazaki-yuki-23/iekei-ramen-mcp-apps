@@ -57,6 +57,9 @@
   "ratelimits": [
     { "name": "GEOCODE_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
     { "name": "REPORT_LIMITER", "namespace_id": "1002", "simple": { "limit": 5, "period": 60 } },
+    // 動的クライアント登録（/register）。1 回ごとに KV へ書くので、連打で書き込み枠を使い切らせない（#259）。
+    // Claude・ChatGPT は自社のサーバーから登録し、多くの利用者が同じ IP になるので緩くしてある。
+    { "name": "REGISTER_LIMITER", "namespace_id": "1003", "simple": { "limit": 30, "period": 60 } },
   ],
   // Nominatim へ出ていく問い合わせを、全体で 1 本の列に並べる（server/lib/geocode-gate.ts）。
   // 無料プランで使えるのは SQLite 版だけなので new_sqlite_classes で作る。
@@ -133,6 +136,11 @@
           "name": "REPORT_LIMITER",
           "namespace_id": "2002",
           "simple": { "limit": 5, "period": 60 },
+        },
+        {
+          "name": "REGISTER_LIMITER",
+          "namespace_id": "2003",
+          "simple": { "limit": 30, "period": 60 },
         },
       ],
       "durable_objects": {

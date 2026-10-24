@@ -31,6 +31,8 @@ interface Env extends AuthEnv {
   /** 地名検索（Nominatim）の連打止め。接続元ごとに数える。 */
   GEOCODE_LIMITER?: RateLimit;
   REPORT_LIMITER?: RateLimit;
+  /** 動的クライアント登録（/register）の連打止め。接続元ごとに数える（#259）。 */
+  REGISTER_LIMITER?: RateLimit;
   /** Nominatim へ出ていく問い合わせの列。全体で 1 つ。 */
   GEOCODE_GATE?: DurableObjectNamespace;
   /** 使われているかを数える（Workers Analytics Engine）。手元の Node サーバーには無い。 */
@@ -91,6 +93,33 @@ function needsSignIn(body: string): boolean {
       m?.method === "tools/call" && (MEMBER_TOOLS as readonly unknown[]).includes(m.params?.name)
     );
   });
+}
+
+/**
+ * `/register` の連打止め（#259）。登録は 1 回ごとに `OAUTH_KV` へ書くので、連打されると
+ * KV の書き込み枠を使い切り、サインインと地名検索のキャッシュが一緒に止まる。
+ *
+ * **数えられないときは通す。** 止めるとサインインの入口がまるごと塞がる。通しても
+ * 連打止めが無かったころに戻るだけ。
+ */
+async function registerLimited(request: Request, limiter?: RateLimit): Promise<Response | null> {
+  if (!limiter) return null;
+  try {
+    const { success } = await limiter.limit({
+      key: request.headers.get("CF-Connecting-IP") ?? "unknown",
+    });
+    if (success) return null;
+  } catch {
+    return null;
+  }
+  // OAuth のエラーの形で返す。ホストが理由を読めるように。
+  return Response.json(
+    {
+      error: "temporarily_unavailable",
+      error_description: "クライアントの登録が集中しています。1 分後にお試しください",
+    },
+    { status: 429, headers: { ...CORS_HEADERS, "Retry-After": "60", "Cache-Control": "no-store" } },
+  );
 }
 
 const CORS_HEADERS = {
@@ -180,6 +209,10 @@ export default {
           status: 501,
           headers: CORS_HEADERS,
         });
+      }
+      if (url.pathname === "/register" && request.method === "POST") {
+        const limited = await registerLimited(request, env.REGISTER_LIMITER);
+        if (limited) return limited;
       }
       if (isOAuthPath(url.pathname)) return handleOAuth(request, env, ctx, origin);
       if (url.pathname === "/authorize") return startSignIn(request, env, origin);
