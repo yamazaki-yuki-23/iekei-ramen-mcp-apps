@@ -12,10 +12,11 @@ const { compatibility_date, compatibility_flags } = unstable_readConfig(
 let harness: TestHarness;
 let root: string;
 let db: D1Database;
-const send = (body: unknown, headers = {}) =>
+// ブラウザは同じ origin への POST にも Origin を付ける。Web のページからの送信と同じ形で送る。
+const send = (body: unknown, headers: Record<string, string> = {}) =>
   harness.fetch("http://localhost/reports", {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...headers },
+    headers: { "Content-Type": "application/json", Origin: "http://localhost", ...headers },
     body: JSON.stringify(body),
   });
 const rows = () => db.prepare("SELECT * FROM reports ORDER BY received_at").all();
@@ -169,11 +170,21 @@ it("別originの書き込みやJSON以外を拒否する", async () => {
     (
       await harness.fetch("http://localhost/reports", {
         method: "POST",
-        headers: { "Content-Type": "text/plain" },
+        headers: { "Content-Type": "text/plain", Origin: "http://localhost" },
         body: "{}",
       })
     ).status,
   ).toBe(415);
+});
+
+it("Originの無い送信（ブラウザ以外）を拒否し、DBに保存しない（#269）", async () => {
+  const response = await harness.fetch("http://localhost/reports", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind: "closed", shopId: "node/1774529495" }),
+  });
+  expect(response.status).toBe(403);
+  expect((await rows()).results).toEqual([]);
 });
 
 it("100件を超えた報告を同じ受付日時でも重複・欠落なく取得し、前のページ削除後も進める", async () => {

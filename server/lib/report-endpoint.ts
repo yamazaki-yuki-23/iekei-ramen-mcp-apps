@@ -12,8 +12,8 @@ const reply = (message: string, status: number, headers: HeadersInit = {}) =>
 
 export async function handleReport(request: Request, env: ReportEnv): Promise<Response> {
   if (request.method !== "POST") return reply("報告はPOSTで送ってください", 405, { Allow: "POST" });
-  const origin = request.headers.get("Origin");
-  if (origin && origin !== new URL(request.url).origin)
+  // ブラウザは同じ origin への POST にも Origin を付ける。無いのはブラウザ以外からの送信（#269）。
+  if (request.headers.get("Origin") !== new URL(request.url).origin)
     return reply("このページから送信してください", 403);
   if (request.headers.get("Content-Type")?.split(";")[0].trim() !== "application/json")
     return reply("JSONで送信してください", 415);
