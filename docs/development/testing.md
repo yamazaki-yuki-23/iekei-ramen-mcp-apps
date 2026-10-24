@@ -19,6 +19,8 @@ E2E は MCP Apps SDK の basic-host を `e2e-host/` に取得して使います
 すべて [GitHub Actions](../../.github/workflows/ci.yml) で実行しています。
 第三者の Action はコミットの SHA で固定する（#262）。上げるときは、タグの指すコミットを
 `gh api repos/<持ち主>/<名前>/commits/<タグ> --jq .sha` で引き直して置き換える。
+ふだんは Dependabot が週 1 回、Action と npm の更新の PR を出す（`.github/dependabot.yml`、#285）。
+npm は本番用・開発用でそれぞれ 1 本にまとまり、major だけ個別に来る。
 `package.json` の `overrides` の `undici` は、wrangler（miniflare）が脆弱な版に固定しているのを上げるもの（#282）。
 wrangler を上げたら `npm ls undici` を見て、miniflare の版が追いついていれば消す。
 
