@@ -19,6 +19,8 @@ E2E は MCP Apps SDK の basic-host を `e2e-host/` に取得して使います
 すべて [GitHub Actions](../../.github/workflows/ci.yml) で実行しています。
 第三者の Action はコミットの SHA で固定する（#262）。上げるときは、タグの指すコミットを
 `gh api repos/<持ち主>/<名前>/commits/<タグ> --jq .sha` で引き直して置き換える。
+`package.json` の `overrides` の `undici` は、wrangler（miniflare）が脆弱な版に固定しているのを上げるもの（#282）。
+wrangler を上げたら `npm ls undici` を見て、miniflare の版が追いついていれば消す。
 
 **OAuthの実HTTP経路は `tests/oauth-consent.test.ts` で検証する。**
 本番の `OAuthAuthorizationServer` とWorkerを、使い捨てのローカルKV/D1で動かす。
