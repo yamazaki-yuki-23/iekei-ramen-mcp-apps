@@ -412,7 +412,11 @@
       }
     },
     {
-      "files": ["src/features/search/components/MapView.tsx"],
+      "files": [
+        "src/features/search/components/MapView.tsx",
+        "src/features/search/main-web.tsx",
+        "src/features/match/main.tsx"
+      ],
       "rules": {
         "import/no-unassigned-import": "off"
       }

@@ -26,6 +26,13 @@ GET/HEAD を 301・それ以外を 308 で送る（認可のメタデータが h
 静的ページは Worker より先に返るので、ゾーン `iekeiramen.com` の「SSL/TLS → エッジ証明書 →
 Always Use HTTPS」をオンにして送る。HSTS は `public/_headers`（`includeSubDomains`・`preload` なし）。
 
+静的ページには `public/_headers` で CSP と `frame-ancestors 'none'`（`X-Frame-Options: DENY`）を付ける（#268）。
+読み込むのは自分の origin だけで、例外は地図（MapLibre）のワーカーとカメラの画像に要る `blob:`・`data:` と、
+React と `/match/` のインラインのスタイル。**読み込み先を足したら CSP も足す。** vite preview は `_headers`
+を読まないので、`e2e/csp.spec.ts` が同じ値を付けて主なページを開き、違反 0 件を確かめる。zod は eval を
+試して違反を出すので、Web の入口の最初で `src/utils/zod-jitless.ts` を読み込む。会話の中（MCP Apps）の
+画面はホストの枠で動き、`_headers` は効かない。
+
 ## 検索エンジン向けの静的ページ
 
 `npm run build:ui` の最後に `scripts/build/build-seo.mjs` が `data/shops.json` から

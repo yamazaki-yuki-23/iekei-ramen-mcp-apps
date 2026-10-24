@@ -1,3 +1,4 @@
+import "../../utils/zod-jitless";
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { SearchApp } from "./SearchApp";
