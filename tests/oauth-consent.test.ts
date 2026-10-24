@@ -102,6 +102,21 @@ describe("workerdでのクライアントごとの同意", () => {
     expect((await decide(page.handle, page.cookie)).status).toBe(400);
   });
 
+  it("PKCEの無い要求は同意画面を出さず、検証済みのclientへinvalid_requestを返す", async () => {
+    const client = await register();
+    const path = new URL(authorizePath(client), ORIGIN);
+    path.searchParams.delete("code_challenge");
+    path.searchParams.delete("code_challenge_method");
+    const response = await request(path.pathname + path.search);
+    expect(response.status).toBe(302);
+    expect(response.headers.getSetCookie()).toEqual([]);
+    const to = new URL(response.headers.get("Location")!);
+    expect(to.origin + to.pathname).toBe(REDIRECT);
+    expect(to.searchParams.get("error")).toBe("invalid_request");
+    expect(to.searchParams.get("state")).toBe("original-state");
+    await open(client);
+  });
+
   it.each([
     ["https://client.test;script-src/callback", "https://client.test%3Bscript-src"],
     ["https://client.test,other.test/callback", "https://client.test%2Cother.test"],
