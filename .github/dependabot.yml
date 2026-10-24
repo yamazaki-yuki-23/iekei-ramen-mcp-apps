@@ -1,0 +1,24 @@
+# 依存と Action の定期更新（#285）。警告が出たときの PR（security updates）は設定の外で別に来る。
+# PR が溜まらないよう、npm は本番用・開発用でそれぞれ 1 本にまとめる。major は個別に来る。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  # 第三者の Action は SHA で固定している（#262）。SHA と横のタグのコメントを一緒に上げる。
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
