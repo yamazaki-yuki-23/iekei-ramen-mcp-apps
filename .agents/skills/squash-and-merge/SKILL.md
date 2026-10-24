@@ -110,8 +110,13 @@ gh run watch "$RUN" --exit-status --compact
 ### 5. マージする
 
 ```bash
-gh pr merge <PR> --squash --delete-branch --match-head-commit "$SHA"   # 4 で CI を見たコミット
+gh pr merge <PR> --squash --admin --delete-branch --match-head-commit "$SHA"   # 4 で CI を見たコミット
 ```
+
+- **`--admin` を付ける。** `main` はルールセット `require-approval` で承認 1 件を求め、例外は admin の
+  PR 経由のマージだけ（#266。App が自分で作った PR をマージして本番へ出すのを防ぐ）。自分の PR は
+  自分で承認できないので、付けないと断られる。飛ばせるのは承認だけで、CI 必須・強制 push 禁止
+  （`protect-main`、例外なし）は `--admin` でも効く
 
 - **`--match-head-commit` を必ず付ける。** CI を見ている間に誰かが push すると、PR は
   新しい head のままマージされ、確かめていない変更が本番に出る。最初の確認も
