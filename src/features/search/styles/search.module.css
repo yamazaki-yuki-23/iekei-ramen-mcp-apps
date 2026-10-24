@@ -1192,6 +1192,11 @@
 .tickets .card {
   position: relative;
   border: var(--border-width-strong) solid var(--color-ink);
+  /*
+   * 上下は詰める。Linux・Android の字（Noto）では住所と営業時間が折り返し、390×844 で 3 枚目が下の
+   * タブバーに 13px かかった（#267。#204 の「最初の画面に 3 枚」）。1 枚 8px、3 枚で 24px 低くなる。
+   */
+  padding-block: var(--space-2);
   padding-left: 0;
 }
 
