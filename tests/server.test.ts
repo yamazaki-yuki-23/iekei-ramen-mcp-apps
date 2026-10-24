@@ -57,7 +57,9 @@ describe("判定と味の但し書き", () => {
   );
 
   it("モデル向け検索にも実食ではない参考値と、未判定を補わない指示を添える", async () => {
-    const known = await callApp("search-iekei-ramen", { keyword: "町田商店" });
+    // 味の判定がある店（総本山の吉村家は rich）。町田商店は公式の一覧から足した味の分からない店が
+    // 上位に並ぶことがあり、店の並び次第で注記が出なくなる（#250 で 15 軒足して踏んだ）。
+    const known = await callApp("search-iekei-ramen", { keyword: "吉村家" });
     expect(known.text).toContain("既知ブランドからの参考値");
     expect(known.text).toContain("実食に基づくものではありません");
     const unknown = await callApp("search-iekei-ramen", { prefecture: "鹿児島県" });

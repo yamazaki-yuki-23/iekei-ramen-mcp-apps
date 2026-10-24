@@ -115,6 +115,20 @@ describe("確かめた記録から足す店", () => {
     expect(verifiedShops(others, g)).toEqual([]);
   });
 
+  it("系列の公式の店舗データの座標は、国土地理院の精度の判定を通さずに使う（#250）", () => {
+    const g = {
+      "岩手県一関市山目字泥田61-1": {
+        source: "chain-list",
+        url: "https://shop.machidashoten.com/japan/all/",
+        lat: 38.9376344,
+        lon: 141.113132,
+        city: "一関市",
+      },
+    };
+    const [shop] = verifiedShops([{ ...record, address: "一関市山目字泥田61-1" }], g);
+    expect(shop).toMatchObject({ lat: 38.9376344, lon: 141.113132, city: "一関市" });
+  });
+
   it("100m 以内の今の店を、系列を問わずに挙げる", () => {
     const [shop] = verifiedShops([record], geo);
     const near = { ...shop, id: "node/1", name: "町田商店 盛岡店", brand: undefined, lat: 39.6596 };

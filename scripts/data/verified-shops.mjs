@@ -116,8 +116,11 @@ export function verifiedShops(records, geo) {
   const shops = [];
   for (const record of toAdd(records)) {
     const g = geo[geoKey(record)];
-    // 判定の決まりを直したら、引き直さずに効くよう、残した名前で毎回確かめる。
-    if (!g.precise || !isPrecise(g.title, record)) continue;
+    /*
+     * 判定の決まりを直したら、引き直さずに効くよう、残した名前で毎回確かめる。
+     * 系列の公式の店舗データの座標（source: chain-list）は住所から引いていないので、確かめない（#250）。
+     */
+    if (g.source !== "chain-list" && (!g.precise || !isPrecise(g.title, record))) continue;
     // 市区町村は住所の頭と重なるので、残りだけを住所として出す（「盛岡市 盛岡市津志田南…」にしない）。
     const { city, address } = splitCity(record.address, g.city);
     shops.push({
