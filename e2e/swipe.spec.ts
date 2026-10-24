@@ -360,13 +360,31 @@ test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はそ�
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("http://localhost:3134/");
-  const tickets = page.locator("ul > li > button[data-shop-id]");
+  /*
+   * つながる前は、操作できない本体（inert）に仮の食券（skeleton-*）が 3 枚出る。それを数えると、
+   * 仮の食券を測り、押せない券売機で発券して焦点が渡らない（#267。CI で下端 810 > 787、
+   * 手元の 4 並列で 12 回中 3 回 toBeFocused が inactive）。つながって本物が出るまで待つ。
+   */
+  await expect(page.locator("main:not([inert])")).toHaveCount(1);
+  const tickets = page.locator('ul > li > button[data-shop-id]:not([data-shop-id^="skeleton-"])');
   await expect(tickets).toHaveCount(3);
   const tabTop = (await page.getByRole("navigation", { name: "機能" }).boundingBox())!.y;
-  for (const box of await tickets.evaluateAll((els) =>
-    els.map((el) => el.getBoundingClientRect().bottom),
-  ))
-    expect(box).toBeLessThanOrEqual(tabTop);
+  /*
+   * 食券は上から下りてくる動き（ticket-in）で出る。途中を測ると、まだ上にあるのでたまたま収まる。
+   * 動きが終わった最終の位置で測る（#267。Linux のフォントでは最終の位置が 800 > 787 だった）。
+   */
+  const bottoms = await tickets.evaluateAll(async (els) => {
+    await Promise.all(
+      els.flatMap((el) =>
+        el
+          .closest("li")!
+          .getAnimations()
+          .map((a) => a.finished),
+      ),
+    );
+    return els.map((el) => el.getBoundingClientRect().bottom);
+  });
+  for (const box of bottoms) expect(box).toBeLessThanOrEqual(tabTop);
   // 読む順（焦点の順）も食券が先。見た目だけ入れ替えない。
   const order = await page.evaluate(() => {
     const ticket = document.querySelector("ul > li > button[data-shop-id]")!;
