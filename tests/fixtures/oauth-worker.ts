@@ -19,4 +19,15 @@ globalThis.fetch = async (input, init) => {
   return Response.json({ id_token: `x.${btoa(JSON.stringify({ sub: "local-consent-user" }))}.y` });
 };
 
-export default worker;
+// 連打止めは接続元で決める偽物。"blocked" は上限を超えた扱い、"broken" は数えられない扱い。
+const REGISTER_LIMITER = {
+  limit: async ({ key }: { key: string }) => {
+    if (key === "broken") throw new Error("limiter unavailable");
+    return { success: key !== "blocked" };
+  },
+};
+
+export default {
+  fetch: (request: Request, env: object, ctx: ExecutionContext) =>
+    worker.fetch(request, { ...env, REGISTER_LIMITER } as Parameters<typeof worker.fetch>[1], ctx),
+};

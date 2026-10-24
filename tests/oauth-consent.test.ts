@@ -26,6 +26,17 @@ async function register(name = "ローカルMCPクライアント", redirect = R
   expect(response.status).toBe(201);
   return ((await response.json()) as { client_id: string }).client_id;
 }
+/** 接続元を指定して登録する。偽の連打止め（fixtures/oauth-worker.ts）は接続元で結果を決める。 */
+const registerFrom = (ip: string) =>
+  request("/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": ip },
+    body: JSON.stringify({
+      client_name: "連打",
+      redirect_uris: [REDIRECT],
+      token_endpoint_auth_method: "none",
+    }),
+  });
 const authorizePath = (client: string, redirect = REDIRECT) =>
   `/authorize?${new URLSearchParams({ client_id: client, redirect_uri: redirect, response_type: "code", scope: "stamp", state: "original-state", resource: `${ORIGIN}/mcp`, code_challenge: CHALLENGE, code_challenge_method: "S256" })}`;
 const cookiesOf = (r: Response) =>
@@ -100,6 +111,21 @@ describe("workerdでのクライアントごとの同意", () => {
     expect(to.searchParams.get("error")).toBe("access_denied");
     expect(to.searchParams.get("state")).toBe("original-state");
     expect((await decide(page.handle, page.cookie)).status).toBe(400);
+  });
+
+  it("接続元ごとの上限を超えた登録は429で断り、KVに書かない。数えられないときは通す", async () => {
+    const env = await harness.getWorker<{ OAUTH_KV: KVNamespace }>().getEnv();
+    const clients = async () => (await env.OAUTH_KV.list({ prefix: "client:" })).keys.length;
+    const before = await clients();
+    const blocked = await registerFrom("blocked");
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("Retry-After")).toBe("60");
+    expect(blocked.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(((await blocked.json()) as { error: string }).error).toBe("temporarily_unavailable");
+    expect(await clients()).toBe(before);
+    expect((await registerFrom("broken")).status).toBe(201);
+    expect((await registerFrom("203.0.113.1")).status).toBe(201);
+    expect(await clients()).toBe(before + 2);
   });
 
   it("PKCEの無い要求は同意画面を出さず、検証済みのclientへinvalid_requestを返す", async () => {
