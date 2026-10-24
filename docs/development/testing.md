@@ -17,6 +17,8 @@ E2E は MCP Apps SDK の basic-host を `e2e-host/` に取得して使います
 利用者で動くサーバー（`IEKEI_DEV_VISITOR`）を別のポートで立てて確かめています。
 **この道は `main.ts` にしかなく、本番には出ません。**
 すべて [GitHub Actions](../../.github/workflows/ci.yml) で実行しています。
+第三者の Action はコミットの SHA で固定する（#262）。上げるときは、タグの指すコミットを
+`gh api repos/<持ち主>/<名前>/commits/<タグ> --jq .sha` で引き直して置き換える。
 
 **OAuthの実HTTP経路は `tests/oauth-consent.test.ts` で検証する。**
 本番の `OAuthAuthorizationServer` とWorkerを、使い捨てのローカルKV/D1で動かす。
