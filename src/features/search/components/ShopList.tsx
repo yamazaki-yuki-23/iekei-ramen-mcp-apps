@@ -1,9 +1,9 @@
 import { memo, useMemo, type CSSProperties, type ReactNode } from "react";
 import { metaParts, sameNameLabels, type SameNameLabel } from "../utils/same-name";
 import { type Shop } from "../../../types";
-import { TASTES } from "../../../utils/labels";
 import { formatDistance } from "../../../utils/geo";
 import { openingHoursLabel } from "../../../utils/opening-hours";
+import { PIN_COLORS, TASTE_WORDS } from "../utils/taste-marks";
 import styles from "../styles/search.module.css";
 import { StateNote } from "./StateNote";
 import { SELECTED_SHOP_ID } from "./SelectedShop";
@@ -108,7 +108,7 @@ const ShopCard = memo(function ShopCard({
        * 比べていて、壱八家が 2 店入った途端に重複と判定された）。
        */
       data-shop-id={shop.id}
-      // 発券したあと、キーボードの焦点を 1 枚目へ渡す（#204。TicketMachine の「発券する」と同じ名前）。
+      // 発券したあと、キーボードの焦点を 1 枚目へ渡す（#204。TicketMachine の「この条件で 3 軒を出す」と同じ名前）。
       data-focus-key={index === 0 ? FIRST_TICKET_KEY : undefined}
     >
       {ranked && <RankStub shop={shop} index={index} stub={stub} />}
@@ -130,13 +130,7 @@ const ShopCard = memo(function ShopCard({
          * 但し書きで全モード共通に伝え、報告で直す。
          */}
         <span className={styles.badges}>
-          {/*
-           * 味とブランドはバッジにせず、控えめな文字で添える。黒・茶赤・灰のバッジが
-           * 並ぶと、意味の違わないものが違う色に見えて読みにくかった。
-           */}
-          <span className={styles.shopFacts}>
-            {[TASTES[shop.taste].label, shop.brand].filter(Boolean).join("・")}
-          </span>
+          <ShopFacts shop={shop} />
           {/* 行った印は特典の無いサブ機能なので、塗らずに控えめに添える。 */}
           {visited && <span className={styles.badgeVisited}>行った</span>}
         </span>
@@ -157,7 +151,10 @@ const ShopCard = memo(function ShopCard({
           {meta.join(" ")}
         </span>
         {shop.openingHours && (
-          <span className={styles.meta}>営業 {openingHoursLabel(shop.openingHours)}</span>
+          // 地図データの記載だと分かる書き方にそろえる（店のページ・家系マッチと同じ。#255）。
+          <span className={styles.meta}>
+            営業 {openingHoursLabel(shop.openingHours)}（地図の記載）
+          </span>
         )}
       </span>
       {stub === "number" && shop.distanceKm !== undefined && (
@@ -166,6 +163,41 @@ const ShopCard = memo(function ShopCard({
     </button>
   );
 });
+
+/**
+ * 2 行目（#255）。味が分かっている店だけ、地図のピンと同じ色の丼の印と味の言葉を添える。
+ * ブランドは店名に入っていないときだけ（「町田商店」を店名の下で繰り返さない）。どちらも無ければ出さない
+ * ——多数派に「味は未判定」が並ぶと、一覧が判定の弱さを見せる場所になった。味が未判定でもブランドは残す
+ * （「吉村家」で探して出た高松家が、なぜ出たか分かるように）。
+ * バッジにせず控えめな文字にする（黒・茶赤・灰のバッジが並ぶと、意味の違わないものが違う色に見えた）。
+ */
+function ShopFacts({ shop }: { shop: Shop }) {
+  const taste = TASTE_WORDS[shop.taste];
+  const brand = shop.brand && !shop.name.includes(shop.brand) ? shop.brand : undefined;
+  if (!taste && !brand) return null;
+  return (
+    <span
+      className={styles.shopFacts}
+      style={taste ? ({ "--taste-ink": taste.ink } as CSSProperties) : undefined}
+      data-taste={shop.taste}
+    >
+      {taste && (
+        <>
+          <svg className={styles.tasteMark} viewBox="0 0 20 20" aria-hidden="true">
+            <circle cx="10" cy="10" r="10" fill={PIN_COLORS[shop.taste]} />
+            <path
+              fill="#fff"
+              d="M5 8.3h10V10H5zM5.6 10h8.8q-.3 4.4-4.4 4.4T5.6 10zM8.4 14.2h3.2v1.1H8.4z"
+            />
+          </svg>
+          <b className={styles.tasteWord}>{taste.word}</b>
+        </>
+      )}
+      {taste && brand && "・"}
+      {brand}
+    </span>
+  );
+}
 
 export function ShopList({
   shops,

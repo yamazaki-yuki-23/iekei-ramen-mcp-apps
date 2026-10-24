@@ -54,7 +54,7 @@ interface Step {
 
 /**
  * 家系マッチ（#166）。近い順に家系の食券を 1 枚ずつ払い、知らない店に出会う。
- * 右に払うと「行きたい」、左に払うとパス、「今日はここ」でその場で決まり。何軒で終えてもよい。
+ * 右に払うと「行きたい」、左に払うとパス、「この店に決める」でその場で決まり。何軒で終えてもよい。
  * 見終わったら「範囲を広げる」か「行きたいリストを見る」で区切る（無限には続けない）。
  */
 export function MatchApp() {
@@ -79,7 +79,7 @@ export function MatchApp() {
   const [flipIn, setFlipIn] = useState(false);
   const [view, setView] = useState<View>("cards");
   const [today, setToday] = useState<Shop | null>(null);
-  // 札が飛んでいる間（決まるまで）。戻す・今日はここ を止め、履歴を食い違わせない。
+  // 札が飛んでいる間（決まるまで）。戻す・この店に決める を止め、履歴を食い違わせない。
   const [flying, setFlying] = useState(false);
 
   useEffect(() => {

@@ -91,7 +91,7 @@ export function SearchForm({ prefectures, values, onChange, onSubmit, busy, hide
           />
           {/* 店名の券売機の一部なので、押すと食券が出る（#144）。 */}
           <button type="submit" className={styles.button} disabled={busy}>
-            {busy ? "発券中…" : "発券する"}
+            {busy ? "探しています…" : "この条件で探す"}
           </button>
         </div>
       )}

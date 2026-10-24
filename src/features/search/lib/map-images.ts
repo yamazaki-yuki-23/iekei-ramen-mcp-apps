@@ -1,5 +1,6 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { Shop } from "../../../types";
+import { PIN_COLORS, TASTE_WORDS } from "../utils/taste-marks";
 
 /**
  * 地図の上の印の絵（#246、デザイナーの 4 回目の案）。canvas で描いて地図に登録する
@@ -7,21 +8,6 @@ import type { Shop } from "../../../types";
  *
  * 凡例（MapLegend）も同じ関数で描く。地図の印と凡例の絵がずれないようにするため。
  */
-
-/** ピンの面の色（味の傾向）。未判定は醤油色（灰色にしない。劣った店に見せない）。 */
-const PIN_COLORS: Record<Shop["taste"], string> = {
-  rich: "#b8442c",
-  creamy: "#c98a2e",
-  chain: "#3f72aa",
-  unknown: "#22150e",
-};
-
-/** ピンの下に添える味の言葉と、その文字の色。未判定には何も添えない（判定していない味を書かない）。 */
-const TASTE_WORDS: Partial<Record<Shop["taste"], { word: string; ink: string }>> = {
-  rich: { word: "濃厚", ink: "#9a3623" },
-  creamy: { word: "クリーミー", ink: "#7a4f0e" },
-  chain: { word: "チェーン", ink: "#2f5a8a" },
-};
 
 const TASTES = Object.keys(PIN_COLORS) as Shop["taste"][];
 /** 順路の番号を絵にしておく上限。それより多い順路は、番号の札（DOM）だけで読ませる。 */

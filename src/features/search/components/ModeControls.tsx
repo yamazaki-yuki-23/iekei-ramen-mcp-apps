@@ -69,7 +69,7 @@ export function ModeControls({
 
   if (mode === "nearby") {
     return (
-      <MachineShell title="近くの券売機" hint="押して、発券" compact={compact}>
+      <MachineShell title="近くの券売機" compact={compact}>
         <NearbyPanel
           origin={origin}
           onLocate={onLocate}
@@ -82,7 +82,7 @@ export function ModeControls({
     );
   }
 
-  // 「迷ったら」は券売機。キーは選ぶだけで、「発券する」で 3 軒を出す（#144）。
+  // 「迷ったら」は券売機。キーは選ぶだけで、「この条件で 3 軒を出す」で 3 軒を出す（#144）。
   if (mode === "decide") {
     return (
       <TicketMachine
@@ -102,7 +102,7 @@ export function ModeControls({
   // 店名の券売機（#144）。ブランドのキーを押すか打って、発券する。
   if (mode === "form") {
     return (
-      <MachineShell title="店名の券売機" hint="押すか、打って発券" compact={compact}>
+      <MachineShell title="店名の券売機" hint="押すか、店名を打つ" compact={compact}>
         <BrandKeys
           brands={brands}
           keyword={form.keyword}

@@ -327,7 +327,7 @@
  * 入っている状態のボタン（「行った」）。
  *
  * **第 1 ボタンの塗りは使わない。** `.button` と同じ塗りにすると、一番強い
- * 「地図で開く」と同じ重さになり、どちらが主か読めなくなる。
+ * 「Google マップで道順を見る」と同じ重さになり、どちらが主か読めなくなる。
  * 選択中の見せ方（accent-soft の面 ＋ アクセントの枠）に合わせる。
  */
 .buttonOn {
@@ -568,13 +568,39 @@
   display: none;
 }
 
-/* 都道府県のキー。中の選択欄が操作の口。 */
+/*
+ * 都道府県のキー。中の選択欄が操作の口。
+ * ランプはキーの中央ではなく、見出し「都道府県」の行に置く（#256）。中央に置くと見出しと選択欄の間に浮き、
+ * 選択欄の印に見えた。選択欄はその下に、ランプの左端からキーの幅いっぱいに置く。キーの高さは変えない。
+ */
 .keySelect {
   composes: key;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  padding-left: var(--space-3);
   cursor: default;
+}
+
+.keySelect::before {
+  display: none;
+}
+
+/* 見出しの行。ランプを頭に置き、文字の大きさが変わっても行の中央にそろうようにする。 */
+/* 丸印から文字までは、ほかのキーと同じ 4px（文字の左端がそろう）。 */
+.keySelectLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.keySelectLabel::before {
+  content: "";
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border: var(--border-width-strong) solid currentcolor;
+  border-radius: var(--radius-full);
 }
 
 .keySelectOn {
@@ -583,7 +609,7 @@
   color: var(--color-text-on-accent);
 }
 
-.keySelectOn::before {
+.keySelectOn .keySelectLabel::before {
   background: currentcolor;
 }
 
@@ -996,9 +1022,25 @@
 
 /* 味・ブランド。バッジにせず控えめな文字で（色の種類を増やさない）。 */
 .shopFacts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   align-self: center;
   font-size: var(--font-size-note);
   color: var(--color-text-muted);
+}
+
+/* 味の言葉は地図のピンの下の言葉と同じ色（明るい面だけ。暗い面では本文の色に戻す）。比は 7 以上（DESIGN.md 2 節）。 */
+.tasteWord {
+  color: light-dark(var(--taste-ink), var(--color-ink));
+  font-weight: var(--font-weight-bold);
+}
+
+/* 地図のピンと同じ色の丼（#255）。色は utils/taste-marks.ts が持つ。言葉を必ず添える（色だけに頼らない）。 */
+.tasteMark {
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
 }
 
 /* 店名と同じ行に置く。縦中央に寄せると、どの店の距離か目で追えない。 */

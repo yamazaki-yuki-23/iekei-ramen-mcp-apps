@@ -588,6 +588,13 @@
   cursor: default;
 }
 
+/* 指で触れる端末（細かく指せず、hover の無いもの）では、キーの添え書きを出さない（#255）。 */
+@media (hover: none) and (pointer: coarse) {
+  .keyHint {
+    display: none;
+  }
+}
+
 .caveat a {
   color: var(--color-accent-strong);
 }

@@ -39,7 +39,7 @@ export function issueWith(
 type Reservation = { current: () => boolean; release: () => void; cancel: () => void };
 
 /**
- * 券売機の「発券する」（#144）。選んだ「どこで」で 3 軒を出す。
+ * 券売機の「この条件で 3 軒を出す」（#144）。選んだ「どこで」で 3 軒を出す。
  *
  * 近くでは基準地点を使う。まだ無ければブラウザの位置情報を 1 度だけ試し、
  * 取れない（ChatGPT は iframe に許可しない）ときは、サーバーにホストの位置・接続元の

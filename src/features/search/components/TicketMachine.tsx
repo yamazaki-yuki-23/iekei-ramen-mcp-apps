@@ -49,7 +49,7 @@ function initialWhere(form: FormValues, origin?: Origin, wantsNear?: boolean): W
 /**
  * 券売機（#144）。家系の店で誰もがやる「選んで、券が出てくる」動作を借りる。
  *
- * **キーは条件を選ぶだけで、取りに行かない。** 「発券する」を押して初めて 3 軒が
+ * **キーは条件を選ぶだけで、取りに行かない。** 「この条件で 3 軒を出す」を押して初めて 3 軒が
  * 出る。押す手応えを残すため（選ぶたびに入れ替わると、決める場面が消える）。
  * 押されているキーはランプの丸の塗りでも示す（色だけに頼らない）。
  */
@@ -97,7 +97,7 @@ export function TicketMachine({
   };
 
   return (
-    <MachineShell title="家系 券売機" hint="押して、発券" compact={compact}>
+    <MachineShell title="家系 券売機" compact={compact}>
       <div role="group" aria-labelledby="machine-where">
         <h3 className={styles.machineGroup} id="machine-where">
           ① どこで
@@ -116,7 +116,7 @@ export function TicketMachine({
            * 選択欄そのものが操作の口なので、キーは押せる見た目の入れ物にする。
            */}
           <label className={where === "pref" ? styles.keySelectOn : styles.keySelect}>
-            <span>都道府県</span>
+            <span className={styles.keySelectLabel}>都道府県</span>
             <select
               id="pref"
               className={styles.keySelectInput}
@@ -192,7 +192,7 @@ export function TicketMachine({
          */
         data-focus-key={FIRST_TICKET_KEY}
       >
-        発券する<small>3 軒が出てきます</small>
+        この条件で 3 軒を出す
       </button>
     </MachineShell>
   );

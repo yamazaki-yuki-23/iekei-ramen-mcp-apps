@@ -2,8 +2,8 @@ import { useEffect, useRef } from "react";
 import { unlock } from "../../../lib/sound";
 
 /**
- * キーボード: ← パス、→ 行きたい、Enter 今日はここ、Backspace 戻す。
- * Backspace は札が無いとき（全部見た・今日はここ の紙）でも戻せるようにし、ブラウザの「戻る」にさせない。
+ * キーボード: ← パス、→ 行きたい、Enter この店に決める、Backspace 戻す。
+ * Backspace は札が無いとき（全部見た・この店に決める の紙）でも戻せるようにし、ブラウザの「戻る」にさせない。
  */
 export function useSwipeKeys(keys: {
   canUndo: boolean;

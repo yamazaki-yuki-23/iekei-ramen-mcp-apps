@@ -4,6 +4,8 @@ const existing = { shopId: z.string().trim().min(1).max(100) };
 export const ReportSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("not-iekei"), ...existing }),
   z.strictObject({ kind: z.literal("closed"), ...existing }),
+  // 店のページの「場所が違う」（#255）。店の ID だけで、どこが正しいかは書かせない（自由記述を増やさない）。
+  z.strictObject({ kind: z.literal("wrong-location"), ...existing }),
   z.strictObject({
     kind: z.literal("missing"),
     name: z.string().trim().min(1).max(100),

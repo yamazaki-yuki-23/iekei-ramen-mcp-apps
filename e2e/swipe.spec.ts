@@ -15,7 +15,7 @@ async function open(page: Page) {
   await expect(top(page)).toBeVisible();
 }
 const top = (page: Page) => page.locator("article[data-shop-id]:not([aria-hidden])");
-const wantsButton = (page: Page) => page.getByRole("button", { name: /^行きたい \d+$/ });
+const wantsButton = (page: Page) => page.getByRole("button", { name: /^行きたいリスト \d+$/ });
 const ask = (page: Page) => page.locator("main p[aria-live]");
 /** ボタンで 1 枚払い、次の札が出るまで待つ（札が飛んでいる間の押下は受けない作り）。 */
 async function swipeBy(page: Page, name: RegExp) {
@@ -48,7 +48,7 @@ test("キーボードだけで、行きたい・パス・戻す・今日はこ�
   await open(page);
   const first = await top(page).getAttribute("data-shop-id");
   await page.keyboard.press("ArrowRight");
-  await expect(wantsButton(page)).toHaveText("行きたい 1");
+  await expect(wantsButton(page)).toHaveText("行きたいリスト 1");
   await expect(top(page)).toHaveAttribute("aria-label", /^2枚目、/);
   await page.keyboard.press("ArrowLeft");
   await expect(top(page)).toHaveAttribute("aria-label", /^3枚目、/);
@@ -56,7 +56,7 @@ test("キーボードだけで、行きたい・パス・戻す・今日はこ�
   await page.keyboard.press("Backspace");
   await page.keyboard.press("Backspace");
   await expect(top(page)).toHaveAttribute("data-shop-id", first!);
-  await expect(wantsButton(page)).toHaveText("行きたい 0");
+  await expect(wantsButton(page)).toHaveText("行きたいリスト 0");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: /^今日は「/ })).toBeFocused();
   await expect(page.getByRole("link", { name: "地図アプリで開く" })).toHaveAttribute(
@@ -117,7 +117,7 @@ test("指で払う: 足りなければ戻り、画面幅の 3 割を超えれば
   await expect(top(page)).toHaveAttribute("aria-label", /^1枚目、/);
   await drag(box.width * 0.5);
   await expect(top(page)).toHaveAttribute("aria-label", /^2枚目、/);
-  await expect(wantsButton(page)).toHaveText("行きたい 1");
+  await expect(wantsButton(page)).toHaveText("行きたいリスト 1");
 });
 
 test("範囲を見終わったら区切り、範囲を広げると続きの 21 枚目から出る", async ({ page }) => {
@@ -156,14 +156,14 @@ test("続きの取得に一度失敗しても「全部見た」にせず、取�
 test("前から行きたいに入っている店を払って戻しても、リストから消さない", async ({ page }) => {
   await open(page);
   await swipeBy(page, /^行きたい →/);
-  await expect(wantsButton(page)).toHaveText("行きたい 1");
+  await expect(wantsButton(page)).toHaveText("行きたいリスト 1");
   // 開き直すと 1 枚目から。同じ店をもう一度右に払い、戻す。
   await page.reload();
   await expect(top(page)).toHaveAttribute("aria-label", /^1枚目、/);
   await swipeBy(page, /^行きたい →/);
   await page.getByRole("button", { name: /^戻す/ }).click();
   await expect(top(page)).toHaveAttribute("aria-label", /^1枚目、/);
-  await expect(wantsButton(page)).toHaveText("行きたい 1");
+  await expect(wantsButton(page)).toHaveText("行きたいリスト 1");
 });
 
 test("札が飛んでいる間は、戻す・今日はここ を押せない（履歴を食い違わせない）", async ({
@@ -175,7 +175,7 @@ test("札が飛んでいる間は、戻す・今日はここ を押せない（�
     const buttons = [...document.querySelectorAll("button")];
     const want = buttons.find((b) => b.textContent?.startsWith("行きたい →"))!;
     const undo = buttons.find((b) => b.textContent?.startsWith("戻す"))!;
-    const today = buttons.find((b) => b.textContent?.startsWith("今日はここ"))!;
+    const today = buttons.find((b) => b.textContent?.startsWith("この店に決める"))!;
     want.click();
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     return { undo: undo.disabled, today: today.disabled };
@@ -371,7 +371,7 @@ test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はそ�
   const order = await page.evaluate(() => {
     const ticket = document.querySelector("ul > li > button[data-shop-id]")!;
     const issue = [...document.querySelectorAll("button")].find((b) =>
-      b.textContent?.includes("発券する"),
+      b.textContent?.includes("この条件で 3 軒を出す"),
     )!;
     return ticket.compareDocumentPosition(issue) & Node.DOCUMENT_POSITION_FOLLOWING;
   });
@@ -389,7 +389,7 @@ test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はそ�
   await expect(page.getByRole("link", { name: "近くの家系とマッチング →" })).toBeHidden();
 
   // 下の券売機で発券し直したら、出たばかりの 1 枚目へ焦点と画面を渡す（Tab で食券を飛ばさない）。
-  const issue = page.getByRole("button", { name: /発券する/ });
+  const issue = page.getByRole("button", { name: /この条件で 3 軒を出す/ });
   await issue.focus();
   await page.keyboard.press("Enter");
   await expect(tickets.first()).toBeFocused();
@@ -403,7 +403,7 @@ test("スマホ幅の最初の画面に食券 3 枚が入り、券売機はそ�
     page.evaluate(() => {
       const ticket = document.querySelector("ul > li > button[data-shop-id]")!;
       const button = [...document.querySelectorAll("button")].find((b) =>
-        b.textContent?.includes("発券する"),
+        b.textContent?.includes("この条件で 3 軒を出す"),
       )!;
       return Boolean(button.compareDocumentPosition(ticket) & Node.DOCUMENT_POSITION_FOLLOWING);
     });
@@ -445,8 +445,9 @@ test("スマホ幅でも、下の規約のリンクは 44px で押せ、見出�
         }
       return starts;
     });
+  // 県の見出しは「神奈川県の家系ラーメン」（#255）。390px で 1 行に入る。
   await page.goto("http://localhost:3134/area/kanagawa/");
-  expect(await lines()).toEqual(["神奈", "家系"]);
+  expect(await lines()).toEqual(["神奈"]);
   // 「の」以外の助詞（から・を）の後でも割れる。13 字の「都道府県から家系ラーメンの」は 1 行に入らない。
   await page.goto("http://localhost:3134/area/");
   expect((await lines()).every((s) => ["都道", "家系", "候補", "探す"].includes(s))).toBe(true);
@@ -463,7 +464,7 @@ test("スマホ幅でも、下の規約のリンクは 44px で押せ、見出�
   await expect(page.locator("article[data-shop-id]").first()).toBeVisible();
   expect(await lines()).toHaveLength(1);
   const title = (await page.locator("h1").boundingBox())!;
-  const wants = (await page.getByRole("button", { name: /^行きたい \d+$/ }).boundingBox())!;
+  const wants = (await page.getByRole("button", { name: /^行きたいリスト \d+$/ }).boundingBox())!;
   expect(wants.x).toBeGreaterThan(title.x + title.width);
 });
 
@@ -572,7 +573,7 @@ test("スマホ幅でも、家系マッチの札と操作キーはタブバー�
     ),
   ).toBe("0px");
   const tabTop = (await page.getByRole("navigation", { name: "機能" }).boundingBox())!.y;
-  for (const name of [/^← パス/, /^戻す/, /^行きたい →/, /今日はここ/]) {
+  for (const name of [/^← パス/, /^戻す/, /^行きたい →/, /この店に決める/]) {
     const box = (await page.getByRole("button", { name }).boundingBox())!;
     expect(box.y + box.height).toBeLessThanOrEqual(tabTop);
   }
@@ -587,7 +588,7 @@ test("行きたいが 1 軒でも 2〜3 軒でも、読み直した後にリス�
     // 読み直すと戻す履歴は消える。リストは端末に残っている。
     await page.reload();
     await expect(top(page)).toBeVisible();
-    await expect(wantsButton(page)).toHaveText(`行きたい ${count}`);
+    await expect(wantsButton(page)).toHaveText(`行きたいリスト ${count}`);
     await wantsButton(page).click();
     await expect(
       page.getByRole("heading", { name: count === 1 ? /^今日は「/ : "まわる店（2 軒）" }),
@@ -595,11 +596,11 @@ test("行きたいが 1 軒でも 2〜3 軒でも、読み直した後にリス�
     await page.getByRole("button", { name: "リストを空にする" }).click();
     await expect(page.getByRole("heading", { name: "行きたいリストは空です" })).toBeVisible();
     await page.reload();
-    await expect(wantsButton(page)).toHaveText("行きたい 0");
+    await expect(wantsButton(page)).toHaveText("行きたいリスト 0");
   }
   // 「今日はここ」で決めた紙には出さない（行きたいリストとは別の画面）。
   await expect(top(page)).toBeVisible();
-  await page.getByRole("button", { name: /今日はここ/ }).click();
+  await page.getByRole("button", { name: /この店に決める/ }).click();
   await expect(page.getByRole("heading", { name: /^今日は「/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "リストを空にする" })).toHaveCount(0);
 });
@@ -610,7 +611,7 @@ test("左上はほかのページと同じヘッダーでトップへ戻れ、39
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page);
   await expect(page.getByRole("heading", { level: 1, name: "家系マッチ" })).toBeVisible();
-  for (const name of [/^← パス/, /^戻す/, /^行きたい →/, /今日はここ/]) {
+  for (const name of [/^← パス/, /^戻す/, /^行きたい →/, /この店に決める/]) {
     const box = (await page.getByRole("button", { name }).boundingBox())!;
     expect(box.y + box.height).toBeLessThanOrEqual(844);
   }

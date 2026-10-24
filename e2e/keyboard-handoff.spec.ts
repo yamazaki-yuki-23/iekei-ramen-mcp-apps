@@ -29,7 +29,9 @@ test("キーボードで「次の 3 軒」を押すと、焦点はそのボタ�
   await expect(page.getByRole("status").filter({ hasText: "軒中" })).toContainText("4〜6 軒目");
 });
 
-test("キーボードで探し方と「発券する」を押しても、焦点はそのボタンに残る", async ({ page }) => {
+test("キーボードで探し方と「この条件で探す」を押しても、焦点はそのボタンに残る", async ({
+  page,
+}) => {
   await page.goto(WEB_URL);
   await settled(page);
   await page.getByRole("button", { name: "店名で", exact: true }).focus();
@@ -37,11 +39,11 @@ test("キーボードで探し方と「発券する」を押しても、焦点�
   await expect.poll(() => focusedText(page)).toBe("店名で");
   await settled(page);
   await page.locator("#kw").fill("家");
-  await page.getByRole("button", { name: "発券する", exact: true }).focus();
+  await page.getByRole("button", { name: "この条件で探す", exact: true }).focus();
   await page.keyboard.press("Enter");
   await settled(page);
-  // 待つ間は「発券中…」になるので、名前でなく押した要素で追いかけている。
-  await expect.poll(() => focusedText(page)).toBe("発券する");
+  // 待つ間は「探しています…」になるので、名前でなく押した要素で追いかけている。
+  await expect.poll(() => focusedText(page)).toBe("この条件で探す");
 });
 
 test("会話の中のタブは、結果の領域と aria-controls で結び付いている", async ({ page }) => {
@@ -80,7 +82,7 @@ test("0 件の結果は見出しの件数で読み上げ、0 軒を 2 度読ま�
   // 「店名で」は検索を呼ぶ。返る前に打つと、その応答で入力した条件が使われない。
   await settled(page);
   await page.locator("#kw").fill("存在しない店名ZZZ");
-  await page.getByRole("button", { name: "発券する", exact: true }).click();
+  await page.getByRole("button", { name: "この条件で探す", exact: true }).click();
   await settled(page);
   const announced = page.getByRole("status").filter({ hasText: "判定した結果の 0 軒" });
   await expect(announced).toHaveCount(1);
@@ -112,7 +114,7 @@ test("現在地が分からず絞れなかった結果も読み上げる", async
   await waitForApp(app);
   // 普通の「迷ったら」から、近くで発券して「現在地が分からない」へ入れ替える。
   await app.getByRole("button", { name: /^近くで/ }).click();
-  await app.getByRole("button", { name: /^発券する/ }).click();
+  await app.getByRole("button", { name: /^この条件で 3 軒を出す/ }).click();
   await expect(app.locator("main[data-pending-calls]")).toHaveAttribute("data-pending-calls", "0");
   await expect(app.getByText(/現在地が分かりませんでした。/)).toBeVisible();
   await expect(
@@ -161,7 +163,7 @@ test("報告の欄で Enter を押して送っても、焦点を見出しへ運�
   await openMode(page, "form");
   await settled(page);
   await page.getByLabel("キーワード").fill("存在しない試験店0123");
-  await page.getByRole("button", { name: "発券する", exact: true }).click();
+  await page.getByRole("button", { name: "この条件で探す", exact: true }).click();
   await settled(page);
   await page.getByText("お探しの家系が見つからないときは", { exact: true }).click();
   await page.getByLabel("店名", { exact: true }).fill("試験家");
@@ -194,7 +196,7 @@ test("見出しと件数が前と同じでも、探し直した結果は読み�
   for (const keyword of ["吉村家", "厚木家"]) {
     const before = await writes();
     await page.getByLabel("キーワード").fill(keyword);
-    await page.getByRole("button", { name: "発券する", exact: true }).click();
+    await page.getByRole("button", { name: "この条件で探す", exact: true }).click();
     await settled(page);
     await expect.poll(writes).toBeGreaterThan(before);
   }
@@ -241,7 +243,7 @@ test("位置の取得に時間がかかっても、キーボードで発券し�
   const app = await callTool(page, "decide-iekei-ramen");
   await waitForApp(app);
   await app.getByRole("button", { name: /^近くで/ }).click();
-  const issue = app.getByRole("button", { name: /^発券する/ });
+  const issue = app.getByRole("button", { name: /^この条件で 3 軒を出す/ });
   // 結果が届くと画面ごと作り直される。それを待ってから見る（待つ間は焦点が残っていて当然）。
   const before = await app.locator("main").elementHandle();
   await issue.press("Enter");
@@ -253,7 +255,7 @@ test("位置の取得に時間がかかっても、キーボードで発券し�
   await expect(app.locator("button[data-shop-id]").first()).toBeFocused();
 });
 
-test("「現在地から」で位置の取得に時間がかかっても、キーボードで押した「現在地で発券」に焦点が戻る", async ({
+test("「現在地から」で位置の取得に時間がかかっても、キーボードで押した「現在地の近くを探す」に焦点が戻る", async ({
   page,
 }) => {
   // 位置は 1.2 秒後に返る。この間は呼び出しの数に入らないので、data-busy で待っていると示す。
@@ -270,7 +272,7 @@ test("「現在地から」で位置の取得に時間がかかっても、キ�
   });
   const app = await callTool(page, "find-nearby-iekei-ramen", { place: "横浜駅" });
   await waitForApp(app);
-  const locate = app.getByRole("button", { name: "現在地で発券" });
+  const locate = app.getByRole("button", { name: "現在地の近くを探す" });
   // 結果が届くと画面ごと作り直される。それを待ってから見る（待つ間は焦点が残っていて当然）。
   const before = await app.locator("main").elementHandle();
   await locate.press("Enter");
@@ -281,7 +283,7 @@ test("「現在地から」で位置の取得に時間がかかっても、キ�
   await expect(locate).toBeFocused();
 });
 
-test("位置を待つ間に「現在地で発券」を押し直しても、新しい方の結果のあと焦点が戻る", async ({
+test("位置を待つ間に「現在地の近くを探す」を押し直しても、新しい方の結果のあと焦点が戻る", async ({
   page,
 }) => {
   // どの取得も 1.2 秒後に返る。押し直すと、前の取得が先に終わる。
@@ -298,7 +300,7 @@ test("位置を待つ間に「現在地で発券」を押し直しても、新�
   });
   const app = await callTool(page, "find-nearby-iekei-ramen", { place: "横浜駅" });
   await waitForApp(app);
-  const locate = app.getByRole("button", { name: "現在地で発券" });
+  const locate = app.getByRole("button", { name: "現在地の近くを探す" });
   const before = await app.locator("main").elementHandle();
   await locate.press("Enter");
   await app.locator("body").evaluate(() => new Promise((r) => setTimeout(r, 600)));
