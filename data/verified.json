@@ -459,5 +459,9 @@
   {"id":"node/5041439638","basis":"chain","chain":"町田商店","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://shop.machidashoten.com/japan/all/"},
   {"id":"way/895354412","basis":"chain","chain":"町田商店","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://shop.machidashoten.com/japan/all/"},
   {"id":"node/9099751962","basis":"chain","chain":"町田商店","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://shop.machidashoten.com/japan/all/"},
-  {"id":"way/447963487","basis":"self","status":"open","checked":"2026-10-24","source":"official-sns","url":"https://page.line.me/616kjfkv"}
+  {"id":"way/447963487","basis":"self","status":"open","checked":"2026-10-24","source":"official-sns","url":"https://page.line.me/616kjfkv"},
+  {"name":"麺家よし川 心斎橋店","prefecture":"大阪府","address":"大阪市中央区南船場3-5-27 アルファ心斎橋 1階","osmId":"node/2450194701","basis":"self","status":"open","checked":"2026-10-25","source":"official-site","url":"https://menya-yoshikawa.com/"},
+  {"name":"麺家よし川 十三店","prefecture":"大阪府","address":"大阪市淀川区十三本町1-2-23","basis":"self","status":"open","checked":"2026-10-25","source":"official-site","url":"https://menya-yoshikawa.com/"},
+  {"name":"麺家 アカボシ","prefecture":"大阪府","address":"大阪市福島区吉野3-7-7","osmId":"node/12716164601","basis":"self","status":"open","checked":"2026-10-25","source":"official-site","url":"https://menya-akaboshi.com/"},
+  {"name":"麺家よし川 天王寺店","prefecture":"大阪府","address":"大阪市阿倍野区阿倍野筋1丁目5-1 あべのルシアスビルB1F","basis":"self","status":"open","checked":"2026-10-25","source":"official-site","url":"https://menya-yoshikawa.com/"}
 ]
