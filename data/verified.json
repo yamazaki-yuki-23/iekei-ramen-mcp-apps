@@ -441,6 +441,7 @@
   {"name":"はじめ家","prefecture":"富山県","address":"魚津市吉島67-1","basis":"chain","chain":"吉村家","status":"open","checked":"2026-10-24","source":"chain-list","url":"http://ieke1.com/source/yosimuraya/chokei.html"},
   {"name":"上越家","prefecture":"新潟県","address":"上越市下源入173-1","basis":"chain","chain":"吉村家","status":"open","checked":"2026-10-24","source":"chain-list","url":"http://ieke1.com/source/yosimuraya/chokei.html"},
   {"name":"高松家","prefecture":"香川県","address":"高松市屋島西町1992-4","basis":"chain","chain":"吉村家","status":"open","checked":"2026-10-24","source":"chain-list","url":"http://ieke1.com/source/yosimuraya/chokei.html"},
+  {"name":"末廣家","prefecture":"神奈川県","address":"横浜市神奈川区六角橋1-14-7","basis":"chain","chain":"吉村家","status":"open","checked":"2026-10-25","source":"official-sns","url":"https://x.com/2525_2929"},
   {"id":"node/3498553295","basis":"chain","chain":"大和家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://iekei-yamatoya.com/store"},
   {"id":"node/5513132423","basis":"chain","chain":"大和家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://iekei-yamatoya.com/store"},
   {"id":"node/6897586086","basis":"chain","chain":"大和家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://iekei-yamatoya.com/store"},

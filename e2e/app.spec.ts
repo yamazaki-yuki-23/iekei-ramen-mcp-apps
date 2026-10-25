@@ -444,7 +444,7 @@ test.describe("迷ったら（3 軒に絞る）", () => {
   test("直前の検索のキーワードを、見えないまま効かせない", async ({ page }) => {
     const app = await callTool(page, "search-iekei-ramen", {
       prefecture: "神奈川県",
-      keyword: "吉村家",
+      keyword: "厚木家",
     });
     await waitForApp(app);
     await expect(shopCards(app)).toHaveCount(1);
