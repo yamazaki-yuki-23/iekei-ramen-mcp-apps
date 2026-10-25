@@ -417,6 +417,7 @@
   {"id":"node/5710054223","basis":"chain","chain":"壱八家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://ippachiya.com/stores"},
   {"id":"node/3163955594","basis":"chain","chain":"壱八家","status":"unlisted","checked":"2026-10-24","source":"chain-list","url":"https://ippachiya.com/stores"},
   {"name":"横浜らーめん壱八家 ゆめが丘店","prefecture":"神奈川県","address":"横浜市泉区和泉町982-1","basis":"chain","chain":"壱八家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://ippachiya.com/stores"},
+  {"name":"らーめん半蔵 東戸塚店","prefecture":"神奈川県","address":"横浜市戸塚区品濃町541-3 オセアンビル","basis":"chain","chain":"壱八家","status":"open","checked":"2026-10-25","source":"chain-list","url":"https://ippachiya.com/stores"},
   {"id":"node/2202649202","basis":"chain","chain":"杉田家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://sugitaya.com/shop/"},
   {"id":"node/7880556585","basis":"chain","chain":"杉田家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://sugitaya.com/shop/"},
   {"id":"node/11407534436","basis":"chain","chain":"杉田家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://sugitaya.com/shop/"},
