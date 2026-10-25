@@ -197,25 +197,25 @@ test("MCP Apps: モデルの新しいqueryを反映し、その後に届く旧UI
         method: "tools/call",
         params: {
           name: "search-iekei-ramen",
-          arguments: { keyword: "吉村", prefecture: "神奈川県" },
+          arguments: { keyword: "厚木家", prefecture: "神奈川県" },
         },
       },
     });
     expect(response.status()).toBe(200);
     const result = (await response.json()).result;
-    expect(result.structuredContent.query.keyword).toBe("吉村");
+    expect(result.structuredContent.query.keyword).toBe("厚木家");
     // 実MCPの結果を、ホストからの通知と同じSDK経路に渡す。
     await app.locator("body").evaluate((_body, notification) => {
       (window as unknown as { receiveHostResult: (result: unknown) => void }).receiveHostResult(
         notification,
       );
     }, result);
-    await expect(app.getByLabel("キーワード")).toHaveValue("吉村");
+    await expect(app.getByLabel("キーワード")).toHaveValue("厚木家");
     await expect(app.getByLabel("都道府県")).toHaveValue("神奈川県");
     held.release();
     await held.delivered;
     await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
-    await expect(app.getByLabel("キーワード")).toHaveValue("吉村");
+    await expect(app.getByLabel("キーワード")).toHaveValue("厚木家");
     await expect(app.getByLabel("都道府県")).toHaveValue("神奈川県");
     await expect(app.locator("button[data-shop-id]")).toHaveCount(1);
   } finally {
