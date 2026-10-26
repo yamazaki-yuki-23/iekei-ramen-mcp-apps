@@ -68,12 +68,11 @@ test("「近い順」の札は、「全国 ◯ 軒中、近い順に…」の行
   await expect(page.getByText(basis, { exact: true })).toHaveCount(0);
 });
 
-test("家系マッチのゲージは単色（グラデーションの飾りを付けない）", async ({ page }) => {
+test("家系マッチのゲージは単色で、文言はカタカナ（#301・#303）", async ({ page }) => {
   await page.goto("http://localhost:3134/match/");
-  const bar = page
-    .getByRole("progressbar", { name: /のゲージ/ })
-    .locator("*")
-    .first();
+  await expect(page.getByText("フィーバーまで", { exact: true })).toBeVisible();
+  await expect(page.getByText(/FEVER/)).toHaveCount(0);
+  const bar = page.getByRole("progressbar", { name: "フィーバーのゲージ" }).locator("*").first();
   await expect(bar).toBeAttached();
   expect(await bar.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe("none");
 });
