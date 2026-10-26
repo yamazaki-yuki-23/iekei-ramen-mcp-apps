@@ -3,11 +3,11 @@ import styles from "../styles/match.module.css";
 export function Gauge({ value, fever }: { value: number; fever: boolean }) {
   return (
     <div className={styles.gaugeRow}>
-      <span className={styles.gaugeLabel}>{fever ? "FEVER" : "FEVER まで"}</span>
+      <span className={styles.gaugeLabel}>{fever ? "フィーバー" : "フィーバーまで"}</span>
       <div
         className={styles.gauge}
         role="progressbar"
-        aria-label="FEVER のゲージ"
+        aria-label="フィーバーのゲージ"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={fever ? 100 : value}

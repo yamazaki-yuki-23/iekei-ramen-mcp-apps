@@ -265,7 +265,7 @@ test("札が無いとき（今日はここ の紙）でも、Backspace で戻せ
 test("動きを減らす設定では演出を出さず、操作はそのまま使える", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await open(page);
-  await expect(page.getByRole("progressbar", { name: "FEVER のゲージ" })).toBeHidden();
+  await expect(page.getByRole("progressbar", { name: "フィーバーのゲージ" })).toBeHidden();
   for (let i = 0; i < 8; i++) await page.keyboard.press("ArrowRight");
   await expect(top(page)).toHaveAttribute("aria-label", /^9枚目、/);
   expect(
