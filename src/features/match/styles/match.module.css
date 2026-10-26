@@ -201,7 +201,8 @@
   position: absolute;
   inset: 0;
   transform-origin: 0 50%;
-  background: linear-gradient(90deg, var(--color-accent-fill), var(--gold));
+  /* 単色（#301）。グラデーションは飾りで、たまり具合は長さで伝わる。 */
+  background: var(--color-accent-fill);
   transition: transform 300ms ease-out;
 }
 

@@ -358,34 +358,46 @@
 /* --- 最初の画面（Web） --- */
 
 /*
- * 約束の一言（#125）。箱に入れず、大きな文字だけで地図の上に置く。熱は文字の大きさと
- * 太さで出し、色はほかの部品と同じ役割（黒＝文字、茶赤＝強める 1 語と押す操作）。
+ * 約束の一言（#125）を、家系の店先の看板にする（#301）。黄の面に醤油色の太い字。
+ * 黄はここだけに使う（DESIGN.md 0 節の例外）。看板は明暗で変えない（店先の看板は夜も黄）。
+ * スマホ幅では左右の余白を取り払って横いっぱいに敷き、広い幅では枠のある看板にする。
  * 地図には重ねない（重ねると、その下のピンや塊が押せなくなった）。
  */
 .hero {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  color: var(--color-text-primary);
+  margin-inline: calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-4);
+  border-block: var(--border-width-strong) solid var(--shoyu-900);
+  background: var(--kanban-yellow);
+  color: var(--shoyu-900);
 }
 
 /* 狭い幅では一言を少し小さくし、地図を最初の画面に入れる（#125）。 */
+/*
+ * 看板の字（main-web.css の "Iekei Kanban"）。書体は 1 太さだけなので、太字を作らせない
+ * （作らせると線が潰れる）。書体が間に合わないときは端末の書体の最も太い字で描く。
+ */
 .heroCatch {
   margin: 0;
+  font-family: "Iekei Kanban", var(--font-sans);
   font-size: var(--font-heading-2xl-size);
   line-height: var(--font-display-line-height);
   font-weight: var(--font-weight-display);
-  letter-spacing: var(--letter-spacing-tight);
+  font-synthesis-weight: none;
+  letter-spacing: 0.02em;
 }
 
+/* 1 語だけ色を変えない（看板そのものが強調）。意味の強調として em は残す。 */
 .heroCatch em {
   font-style: normal;
-  color: var(--color-accent-strong);
+  color: inherit;
 }
 
 .heroLead {
   margin: 0;
-  color: var(--color-text-muted);
+  font-weight: var(--font-weight-bold);
   line-height: 1.6;
 }
 
@@ -420,10 +432,16 @@
 
   .heroCatch {
     font-size: var(--font-heading-xl-size);
+    line-height: 1.2;
   }
 
   .heroLead {
     display: none;
+  }
+
+  /* 看板の上下を詰める（#301。看板の枠と余白のぶん、360×800 で 3 枚目がタブバーに 6px かかった）。 */
+  .hero {
+    padding-block: var(--space-2);
   }
 }
 
@@ -437,6 +455,10 @@
 @media (min-width: 40rem) {
   .hero {
     gap: var(--space-3);
+    margin-inline: 0;
+    padding: var(--space-4) var(--space-5);
+    border: var(--border-width-strong) solid var(--shoyu-900);
+    border-radius: var(--radius-md);
   }
 
   .heroCatch {

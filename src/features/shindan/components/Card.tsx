@@ -44,7 +44,10 @@ export function Card({
     <article className={small ? styles.cardSmall : styles.card} data-rarity={rarity(type)}>
       {!small && <Effects level={rarity(type)} />}
       <div className={styles.cardTop}>
-        <span className={styles.rarity} data-rarity={rarity(type)}>
+        <span
+          className={!small && rarity(type) === "激レア" ? styles.rarityQuiet : styles.rarity}
+          data-rarity={rarity(type)}
+        >
           {rarity(type)}
         </span>
         <span>27 通りの注文のうち {type.combos} 通り</span>

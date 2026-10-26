@@ -21,15 +21,24 @@ const EMPTY_WITH_KEYWORD =
 /* 会話の中だけ。選んだ店をチャットで聞く道を言う（但し書きは ResultCaveat）。 */
 const ASK_HINT = "気になる店は押して選んでから、チャットで聞いてください。";
 
-/** 食券の列の見出し。並べた根拠（近い順など）を札で横に添える。 */
-function DecideHead({ title }: { title?: { heading: string; tag: string | null } }) {
+/**
+ * 食券の列の見出し。並べた根拠（近い順など）を札で横に添える。下に「全国 ◯ 軒中、近い順に…」の
+ * 行が出るときは、同じことを 2 度言うので札を出さない（#301）。
+ */
+function DecideHead({
+  title,
+  showTag,
+}: {
+  title?: { heading: string; tag: string | null };
+  showTag: boolean;
+}) {
   if (!title) return null;
   return (
     <div className={styles.decideHead}>
       <h2 className={styles.decideTitle} data-announce>
         {title.heading}
       </h2>
-      {title.tag && <span className={styles.count}>{title.tag}</span>}
+      {showTag && title.tag && <span className={styles.count}>{title.tag}</span>}
     </div>
   );
 }
@@ -65,6 +74,11 @@ function EmptyNote({
  */
 function roundLabel(info: DecideInfo, shown: number, prefecture?: string): string {
   return `${prefecture || "全国"} ${info.poolTotal} 軒中、${basisLabel(info)}に ${pickRange(info, shown)}`;
+}
+
+/** 「全国 ◯ 軒中、近い順に 1〜3 軒目」の行を出すか（組が 2 つ以上あるとき）。 */
+function hasRoundLine(info: DecideInfo | undefined): info is DecideInfo {
+  return Boolean(info && info.rounds > 1);
 }
 
 function rerollLabel(info: DecideInfo | undefined): string {
@@ -167,7 +181,7 @@ export function DecidePanel({
        * 並べた根拠の長い文（「352 軒を…に並べた、1〜3 軒目です。」）は画面に出さない（#152）。
        * 見出し（どこから）・札（近い順など）・「全国 352 軒中、近い順に 1〜3 軒目」で足りる。文はモデルへ渡す。
        */}
-      <DecideHead title={title} />
+      <DecideHead title={title} showTag={!hasRoundLine(info)} />
       {!title && info && (
         <p className={styles.decideBasis}>{`${basisLabel(info)}に並べています。`}</p>
       )}
@@ -206,7 +220,7 @@ export function DecidePanel({
         >
           {rerollLabel(info)}
         </button>
-        {info && info.rounds > 1 && (
+        {hasRoundLine(info) && (
           <span className={styles.decideRound} data-announce>
             {roundLabel(info, shops.length, prefecture)}
           </span>
