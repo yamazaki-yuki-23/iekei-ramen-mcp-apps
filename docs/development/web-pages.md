@@ -105,3 +105,20 @@ Web のすべてのページの下と `/connect` のフッターに 2 つへの�
 検索用の接続は「認証なし」を先に案内する。訪問記録を使う人向けのOAuth接続は
 別の手順にし、検索を始める段階でGoogleへのサインインを要求しない。
 Claudeの本番URL追加は未確認であることをページにも明記する。
+
+## 看板の書体（#301）
+
+トップの一言の看板だけ、Dela Gothic One（OFL）を使う。全体は 2.5MB あるので、一言に使う字だけを切り出した
+`public/fonts/dela-gothic-one-catch.woff2`（2.8KB）を置いている。ライセンスは同じ場所の `dela-gothic-one-OFL.txt`。
+
+- **一言（`PromiseHero` の文字）を変えたら、切り出し直す。** 入っていない字は端末の書体で描かれ、1 文字だけ形が変わる
+- 読み込みは `main-web.css` の `@font-face`（`font-display: optional`）と、`index.html` の preload。間に合わなければ
+  端末の書体のまま描き、あとから入れ替えない（ずれを出さない）
+- npm の依存は足さない。切り出しは手元で 1 回だけ行う
+
+```bash
+curl -sLO https://github.com/google/fonts/raw/main/ofl/delagothicone/DelaGothicOne-Regular.ttf
+uvx --from 'fonttools[woff]' pyftsubset DelaGothicOne-Regular.ttf \
+  --text="近くに、まだ知らない家系がある。" --flavor=woff2 --layout-features='*' --no-hinting \
+  --output-file=public/fonts/dela-gothic-one-catch.woff2
+```

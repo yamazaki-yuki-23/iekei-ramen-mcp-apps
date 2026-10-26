@@ -28,7 +28,11 @@ test("6 問を 1 タップずつ答えると、結果のカードと注文の言
   await expect(page.getByRole("heading", { level: 2, name: "カタコイオオメ三冠王" })).toBeFocused();
   await expect(page.getByText("カタメ・コイメ・オオメ", { exact: true })).toBeVisible();
   await expect(page.getByText("27 通りの注文のうち 1 通り")).toBeVisible();
-  await expect(page.getByText("激レア", { exact: true })).toBeVisible();
+  // 激レアは判子（激レア！）の 1 回だけ見せる。左上の札は読み上げのために残し、見た目からは外す（#301）。
+  await expect(page.getByText("激レア！")).toBeVisible();
+  const badge = page.getByText("激レア", { exact: true });
+  await expect(badge).toHaveCount(1);
+  expect((await badge.boundingBox())!.width).toBeLessThanOrEqual(1);
   await expect(page.getByRole("heading", { level: 3, name: "このタイプのあるある" })).toBeVisible();
   // 星は店の評価に読まれるので出さない。
   expect(await page.locator("body").innerText()).not.toMatch(/[★☆]/);

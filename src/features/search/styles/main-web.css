@@ -1,3 +1,14 @@
+/*
+ * トップの一言の看板の書体（#301）。Dela Gothic One（OFL、public/fonts/dela-gothic-one-OFL.txt）から、
+ * 一言に使う字だけを切り出した 2.8KB。間に合わなければ端末の書体のまま描く（optional。ずれを出さない）。
+ * 一言を変えたら切り出し直す（docs/development/web-pages.md「看板の書体」）。
+ */
+@font-face {
+  font-family: "Iekei Kanban";
+  src: url("/fonts/dela-gothic-one-catch.woff2") format("woff2");
+  font-display: optional;
+}
+
 /* Webのノッチも共有画面と同じCSS変数で渡し、通常の余白に足す。 */
 :root {
   --safe-area-top: env(safe-area-inset-top, 0px);
