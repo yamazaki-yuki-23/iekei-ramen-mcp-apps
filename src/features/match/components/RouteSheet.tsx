@@ -4,6 +4,7 @@ import styles from "../styles/match.module.css";
 import { mapUrl } from "../utils/map-url";
 import { Share } from "./Share";
 import { Sheet } from "./Sheet";
+import { shopName } from "../../../utils/shop-name";
 
 export function RouteSheet({
   shops,
@@ -25,7 +26,7 @@ export function RouteSheet({
           <li key={leg.shop.id}>
             <strong>{i + 1}</strong>
             <span>
-              {leg.shop.name}
+              {shopName(leg.shop)}
               <small>{describeLeg(leg, i, origin)}</small>
             </span>
             <a
@@ -57,7 +58,7 @@ export function RouteSheet({
           </button>
         )}
       </div>
-      <Share names={route.legs.map((leg) => leg.shop.name)} />
+      <Share names={route.legs.map((leg) => shopName(leg.shop))} />
     </Sheet>
   );
 }

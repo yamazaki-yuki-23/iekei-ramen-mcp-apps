@@ -45,6 +45,8 @@ const ShopSchema = z.object({
   prefecture: z.string(),
   city: z.string().optional(),
   address: z.string().optional(),
+  /** 同じ店名の店がほかにあるときだけ入る、店名に添える町名か市区町村（#307）。 */
+  place: z.string().optional(),
   lat: z.number(),
   lon: z.number(),
   openingHours: z.string().optional(),

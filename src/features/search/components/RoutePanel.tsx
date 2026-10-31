@@ -2,6 +2,7 @@ import { formatDistance } from "../../../utils/geo";
 import { describeLeg, googleMapsRouteUrl, MAX_STOPS, type Route } from "../../../utils/route";
 import type { Origin, Shop } from "../../../types";
 import styles from "../styles/search.module.css";
+import { shopName } from "../../../utils/shop-name";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
 const NOTE =
@@ -54,14 +55,14 @@ export function RoutePanel({ route, origin, onRemove, onClear, onOpenLink }: Pro
           <li key={leg.shop.id} className={styles.routeItem}>
             <span className={styles.routeOrder}>{i + 1}</span>
             <span className={styles.routeBody}>
-              <span className={styles.shopName}>{leg.shop.name}</span>
+              <span className={styles.shopName}>{shopName(leg.shop)}</span>
               <span className={styles.meta}>{describeLeg(leg, i, origin)}</span>
             </span>
             <button
               type="button"
               className={styles.chip}
               onClick={() => onRemove(leg.shop)}
-              aria-label={`${leg.shop.name}をまわる店リストから外す`}
+              aria-label={`${shopName(leg.shop)}をまわる店リストから外す`}
             >
               外す
             </button>

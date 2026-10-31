@@ -241,7 +241,7 @@ export function seoPages(shops) {
         noindex: allCandidates(list),
         count: list.length,
         crumbs: `<a href="/area/">都道府県</a>`,
-        content: `<p class="seo-lead">${listLead}</p>${primary(appLink(prefecture), `${prefecture}から 3 軒に絞る`)}<h2 class="seo-section">市区町村</h2>${cityLinks}${shopList(list)}`,
+        content: `<p class="seo-lead">${listLead}</p><div class="seo-actions">${primary(`/?${new URLSearchParams({ prefecture, view: "map" })}`, `${prefecture}の地図を開く`)}<a class="seo-secondary" href="${escape(appLink(prefecture))}">${prefecture}から 3 軒に絞る</a></div><h2 class="seo-section">市区町村</h2>${cityLinks}${shopList(list)}`,
       }),
     );
     if (!allCandidates(list)) indexed.push(path);

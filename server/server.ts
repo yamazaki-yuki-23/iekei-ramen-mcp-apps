@@ -37,9 +37,10 @@ import type { ServerDeps } from "./types/deps.ts";
 import type { ToolContext } from "./types/tool-context.ts";
 import { readEdgeLocation, readHostLocation } from "./utils/caller-location.ts";
 import { localizeOrigin } from "./utils/place-label.ts";
+import { withSameNamePlace } from "./utils/same-name-place.ts";
 import { RESOURCE_URI, UI_RESOURCE_META } from "./utils/tool-metadata.ts";
 
-const DEFAULT_SHOPS = shopsData as Shop[];
+const DEFAULT_SHOPS = withSameNamePlace(shopsData as Shop[]);
 
 /** 本番既定データの選択肢は起動時に一度だけ導出する。 */
 const DEFAULT_PREFECTURES = ALL_PREFECTURES.filter((p) =>
@@ -47,7 +48,7 @@ const DEFAULT_PREFECTURES = ALL_PREFECTURES.filter((p) =>
 );
 
 export function createServer(deps: ServerDeps = {}): McpServer {
-  const dataset = deps.shops ?? DEFAULT_SHOPS;
+  const dataset = deps.shops ? withSameNamePlace(deps.shops) : DEFAULT_SHOPS;
   // 店名の券売機に並べるブランド（#144）。判定した結果の軒数が多い順。
   const brands = topBrands(dataset);
   const brandsInCity = brandCounts(dataset);

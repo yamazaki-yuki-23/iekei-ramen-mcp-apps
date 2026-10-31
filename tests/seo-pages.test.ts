@@ -237,7 +237,13 @@ describe("県・市区町村のページ（#255）", () => {
     expect(html).toContain(
       "地図の記載とブランドから集めた一覧です。違う店を見つけたら、店のページから教えてください。",
     );
-    expect(html).toContain(">神奈川県から 3 軒に絞る</a>");
+    // 主ボタンは地図、3 軒に絞るのは次の操作（#307。説明文の「地図と市区町村から探せます」に合わせる）。
+    expect(html).toContain(
+      'href="/?prefecture=%E7%A5%9E%E5%A5%88%E5%B7%9D%E7%9C%8C&amp;view=map">神奈川県の地図を開く</a>',
+    );
+    expect(html).toContain(
+      'class="seo-secondary" href="/?prefecture=%E7%A5%9E%E5%A5%88%E5%B7%9D%E7%9C%8C">神奈川県から 3 軒に絞る</a>',
+    );
     expect(html).not.toContain("押して、発券");
     const city = seoPages(shops).files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")!;
     expect(city).toContain(">横浜市の店を一覧で見る</a>");
@@ -277,6 +283,11 @@ describe("Webの検索条件リンク", () => {
     // 県だけなら、その県の券売機（迷ったら）で開く（#152。都道府県のページの発券キー）。
     expect(webEntry("?prefecture=神奈川県")).toEqual({
       name: "decide-iekei-ramen",
+      arguments: { prefecture: "神奈川県" },
+    });
+    // 県と view=map なら、その県の地図で開く（#307。都道府県のページの「地図を開く」）。
+    expect(webEntry("?prefecture=神奈川県&view=map")).toEqual({
+      name: "show-iekei-ramen-map",
       arguments: { prefecture: "神奈川県" },
     });
     expect(webEntry("?keyword=吉村家")).toEqual({

@@ -24,6 +24,7 @@ import { TASTES } from "../../../utils/labels";
 import { formatDistance } from "../../../utils/geo";
 import { addMapImages, ROUTE_STOP_MAX } from "./map-images";
 import { FONT_MEDIUM, LOCAL_FONTS, MAP_ATTRIBUTION, mapStyle } from "../utils/map-style";
+import { shopName } from "../../../utils/shop-name";
 
 /**
  * 地図に何をどう描くか（#246 で Leaflet から MapLibre へ）。
@@ -446,14 +447,15 @@ export function focusWithoutScrolling(map: MapLibreMap): () => void {
 const viaKeyboard = (e: MouseEvent) => e.detail === 0;
 
 function shopLabel(shop: Shop, visited: boolean): string {
-  return `${shop.name}（${TASTES[shop.taste].label}${visited ? "・行った店" : ""}）`;
+  // 名前に町名の括弧が付くことがあるので（#307）、味は括弧でなく読点で続ける。
+  return `${shopName(shop)}、${TASTES[shop.taste].label}${visited ? "・行った店" : ""}`;
 }
 
 /** ピンに触れたときの札（食券と同じ形）。店名（太字）／味（参考）・直線距離・行った店。 */
 function tipContent(shop: Shop, visited: boolean): HTMLElement {
   const el = document.createElement("span");
   const name = document.createElement("strong");
-  name.textContent = shop.name;
+  name.textContent = shopName(shop);
   const sub = document.createElement("span");
   const parts = [
     shop.taste === "unknown" ? "味はまだ分けていない" : `${TASTES[shop.taste].label}（参考）`,
@@ -550,7 +552,10 @@ export function drawShops(
         const mark = document.createElement("span");
         mark.className = "route-stop-pin";
         mark.setAttribute("role", "img");
-        mark.setAttribute("aria-label", `まわる店の ${stop} 軒目: ${shop.name}（いまの結果の外）`);
+        mark.setAttribute(
+          "aria-label",
+          `まわる店の ${stop} 軒目: ${shopName(shop)}（いまの結果の外）`,
+        );
         mark.dataset.stop = String(stop);
         place(mark, shop.lat, shop.lon);
         return;
