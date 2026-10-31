@@ -25,7 +25,7 @@ test.describe("検索フォーム", () => {
     await waitForApp(app);
 
     await expect(app.getByRole("heading", { name: /全国の家系ラーメン/ })).toBeVisible();
-    await expect(app.getByText(/判定した結果の \d+ 軒/)).toBeVisible();
+    await expect(app.getByText(/掲載 \d+ 軒/)).toBeVisible();
     expect(await shopCards(app).count()).toBeGreaterThan(10);
   });
 
@@ -1783,7 +1783,7 @@ test.describe("この範囲の店を出す", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/判定した結果の \d+ 軒/)
+        .getByText(/掲載 \d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -1859,7 +1859,7 @@ test.describe("隣の世界まで動かしたとき", () => {
     await expect
       .poll(async () => {
         const text = await app
-          .getByText(/判定した結果の \d+ 軒/)
+          .getByText(/掲載 \d+ 軒/)
           .first()
           .textContent();
         return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -1914,7 +1914,7 @@ test.describe("範囲と他の条件の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/判定した結果の \d+ 軒/)
+        .getByText(/掲載 \d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -2030,7 +2030,7 @@ test.describe("範囲と他の条件の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/判定した結果の \d+ 軒/)
+        .getByText(/掲載 \d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -2105,7 +2105,7 @@ test.describe("まわる店と範囲の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/判定した結果の \d+ 軒/)
+        .getByText(/掲載 \d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -2135,7 +2135,7 @@ test.describe("まわる店と範囲の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/判定した結果の \d+ 軒/)
+        .getByText(/掲載 \d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
