@@ -8,6 +8,7 @@ import { ShopCaveat } from "./ShopCaveat";
 import { Pending } from "../../../components/Pending";
 import { useSlow } from "../../../hooks/use-slow";
 import { skeletonShops } from "../../../utils/skeleton";
+import { shopName } from "../../../utils/shop-name";
 
 const SHOWN = 6;
 
@@ -108,7 +109,7 @@ export function ShopPicker({
                   onPick(s);
                 }}
               >
-                <strong>{s.name}</strong>
+                <strong>{shopName(s)}</strong>
                 <span>
                   {s.city ?? s.prefecture}
                   {s.distanceKm !== undefined && `・直線 ${formatDistance(s.distanceKm)}`}

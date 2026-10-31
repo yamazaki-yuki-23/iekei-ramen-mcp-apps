@@ -17,6 +17,9 @@ export function webEntry(search: string) {
     (keyword && keyword.length > 100)
   )
     return HOME;
+  // 都道府県のページの「〇〇県の地図を開く」の行き先（#307）。その県にズームした地図で開く。
+  if (pref && !keyword && params.get("view") === "map")
+    return { name: "show-iekei-ramen-map", arguments: { prefecture: pref } };
   /*
    * 県だけなら、その県の券売機（「迷ったら」の 3 軒）で開く（#152）。都道府県のページの
    * 「〇〇県で発券する」の行き先。市区町村・店名が付くときは一覧（検索）で開く。

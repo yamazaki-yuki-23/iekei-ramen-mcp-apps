@@ -1626,7 +1626,7 @@ test.describe("塊の中身に行き着けること", () => {
     const pin = app.locator(".shop-pin").first();
     await expect(pin).toHaveJSProperty("tabIndex", 0);
     const label = await pin.getAttribute("aria-label");
-    expect(label).toMatch(/（(直系・濃厚|クリーミー|チェーン・万人向け|味は未判定)）$/);
+    expect(label).toMatch(/、(直系・濃厚|クリーミー|チェーン・万人向け|味は未判定)$/);
 
     await pin.focus();
     await page.keyboard.press("Enter");
@@ -1673,7 +1673,7 @@ test.describe("塊の中身に行き着けること", () => {
     });
     let target = outside.first();
     for (const pin of await outside.all()) {
-      const name = (await pin.getAttribute("aria-label"))!.replace(/（.*$/, "");
+      const name = (await pin.getAttribute("aria-label"))!.replace(/(（[^（）]*）)?、.*$/, "");
       if (!inCluster.includes(name)) {
         target = pin;
         break;

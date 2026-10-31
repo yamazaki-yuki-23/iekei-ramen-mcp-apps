@@ -16,6 +16,8 @@ export interface Shop {
   prefecture: string;
   city?: string;
   address?: string;
+  /** 同じ店名の店がほかにあるときだけ入る、店名に添える町名か市区町村（#307）。サーバーが住所から付ける。 */
+  place?: string;
   lat: number;
   lon: number;
   openingHours?: string;

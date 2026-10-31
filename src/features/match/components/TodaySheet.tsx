@@ -4,6 +4,7 @@ import styles from "../styles/match.module.css";
 import { mapUrl } from "../utils/map-url";
 import { Share } from "./Share";
 import { Sheet } from "./Sheet";
+import { shopName } from "../../../utils/shop-name";
 
 /** onClear は「行きたい」リストから開いたときだけ渡す（何軒でも空にできるように、#180）。 */
 export function TodaySheet({
@@ -16,7 +17,7 @@ export function TodaySheet({
   onClear?(): void;
 }) {
   return (
-    <Sheet title={`今日は「${shop.name}」`}>
+    <Sheet title={`今日は「${shopName(shop)}」`}>
       <p>
         {shop.distanceKm !== undefined && `直線 ${formatDistance(shop.distanceKm)}。`}
         初めてなら、麺の硬さも味の濃さも油の量も「普通」で頼むのが定番です。
@@ -39,7 +40,7 @@ export function TodaySheet({
           </button>
         )}
       </div>
-      <Share names={[shop.name]} />
+      <Share names={[shopName(shop)]} />
     </Sheet>
   );
 }

@@ -59,7 +59,7 @@ test("訪問印だけの更新はクラスタとピンを保持し、焦点・�
   await page.addScriptTag({ content: script });
   await page.waitForFunction(() => (window.mapTest.counts.markers ?? 0) > 0);
   const name = await page.evaluate(() => window.mapTest.shop.name);
-  const pin = page.getByRole("button", { name: new RegExp(`^${name}（`) });
+  const pin = page.getByRole("button", { name: new RegExp(`^${name}、`) });
   await expect(pin).toHaveCount(1);
   // 同一DOM要素を保持することを調べる。古い要素が消えても通るロケータでは測らない。
   const element = await pin.elementHandle();

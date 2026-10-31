@@ -117,6 +117,8 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 | `server/lib/visits.ts`                                                  | 訪問記録の読み書き（D1）。SQL はここだけ                                      |
 | `src/utils/progress.ts`                                                 | 制覇率。順位も称号も作らない                                                  |
 | `src/features/search/utils/same-name.ts`                                | 同名の店が並ぶときだけ、名前の隣に出す地名を決める                            |
+| `server/utils/same-name-place.ts`                                       | 全データで同名の店に、店名だけを出す所で添える町名（`place`）を付ける（#307） |
+| `src/utils/shop-name.ts`                                                | 店名だけを出す所の名前（町名を添える）                                        |
 | `migrations/`                                                           | D1 のスキーマ（デプロイ時に適用）                                             |
 | `scripts/data/overpass-query.mjs`                                       | Overpass のクエリと取得の手順。拾う条件を変えるならここだけ見る               |
 | `scripts/data/fetch-shops.mjs`                                          | OpenStreetMap から店舗データを取得                                            |

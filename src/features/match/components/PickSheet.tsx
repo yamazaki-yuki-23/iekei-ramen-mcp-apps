@@ -4,6 +4,7 @@ import { MAX_STOPS } from "../../../utils/route";
 import type { Shop } from "../../../types";
 import styles from "../styles/match.module.css";
 import { Sheet } from "./Sheet";
+import { shopName } from "../../../utils/shop-name";
 
 export function PickSheet({
   shops,
@@ -38,7 +39,7 @@ export function PickSheet({
                 onChange={() => toggle(s.id)}
               />
               <span>
-                <label htmlFor={`want-${s.id}`}>{s.name}</label>
+                <label htmlFor={`want-${s.id}`}>{shopName(s)}</label>
                 <small>
                   {s.distanceKm !== undefined && `直線 ${formatDistance(s.distanceKm)}・`}
                   {s.city ?? s.prefecture}
