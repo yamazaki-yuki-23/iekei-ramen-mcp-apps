@@ -66,6 +66,7 @@ describe("workerdのWeb静的配信と既存API", () => {
       "/area/",
       "/area/kanagawa/",
       "/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/",
+      "/chain/%E7%94%BA%E7%94%B0%E5%95%86%E5%BA%97/",
       "/shop/node-1774529495/",
     ]) {
       const response = await request(path);
