@@ -40,7 +40,7 @@ describe("静的SEOページ", () => {
     expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/match/");
     // 家系カメラも検索に載せる（#242）。見本の段階は終わった。
     expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/camera/");
-    expect(files.get("/area/kanagawa/")).toContain("判定した結果の2軒");
+    expect(files.get("/area/kanagawa/")).toContain("神奈川県の家系ラーメン2軒");
     expect(files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toContain("未判定家");
     expect(files.get("/shop/node-123/")).not.toContain('name="robots" content="noindex"');
     expect(files.get("/shop/way-456/")).toContain('name="robots" content="noindex"');
@@ -226,14 +226,42 @@ describe("初めて来た人向けの店のページ（#255）", () => {
   });
 });
 
+describe("地域ページの題名と説明文（#306）", () => {
+  it("軒数と探し方を先に置き、「候補」「判定した結果」を書かない", () => {
+    const { files } = seoPages(shops);
+    const meta = (path: string) => {
+      const html = files.get(path)!;
+      return [
+        html.match(/<title>(.*?)<\/title>/)![1],
+        html.match(/name="description" content="([^"]*)"/)![1],
+      ];
+    };
+    expect(meta("/area/")).toEqual([
+      "家系ラーメン 2軒｜都道府県と地図から探す",
+      "家系ラーメン2軒を都道府県から探せます。今いる場所から近い 3 軒を地図で出すこともできます。",
+    ]);
+    expect(meta("/area/kanagawa/")).toEqual([
+      "神奈川県の家系ラーメン 2軒｜地図と市区町村から探す",
+      "神奈川県の家系ラーメン2軒を地図と市区町村から探せます。住所・Google マップの道順まで。",
+    ]);
+    expect(meta("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toEqual([
+      "神奈川県 横浜市の家系ラーメン 2軒｜地図と店舗一覧から探す",
+      "神奈川県 横浜市の家系ラーメン2軒を地図と店舗一覧から探せます。住所・Google マップの道順まで。",
+    ]);
+  });
+
+  it("営業時間は、地図の記載がある店を含む地域でだけ説明文に挙げる", () => {
+    const { files } = seoPages([{ ...shop, openingHours: "Mo-Su 11:00-22:00" }, shops[1]]);
+    expect(files.get("/area/kanagawa/")).toContain("住所・営業時間・Google マップの道順まで。");
+  });
+});
+
 describe("県・市区町村のページ（#255）", () => {
-  it("見出しは「〇〇の家系ラーメン」、札は軒数だけ。題名と説明文は変えない", () => {
+  it("見出しは「〇〇の家系ラーメン」、札は軒数だけ", () => {
     const html = seoPages(shops).files.get("/area/kanagawa/")!;
     expect(html).toContain(
       '<h1>神奈川県の<wbr>家系ラーメン</h1><span class="seo-count">2 軒</span>',
     );
-    expect(html).toContain("<title>神奈川県の家系ラーメンの候補一覧</title>");
-    expect(html).toContain("神奈川県で判定した結果の2軒。");
     expect(html).toContain(
       "地図の記載とブランドから集めた一覧です。違う店を見つけたら、店のページから教えてください。",
     );
