@@ -1,7 +1,8 @@
 import type { Shop } from "../../src/types/index.ts";
 
 /**
- * 住所の先頭の語から町名を取る（#307）。「守山区苗代一丁目14-4」→「苗代」、「一番町3丁目」→「一番町」。
+ * 住所の先頭の語から町名を取る（#307）。「守山区苗代一丁目14-4」→「苗代」、「一番町3丁目」→「一番町」、
+ * 「北15条西4」→「北15条」。
  * 区・郡と、丁目・番地を外す。番地しか無い住所（「3-11」）からは何も取らない。
  */
 export function townOf(address: string | undefined): string | undefined {
@@ -10,7 +11,8 @@ export function townOf(address: string | undefined): string | undefined {
   const town = head
     .replace(/^.+?[区郡](?=.)/, "")
     .replace(/[一二三四五六七八九十]+丁目.*$/, "")
-    .replace(/[0-9０-９].*$/, "");
+    // 最初の数字の手前まで。札幌の「北15条西4」は「北15条」までが町名なので、条の数字は残す。
+    .match(/^[^0-9０-９]*(?:[0-9０-９]+条)?/)?.[0];
   return town || undefined;
 }
 

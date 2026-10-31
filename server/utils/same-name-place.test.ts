@@ -20,6 +20,8 @@ describe("townOf（#307）", () => {
     expect(townOf("一番町3丁目11-14 1F")).toBe("一番町");
     expect(townOf("城の里")).toBe("城の里");
     expect(townOf("南中丸")).toBe("南中丸");
+    // 札幌の条は町名の一部（Codex の指摘、PR #310）。
+    expect(townOf("北15条西4")).toBe("北15条");
   });
 
   it("番地だけ・住所無しからは何も取らない", () => {
