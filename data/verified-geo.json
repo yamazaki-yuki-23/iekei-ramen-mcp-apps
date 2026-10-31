@@ -2109,5 +2109,12 @@
     "lat": 35.488049,
     "lon": 139.624695,
     "city": "横浜市"
+  },
+  "大阪府松原市天美西5丁目130-4": {
+    "source": "chain-list",
+    "url": "https://shop.machidashoten.com/japan/all/",
+    "lat": 34.589036,
+    "lon": 135.527137,
+    "city": "松原市"
   }
 }
