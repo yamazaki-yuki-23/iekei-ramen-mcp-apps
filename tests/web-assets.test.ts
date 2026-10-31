@@ -58,7 +58,12 @@ describe("workerdのWeb静的配信と既存API", () => {
     for (const path of ["/connect.js", "/connect.css", "/seo-tokens.css"]) {
       const asset = await request(path);
       expect(asset.status).toBe(200);
-      expect((await asset.arrayBuffer()).byteLength).toBeGreaterThan(0);
+      const state = { url: asset.url, used: asset.bodyUsed, locked: asset.body?.locked, enc: asset.headers.get("Content-Encoding"), mfEnc: asset.headers.get("MF-Content-Encoding"), len: asset.headers.get("Content-Length"), type: asset.headers.get("Content-Type"), paths };
+      try {
+        expect((await asset.arrayBuffer()).byteLength).toBeGreaterThan(0);
+      } catch (error) {
+        throw new Error(`DIAG ${JSON.stringify(state)} ${String(error)}`);
+      }
     }
   });
   it("SEOページ・sitemap・robots・faviconを静的に配信する", async () => {
@@ -94,7 +99,7 @@ describe("workerdのWeb静的配信と既存API", () => {
     expect(svg.status).toBe(200);
     expect(await svg.text()).toContain("<svg");
   });
-  it("ルートのHTMLと参照先JS・CSSを配信する", async () => {
+  it.each(Array.from({ length: 25 }, (_, i) => i))("ルートのHTMLと参照先JS・CSSを配信する %i", async () => {
     const response = await request("/");
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("text/html");
