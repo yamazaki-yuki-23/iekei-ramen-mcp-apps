@@ -108,6 +108,10 @@ describe("静的SEOページ", () => {
     const result = seoPages([manual]);
     expect(result.counts.municipalities).toBe(0);
     expect(result.files.has("/shop/manual-0123456789abcdef0123/")).toBe(true);
+    // 県の一覧からも落とさない。地名は作らず、市区町村のページへのリンクも付けない（Codex の指摘、PR #319）。
+    const pref = result.files.get("/area/kanagawa/")!;
+    expect(pref).toContain('href="/shop/manual-0123456789abcdef0123/"');
+    expect(pref).toContain("<h3>市区町村の記載なし<span>1 軒</span></h3></div>");
     expect(() => seoPages([shop, shop])).toThrow();
     expect(() => seoPages([{ ...shop, id: "../../mcp" }])).toThrow();
     expect(() => seoPages([{ ...shop, city: "../mcp" }])).toThrow();

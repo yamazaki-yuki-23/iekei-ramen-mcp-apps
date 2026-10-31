@@ -183,7 +183,7 @@ function shopList(shops) {
  * 市区町村のページへのリンクは見出しの横に残す。
  */
 function cityShopList(groups) {
-  return `<h2 class="seo-section">店舗</h2>${groups.map(({ id, href, city, shops }) => `<section class="seo-city" id="${id}"><div class="seo-city-head"><h3>${escape(city)}<span>${shops.length} 軒</span></h3><a class="seo-sub-link" href="${href}">${escape(city)}のページ</a></div>${shopCards(shops)}</section>`).join("")}<p class="seo-caveat">${note}</p>`;
+  return `<h2 class="seo-section">店舗</h2>${groups.map(({ id, href, city, shops }) => `<section class="seo-city" id="${id}"><div class="seo-city-head"><h3>${escape(city)}<span>${shops.length} 軒</span></h3>${href ? `<a class="seo-sub-link" href="${href}">${escape(city)}のページ</a>` : ""}</div>${shopCards(shops)}</section>`).join("")}<p class="seo-caveat">${note}</p>`;
 }
 
 /** 地域のチップ。「判定した結果の〇軒」を行ごとに繰り返さず、軒数だけ添える。 */
@@ -253,6 +253,10 @@ export function seoPages(shops) {
         city: group[0].city,
         shops: group,
       }));
+    // 市区町村の無い店（手動で足した店など）も県の一覧から落とさない。地名は作らず、ページへのリンクも付けない。
+    const noCity = list.filter((shop) => !shop.city);
+    if (noCity.length > 0)
+      groups.push({ id: `city-${groups.length + 1}`, city: "市区町村の記載なし", shops: noCity });
     const cityLinks = chips(
       groups.map((group) => ({
         href: `#${group.id}`,
