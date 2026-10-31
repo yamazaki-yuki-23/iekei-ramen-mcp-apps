@@ -10,12 +10,12 @@ const shops = JSON.parse(await readFile(new URL("../../data/shops.json", import.
 const records = JSON.parse(
   await readFile(new URL("../../data/verified.json", import.meta.url), "utf8"),
 );
-const chainOf = new Map(
+const recordOf = new Map(
   records
-    .filter((record) => record.basis === "chain" && record.status === "open")
-    .map((record) => [recordShopId(record), record.chain]),
+    .filter((record) => record.status === "open")
+    .map((record) => [recordShopId(record), record]),
 );
-const { files, counts } = seoPages(shops, chainOf);
+const { files, counts } = seoPages(shops, recordOf);
 const legal = legalPages({
   privacy: await readFile(new URL("../../docs/legal/privacy-policy.md", import.meta.url), "utf8"),
   terms: await readFile(new URL("../../docs/legal/terms.md", import.meta.url), "utf8"),
