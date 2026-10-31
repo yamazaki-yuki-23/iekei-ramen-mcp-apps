@@ -178,6 +178,10 @@ function chips(items) {
   return `<ul class="seo-chips">${items.map(({ href, label, count }) => `<li><a href="${href}">${escape(label)}<span>${count} 軒</span></a></li>`).join("")}</ul>`;
 }
 
+/** 説明文の締め。営業時間は地図の記載がある店にしか出ないので、1 軒も無い地域では挙げない（#306）。 */
+const reach = (list) =>
+  `住所・${list.some((shop) => shop.openingHours) ? "営業時間・" : ""}Google マップの道順まで。`;
+
 /** WorkerのAPIへ変更を加えず、ビルド時にだけHTMLとsitemapを生成する。 */
 export function seoPages(shops) {
   const files = new Map();
@@ -216,9 +220,9 @@ export function seoPages(shops) {
   files.set(
     "/area/",
     page({
-      title: "都道府県から家系ラーメンの候補を探す",
+      title: `家系ラーメン ${shops.length}軒｜都道府県と地図から探す`,
       heading: ["都道府県から", "家系ラーメンの", "候補を", "探す"],
-      description: `判定した結果の${shops.length}軒を都道府県から探せます。家系ではない店が含まれている可能性があります。`,
+      description: `家系ラーメン${shops.length}軒を都道府県から探せます。今いる場所から近い 3 軒を地図で出すこともできます。`,
       path: "/area/",
       count: shops.length,
       content: `${primary("/", "近くの 3 軒を出す")}<h2 class="seo-section">都道府県</h2>${prefLinks}<p class="seo-caveat">${note}</p>`,
@@ -234,9 +238,9 @@ export function seoPages(shops) {
     files.set(
       path,
       page({
-        title: `${prefecture}の家系ラーメンの候補一覧`,
+        title: `${prefecture}の家系ラーメン ${list.length}軒｜地図と市区町村から探す`,
         heading: [`${prefecture}の`, "家系ラーメン"],
-        description: `${prefecture}で判定した結果の${list.length}軒。店舗情報・地域と地図を確認できます。家系ではない店が含まれている可能性があります。`,
+        description: `${prefecture}の家系ラーメン${list.length}軒を地図と市区町村から探せます。${reach(list)}`,
         path,
         noindex: allCandidates(list),
         count: list.length,
@@ -252,9 +256,9 @@ export function seoPages(shops) {
     files.set(
       path,
       page({
-        title: `${label}の家系ラーメンの候補一覧`,
+        title: `${label}の家系ラーメン ${list.length}軒｜地図と店舗一覧から探す`,
         heading: [`${prefecture} `, `${city}の`, "家系ラーメン"],
-        description: `${label}で判定した結果の${list.length}軒。店舗情報と地図を確認できます。家系ではない店が含まれている可能性があります。`,
+        description: `${label}の家系ラーメン${list.length}軒を地図と店舗一覧から探せます。${reach(list)}`,
         path,
         noindex: thinCity(list),
         structured: breadcrumbs([
