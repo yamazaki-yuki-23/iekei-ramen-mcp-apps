@@ -278,6 +278,35 @@ describe("県・市区町村のページ（#255）", () => {
   });
 });
 
+describe("県のページの店の一覧を市区町村で区切る（#317）", () => {
+  const list = [
+    { ...shop, id: "node/1", city: "鎌倉市" },
+    { ...shop, id: "node/2", city: "横浜市" },
+    { ...shop, id: "node/3", city: "横浜市" },
+    { ...shop, id: "node/4", city: "大和市" },
+    { ...shop, id: "node/5", city: "大和市" },
+    { ...shop, id: "node/6", city: "横浜市" },
+  ];
+  const html = seoPages(list).files.get("/area/kanagawa/")!;
+
+  it("市区町村の見出しに軒数を添え、軒数の多い順に並べる", () => {
+    const heads = [...html.matchAll(/<h3>(.+?)<span>(\d+) 軒<\/span><\/h3>/g)].map(
+      (m) => `${m[1]} ${m[2]}`,
+    );
+    expect(heads).toEqual(["横浜市 3", "大和市 2", "鎌倉市 1"]);
+  });
+
+  it("上のチップはページの中の見出しへ、見出しの横から市区町村のページへ行ける", () => {
+    expect(html).toContain('<a href="#city-1">横浜市<span>3 軒</span></a>');
+    expect(html).toContain('<section class="seo-city" id="city-1">');
+    expect(html).toContain('href="/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/">横浜市のページ</a>');
+  });
+
+  it("但し書きは一覧の下に 1 回だけ", () => {
+    expect(html.split('class="seo-caveat"').length - 1).toBe(1);
+  });
+});
+
 describe("薄いページと 404（#169）", () => {
   it("未判定でない店が 1 軒だけの市区町村は noindex・sitemap 外、2 軒なら載せる", () => {
     const one = seoPages(shops);

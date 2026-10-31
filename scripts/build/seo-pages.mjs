@@ -168,9 +168,22 @@ function shopContent(shop, shops) {
   return `<p class="seo-lead">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p>${factList}<div class="seo-actions">${primary(directions, "Google マップで道順を見る", true)}<a class="seo-secondary" href="${escape(appLink(shop.prefecture, shop.name))}">注文のしかたを見る<small>まわる店にも追加できます</small></a></div><h2 class="seo-section">この店から近い家系（直線距離）</h2><ul class="seo-nearby">${near}</ul>${report}${about}<script src="/shop-report.js" defer></script>`;
 }
 
-/** 店のカード（食券の形）。但し書きは一覧のすぐ下に 1 回。 */
+/** 店のカード（食券の形）。 */
+const shopCards = (shops) =>
+  `<ul class="seo-cards">${shops.map((shop) => `<li><a class="seo-card" href="${shopPath(shop)}"><strong>${escape(shop.name)}</strong><span>${escape([region(shop), shop.address].filter(Boolean).join(" "))}</span></a></li>`).join("")}</ul>`;
+
+/** 店の一覧。但し書きは一覧のすぐ下に 1 回。 */
 function shopList(shops) {
-  return `<h2 class="seo-section">店舗</h2><ul class="seo-cards">${shops.map((shop) => `<li><a class="seo-card" href="${shopPath(shop)}"><strong>${escape(shop.name)}</strong><span>${escape([region(shop), shop.address].filter(Boolean).join(" "))}</span></a></li>`).join("")}</ul><p class="seo-caveat">${note}</p>`;
+  return `<h2 class="seo-section">店舗</h2>${shopCards(shops)}<p class="seo-caveat">${note}</p>`;
+}
+
+/**
+ * 県のページの店の一覧（#317）。区切りが無いと「横浜家系ラーメン」が続き、目当ての市が
+ * どこから始まるか分からなかった。市区町村の見出しで区切り、上のチップからページの中で移る。
+ * 市区町村のページへのリンクは見出しの横に残す。
+ */
+function cityShopList(groups) {
+  return `<h2 class="seo-section">店舗</h2>${groups.map(({ id, href, city, shops }) => `<section class="seo-city" id="${id}"><div class="seo-city-head"><h3>${escape(city)}<span>${shops.length} 軒</span></h3><a class="seo-sub-link" href="${href}">${escape(city)}のページ</a></div>${shopCards(shops)}</section>`).join("")}<p class="seo-caveat">${note}</p>`;
 }
 
 /** 地域のチップ。「判定した結果の〇軒」を行ごとに繰り返さず、軒数だけ添える。 */
@@ -230,10 +243,22 @@ export function seoPages(shops) {
   );
   for (const [prefecture, list] of prefs) {
     const path = prefPath(prefecture);
+    // 軒数の多い順（同数は名前順）。チップと一覧の見出しを同じ順に並べる（#317）。
+    const groups = [...cities]
+      .filter(([, group]) => group[0].prefecture === prefecture)
+      .toSorted(([, a], [, b]) => b.length - a.length || a[0].city.localeCompare(b[0].city, "ja"))
+      .map(([href, group], i) => ({
+        id: `city-${i + 1}`,
+        href,
+        city: group[0].city,
+        shops: group,
+      }));
     const cityLinks = chips(
-      [...cities]
-        .filter(([, group]) => group[0].prefecture === prefecture)
-        .map(([city, group]) => ({ href: city, label: group[0].city, count: group.length })),
+      groups.map((group) => ({
+        href: `#${group.id}`,
+        label: group.city,
+        count: group.shops.length,
+      })),
     );
     files.set(
       path,
@@ -245,7 +270,7 @@ export function seoPages(shops) {
         noindex: allCandidates(list),
         count: list.length,
         crumbs: `<a href="/area/">都道府県</a>`,
-        content: `<p class="seo-lead">${listLead}</p><div class="seo-actions">${primary(`/?${new URLSearchParams({ prefecture, view: "map" })}`, `${prefecture}の地図を開く`)}<a class="seo-secondary" href="${escape(appLink(prefecture))}">${prefecture}から 3 軒に絞る</a></div><h2 class="seo-section">市区町村</h2>${cityLinks}${shopList(list)}`,
+        content: `<p class="seo-lead">${listLead}</p><div class="seo-actions">${primary(`/?${new URLSearchParams({ prefecture, view: "map" })}`, `${prefecture}の地図を開く`)}<a class="seo-secondary" href="${escape(appLink(prefecture))}">${prefecture}から 3 軒に絞る</a></div><h2 class="seo-section">市区町村</h2>${cityLinks}${cityShopList(groups)}`,
       }),
     );
     if (!allCandidates(list)) indexed.push(path);
