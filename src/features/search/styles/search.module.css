@@ -328,17 +328,6 @@
 }
 
 /*
- * 枠も塗りも無いボタン。記録や解除のように、あっても目立たせないもの。
- * 押せる大きさ（44px）は他のボタンと同じに保つ。
- */
-.buttonQuiet {
-  composes: buttonSecondary;
-  border-color: transparent;
-  background: transparent;
-  color: var(--color-text-muted);
-}
-
-/*
  * 入っている状態のボタン（「行った」）。
  *
  * **第 1 ボタンの塗りは使わない。** `.button` と同じ塗りにすると、一番強い
@@ -1148,11 +1137,12 @@
   box-shadow: none;
 }
 
+/* 上の余白は店名の行と操作の行を離すため。0 だとボタンが店名に張り付いて見えた（#330）。 */
 .selected {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: 0 var(--space-4) var(--space-4);
+  padding: var(--space-4);
 }
 
 .selectedActions {
@@ -1301,7 +1291,8 @@
   display: grid;
   place-items: center;
   min-width: 4rem;
-  margin: calc(var(--space-3) * -1) 0;
+  /* カードの上下の余白（--space-2）と同じだけ伸ばす。大きいと、選んだときに点線が詳細のボタンまで届いた（#330）。 */
+  margin: calc(var(--space-2) * -1) 0;
   border-right: var(--border-width-strong) dashed var(--color-ink);
   border-radius: calc(var(--radius-md) - var(--border-width-strong)) 0 0
     calc(var(--radius-md) - var(--border-width-strong));
@@ -2034,8 +2025,9 @@
   overflow-wrap: anywhere;
 }
 
+/* 余白は見出し（summary）だけに持たせる。ここにも付けると、詳細の中で報告の上だけが広く空いた（#330）。 */
 .report {
-  padding: var(--space-3) 0;
+  padding: 0;
 }
 
 /* 左の余白は付けない。ほかの見出し・本文と左端をそろえる。 */
@@ -2079,7 +2071,6 @@
 .key:focus-visible,
 .issue:focus-visible,
 .modeLink:focus-visible,
-.buttonQuiet:focus-visible,
 .buttonDanger:focus-visible,
 .chip:focus-visible,
 .card:focus-visible,

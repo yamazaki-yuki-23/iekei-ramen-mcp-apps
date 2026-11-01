@@ -2,6 +2,9 @@ import { ORDER_SETS, PREFERENCES, SIDE_TIPS } from "../utils/order-guide";
 import styles from "../styles/search.module.css";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個になる）。 */
+/** 店のページから `/#order` で開く（scripts/build/seo-pages.mjs）。 */
+export const ORDER_GUIDE_ID = "order";
+
 const DISCLAIMER =
   "ここに書いたのは家系で一般的とされる作法です。店ごとの決まりは持っていないので、実際の呼び方や有無はお店の掲示に従ってください。";
 
@@ -9,12 +12,33 @@ const DISCLAIMER =
  * 注文のカンペ。
  *
  * 店を探すより、券売機の前と「お好みは？」で止まる人の方が多い。ここだけは
- * データが無くても助けられるので、選択中の店の下に畳んで置いている。
- * 中身は一般的な作法で、店ごとの流儀ではない（データを持っていない）。
+ * データが無くても助けられる。中身は一般的な作法で、店ごとの流儀ではない（データを持っていない）ので、
+ * 店の詳細ごとには出さず 1 か所に置く（#330。Web は「家系とは」の中、MCP Apps は結果の下）。
+ *
+ * `open` は店のページの「注文のしかたを見る」（`/#order`）から来たとき。開いて、ここまで移る。
+ * 結果が届くたびにこの部品は作り直されるので、URL に `#order` がある間は移り直す（最初の結果で
+ * 上が伸びても見失わない）。利用者が操作したら `#order` を消し、そのあとの検索では引き戻さない
+ * （残すと、検索するたびにここへ引き戻された。#330 のレビュー）。
  */
-export function OrderGuide() {
+function arrive(el: HTMLDetailsElement | null) {
+  if (el && window.location.hash === `#${ORDER_GUIDE_ID}`) el.scrollIntoView({ block: "start" });
+}
+
+const clearArrival = () =>
+  history.replaceState(history.state, "", window.location.pathname + window.location.search);
+if (typeof window !== "undefined" && window.location.hash === `#${ORDER_GUIDE_ID}`) {
+  for (const type of ["pointerdown", "keydown", "wheel", "touchstart"])
+    window.addEventListener(type, clearArrival, { once: true, capture: true, passive: true });
+}
+
+export function OrderGuide({ open }: { open?: boolean }) {
   return (
-    <details className={styles.guide}>
+    <details
+      id={ORDER_GUIDE_ID}
+      className={styles.guide}
+      open={open}
+      ref={open ? arrive : undefined}
+    >
       <summary className={styles.guideSummary}>注文のしかた（お好み・卓上・ライス）</summary>
 
       <div className={styles.guideBody}>

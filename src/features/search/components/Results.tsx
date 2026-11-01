@@ -9,6 +9,7 @@ import {
 import type { AppPayload, Bounds, SearchMode, Shop } from "../../../types";
 import type { ResultLook } from "../../../utils/skeleton";
 import { DecidePanel } from "./DecidePanel";
+import { ORDER_GUIDE_ID } from "./OrderGuide";
 import { Pending } from "../../../components/Pending";
 import type { FullscreenControl } from "./MapToolbar";
 import { preloadMapView } from "../lib/lazy-map";
@@ -120,6 +121,8 @@ function DecideStage({
    */
   useEffect(() => {
     const el = out.current;
+    // 店のページから注文のしかたへ来たとき（`/#order`）は、そちらへ移ったのを戻さない（#330）。
+    if (window.location.hash === `#${ORDER_GUIDE_ID}`) return;
     if (shown && el && el.getBoundingClientRect().bottom < 0) el.scrollIntoView({ block: "start" });
   }, [shown]);
   /*

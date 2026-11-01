@@ -179,7 +179,7 @@ function shopContent(shop, shops, record) {
     .join("");
   const report = `<section class="seo-report" aria-labelledby="report-title" data-report-shop="${escape(shop.id)}"><h2 id="report-title">この店の情報、違っていませんか？</h2><div class="seo-report-buttons">${REPORT_KINDS.map(({ kind, label }) => `<button type="button" data-kind="${kind}">${escape(label)}</button>`).join("")}</div><p class="seo-note">サインインは不要です。押すとすぐ送られます。</p><p class="seo-report-status" role="status"></p></section>`;
   const about = `<section class="seo-about" aria-labelledby="about-title"><h2 id="about-title">この情報について</h2><dl>${[["家系かどうか", basisLabel(record)], ...ABOUT].map(([term, text]) => `<div><dt>${term}</dt><dd>${escape(text)}</dd></div>`).join("")}</dl></section>`;
-  return `<p class="seo-lead">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p>${factList}<div class="seo-actions">${primary(directions, "Google マップで道順を見る", true)}<a class="seo-secondary" href="${escape(appLink(shop.prefecture, shop.name))}">注文のしかたを見る<small>まわる店にも追加できます</small></a></div><h2 class="seo-section">この店から近い家系（直線距離）</h2><ul class="seo-nearby">${near}</ul>${report}${about}<script src="/shop-report.js" defer></script>`;
+  return `<p class="seo-lead">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p>${factList}<div class="seo-actions">${primary(directions, "Google マップで道順を見る", true)}<a class="seo-secondary" href="/#order">注文のしかたを見る<small>お好み・卓上・ライス</small></a></div><h2 class="seo-section">この店から近い家系（直線距離）</h2><ul class="seo-nearby">${near}</ul>${report}${about}<script src="/shop-report.js" defer></script>`;
 }
 
 /** 店の一覧。但し書きは一覧のすぐ下に 1 回。 */

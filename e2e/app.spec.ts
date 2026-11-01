@@ -391,7 +391,7 @@ test.describe("迷ったら（3 軒に絞る）", () => {
     // hover の指定は別に枠を消すので、ポインタを外してから測る（乗せたままだと直す前も通る）。
     await page.mouse.move(0, 0);
     await expect(shopCards(app).first()).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
-    await app.getByRole("button", { name: "選択を解除" }).click();
+    await app.getByRole("button", { name: "閉じる", exact: true }).click();
     await expect(app.getByText(/ 1〜3 軒目$/)).toBeVisible();
 
     await app.getByRole("button", { name: "次の 3 軒を見る" }).click();
@@ -847,14 +847,14 @@ test.describe("モデルへの受け渡し", () => {
     await expect(contextText).toContainText(name);
   });
 
-  test("選択を解除するとモデルコンテキストを消す", async ({ page }) => {
+  test("詳細を閉じるとモデルコンテキストを消す", async ({ page }) => {
     const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
     await waitForApp(app);
 
     await shopCards(app).first().click();
     await expect(page.getByText("📋 Model Context")).toBeVisible();
 
-    await app.getByRole("button", { name: "選択を解除" }).click();
+    await app.getByRole("button", { name: "閉じる", exact: true }).click();
 
     await expect(app.getByRole("region", { name: "選択中の店舗" })).toHaveCount(0);
     await expect(page.getByText("📋 Model Context")).toHaveCount(0);
@@ -893,15 +893,20 @@ test.describe("モデルへの受け渡し", () => {
 });
 
 test.describe("注文のカンペ", () => {
-  test("店を選ぶとカンペが出て、開くと三つ巴が読める", async ({ page }) => {
+  test("結果の下に 1 か所だけあり、店の詳細には出さない。開くと三つ巴が読める（#330）", async ({
+    page,
+  }) => {
     const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
     await waitForApp(app);
 
     const guide = app.getByText("注文のしかた（お好み・卓上・ライス）");
-    await expect(guide).toHaveCount(0);
+    await expect(guide).toHaveCount(1);
 
     await shopCards(app).first().click();
-    await expect(guide).toBeVisible();
+    const selected = app.getByRole("region", { name: "選択中の店舗" });
+    await expect(selected).toBeVisible();
+    await expect(selected.getByText("注文のしかた（お好み・卓上・ライス）")).toHaveCount(0);
+    await expect(guide).toHaveCount(1);
 
     // 畳んである状態では中身を出さない
     await expect(app.getByRole("row", { name: /麺の硬さ/ })).toBeHidden();
@@ -916,7 +921,6 @@ test.describe("注文のカンペ", () => {
     const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
     await waitForApp(app);
 
-    await shopCards(app).first().click();
     await app.getByText("注文のしかた（お好み・卓上・ライス）").click();
 
     await expect(app.getByText("初めて")).toBeVisible();

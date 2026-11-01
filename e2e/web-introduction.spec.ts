@@ -247,3 +247,28 @@ test("キーボードだけで、券売機で選んで発券し、食券を開�
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Google マップで道順を見る" })).toBeFocused();
 });
+
+test("店のページの「注文のしかたを見る」（/#order）で、家系とはと注文のしかたが開いて見える（#330）", async ({
+  page,
+}) => {
+  await page.goto(`${WEB_URL}/#order`);
+  const order = page.locator("#order");
+  await expect(order).toHaveAttribute("open", "");
+  await expect(page.getByRole("row", { name: /麺の硬さ/ })).toBeInViewport();
+});
+
+test("/#order で来たあと、結果を入れ替えても注文のしかたへ引き戻さない（#330 のレビュー）", async ({
+  page,
+}) => {
+  await page.goto(`${WEB_URL}/#order`);
+  const order = page.locator("#order");
+  await expect(page.getByRole("row", { name: /麺の硬さ/ })).toBeInViewport();
+  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.getByRole("button", { name: /次の 3 軒/ }).click();
+  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => window.location.hash)).toBe("");
+  // 引き戻されると、注文のしかたが画面の上端に来る。押したボタンが見える位置で止まっている。
+  expect((await order.boundingBox())!.y).toBeGreaterThan(200);
+});

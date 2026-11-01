@@ -65,7 +65,7 @@ test("まわる店", async ({ page }) => {
     await app.getByRole("button", { name: "まわる店リストに入れる" }).click();
   }
   // 選択中のパネルを畳んで、順路だけを見せる。
-  await app.getByRole("button", { name: "選択を解除" }).click();
+  await app.getByRole("button", { name: "閉じる", exact: true }).click();
   await expect(app.getByRole("region", { name: "まわる店" })).toBeVisible();
   await shot(page, "route");
 });

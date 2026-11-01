@@ -52,7 +52,7 @@ test("デモ", async ({ page }) => {
   await shopCards(app).nth(0).click();
   await page.waitForTimeout(600);
   await app.getByRole("button", { name: "まわる店リストに入れる" }).click();
-  await app.getByRole("button", { name: "選択を解除" }).click();
+  await app.getByRole("button", { name: "閉じる", exact: true }).click();
   await expect(app.getByRole("region", { name: "まわる店" })).toBeVisible();
   await page.waitForTimeout(3000);
 
