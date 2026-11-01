@@ -178,12 +178,14 @@ describe("初めて来た人向けの店のページ（#255）", () => {
     expect(shopPage([shop])).not.toContain("<dt>電話</dt>");
   });
 
-  it("主のボタンは Google マップの道順、2 番目は注文のしかた（券売機の見出しは出さない）", () => {
+  it("主のボタンは Google マップの道順、2 番目はアプリの 1 か所の注文のしかた（#330）", () => {
     const html = shopPage([shop]);
     expect(html).toContain(
       '<a class="seo-primary" href="https://www.google.com/maps/dir/?api=1&amp;destination=35.46%2C139.62" target="_blank" rel="noopener noreferrer">Google マップで道順を見る</a>',
     );
-    expect(html).toContain("注文のしかたを見る<small>まわる店にも追加できます</small>");
+    expect(html).toContain(
+      '<a class="seo-secondary" href="/#order">注文のしかたを見る<small>お好み・卓上・ライス</small></a>',
+    );
     expect(html).not.toContain("この店の券売機");
     expect(html).not.toContain("この店をアプリで開く");
   });

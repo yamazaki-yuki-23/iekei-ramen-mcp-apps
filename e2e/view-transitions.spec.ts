@@ -44,11 +44,11 @@ test("店の詳細は、開くと焦点が移って開閉が読み上げで分�
   await expect(ticket).toHaveAttribute("aria-expanded", "false");
 });
 
-test("「選択を解除」で閉じても、焦点は元の札へ戻る（#212）", async ({ page }) => {
+test("「閉じる」で閉じても、焦点は元の札へ戻る（#212・#330）", async ({ page }) => {
   await page.goto(TOP);
   const ticket = page.locator("button[data-shop-id]").first();
   await ticket.click();
-  await page.getByRole("button", { name: "選択を解除" }).click();
+  await page.getByRole("button", { name: "閉じる", exact: true }).click();
   await expect(page.getByRole("region", { name: "選択中の店舗" })).toHaveCount(0);
   await expect(ticket).toBeFocused();
 });

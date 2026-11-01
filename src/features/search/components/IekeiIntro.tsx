@@ -6,10 +6,12 @@ import styles from "../styles/search.module.css";
 interface Props {
   open: boolean;
   onToggle: (open: boolean) => void;
+  /** 注文のしかたを開いて移る（店のページの `/#order` から来たとき）。 */
+  orderOpen?: boolean;
 }
 
 /** 開閉状態はWebの入口が持ち、検索結果の入れ替えでも畳まない。 */
-export function IekeiIntro({ open, onToggle }: Props) {
+export function IekeiIntro({ open, onToggle, orderOpen }: Props) {
   useEffect(markIntroSeen, []);
 
   return (
@@ -36,7 +38,7 @@ export function IekeiIntro({ open, onToggle }: Props) {
             <dd>家系のスタイルを参考にした店を指す呼び方。</dd>
           </dl>
         </details>
-        <OrderGuide />
+        <OrderGuide open={orderOpen} />
       </div>
     </details>
   );

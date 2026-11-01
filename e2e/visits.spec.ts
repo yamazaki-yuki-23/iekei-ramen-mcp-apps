@@ -423,7 +423,7 @@ test.describe("サインイン済み", () => {
     await app.getByRole("button", { name: "行ったを取り消す" }).click();
 
     /*
-     * カードごと消えるので、詳細も「選択を解除」も画面から無くなる。
+     * カードごと消えるので、詳細も「閉じる」も画面から無くなる。
      * ここで手放さないと、**モデルには渡したまま、画面からは外せない**状態になる。
      */
     await expect(shopCards(app)).toHaveCount(0);

@@ -1,6 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import styles from "../styles/search.module.css";
-import { OrderGuide } from "./OrderGuide";
 
 /*
  * JSX のテキストは改行のたびに空白 1 個へ畳まれる。和文では語の途中に
@@ -92,7 +91,7 @@ export function SelectedShop({
       }}
     >
       {/*
-       * 並びは「行き先 → 初めての人向けの注文 → 控えめな記録と報告」。
+       * 並びは「行き先 → 控えめな記録と報告 → 閉じる」。注文のしかたはどの店でも同じなので、ここには置かない（#330）。
        * 一番強いのは地図アプリへの導線で、選んだ人の次の行動はそこにある。
        */}
       <div className={styles.selectedActions}>
@@ -124,32 +123,34 @@ export function SelectedShop({
       {routeFull && <p className={styles.selectedNote}>{FULL_HINT}</p>}
       {onAsk && <p className={styles.selectedNote}>{NOTE}</p>}
 
-      <OrderGuide />
-
       {/*
-       * 記録（スタンプ）と解除は、特典の無いサブ操作なので控えめな行にまとめる。
-       * 報告は、その下に気付ける形で置く（目立たせすぎない）。
+       * 記録（スタンプ）は特典の無いサブ操作なので、線で区切った下の行に置く。
+       * 押せるものはふだんからボタンの形で見せる（ホバーで形を変えない。#330）。
        */}
-      <div className={styles.selectedSub}>
-        {onToggleVisit && (
+      {onToggleVisit && (
+        <div className={styles.selectedSub}>
           <button
             type="button"
-            className={isVisited ? styles.buttonOn : styles.buttonQuiet}
+            className={isVisited ? styles.buttonOn : styles.buttonSecondary}
             onClick={onToggleVisit}
             aria-pressed={signedIn ? isVisited : undefined}
             disabled={asking}
           >
             {isVisited ? "行ったを取り消す" : "行った"}
           </button>
-        )}
-        <button type="button" className={styles.buttonQuiet} onClick={onClear}>
-          選択を解除
-        </button>
-      </div>
+        </div>
+      )}
       {/* 匿名のときは、押すと何が起きるかを先に書く。 */}
       {!signedIn && onToggleVisit && <p className={styles.selectedNote}>{STAMP_SIGN_IN_HINT}</p>}
 
       {report}
+
+      {/* 詳細を閉じる。いちばん下に置き、Esc と同じく元のカードへ焦点を戻す（#212・#330）。 */}
+      <div>
+        <button type="button" className={styles.buttonSecondary} onClick={onClear}>
+          閉じる
+        </button>
+      </div>
     </section>
   );
 }

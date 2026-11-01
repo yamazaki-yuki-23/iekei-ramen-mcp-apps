@@ -247,3 +247,12 @@ test("キーボードだけで、券売機で選んで発券し、食券を開�
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Google マップで道順を見る" })).toBeFocused();
 });
+
+test("店のページの「注文のしかたを見る」（/#order）で、家系とはと注文のしかたが開いて見える（#330）", async ({
+  page,
+}) => {
+  await page.goto(`${WEB_URL}/#order`);
+  const order = page.locator("#order");
+  await expect(order).toHaveAttribute("open", "");
+  await expect(page.getByRole("row", { name: /麺の硬さ/ })).toBeInViewport();
+});
