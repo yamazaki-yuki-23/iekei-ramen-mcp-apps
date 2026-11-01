@@ -154,6 +154,35 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-note);
 }
+/* 県のページの市区町村ごとの区切り（#317）。見出しの横に、その市区町村のページへのリンク。 */
+.seo-city {
+  scroll-margin-top: var(--space-4);
+}
+.seo-city + .seo-city {
+  margin-top: var(--space-5);
+}
+.seo-city-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--space-3);
+  margin-bottom: var(--space-2);
+  border-bottom: var(--border-width-strong) solid var(--color-ink);
+}
+.seo-city-head h3 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-heading-md-size);
+}
+.seo-city-head h3 span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+  font-weight: var(--font-weight-normal);
+  font-variant-numeric: tabular-nums;
+}
 .seo-sub-link {
   display: inline-flex;
   align-items: center;

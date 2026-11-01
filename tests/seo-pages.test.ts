@@ -108,6 +108,10 @@ describe("静的SEOページ", () => {
     const result = seoPages([manual]);
     expect(result.counts.municipalities).toBe(0);
     expect(result.files.has("/shop/manual-0123456789abcdef0123/")).toBe(true);
+    // 県の一覧からも落とさない。地名は作らず、市区町村のページへのリンクも付けない（Codex の指摘、PR #319）。
+    const pref = result.files.get("/area/kanagawa/")!;
+    expect(pref).toContain('href="/shop/manual-0123456789abcdef0123/"');
+    expect(pref).toContain("<h3>市区町村の記載なし<span>1 軒</span></h3></div>");
     expect(() => seoPages([shop, shop])).toThrow();
     expect(() => seoPages([{ ...shop, id: "../../mcp" }])).toThrow();
     expect(() => seoPages([{ ...shop, city: "../mcp" }])).toThrow();
@@ -357,6 +361,35 @@ describe("県・市区町村のページ（#255）", () => {
     expect(html).not.toContain("押して、発券");
     const city = seoPages(shops).files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")!;
     expect(city).toContain(">横浜市の店を一覧で見る</a>");
+  });
+});
+
+describe("県のページの店の一覧を市区町村で区切る（#317）", () => {
+  const list = [
+    { ...shop, id: "node/1", city: "鎌倉市" },
+    { ...shop, id: "node/2", city: "横浜市" },
+    { ...shop, id: "node/3", city: "横浜市" },
+    { ...shop, id: "node/4", city: "大和市" },
+    { ...shop, id: "node/5", city: "大和市" },
+    { ...shop, id: "node/6", city: "横浜市" },
+  ];
+  const html = seoPages(list).files.get("/area/kanagawa/")!;
+
+  it("市区町村の見出しに軒数を添え、軒数の多い順に並べる", () => {
+    const heads = [...html.matchAll(/<h3>(.+?)<span>(\d+) 軒<\/span><\/h3>/g)].map(
+      (m) => `${m[1]} ${m[2]}`,
+    );
+    expect(heads).toEqual(["横浜市 3", "大和市 2", "鎌倉市 1"]);
+  });
+
+  it("上のチップはページの中の見出しへ、見出しの横から市区町村のページへ行ける", () => {
+    expect(html).toContain('<a href="#city-1">横浜市<span>3 軒</span></a>');
+    expect(html).toContain('<section class="seo-city" id="city-1">');
+    expect(html).toContain('href="/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/">横浜市のページ</a>');
+  });
+
+  it("但し書きは一覧の下に 1 回だけ", () => {
+    expect(html.split('class="seo-caveat"').length - 1).toBe(1);
   });
 });
 
