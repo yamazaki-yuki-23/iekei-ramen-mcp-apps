@@ -23,6 +23,8 @@ E2E は MCP Apps SDK の basic-host を `e2e-host/` に取得して使います
 npm は本番用・開発用でそれぞれ 1 本にまとまり、major だけ個別に来る。
 `package.json` の `overrides` の `undici` は、wrangler（miniflare）が脆弱な版に固定しているのを上げるもの（#282）。
 wrangler を上げたら `npm ls undici` を見て、miniflare の版が追いついていれば消す。
+`minimatch` は、react-doctor が引く eslint（`@eslint/config-array`）が脆弱な 10 系に留めているのを 11 系へ上げるもの（#334）。
+react-doctor を上げたら `npm ls minimatch --all` を見て、11.0.1 以上を引くようになっていれば消す。
 
 **OAuthの実HTTP経路は `tests/oauth-consent.test.ts` で検証する。**
 本番の `OAuthAuthorizationServer` とWorkerを、使い捨てのローカルKV/D1で動かす。
