@@ -16,14 +16,28 @@ const DISCLAIMER =
  * 店の詳細ごとには出さず 1 か所に置く（#330。Web は「家系とは」の中、MCP Apps は結果の下）。
  *
  * `open` は店のページの「注文のしかたを見る」（`/#order`）から来たとき。開いて、ここまで移る。
+ * 結果が届くたびにこの部品は作り直されるので、URL に `#order` がある間は移り直す（最初の結果で
+ * 上が伸びても見失わない）。利用者が操作したら `#order` を消し、そのあとの検索では引き戻さない
+ * （残すと、検索するたびにここへ引き戻された。#330 のレビュー）。
  */
+function arrive(el: HTMLDetailsElement | null) {
+  if (el && window.location.hash === `#${ORDER_GUIDE_ID}`) el.scrollIntoView({ block: "start" });
+}
+
+const clearArrival = () =>
+  history.replaceState(history.state, "", window.location.pathname + window.location.search);
+if (typeof window !== "undefined" && window.location.hash === `#${ORDER_GUIDE_ID}`) {
+  for (const type of ["pointerdown", "keydown", "wheel", "touchstart"])
+    window.addEventListener(type, clearArrival, { once: true, capture: true, passive: true });
+}
+
 export function OrderGuide({ open }: { open?: boolean }) {
   return (
     <details
       id={ORDER_GUIDE_ID}
       className={styles.guide}
       open={open}
-      ref={open ? (el) => el?.scrollIntoView({ block: "start" }) : undefined}
+      ref={open ? arrive : undefined}
     >
       <summary className={styles.guideSummary}>注文のしかた（お好み・卓上・ライス）</summary>
 
