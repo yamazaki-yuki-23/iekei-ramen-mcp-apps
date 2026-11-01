@@ -837,18 +837,18 @@ area[<span class="c-st">"admin_level"</span>=<span class="c-st">"4"</span>][<spa
 
 <script>
 (function () {
-  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
-  var rail = document.querySelector(".rail");
-  var index = 0;
+  const slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  const rail = document.querySelector(".rail");
+  let index = 0;
 
   // ページ番号を自動で振る。スライドを足し引きしても番号がずれない
   slides.forEach(function (s, i) {
-    var n = s.querySelector(".pageno");
+    const n = s.querySelector(".pageno");
     if (n) n.textContent = String(i + 1);
   });
 
-  var ticks = slides.map(function (_, i) {
-    var t = document.createElement("span");
+  const ticks = slides.map(function (_, i) {
+    const t = document.createElement("span");
     t.className = "tick" + (i === 0 ? " on" : "");
     rail.appendChild(t);
     return t;
@@ -861,7 +861,7 @@ area[<span class="c-st">"admin_level"</span>=<span class="c-st">"4"</span>][<spa
   }
 
   // 画面の中央にあるスライドを現在位置とみなす
-  var observer = new IntersectionObserver(
+  const observer = new IntersectionObserver(
     function (entries) {
       entries.forEach(function (e) {
         if (e.isIntersecting) setIndex(slides.indexOf(e.target));
@@ -872,7 +872,7 @@ area[<span class="c-st">"admin_level"</span>=<span class="c-st">"4"</span>][<spa
   slides.forEach(function (s) { observer.observe(s); });
 
   function go(delta) {
-    var next = Math.min(slides.length - 1, Math.max(0, index + delta));
+    const next = Math.min(slides.length - 1, Math.max(0, index + delta));
     slides[next].scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
