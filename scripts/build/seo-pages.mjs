@@ -17,7 +17,7 @@ const prefectureSlugs = new Map(ALL_PREFECTURES.map((name, index) => [name, slug
  * 送れる（#255。前はアプリで店を開いてから 4 段かかった）。
  */
 const note =
-  "家系かどうかは地図の記載と既知のブランドからの推定、味の傾向は既知のブランドからの参考値で、実食に基づくものではありません。営業状況は店舗の公式情報で確認してください。違う店があれば、その店のページの「この店の情報、違っていませんか？」から教えてください。";
+  "家系かどうかは地図の記載と既知のブランドからの推定（一部の店は公式の情報で確かめています）、味の傾向は既知のブランドからの参考値で、実食に基づくものではありません。営業状況は店舗の公式情報で確認してください。違う店があれば、その店のページの「この店の情報、違っていませんか？」から教えてください。";
 /** 県・市区町村ページの見出しの下（#255）。題名と説明文（検索結果の文字）は変えない。 */
 const listLead =
   "地図の記載とブランドから集めた一覧です。違う店を見つけたら、店のページから教えてください。";
@@ -25,8 +25,22 @@ const listLead =
  * 店のページの「この情報について」（#255）。前は灰色の長い 1 文で、読み飛ばされた。
  * 中身は消さず、項目ごとの表にする（家系かどうか・味・営業時間と電話・違っていたら）。
  */
+const ESTIMATED = "地図の記載と既知のブランドからの推定";
+/** 確かめた先の言い方。記録の `url` は画面に出さない（docs/development/data.md）。 */
+const CHECKED_AT = {
+  "chain-list": "系列の公式の店舗一覧",
+  "official-site": "店の公式サイト",
+  "official-sns": "店の公式 SNS",
+};
+/**
+ * 「家系かどうか」の欄（#316）。公式の情報で確かめた記録（`status: open`）がある店は、
+ * 確かめた先と日付を書く。記録が無い店は推定のまま。
+ */
+const basisLabel = (record) =>
+  record?.status === "open" && CHECKED_AT[record.source]
+    ? `${CHECKED_AT[record.source]}${/[A-Za-z]$/.test(CHECKED_AT[record.source]) ? " " : ""}で確かめた（${record.checked}）`
+    : ESTIMATED;
 const ABOUT = [
-  ["家系かどうか", "地図の記載と既知のブランドからの推定"],
   ["味の分類", "既知のブランドからの参考値（食べて決めたものではありません）"],
   ["営業時間・電話", "地図の記載。変わることがあるので、行く前に店の公式情報で確かめてください"],
   ["違っていたら", "上の「この店の情報、違っていませんか？」から"],
@@ -148,7 +162,7 @@ function nearest(shop, shops, n) {
 }
 
 /** 店のページの中身（#255）。行き先 → 注文のしかた → 近い家系 → 報告 → この情報について。 */
-function shopContent(shop, shops) {
+function shopContent(shop, shops, record) {
   const facts = [
     shop.openingHours && ["営業時間", openingHoursLabel(shop.openingHours)],
     shop.phone && ["電話", domesticPhone(shop.phone)],
@@ -164,17 +178,13 @@ function shopContent(shop, shops) {
     )
     .join("");
   const report = `<section class="seo-report" aria-labelledby="report-title" data-report-shop="${escape(shop.id)}"><h2 id="report-title">この店の情報、違っていませんか？</h2><div class="seo-report-buttons">${REPORT_KINDS.map(({ kind, label }) => `<button type="button" data-kind="${kind}">${escape(label)}</button>`).join("")}</div><p class="seo-note">サインインは不要です。押すとすぐ送られます。</p><p class="seo-report-status" role="status"></p></section>`;
-  const about = `<section class="seo-about" aria-labelledby="about-title"><h2 id="about-title">この情報について</h2><dl>${ABOUT.map(([term, text]) => `<div><dt>${term}</dt><dd>${escape(text)}</dd></div>`).join("")}</dl></section>`;
+  const about = `<section class="seo-about" aria-labelledby="about-title"><h2 id="about-title">この情報について</h2><dl>${[["家系かどうか", basisLabel(record)], ...ABOUT].map(([term, text]) => `<div><dt>${term}</dt><dd>${escape(text)}</dd></div>`).join("")}</dl></section>`;
   return `<p class="seo-lead">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p>${factList}<div class="seo-actions">${primary(directions, "Google マップで道順を見る", true)}<a class="seo-secondary" href="${escape(appLink(shop.prefecture, shop.name))}">注文のしかたを見る<small>まわる店にも追加できます</small></a></div><h2 class="seo-section">この店から近い家系（直線距離）</h2><ul class="seo-nearby">${near}</ul>${report}${about}<script src="/shop-report.js" defer></script>`;
 }
 
-/** 店のカード（食券の形）。 */
-const shopCards = (shops) =>
-  `<ul class="seo-cards">${shops.map((shop) => `<li><a class="seo-card" href="${shopPath(shop)}"><strong>${escape(shop.name)}</strong><span>${escape([region(shop), shop.address].filter(Boolean).join(" "))}</span></a></li>`).join("")}</ul>`;
-
 /** 店の一覧。但し書きは一覧のすぐ下に 1 回。 */
 function shopList(shops) {
-  return `<h2 class="seo-section">店舗</h2>${shopCards(shops)}<p class="seo-caveat">${note}</p>`;
+  return `<h2 class="seo-section">店舗</h2>${cards(shops)}<p class="seo-caveat">${note}</p>`;
 }
 
 /**
@@ -183,7 +193,12 @@ function shopList(shops) {
  * 市区町村のページへのリンクは見出しの横に残す。
  */
 function cityShopList(groups) {
-  return `<h2 class="seo-section">店舗</h2>${groups.map(({ id, href, city, shops }) => `<section class="seo-city" id="${id}"><div class="seo-city-head"><h3>${escape(city)}<span>${shops.length} 軒</span></h3>${href ? `<a class="seo-sub-link" href="${href}">${escape(city)}のページ</a>` : ""}</div>${shopCards(shops)}</section>`).join("")}<p class="seo-caveat">${note}</p>`;
+  return `<h2 class="seo-section">店舗</h2>${groups.map(({ id, href, city, shops }) => `<section class="seo-city" id="${id}"><div class="seo-city-head"><h3>${escape(city)}<span>${shops.length} 軒</span></h3>${href ? `<a class="seo-sub-link" href="${href}">${escape(city)}のページ</a>` : ""}</div>${cards(shops)}</section>`).join("")}<p class="seo-caveat">${note}</p>`;
+}
+
+/** 店のカード（食券の形）。 */
+function cards(shops) {
+  return `<ul class="seo-cards">${shops.map((shop) => `<li><a class="seo-card" href="${shopPath(shop)}"><strong>${escape(shop.name)}</strong><span>${escape([region(shop), shop.address].filter(Boolean).join(" "))}</span></a></li>`).join("")}</ul>`;
 }
 
 /** 地域のチップ。「判定した結果の〇軒」を行ごとに繰り返さず、軒数だけ添える。 */
@@ -195,12 +210,24 @@ function chips(items) {
 const reach = (list) =>
   `住所・${list.some((shop) => shop.openingHours) ? "営業時間・" : ""}Google マップの道順まで。`;
 
-/** WorkerのAPIへ変更を加えず、ビルド時にだけHTMLとsitemapを生成する。 */
-export function seoPages(shops) {
+const chainPath = (chain) => `/chain/${encodeURIComponent(chain)}/`;
+const chainLead =
+  "系列の公式の店舗一覧で確かめた店です。違う店を見つけたら、店のページから教えてください。";
+/** 系列のページは店が 2 軒から作る（#309）。1 軒だけだと中身が店のページとほぼ同じになる（#169 と同じ考え）。 */
+const CHAIN_MIN = 2;
+
+/**
+ * WorkerのAPIへ変更を加えず、ビルド時にだけHTMLとsitemapを生成する。
+ * `recordOf` は店 ID → 公式の情報で確かめた記録（verified.json の `status: open`）。
+ * 系列のページ（#309）と、店のページの「家系かどうか」（#316）に使う。
+ * 系列は店名から推した `brand` では決めない（記録と 25 軒食い違う）。
+ */
+export function seoPages(shops, recordOf = new Map()) {
   const files = new Map();
   const indexed = ["/", "/match/", "/camera/", "/shindan/", "/area/"];
   const prefs = new Map();
   const cities = new Map();
+  const chains = new Map();
   const ids = new Set();
   const titles = new Map();
   for (const shop of shops) {
@@ -222,6 +249,12 @@ export function seoPages(shops) {
       group.push(shop);
       cities.set(key, group);
     }
+    const record = recordOf.get(shop.id);
+    const chain = record?.basis === "chain" ? record.chain : undefined;
+    if (chain) {
+      if (/[\\/]/.test(chain) || /^\.+$/.test(chain)) throw new Error("SEO用の系列名が不正です");
+      chains.set(chain, [...(chains.get(chain) ?? []), shop]);
+    }
     const title = `${shop.name}｜${[region(shop), shop.address].filter(Boolean).join(" ")}｜家系ラーメンの店舗情報`;
     titles.set(title, (titles.get(title) ?? 0) + 1);
   }
@@ -230,17 +263,46 @@ export function seoPages(shops) {
       .toSorted(([a], [b]) => ALL_PREFECTURES.indexOf(a) - ALL_PREFECTURES.indexOf(b))
       .map(([name, list]) => ({ href: prefPath(name), label: name, count: list.length })),
   );
+  const chainList = [...chains]
+    .filter(([, list]) => list.length >= CHAIN_MIN)
+    .toSorted(([, a], [, b]) => b.length - a.length);
+  const chainLinks = chainList.length
+    ? `<h2 class="seo-section" id="chains">系列</h2>${chips(chainList.map(([name, list]) => ({ href: chainPath(name), label: name, count: list.length })))}`
+    : "";
   files.set(
     "/area/",
     page({
       title: `家系ラーメン ${shops.length}軒｜都道府県と地図から探す`,
-      heading: ["都道府県から", "家系ラーメンの", "候補を", "探す"],
+      heading: ["都道府県から", "家系ラーメンを", "探す"],
       description: `家系ラーメン${shops.length}軒を都道府県から探せます。今いる場所から近い 3 軒を地図で出すこともできます。`,
       path: "/area/",
       count: shops.length,
-      content: `${primary("/", "近くの 3 軒を出す")}<h2 class="seo-section">都道府県</h2>${prefLinks}<p class="seo-caveat">${note}</p>`,
+      content: `${primary("/", "近くの 3 軒を出す")}<h2 class="seo-section">都道府県</h2>${prefLinks}${chainLinks}<p class="seo-caveat">${note}</p>`,
     }),
   );
+  for (const [chain, list] of chainList) {
+    const path = chainPath(chain);
+    const byPref = Map.groupBy(
+      list.toSorted(
+        (a, b) => ALL_PREFECTURES.indexOf(a.prefecture) - ALL_PREFECTURES.indexOf(b.prefecture),
+      ),
+      (shop) => shop.prefecture,
+    );
+    const anchor = (prefecture) => `pref-${prefectureSlugs.get(prefecture)}`;
+    files.set(
+      path,
+      page({
+        title: `${chain}の家系ラーメン ${list.length}軒｜都道府県ごとの店舗一覧`,
+        heading: [`${chain}の`, "家系ラーメン"],
+        description: `${chain}の家系ラーメン${list.length}軒を都道府県ごとの一覧から探せます。${reach(list)}`,
+        path,
+        count: list.length,
+        crumbs: `<a href="/area/#chains">系列</a>`,
+        content: `<p class="seo-lead">${chainLead}</p>${chips([...byPref].map(([prefecture, group]) => ({ href: `#${anchor(prefecture)}`, label: prefecture, count: group.length })))}${[...byPref].map(([prefecture, group]) => `<h2 class="seo-section" id="${anchor(prefecture)}">${escape(prefecture)}</h2>${cards(group)}`).join("")}<p class="seo-caveat">${note}</p>`,
+      }),
+    );
+    indexed.push(path);
+  }
   for (const [prefecture, list] of prefs) {
     const path = prefPath(prefecture);
     // 軒数の多い順（同数は名前順）。チップと一覧の見出しを同じ順に並べる（#317）。
@@ -336,7 +398,7 @@ export function seoPages(shops) {
           ]),
         ],
         crumbs: `<a href="/area/">都道府県</a> / <a href="${prefPath(shop.prefecture)}">${escape(shop.prefecture)}</a>${shop.city ? ` / <a href="${cityPath(shop.prefecture, shop.city)}">${escape(shop.city)}</a>` : ""}`,
-        content: shopContent(shop, shops),
+        content: shopContent(shop, shops, recordOf.get(shop.id)),
       }),
     );
     if (shop.confidence !== "candidate") indexed.push(path);

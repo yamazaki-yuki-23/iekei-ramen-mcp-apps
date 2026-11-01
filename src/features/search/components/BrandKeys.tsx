@@ -11,7 +11,7 @@ interface Props {
 
 /**
  * 店名の券売機のブランドのキー（#144）。白紙の入力欄で手が止まらないように、
- * 判定した結果の軒数が多いブランドを並べる。押すとキーワードに入るだけで、
+ * 掲載の軒数が多いブランドを並べる。押すとキーワードに入るだけで、
  * 取りに行かない（「この条件で探す」で出す）。もう一度押すと外れる。
  */
 export function BrandKeys({ brands, keyword, onPick }: Props) {
@@ -19,7 +19,7 @@ export function BrandKeys({ brands, keyword, onPick }: Props) {
   return (
     <div role="group" aria-labelledby="brand-keys">
       <h3 className={styles.machineGroup} id="brand-keys">
-        ブランドから（判定した結果の軒数）
+        ブランドから（掲載の軒数）
       </h3>
       <div className={styles.keys}>
         {brands.map(({ name, count }) => (

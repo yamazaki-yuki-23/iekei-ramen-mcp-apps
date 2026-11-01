@@ -3,10 +3,19 @@ import { legalPages, seoPages, siteHeader } from "./seo-pages.mjs";
 import { legalLinksHtml } from "../../src/utils/legal-links.ts";
 import { tabBarHtml } from "../../src/utils/tabbar.ts";
 import { TYPES, shareUrl } from "../../src/utils/shindan.ts";
+import { recordShopId } from "../data/verified-shops.mjs";
 
 const output = new URL("../../dist/web/", import.meta.url);
 const shops = JSON.parse(await readFile(new URL("../../data/shops.json", import.meta.url), "utf8"));
-const { files, counts } = seoPages(shops);
+const records = JSON.parse(
+  await readFile(new URL("../../data/verified.json", import.meta.url), "utf8"),
+);
+const recordOf = new Map(
+  records
+    .filter((record) => record.status === "open")
+    .map((record) => [recordShopId(record), record]),
+);
+const { files, counts } = seoPages(shops, recordOf);
 const legal = legalPages({
   privacy: await readFile(new URL("../../docs/legal/privacy-policy.md", import.meta.url), "utf8"),
   terms: await readFile(new URL("../../docs/legal/terms.md", import.meta.url), "utf8"),

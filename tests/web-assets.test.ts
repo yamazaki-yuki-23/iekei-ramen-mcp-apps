@@ -66,6 +66,7 @@ describe("workerdのWeb静的配信と既存API", () => {
       "/area/",
       "/area/kanagawa/",
       "/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/",
+      "/chain/%E7%94%BA%E7%94%B0%E5%95%86%E5%BA%97/",
       "/shop/node-1774529495/",
     ]) {
       const response = await request(path);
@@ -103,11 +104,17 @@ describe("workerdのWeb静的配信と既存API", () => {
     const paths = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
     expect(paths.some((p) => p.endsWith(".js"))).toBe(true);
     expect(paths.some((p) => p.endsWith(".css"))).toBe(true);
-    const responses = await Promise.all(paths.map((p) => request(p)));
-    for (const asset of responses) {
-      expect(asset.status).toBe(200);
-      // 本文を読み切り、配信中のストリームを残したままharnessを閉じない。
-      expect((await asset.arrayBuffer()).byteLength).toBeGreaterThan(0);
+    // 受け取った順にすぐ本文を読み切る。gzip の本文を受け取ったまま置いておくと、読む前に
+    // 使用済みになることがある（#313。40 回に 1 回ほど、どの JS でも起きた）。
+    const served = await Promise.all(
+      paths.map(async (p) => {
+        const asset = await request(p);
+        return { path: p, status: asset.status, size: (await asset.arrayBuffer()).byteLength };
+      }),
+    );
+    for (const asset of served) {
+      expect(asset).toMatchObject({ status: 200 });
+      expect(asset.size, asset.path).toBeGreaterThan(0);
     }
   });
 

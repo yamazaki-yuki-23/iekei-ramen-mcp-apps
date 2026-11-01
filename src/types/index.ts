@@ -87,7 +87,7 @@ export interface AppPayload {
   };
   /** 選択可能な都道府県（データに実在するものだけ）。 */
   prefectures: string[];
-  /** 店名の券売機に並べるブランドと、判定した結果の軒数（多い順、#144）。 */
+  /** 店名の券売機に並べるブランドと、掲載の軒数（多い順、#144）。 */
   brands?: Array<{ name: string; count: number }>;
   /**
    * サインインしている人の訪問済み店舗 ID。

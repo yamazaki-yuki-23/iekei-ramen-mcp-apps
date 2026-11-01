@@ -64,7 +64,7 @@ describe("静的SEOページ", () => {
     expect(html).not.toContain(CONFIDENCE.candidate.description);
     expect(html).not.toContain(CONFIDENCE.confirmed.label + "</span>");
     expect(html).toContain(
-      "家系かどうかは地図の記載と既知のブランドからの推定、味の傾向は既知のブランドからの参考値で、実食に基づくものではありません。",
+      "家系かどうかは地図の記載と既知のブランドからの推定（一部の店は公式の情報で確かめています）、味の傾向は既知のブランドからの参考値で、実食に基づくものではありません。",
     );
     // 段階を出さない代わりに、誤りを直す道（店のページの報告、#255）へ案内する。
     expect(html).toContain(
@@ -227,6 +227,88 @@ describe("初めて来た人向けの店のページ（#255）", () => {
     expect(domesticPhone("+81 22 253 6899")).toBe("022-253-6899");
     expect(domesticPhone("+81453929498")).toBe("0453929498");
     expect(domesticPhone("0668501701")).toBe("0668501701");
+  });
+});
+
+/** 公式の店舗一覧で確かめた記録（verified.json の 1 件）。 */
+const chainRecord = (chain: string, source = "chain-list") => ({
+  basis: "chain",
+  chain,
+  status: "open",
+  checked: "2026-10-24",
+  source,
+});
+
+/** 店のページの「この情報について」の「家系かどうか」の値。 */
+const about = (html: string) => html.match(/<dt>家系かどうか<\/dt><dd>([^<]*)<\/dd>/)?.[1];
+
+describe("店のページの「家系かどうか」（#316）", () => {
+  it("公式の情報で確かめた店は確かめた先と日付を、記録の無い店は推定と書く", () => {
+    const { files } = seoPages(
+      shops,
+      new Map([
+        [
+          "node/123",
+          { basis: "self", status: "open", checked: "2026-10-31", source: "official-sns" },
+        ],
+      ]),
+    );
+    expect(about(files.get("/shop/node-123/")!)).toBe("店の公式 SNS で確かめた（2026-10-31）");
+    expect(about(files.get("/shop/way-456/")!)).toBe("地図の記載と既知のブランドからの推定");
+    const listed = seoPages(shops, new Map([["node/123", chainRecord("試験商店")]])).files;
+    expect(about(listed.get("/shop/node-123/")!)).toBe(
+      "系列の公式の店舗一覧で確かめた（2026-10-24）",
+    );
+    const site = seoPages(
+      shops,
+      new Map([["node/123", chainRecord("試験商店", "official-site")]]),
+    ).files;
+    expect(about(site.get("/shop/node-123/")!)).toBe("店の公式サイトで確かめた（2026-10-24）");
+    // 記録の url は画面に出さない。誤りの報告の案内と参考値の断りは残す。
+    const html = listed.get("/shop/node-123/")!;
+    expect(html).not.toContain("https://example");
+    expect(html).toContain("この店の情報、違っていませんか？");
+    expect(html).toContain("既知のブランドからの参考値");
+  });
+});
+
+describe("系列のページ（#309）", () => {
+  const tokyo: Shop = {
+    ...shop,
+    id: "verified/0123456789abcdef0123",
+    prefecture: "東京都",
+    city: "町田市",
+  };
+  const chainOf = new Map([
+    ["node/123", chainRecord("試験商店")],
+    ["verified/0123456789abcdef0123", chainRecord("試験商店")],
+    ["way/456", chainRecord("一軒家")],
+  ]);
+  const { files } = seoPages([...shops, tokyo], chainOf);
+  const path = `/chain/${encodeURIComponent("試験商店")}/`;
+
+  it("記録の系列で、2 軒以上の系列だけページを作り、sitemap と都道府県の一覧から辿れる", () => {
+    const html = files.get(path)!;
+    expect(html).toContain("<title>試験商店の家系ラーメン 2軒｜都道府県ごとの店舗一覧</title>");
+    expect(html).toContain(
+      'content="試験商店の家系ラーメン2軒を都道府県ごとの一覧から探せます。住所・Google マップの道順まで。"',
+    );
+    expect(html).not.toMatch(
+      /<title>[^<]*(候補|判定した結果)|description" content="[^"]*(候補|判定した結果)/,
+    );
+    // 都道府県の並び順（神奈川県より東京都が先）で見出しを置き、見出しへ飛ぶチップを付ける。
+    expect(html.indexOf('id="pref-tokyo"')).toBeLessThan(html.indexOf('id="pref-kanagawa"'));
+    expect(html).toContain('href="#pref-kanagawa">神奈川県<span>1 軒</span>');
+    expect(html).toContain("系列の公式の店舗一覧で確かめた店です。");
+    expect(files.get("/sitemap.xml")).toContain(`https://iekeiramen.com${path}`);
+    expect(files.get("/area/")).toContain(`href="${path}">試験商店<span>2 軒</span>`);
+    // 1 軒だけの系列は作らない。系列の記録が無ければ、都道府県の一覧に「系列」の段も出さない。
+    expect([...files.keys()].some((key) => key.includes(encodeURIComponent("一軒家")))).toBe(false);
+    expect(seoPages(shops).files.get("/area/")).not.toContain('id="chains"');
+  });
+
+  it("系列名にパスの区切りがあれば止める", () => {
+    expect(() => seoPages(shops, new Map([["node/123", chainRecord("a/b")]]))).toThrow("系列名");
   });
 });
 

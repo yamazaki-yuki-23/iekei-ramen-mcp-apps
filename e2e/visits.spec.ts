@@ -483,7 +483,7 @@ test.describe("サインイン済み", () => {
     await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
 
     // 記録を押しただけでは見出しも件数も変わらないので、探し直したように読み上げない（#156）。
-    await expect(app.getByRole("status").filter({ hasText: /判定した結果/ })).toHaveCount(0);
+    await expect(app.getByRole("status").filter({ hasText: /掲載 \d+ 軒/ })).toHaveCount(0);
 
     await app.getByRole("tab", { name: "行った店" }).click();
     // キーボードで押しても、その場に出た「本当に全部消す」から焦点を見出しへ運ばない（#156）。
