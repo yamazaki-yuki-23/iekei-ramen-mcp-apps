@@ -280,18 +280,18 @@ describe("系列のページ（#309）", () => {
     city: "町田市",
   };
   const chainOf = new Map([
-    ["node/123", chainRecord("試験商店")],
-    ["verified/0123456789abcdef0123", chainRecord("試験商店")],
+    ["node/123", chainRecord("町田商店")],
+    ["verified/0123456789abcdef0123", chainRecord("町田商店")],
     ["way/456", chainRecord("一軒家")],
   ]);
-  const { files } = seoPages([...shops, tokyo], chainOf);
-  const path = `/chain/${encodeURIComponent("試験商店")}/`;
+  const { files, redirects } = seoPages([...shops, tokyo], chainOf);
+  const path = "/chain/machida-shoten/";
 
   it("記録の系列で、2 軒以上の系列だけページを作り、sitemap と都道府県の一覧から辿れる", () => {
     const html = files.get(path)!;
-    expect(html).toContain("<title>試験商店の家系ラーメン 2軒｜都道府県ごとの店舗一覧</title>");
+    expect(html).toContain("<title>町田商店の家系ラーメン 2軒｜都道府県ごとの店舗一覧</title>");
     expect(html).toContain(
-      'content="試験商店の家系ラーメン2軒を都道府県ごとの一覧から探せます。住所・Google マップの道順まで。"',
+      'content="町田商店の家系ラーメン2軒を都道府県ごとの一覧から探せます。住所・Google マップの道順まで。"',
     );
     expect(html).not.toMatch(
       /<title>[^<]*(候補|判定した結果)|description" content="[^"]*(候補|判定した結果)/,
@@ -301,14 +301,27 @@ describe("系列のページ（#309）", () => {
     expect(html).toContain('href="#pref-kanagawa">神奈川県<span>1 軒</span>');
     expect(html).toContain("系列の公式の店舗一覧で確かめた店です。");
     expect(files.get("/sitemap.xml")).toContain(`https://iekeiramen.com${path}`);
-    expect(files.get("/area/")).toContain(`href="${path}">試験商店<span>2 軒</span>`);
+    expect(files.get("/area/")).toContain(`href="${path}">町田商店<span>2 軒</span>`);
     // 1 軒だけの系列は作らない。系列の記録が無ければ、都道府県の一覧に「系列」の段も出さない。
     expect([...files.keys()].some((key) => key.includes(encodeURIComponent("一軒家")))).toBe(false);
     expect(seoPages(shops).files.get("/area/")).not.toContain('id="chains"');
   });
 
-  it("系列名にパスの区切りがあれば止める", () => {
-    expect(() => seoPages(shops, new Map([["node/123", chainRecord("a/b")]]))).toThrow("系列名");
+  it("URL は英字にし、#309 で出した日本語の URL から 301 で送る（#326）", () => {
+    expect([...files.keys()].filter((key) => key.startsWith("/chain/"))).toEqual([path]);
+    const encoded = encodeURIComponent("町田商店");
+    expect(redirects).toEqual([
+      [`/chain/${encoded}/`, path],
+      [`/chain/${encoded}`, path],
+    ]);
+  });
+
+  it("英字の名前の表に無い系列は、ページを作らずに止める", () => {
+    const unknown = new Map([
+      ["node/123", chainRecord("試験商店")],
+      ["way/456", chainRecord("試験商店")],
+    ]);
+    expect(() => seoPages(shops, unknown)).toThrow("系列の英字の名前がありません: 試験商店");
   });
 });
 

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile, copyFile } from "node:fs/promises";
 import { legalPages, seoPages, siteHeader } from "./seo-pages.mjs";
 import { legalLinksHtml } from "../../src/utils/legal-links.ts";
 import { tabBarHtml } from "../../src/utils/tabbar.ts";
@@ -15,7 +15,7 @@ const recordOf = new Map(
     .filter((record) => record.status === "open")
     .map((record) => [recordShopId(record), record]),
 );
-const { files, counts } = seoPages(shops, recordOf);
+const { files, redirects, counts } = seoPages(shops, recordOf);
 const legal = legalPages({
   privacy: await readFile(new URL("../../docs/legal/privacy-policy.md", import.meta.url), "utf8"),
   terms: await readFile(new URL("../../docs/legal/terms.md", import.meta.url), "utf8"),
@@ -25,6 +25,10 @@ for (const [path, content] of [...files, ...legal]) {
   await mkdir(new URL(".", destination), { recursive: true });
   await writeFile(destination, content);
 }
+await appendFile(
+  new URL("_redirects", output),
+  redirects.map(([from, to]) => `${from} ${to} 301\n`).join(""),
+);
 await copyFile(
   new URL("../../src/styles/global.css", import.meta.url),
   new URL("seo-tokens.css", output),

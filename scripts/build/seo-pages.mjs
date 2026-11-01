@@ -210,7 +210,28 @@ function chips(items) {
 const reach = (list) =>
   `住所・${list.some((shop) => shop.openingHours) ? "営業時間・" : ""}Google マップの道順まで。`;
 
-const chainPath = (chain) => `/chain/${encodeURIComponent(chain)}/`;
+/**
+ * 系列のページの URL（#326）。県と同じく英字にする（日本語だと貼ったときに %E7… になり読めない）。
+ * 表記は系列の公式サイトのドメイン・英字表記に合わせ、無ければヘボン式（吉村家）。
+ * 表に無い系列のページは作れないようにして、日本語の URL に戻さない。
+ */
+const chainSlugs = new Map([
+  ["町田商店", "machida-shoten"],
+  ["壱角家", "ichikakuya"],
+  ["魂心家", "konshinya"],
+  ["松壱家", "matsuichiya"],
+  ["大和家", "yamatoya"],
+  ["王道家", "oudouya"],
+  ["壱八家", "ippachiya"],
+  ["吉村家", "yoshimuraya"],
+  ["杉田家", "sugitaya"],
+]);
+const chainPath = (chain) => {
+  const slug = chainSlugs.get(chain);
+  if (!slug)
+    throw new Error(`系列の英字の名前がありません: ${chain}（seo-pages.mjs の chainSlugs に足す）`);
+  return `/chain/${slug}/`;
+};
 const chainLead =
   "系列の公式の店舗一覧で確かめた店です。違う店を見つけたら、店のページから教えてください。";
 /** 系列のページは店が 2 軒から作る（#309）。1 軒だけだと中身が店のページとほぼ同じになる（#169 と同じ考え）。 */
@@ -252,7 +273,6 @@ export function seoPages(shops, recordOf = new Map()) {
     const record = recordOf.get(shop.id);
     const chain = record?.basis === "chain" ? record.chain : undefined;
     if (chain) {
-      if (/[\\/]/.test(chain) || /^\.+$/.test(chain)) throw new Error("SEO用の系列名が不正です");
       chains.set(chain, [...(chains.get(chain) ?? []), shop]);
     }
     const title = `${shop.name}｜${[region(shop), shop.address].filter(Boolean).join(" ")}｜家系ラーメンの店舗情報`;
@@ -423,6 +443,11 @@ export function seoPages(shops, recordOf = new Map()) {
   files.set("/robots.txt", `User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`);
   return {
     files,
+    // #309 で日本語の URL で公開した分を、英字の URL へ 301 で送る（public/_redirects に足す）。
+    // _redirects は届いたままの（%E7… の）パスと突き合わせるので、エンコードした形で書く。
+    redirects: chainList.flatMap(([chain]) =>
+      ["/", ""].map((end) => [`/chain/${encodeURIComponent(chain)}${end}`, chainPath(chain)]),
+    ),
     counts: {
       prefectures: prefs.size,
       municipalities: cities.size,

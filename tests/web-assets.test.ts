@@ -66,7 +66,7 @@ describe("workerdのWeb静的配信と既存API", () => {
       "/area/",
       "/area/kanagawa/",
       "/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/",
-      "/chain/%E7%94%BA%E7%94%B0%E5%95%86%E5%BA%97/",
+      "/chain/machida-shoten/",
       "/shop/node-1774529495/",
     ]) {
       const response = await request(path);
@@ -74,6 +74,17 @@ describe("workerdのWeb静的配信と既存API", () => {
       const html = await response.text();
       expect(html).toContain('rel="canonical"');
       expect(html).toContain('rel="icon"');
+    }
+    // #309 で公開した日本語の URL は、英字の URL へ 301 で送る（#326）。
+    for (const path of [
+      "/chain/%E7%94%BA%E7%94%B0%E5%95%86%E5%BA%97/",
+      "/chain/%E7%94%BA%E7%94%B0%E5%95%86%E5%BA%97",
+    ]) {
+      const response = await request(path);
+      expect(response.status, path).toBe(301);
+      expect(new URL(response.headers.get("location")!, "http://x").pathname).toBe(
+        "/chain/machida-shoten/",
+      );
     }
     const sitemap = await request("/sitemap.xml");
     expect(sitemap.status).toBe(200);
