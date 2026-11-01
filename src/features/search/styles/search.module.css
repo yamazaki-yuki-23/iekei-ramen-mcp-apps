@@ -87,6 +87,21 @@
   flex-shrink: 0;
 }
 
+/*
+ * ホバーで箸だけが 2px 上がる（#328、DESIGN.md 7. 動き の例外）。マウスのある画面だけ。
+ * 動きを減らす設定では、global.css が時間を縮めても位置は変わるので、ここで外す。
+ * SVG の中の px は viewBox（64）の単位。36px で描くので 3.5 ≒ 画面の 2px。
+ */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .brandMark [data-chopsticks] {
+    transition: transform var(--duration-transition) var(--easing-standard);
+  }
+
+  .brandMark:hover [data-chopsticks] {
+    transform: translateY(-3.5px);
+  }
+}
+
 .title {
   margin: 0;
   font-size: var(--font-heading-lg-size);

@@ -4,11 +4,12 @@
  * favicon（public/favicon.svg）と同じ絵。色はトークンから取るので、暗い表示では
  * 縁・海苔・箸が明るい色に変わり、ホストの背景に沈まない。
  * 単一 HTML に固めるため画像ファイルにせず、ここで描く。
+ * 箸の `data-chopsticks` は、トップのホバーで箸だけを持ち上げるための印（#328）。
  */
 export function BrandMark({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-      <g stroke="var(--color-ink)" strokeWidth="4" strokeLinecap="round">
+      <g data-chopsticks stroke="var(--color-ink)" strokeWidth="4" strokeLinecap="round">
         <line x1="47" y1="5" x2="30" y2="29" />
         <line x1="55" y1="9" x2="36" y2="29" />
       </g>
