@@ -9,6 +9,7 @@ import path from "node:path";
 import { findAmbiguous } from "./labels.mjs";
 import { readJson } from "./read-json.mjs";
 import { applyCorrections } from "./corrections.mjs";
+import { withOfficialCity } from "./municipalities.mjs";
 import { maybeSameShop, nearbyShops, verifiedShops } from "./verified-shops.mjs";
 import {
   nearbyPairs,
@@ -172,7 +173,25 @@ for (const { added: a, existing: e, distanceM } of nearbyShops(candidates, corre
   );
 }
 const added = candidates.filter((shop) => !skipped.has(shop.id));
-const sorted = [...corrected, ...added].toSorted(
+/*
+ * **市区町村は総務省の一覧の名前にそろえる**（#349）。OSM の `addr:city` には町名まで入った
+ * もの・「市」の無いもの・区だけのものがあり、1 軒だけの壊れた市区町村のページができていた。
+ * 当てられない名前が残ったら書き出さずに止める（URL の英字の名前もこの一覧から作る）。
+ */
+const municipalities = await readJson(new URL("../../data/municipalities.json", import.meta.url));
+const unknownCity = [];
+const named = [...corrected, ...added].map((shop) => {
+  const fixed = withOfficialCity(municipalities, shop);
+  if (!fixed) unknownCity.push(shop);
+  return fixed ?? shop;
+});
+if (unknownCity.length > 0) {
+  for (const shop of unknownCity)
+    console.error(`一覧に無い市区町村: ${shop.prefecture}「${shop.city}」 ${shop.name} ${shop.id}`);
+  console.error("data/municipalities.json の名前に当てられません。OSM の住所を確かめてください。");
+  process.exit(1);
+}
+const sorted = named.toSorted(
   (a, b) =>
     ORDER[a.confidence] - ORDER[b.confidence] ||
     a.prefecture.localeCompare(b.prefecture, "ja") ||

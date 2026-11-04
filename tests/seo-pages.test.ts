@@ -297,9 +297,13 @@ describe("系列のページ（#309）", () => {
 
   it("記録の系列で、2 軒以上の系列だけページを作り、sitemap と都道府県の一覧から辿れる", () => {
     const html = files.get(path)!;
-    expect(html).toContain("<title>町田商店の家系ラーメン 2軒｜都道府県ごとの店舗一覧</title>");
+    // 「店舗一覧」を先に出し、出どころと運営元のサイトではないことを書く（#340）。
     expect(html).toContain(
-      'content="町田商店の家系ラーメン2軒を都道府県ごとの一覧から探せます。住所・Google マップの道順まで。"',
+      "<title>町田商店の店舗一覧（2軒）｜都道府県ごとに探せる家系ラーメン</title>",
+    );
+    expect(html).toContain("<h1>町田商店の<wbr>家系ラーメン<wbr>店舗一覧</h1>");
+    expect(html).toContain(
+      'content="町田商店の店舗一覧（2軒）を都道府県ごとに探せます。系列の公式の店舗一覧で確かめた店を載せています（運営元のサイトではありません）。住所・Google マップの道順まで。"',
     );
     expect(html).not.toMatch(
       /<title>[^<]*(候補|判定した結果)|description" content="[^"]*(候補|判定した結果)/,
