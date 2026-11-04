@@ -18,6 +18,14 @@ describe("確かめた記録（data/verified.json）", () => {
     expect(new Date(r.checked as string).toISOString().slice(0, 10)).toBe(r.checked);
     expect(["official-site", "official-sns", "chain-list", "owner-visit"]).toContain(r.source);
     if (r.source !== "owner-visit") expect(String(r.url)).toMatch(/^https?:\/\//);
+    // 開店（#345）。公式に開店日が書いてあれば日付、書いていなければ true。開いた後に確かめた店だけ。
+    if ("opened" in r) {
+      expect(r.status).toBe("open");
+      if (r.opened !== true) {
+        expect(r.opened).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(r.opened <= (r.checked as string)).toBe(true);
+      }
+    }
     if ("id" in r) {
       // 今のデータの店。店名・座標は OSM 側にあるので写さない（ODbL の集合データベースとして分けておく）。
       expect(shopIds.has(r.id as string)).toBe(true);
