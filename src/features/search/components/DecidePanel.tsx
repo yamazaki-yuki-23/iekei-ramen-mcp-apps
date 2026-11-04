@@ -3,7 +3,8 @@ import { basisLabel, describeBasis, pickRange } from "../../../utils/shortlist";
 import type { DecideInfo, Origin, Shop } from "../../../types";
 import styles from "../styles/search.module.css";
 import { ResultCaveat } from "./ResultCaveat";
-import { CAN_SHARE, ShareThree } from "./ShareThree";
+import { ShareThree } from "./ShareThree";
+import { CAN_SHARE } from "../lib/share";
 import { ShopList } from "./ShopList";
 import { StateNote, ZERO_ANNOUNCE } from "./StateNote";
 

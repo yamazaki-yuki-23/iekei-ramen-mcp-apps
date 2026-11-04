@@ -4,12 +4,6 @@ import { shopSlug } from "../../../utils/shop-id";
 import styles from "../styles/search.module.css";
 
 /**
- * 3 軒を URL で共有できるか。共有の URL はこのページの origin で作るので、ページそのものとして
- * 開いている Web だけ。会話の中（MCP Apps）はホストの枠の中で動き、origin がこのサイトではない。
- */
-export const CAN_SHARE = typeof window !== "undefined" && window.top === window;
-
-/**
  * 共有の URL（#344）。持つのは店の ID だけ。**座標・現在地は入れない**（共有した人の居場所が分かる）。
  * 受け取る側の決まりは web-entry.ts。
  */
