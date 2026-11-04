@@ -3,6 +3,7 @@ import { legalLinksHtml } from "../../src/utils/legal-links.ts";
 import { legalMarkdown } from "./legal-markdown.mjs";
 import { citySlugs } from "../data/municipalities.mjs";
 import municipalities from "../../data/municipalities.json" with { type: "json" };
+import { recordShopId } from "../data/verified-shops.mjs";
 import { ALL_PREFECTURES } from "../../src/utils/prefectures.ts";
 import { distanceKm, formatDistance } from "../../src/utils/geo.ts";
 import { openingHoursLabel } from "../../src/utils/opening-hours.ts";
@@ -267,15 +268,88 @@ const chainLead =
 /** 系列のページは店が 2 軒から作る（#309）。1 軒だけだと中身が店のページとほぼ同じになる（#169 と同じ考え）。 */
 const CHAIN_MIN = 2;
 
+/** 「2026-10-26」→「10月26日」。 */
+const monthDay = (date) => `${Number(date.slice(5, 7))}月${Number(date.slice(8, 10))}日`;
+/** 確かめた先と日付。種類だけ書き、オーナーの実食など公開しない先は書かない（#345）。 */
+const checkedAt = (record) =>
+  `${CHECKED_AT[record.source] ? `${CHECKED_AT[record.source]}${/[A-Za-z]$/.test(CHECKED_AT[record.source]) ? " " : ""}で` : ""}確かめた（${record.checked}）`;
+
+/** 開店・閉店の 1 行。今のデータにある店は店のページへつなぐ。 */
+const newsItem = ({ kind, record, shop }) => {
+  const name = shop?.name ?? record.name ?? "";
+  const where = [shop?.prefecture ?? record.prefecture, shop?.city, shop?.address ?? record.address]
+    .filter(Boolean)
+    .join(" ");
+  const what =
+    kind === "opened"
+      ? `${monthDay(record.opened)}に開店（公式に書いてある開店日）。${checkedAt(record)}`
+      : kind === "found"
+        ? `開店を${checkedAt(record)}。開店日は公式に書いてありません`
+        : `閉店を${checkedAt(record)}`;
+  const title = shop ? `<a href="${shopPath(shop)}">${escape(name)}</a>` : escape(name);
+  return `<li><strong>${title}</strong><span>${escape(where)}</span><span>${escape(what)}</span></li>`;
+};
+// 県のページの市区町村の区切り（#317）と同じ見出しの形。月（h2）より小さく見せる。
+const newsSection = (label, list) =>
+  list.length
+    ? `<section class="seo-city"><div class="seo-city-head"><h3>${label}<span>${list.length} 軒</span></h3></div><ul class="seo-news">${list.map(newsItem).join("")}</ul></section>`
+    : "";
+
+/**
+ * 公式で確かめた開店・閉店（/new/、#345）。verified.json の記録から作り、手で書かない。
+ * 開店は `opened` のある記録、閉店は `status: closed` の記録。月ごとに並べ、開店日が公式に書いてある店は
+ * その月に、書いていない店（`opened: true`）と閉店は確かめた月に置く。「開いた店」と書くのは、公式の開店日が
+ * その月の店だけ（それ以外は「開店を確かめた店」）。開店前の店は opened を持たないので載らない。
+ */
+function newShopsPage(records, shops, today) {
+  const shopIds = new Set(shops.map((shop) => shop.id));
+  const shopOf = new Map(shops.map((shop) => [shop.id, shop]));
+  const entries = records.flatMap((record) => {
+    const kind =
+      record.status === "closed"
+        ? "closed"
+        : record.status === "open" && typeof record.opened === "string"
+          ? "opened"
+          : record.status === "open" && record.opened === true
+            ? "found"
+            : undefined;
+    if (!kind) return [];
+    const id = recordShopId(record);
+    const shop = shopOf.get(id);
+    const month = (kind === "opened" ? record.opened : record.checked).slice(0, 7);
+    return [{ kind, record, month, shop: shopIds.has(id) ? shop : undefined }];
+  });
+  const months = [...new Set(entries.map((e) => e.month))].toSorted().toReversed();
+  const thisMonth = today.toISOString().slice(0, 7);
+  const body = months
+    .map((month) => {
+      const inMonth = entries.filter((e) => e.month === month);
+      const of = (kind) => inMonth.filter((e) => e.kind === kind);
+      return `<h2 class="seo-section">${Number(month.slice(0, 4))}年${Number(month.slice(5, 7))}月${month === thisMonth ? "（今月）" : ""}</h2>${newsSection("開いた店", of("opened"))}${newsSection("開店を確かめた店", of("found"))}${newsSection("閉店を確かめた店", of("closed"))}`;
+    })
+    .join("");
+  return page({
+    title: "家系ラーメンの開店・閉店｜公式の情報で確かめた店を月ごとに",
+    heading: ["家系ラーメンの", "開店・閉店"],
+    description:
+      "系列の公式の店舗一覧などで開店・閉店を確かめた家系ラーメンを、月ごとに並べています。開店日は公式に書いてあるときだけ載せます。",
+    path: "/new/",
+    crumbs: `<a href="/area/">都道府県</a>`,
+    content: `<p class="seo-lead">公式の情報で開店・閉店を確かめた店です。開店前の店は載せません。開店日は公式に書いてあるときだけ出し、無ければ確かめた日を出します。</p>${body || '<p class="seo-note">まだありません。</p>'}<p class="seo-caveat">${note}</p>`,
+  });
+}
+
 /**
  * WorkerのAPIへ変更を加えず、ビルド時にだけHTMLとsitemapを生成する。
  * `recordOf` は店 ID → 公式の情報で確かめた記録（verified.json の `status: open`）。
  * 系列のページ（#309）と、店のページの「家系かどうか」（#316）に使う。
  * 系列は店名から推した `brand` では決めない（記録と 25 軒食い違う）。
+ * `records` は verified.json の全部の記録（閉店を含む）。開店・閉店のページ（#345）に使う。
  */
-export function seoPages(shops, recordOf = new Map()) {
+export function seoPages(shops, recordOf = new Map(), records = [], today = new Date()) {
   const files = new Map();
-  const indexed = ["/", "/match/", "/camera/", "/shindan/", "/area/", "/guide/"];
+  const indexed = ["/", "/match/", "/camera/", "/shindan/", "/area/", "/guide/", "/new/"];
+  files.set("/new/", newShopsPage(records, shops, today));
   const prefs = new Map();
   const cities = new Map();
   const chains = new Map();
@@ -327,7 +401,7 @@ export function seoPages(shops, recordOf = new Map()) {
       description: `家系ラーメン${shops.length}軒を都道府県から探せます。今いる場所から近い 3 軒を地図で出すこともできます。`,
       path: "/area/",
       count: shops.length,
-      content: `${primary("/", "近くの 3 軒を出す")}<h2 class="seo-section">都道府県</h2>${prefLinks}${chainLinks}<p class="seo-caveat">${note}</p>`,
+      content: `${primary("/", "近くの 3 軒を出す")}<h2 class="seo-section">都道府県</h2>${prefLinks}${chainLinks}<p><a class="seo-sub-link" href="/new/">公式で確かめた開店・閉店</a></p><p class="seo-caveat">${note}</p>`,
     }),
   );
   files.set(
