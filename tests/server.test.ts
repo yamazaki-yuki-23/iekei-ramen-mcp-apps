@@ -16,6 +16,35 @@ import { PayloadSchema } from "../server/lib/schema";
 let client: Client;
 let wireTools: Array<Record<string, unknown>> = [];
 
+describe("共有の URL の 3 軒（#344）", () => {
+  it("渡した ID の店だけを、その順で出す。距離は出さない", async () => {
+    const ids = shopsData
+      .slice(0, 3)
+      .map((s) => s.id)
+      .toReversed();
+    const { payload } = await callApp("decide-iekei-ramen", { shared: ids });
+    expect(payload.shops.map((s) => s.id)).toEqual(ids);
+    expect(payload.decide?.basis).toBe("shared");
+    expect(payload.shops.every((s) => s.distanceKm === undefined)).toBe(true);
+    expect(payload.query.origin).toBeUndefined();
+  });
+
+  it("載っていない ID は捨て、1 つも残らなければ通常の入口と同じ 3 軒にする", async () => {
+    const known = shopsData[0].id;
+    const { payload } = await callApp("decide-iekei-ramen", { shared: ["node/1", known] });
+    expect(payload.shops.map((s) => s.id)).toEqual([known]);
+    const none = await callApp("decide-iekei-ramen", { shared: ["node/1"] });
+    const home = await callApp("decide-iekei-ramen", { near: "auto" });
+    expect(none.payload.decide?.basis).not.toBe("shared");
+    expect(none.payload.shops.map((s) => s.id)).toEqual(home.payload.shops.map((s) => s.id));
+  });
+
+  it("店の ID の形でない値は受け付けない", async () => {
+    const { isError } = await callApp("decide-iekei-ramen", { shared: ["35.46,139.62"] });
+    expect(isError).toBe(true);
+  });
+});
+
 describe("判定と味の但し書き", () => {
   it("今回の候補が confirmed だけでも母集団の likely の注意書きを渡す", async () => {
     const { payload, text } = await callApp("decide-iekei-ramen");

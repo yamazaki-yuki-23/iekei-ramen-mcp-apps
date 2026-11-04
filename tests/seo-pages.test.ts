@@ -465,6 +465,26 @@ describe("Webの検索条件リンク", () => {
       arguments: { keyword: "吉村家" },
     });
   });
+  it("共有の URL（three）は掲載の店の ID の形で 1〜3 つだけ受け取る（#344）", () => {
+    expect(webEntry("?three=node-1,way-2,manual-0123456789abcdef0123")).toEqual({
+      name: "decide-iekei-ramen",
+      arguments: { shared: ["node/1", "way/2", "manual/0123456789abcdef0123"] },
+    });
+    const home = { name: "decide-iekei-ramen", arguments: { near: "auto" } };
+    for (const query of [
+      "?three=node-1,node-2,node-3,node-4", // 4 つ以上
+      "?three=node-1,node-1", // 重なり
+      "?three=35.46,139.62", // 座標は店の ID の形にならない
+      "?three=node-1,search-iekei-ramen",
+      "?three=",
+      "?three=node-1&prefecture=神奈川県&lat=35.46", // 共有の URL は ID 以外を見ない
+    ])
+      expect(webEntry(query), query).toEqual(
+        query.startsWith("?three=node-1&")
+          ? { name: "decide-iekei-ramen", arguments: { shared: ["node/1"] } }
+          : home,
+      );
+  });
   it("URL無し・不正な県・長すぎるキーワードは券売機（迷ったら）で開く", () => {
     for (const query of [
       "",

@@ -121,8 +121,8 @@ export interface DecideInfo {
   rounds: number;
   /** 絞り込んだあとの母数。 */
   poolTotal: number;
-  /** 並べ替えの根拠。distance=近い順 / hours=営業時間が分かる店から。 */
-  basis: "distance" | "hours";
+  /** 並べ替えの根拠。distance=近い順 / hours=営業時間が分かる店から / shared=共有の URL の店（#344）。 */
+  basis: "distance" | "hours" | "shared";
   /** 「家系か未判定」まで含めないと 3 軒に届かなかった。 */
   widened: boolean;
   /** 今回の表示分だけでなく、母集団に「家系の可能性」が入っている。旧結果では未指定。 */

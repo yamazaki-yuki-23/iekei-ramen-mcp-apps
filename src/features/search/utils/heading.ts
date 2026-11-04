@@ -36,6 +36,8 @@ export function buildHeading(mode: SearchMode, payload: AppPayload, ready: boole
   if (mode === "decide") {
     // 0 件のときに「この 0 軒」と名乗らない。件数はここでは意味を持たない。
     if (payload.shops.length === 0) return HEADING_BY_MODE.decide;
+    // 共有の URL から開いた（#344）。どこの 3 軒かは URL が持たないので「全国」と名乗らない。
+    if (payload.decide?.basis === "shared") return `シェアされた ${payload.shops.length} 軒`;
     const from = payload.query.origin ? originLabel(payload.query.origin) : where;
     return `迷ったらこの ${payload.shops.length} 軒（${from}）`;
   }
@@ -56,7 +58,9 @@ export function formatCount(
   decide: DecideInfo | undefined,
 ): string | null {
   // 0 軒のときは並べたものが無いので、根拠も名乗らない。
-  if (mode === "decide") return decide && shown > 0 ? basisLabel(decide) : null;
+  // 共有の 3 軒は見出しが「シェアされた 3 軒」と言うので、札で繰り返さない。
+  if (mode === "decide")
+    return decide && shown > 0 && decide.basis !== "shared" ? basisLabel(decide) : null;
   if (mode === "visited") return `${total} 軒`;
   const counted = `掲載 ${total} 軒`;
   return total > shown ? `${counted}（${shown} 軒を表示）` : counted;

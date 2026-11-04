@@ -44,6 +44,18 @@ describe("usageEvent — 何を数えるか", () => {
   });
 });
 
+describe("共有の URL から開いた「迷ったら」（#344）", () => {
+  it("共有から開いたことだけを書き、どの店かは書かない", () => {
+    const event = usageEvent("decide-iekei-ramen", { shared: ["node/604269583"] }, false);
+    expect(event).toEqual({ tool: "decide-iekei-ramen", signedIn: false, shared: true });
+    const point = toDataPoint(event!);
+    expect(point.blobs).toEqual(["decide-iekei-ramen", "anonymous", "shared"]);
+    expect(JSON.stringify(point)).not.toContain("604269583");
+    // ふだんの「迷ったら」には付けない。
+    expect(usageEvent("decide-iekei-ramen", { near: "auto" }, false)?.shared).toBeUndefined();
+  });
+});
+
 describe("toDataPoint — 書く項目に、個人を特定できるものが無い", () => {
   it("引数（地名・座標・都道府県・店）を書かない", () => {
     const secrets = ["横浜駅", "35.4657", "139.622", "神奈川県", "node/604269583"];
