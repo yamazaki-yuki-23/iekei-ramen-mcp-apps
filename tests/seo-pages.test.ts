@@ -5,6 +5,7 @@ import { ReportSchema } from "../src/lib/reports";
 import { type Shop } from "../src/types";
 import { CONFIDENCE } from "../src/utils/labels";
 import { webEntry } from "../src/features/search/utils/web-entry";
+import { ORDER_DISCLAIMER, ORDER_SETS, PREFERENCES, SIDE_TIPS } from "../src/utils/order-guide";
 
 const shop: Shop = {
   id: "node/123",
@@ -35,8 +36,8 @@ describe("静的SEOページ", () => {
   it("県・市・店を生成し、未判定だけnoindexとsitemap除外にする", () => {
     const { files, counts } = seoPages(shops);
     // 市区町村は未判定でない店が 1 軒だけなので載せない（#169）。
-    expect(counts).toEqual({ prefectures: 1, municipalities: 1, shops: 2, indexed: 7 });
-    // 固定の 5 枚（トップ・家系マッチ #181・家系カメラ #242・家系タイプ診断 #167・都道府県の一覧）も載せる。
+    expect(counts).toEqual({ prefectures: 1, municipalities: 1, shops: 2, indexed: 8 });
+    // 固定の 6 枚（トップ・家系マッチ #181・家系カメラ #242・家系タイプ診断 #167・都道府県の一覧・頼み方 #342）も載せる。
     expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/match/");
     // 家系カメラも検索に載せる（#242）。見本の段階は終わった。
     expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/camera/");
@@ -126,12 +127,17 @@ describe("静的SEOページ", () => {
     const canonicals: string[] = [];
     for (const [path, html] of files) {
       if (!path.endsWith("/")) continue;
-      expect(path === "/area/" || path.startsWith("/area/") || path.startsWith("/shop/")).toBe(
-        true,
-      );
+      expect(
+        path === "/guide/" ||
+          path === "/area/" ||
+          path.startsWith("/area/") ||
+          path.startsWith("/shop/"),
+      ).toBe(true);
       titles.push(html.match(/<title>(.*?)<\/title>/)![1]);
       descriptions.push(html.match(/name="description" content="([^"]*)"/)![1]);
       canonicals.push(html.match(/rel="canonical" href="([^"]*)"/)![1]);
+      // 頼み方のページは店の一覧ではない。中身の但し書きは別の describe で見る（#342）。
+      if (path === "/guide/") continue;
       expect(html).toContain("既知のブランドからの参考値");
       // 座標の行は出さない。利用者には意味が無く、地図のリンクで足りる（#152）。
       expect(html).not.toContain("座標：");
@@ -153,7 +159,7 @@ describe("静的SEOページ", () => {
       (s) => `${s.prefecture}/${s.city}`,
     );
     expect(counts.indexed).toBe(
-      5 +
+      6 +
         [...byPref.values()].filter(indexedPages).length +
         // 市区町村は、未判定でない店が 2 軒以上のときだけ載せる（#169）。
         [...byCity.values()].filter(
@@ -178,13 +184,13 @@ describe("初めて来た人向けの店のページ（#255）", () => {
     expect(shopPage([shop])).not.toContain("<dt>電話</dt>");
   });
 
-  it("主のボタンは Google マップの道順、2 番目はアプリの 1 か所の注文のしかた（#330）", () => {
+  it("主のボタンは Google マップの道順、2 番目は頼み方のページ（#342）", () => {
     const html = shopPage([shop]);
     expect(html).toContain(
       '<a class="seo-primary" href="https://www.google.com/maps/dir/?api=1&amp;destination=35.46%2C139.62" target="_blank" rel="noopener noreferrer">Google マップで道順を見る</a>',
     );
     expect(html).toContain(
-      '<a class="seo-secondary" href="/#order">注文のしかたを見る<small>お好み・卓上・ライス</small></a>',
+      '<a class="seo-secondary" href="/guide/">注文のしかたを見る<small>お好み・卓上・ライス</small></a>',
     );
     expect(html).not.toContain("この店の券売機");
     expect(html).not.toContain("この店をアプリで開く");
@@ -473,7 +479,7 @@ describe("検索結果と共有のための追加（#155）", () => {
       'name="robots" content="noindex"',
     );
     expect(files.get("/sitemap.xml")).not.toContain("/area/kanagawa/");
-    expect(counts.indexed).toBe(5);
+    expect(counts.indexed).toBe(6);
     // 1 軒でも未判定以外があれば今どおり index する。
     expect(seoPages(shops).files.get("/area/kanagawa/")).not.toContain("noindex");
   });
@@ -531,5 +537,36 @@ describe("検索結果と共有のための追加（#155）", () => {
         `<link rel="canonical" href="https://iekeiramen.com/${page}/" />`,
       );
     }
+  });
+});
+
+describe("頼み方のページ（/guide/、#342）", () => {
+  const { files } = seoPages(shops);
+  const html = files.get("/guide/")!;
+
+  it("題名に「家系ラーメンの頼み方」が入り、sitemap に載る", () => {
+    expect(html).toContain("<title>家系ラーメンの頼み方｜");
+    expect(files.get("/sitemap.xml")).toContain("<loc>https://iekeiramen.com/guide/</loc>");
+  });
+
+  it("中身はアプリの注文のしかたと同じ源から作る（片方だけ直すとここで落ちる）", () => {
+    for (const { label, options, note } of PREFERENCES) {
+      expect(html).toContain(
+        `<dt>${label}</dt><dd><b>${options.join(" / ")}</b><span>${note}</span>`,
+      );
+    }
+    for (const { label, choice, why } of ORDER_SETS) {
+      expect(html).toContain(
+        `<dt>${label}</dt><dd><b>${choice.join(" / ")}</b><span>${why}</span>`,
+      );
+    }
+    for (const tip of SIDE_TIPS) expect(html).toContain(`<li>${tip}</li>`);
+    // 店ごとの決まりではない、の但し書きを残す。
+    expect(html).toContain(ORDER_DISCLAIMER);
+  });
+
+  it("下から近くの 3 軒へつなぎ、県のページからも来られる", () => {
+    expect(html).toContain('<a class="seo-primary" href="/">近くの 3 軒を出す</a>');
+    expect(files.get("/area/kanagawa/")).toContain('href="/guide/"');
   });
 });

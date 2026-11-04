@@ -4,6 +4,12 @@ import { legalMarkdown } from "./legal-markdown.mjs";
 import { ALL_PREFECTURES } from "../../src/utils/prefectures.ts";
 import { distanceKm, formatDistance } from "../../src/utils/geo.ts";
 import { openingHoursLabel } from "../../src/utils/opening-hours.ts";
+import {
+  ORDER_DISCLAIMER,
+  ORDER_SETS,
+  PREFERENCES,
+  SIDE_TIPS,
+} from "../../src/utils/order-guide.ts";
 
 const origin = "https://iekeiramen.com";
 const slugs =
@@ -179,7 +185,7 @@ function shopContent(shop, shops, record) {
     .join("");
   const report = `<section class="seo-report" aria-labelledby="report-title" data-report-shop="${escape(shop.id)}"><h2 id="report-title">この店の情報、違っていませんか？</h2><div class="seo-report-buttons">${REPORT_KINDS.map(({ kind, label }) => `<button type="button" data-kind="${kind}">${escape(label)}</button>`).join("")}</div><p class="seo-note">サインインは不要です。押すとすぐ送られます。</p><p class="seo-report-status" role="status"></p></section>`;
   const about = `<section class="seo-about" aria-labelledby="about-title"><h2 id="about-title">この情報について</h2><dl>${[["家系かどうか", basisLabel(record)], ...ABOUT].map(([term, text]) => `<div><dt>${term}</dt><dd>${escape(text)}</dd></div>`).join("")}</dl></section>`;
-  return `<p class="seo-lead">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p>${factList}<div class="seo-actions">${primary(directions, "Google マップで道順を見る", true)}<a class="seo-secondary" href="/#order">注文のしかたを見る<small>お好み・卓上・ライス</small></a></div><h2 class="seo-section">この店から近い家系（直線距離）</h2><ul class="seo-nearby">${near}</ul>${report}${about}<script src="/shop-report.js" defer></script>`;
+  return `<p class="seo-lead">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p>${factList}<div class="seo-actions">${primary(directions, "Google マップで道順を見る", true)}<a class="seo-secondary" href="/guide/">注文のしかたを見る<small>お好み・卓上・ライス</small></a></div><h2 class="seo-section">この店から近い家系（直線距離）</h2><ul class="seo-nearby">${near}</ul>${report}${about}<script src="/shop-report.js" defer></script>`;
 }
 
 /** 店の一覧。但し書きは一覧のすぐ下に 1 回。 */
@@ -200,6 +206,15 @@ function cityShopList(groups) {
 function cards(shops) {
   return `<ul class="seo-cards">${shops.map((shop) => `<li><a class="seo-card" href="${shopPath(shop)}"><strong>${escape(shop.name)}</strong><span>${escape([region(shop), shop.address].filter(Boolean).join(" "))}</span></a></li>`).join("")}</ul>`;
 }
+
+/**
+ * 頼み方のページ（/guide/、#342）の中身。アプリの「注文のしかた」と同じ源（order-guide.ts）から作り、
+ * ここに文言を書き足さない。一般的な作法で、店ごとの決まりではない（但し書きを中身のすぐ下に出す）。
+ */
+const answers = (rows) =>
+  `<dl class="seo-guide">${rows.map(([term, value, why]) => `<div><dt>${escape(term)}</dt><dd><b>${escape(value)}</b><span>${escape(why)}</span></dd></div>`).join("")}</dl>`;
+const guideContent = () =>
+  `<p class="seo-lead">食券を渡すと「お好みは？」と聞かれることがあります。答え方と、回数ごとの頼み方をまとめました。</p><h2 class="seo-section">「お好みは？」と聞かれたら</h2>${answers(PREFERENCES.map((p) => [p.label, p.options.join(" / "), p.note]))}<h2 class="seo-section">回数ごとの頼み方</h2><p class="seo-note">順に ${PREFERENCES.map(({ label }) => label).join("・")}。</p>${answers(ORDER_SETS.map(({ label, choice, why }) => [label, choice.join(" / "), why]))}<h2 class="seo-section">券売機と卓上</h2><ul class="seo-guide-tips">${SIDE_TIPS.map((tip) => `<li>${escape(tip)}</li>`).join("")}</ul><p class="seo-caveat">${escape(ORDER_DISCLAIMER)}</p><div class="seo-actions">${primary("/", "近くの 3 軒を出す")}<a class="seo-secondary" href="/area/">都道府県から探す</a></div>`;
 
 /** 地域のチップ。「判定した結果の〇軒」を行ごとに繰り返さず、軒数だけ添える。 */
 function chips(items) {
@@ -245,7 +260,7 @@ const CHAIN_MIN = 2;
  */
 export function seoPages(shops, recordOf = new Map()) {
   const files = new Map();
-  const indexed = ["/", "/match/", "/camera/", "/shindan/", "/area/"];
+  const indexed = ["/", "/match/", "/camera/", "/shindan/", "/area/", "/guide/"];
   const prefs = new Map();
   const cities = new Map();
   const chains = new Map();
@@ -298,6 +313,17 @@ export function seoPages(shops, recordOf = new Map()) {
       path: "/area/",
       count: shops.length,
       content: `${primary("/", "近くの 3 軒を出す")}<h2 class="seo-section">都道府県</h2>${prefLinks}${chainLinks}<p class="seo-caveat">${note}</p>`,
+    }),
+  );
+  files.set(
+    "/guide/",
+    page({
+      title: "家系ラーメンの頼み方｜初めての「お好みは？」の答え方",
+      heading: ["家系ラーメンの", "頼み方"],
+      description:
+        "家系ラーメンに初めて行く人のために、「お好みは？」と聞かれたときの答え方（麺の硬さ・味の濃さ・脂の量）と、回数ごとの頼み方、券売機と卓上のことをまとめました。",
+      path: "/guide/",
+      content: guideContent(),
     }),
   );
   for (const [chain, list] of chainList) {
@@ -356,7 +382,7 @@ export function seoPages(shops, recordOf = new Map()) {
         noindex: allCandidates(list),
         count: list.length,
         crumbs: `<a href="/area/">都道府県</a>`,
-        content: `<p class="seo-lead">${listLead}</p><div class="seo-actions">${primary(`/?${new URLSearchParams({ prefecture, view: "map" })}`, `${prefecture}の地図を開く`)}<a class="seo-secondary" href="${escape(appLink(prefecture))}">${prefecture}から 3 軒に絞る</a></div><h2 class="seo-section">市区町村</h2>${cityLinks}${cityShopList(groups)}`,
+        content: `<p class="seo-lead">${listLead}</p><div class="seo-actions">${primary(`/?${new URLSearchParams({ prefecture, view: "map" })}`, `${prefecture}の地図を開く`)}<a class="seo-secondary" href="${escape(appLink(prefecture))}">${prefecture}から 3 軒に絞る</a></div><h2 class="seo-section">市区町村</h2>${cityLinks}${cityShopList(groups)}<p><a class="seo-sub-link" href="/guide/">初めての人へ: 家系ラーメンの頼み方</a></p>`,
       }),
     );
     if (!allCandidates(list)) indexed.push(path);

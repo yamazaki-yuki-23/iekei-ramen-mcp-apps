@@ -372,6 +372,35 @@
   margin: 0;
   color: var(--color-text-muted);
 }
+/* 頼み方のページ（/guide/、#342）。項目・答え（太字）・理由（控えめ）の順。 */
+.seo-guide {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+.seo-guide div {
+  display: grid;
+  grid-template-columns: 5.5em 1fr;
+  gap: var(--space-2);
+}
+.seo-guide dt {
+  font-weight: var(--font-weight-bold);
+}
+.seo-guide dd {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+.seo-guide dd span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+  line-height: 1.6;
+}
+.seo-page .seo-guide-tips {
+  list-style: disc;
+  padding-left: 1.5em;
+  line-height: 1.7;
+}
 .seo-caveat,
 .seo-note {
   color: var(--color-text-muted);

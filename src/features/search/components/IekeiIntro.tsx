@@ -1,17 +1,14 @@
 import { useEffect } from "react";
-import { OrderGuide } from "./OrderGuide";
 import { markIntroSeen } from "../lib/intro-state";
 import styles from "../styles/search.module.css";
 
 interface Props {
   open: boolean;
   onToggle: (open: boolean) => void;
-  /** 注文のしかたを開いて移る（店のページの `/#order` から来たとき）。 */
-  orderOpen?: boolean;
 }
 
 /** 開閉状態はWebの入口が持ち、検索結果の入れ替えでも畳まない。 */
-export function IekeiIntro({ open, onToggle, orderOpen }: Props) {
+export function IekeiIntro({ open, onToggle }: Props) {
   useEffect(markIntroSeen, []);
 
   return (
@@ -38,7 +35,10 @@ export function IekeiIntro({ open, onToggle, orderOpen }: Props) {
             <dd>家系のスタイルを参考にした店を指す呼び方。</dd>
           </dl>
         </details>
-        <OrderGuide open={orderOpen} />
+        {/* 注文のしかたは頼み方のページ 1 か所に置く（#342）。検索から直接来る人もそこを見る。 */}
+        <a className={styles.introLink} href="/guide/">
+          家系ラーメンの頼み方（お好み・卓上・ライス）
+        </a>
       </div>
     </details>
   );

@@ -31,9 +31,12 @@ test("初回は家系の3行説明を開き、次回は畳む。候補を変え�
   for (const term of ["直系", "資本系", "インスパイア系"]) {
     await expect(intro.locator("dt").filter({ hasText: term })).toBeVisible();
   }
-  await intro.getByText("注文のしかた（お好み・卓上・ライス）", { exact: true }).click();
-  await expect(intro.getByRole("columnheader", { name: "聞かれること" })).toBeVisible();
-  await expect(intro).toContainText("お店の掲示に従ってください");
+  // 注文のしかたは頼み方のページ 1 か所（#342）。ここにはそこへのリンクだけ置く。
+  await expect(intro.getByRole("link", { name: /家系ラーメンの頼み方/ })).toHaveAttribute(
+    "href",
+    "/guide/",
+  );
+  await expect(intro.getByRole("columnheader", { name: "聞かれること" })).toHaveCount(0);
 
   await summary.focus();
   await summary.press("Enter");
@@ -246,29 +249,4 @@ test("キーボードだけで、券売機で選んで発券し、食券を開�
   await expect(page.getByRole("button", { name: "Google マップで道順を見る" })).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Google マップで道順を見る" })).toBeFocused();
-});
-
-test("店のページの「注文のしかたを見る」（/#order）で、家系とはと注文のしかたが開いて見える（#330）", async ({
-  page,
-}) => {
-  await page.goto(`${WEB_URL}/#order`);
-  const order = page.locator("#order");
-  await expect(order).toHaveAttribute("open", "");
-  await expect(page.getByRole("row", { name: /麺の硬さ/ })).toBeInViewport();
-});
-
-test("/#order で来たあと、結果を入れ替えても注文のしかたへ引き戻さない（#330 のレビュー）", async ({
-  page,
-}) => {
-  await page.goto(`${WEB_URL}/#order`);
-  const order = page.locator("#order");
-  await expect(page.getByRole("row", { name: /麺の硬さ/ })).toBeInViewport();
-  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.getByRole("button", { name: /次の 3 軒/ }).click();
-  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
-  await page.waitForTimeout(300);
-  expect(await page.evaluate(() => window.location.hash)).toBe("");
-  // 引き戻されると、注文のしかたが画面の上端に来る。押したボタンが見える位置で止まっている。
-  expect((await order.boundingBox())!.y).toBeGreaterThan(200);
 });
