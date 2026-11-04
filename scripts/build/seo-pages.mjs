@@ -1,6 +1,8 @@
 import { tabBarHtml } from "../../src/utils/tabbar.ts";
 import { legalLinksHtml } from "../../src/utils/legal-links.ts";
 import { legalMarkdown } from "./legal-markdown.mjs";
+import { citySlugs } from "../data/municipalities.mjs";
+import municipalities from "../../data/municipalities.json" with { type: "json" };
 import { ALL_PREFECTURES } from "../../src/utils/prefectures.ts";
 import { distanceKm, formatDistance } from "../../src/utils/geo.ts";
 import { openingHoursLabel } from "../../src/utils/opening-hours.ts";
@@ -81,7 +83,20 @@ const region = (shop) => [shop.prefecture, shop.city].filter(Boolean).join(" ");
 const appLink = (prefecture, keyword) =>
   `/?${new URLSearchParams({ prefecture, ...(keyword ? { keyword } : {}) })}`;
 const prefPath = (prefecture) => `/area/${prefectureSlugs.get(prefecture)}/`;
-const cityPath = (prefecture, city) => `${prefPath(prefecture)}${encodeURIComponent(city)}/`;
+/**
+ * 市区町村のページの URL（#341）。県・系列と同じく英字にする。名前は総務省の一覧の読みから作る
+ * （名古屋市 → nagoya。data/municipalities.mjs の citySlugs）。一覧に無い名前ではページを作らずに止める。
+ */
+const slugsOf = new Map();
+const cityPath = (prefecture, city) => {
+  if (!slugsOf.has(prefecture)) slugsOf.set(prefecture, citySlugs(municipalities, prefecture));
+  const slug = slugsOf.get(prefecture).get(city);
+  if (!slug)
+    throw new Error(
+      `市区町村の英字の名前がありません: ${prefecture}${city}（data/municipalities.json）`,
+    );
+  return `${prefPath(prefecture)}${slug}/`;
+};
 const shopPath = (shop) => `/shop/${shop.id.replace("/", "-")}/`;
 
 /**
@@ -473,9 +488,15 @@ export function seoPages(shops, recordOf = new Map()) {
     files,
     // #309 で日本語の URL で公開した分を、英字の URL へ 301 で送る（public/_redirects に足す）。
     // _redirects は届いたままの（%E7… の）パスと突き合わせるので、エンコードした形で書く。
-    redirects: chainList.flatMap(([chain]) =>
-      ["/", ""].map((end) => [`/chain/${encodeURIComponent(chain)}${end}`, chainPath(chain)]),
-    ),
+    redirects: [
+      ...chainList.flatMap(([chain]) =>
+        ["/", ""].map((end) => [`/chain/${encodeURIComponent(chain)}${end}`, chainPath(chain)]),
+      ),
+      // 市区町村のページも、日本語の URL で公開した分を英字の URL へ送る（#341）。
+      ...[...cities].flatMap(([path, [{ prefecture, city }]]) =>
+        ["/", ""].map((end) => [`${prefPath(prefecture)}${encodeURIComponent(city)}${end}`, path]),
+      ),
+    ],
     counts: {
       prefectures: prefs.size,
       municipalities: cities.size,
