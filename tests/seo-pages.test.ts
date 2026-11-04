@@ -36,7 +36,7 @@ describe("静的SEOページ", () => {
   it("県・市・店を生成し、未判定だけnoindexとsitemap除外にする", () => {
     const { files, counts } = seoPages(shops);
     // 市区町村は未判定でない店が 1 軒だけなので載せない（#169）。
-    expect(counts).toEqual({ prefectures: 1, municipalities: 1, shops: 2, indexed: 8 });
+    expect(counts).toEqual({ prefectures: 1, municipalities: 1, shops: 2, indexed: 9 });
     // 固定の 6 枚（トップ・家系マッチ #181・家系カメラ #242・家系タイプ診断 #167・都道府県の一覧・頼み方 #342）も載せる。
     expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/match/");
     // 家系カメラも検索に載せる（#242）。見本の段階は終わった。
@@ -129,6 +129,7 @@ describe("静的SEOページ", () => {
       if (!path.endsWith("/")) continue;
       expect(
         path === "/guide/" ||
+          path === "/new/" ||
           path === "/area/" ||
           path.startsWith("/area/") ||
           path.startsWith("/shop/"),
@@ -159,7 +160,8 @@ describe("静的SEOページ", () => {
       (s) => `${s.prefecture}/${s.city}`,
     );
     expect(counts.indexed).toBe(
-      6 +
+      // トップ・マッチ・カメラ・診断・都道府県・頼み方・開店と閉店（#345）
+      7 +
         [...byPref.values()].filter(indexedPages).length +
         // 市区町村は、未判定でない店が 2 軒以上のときだけ載せる（#169）。
         [...byCity.values()].filter(
@@ -501,7 +503,7 @@ describe("検索結果と共有のための追加（#155）", () => {
     expect(files.get("/area/kanagawa/")).toContain('name="robots" content="noindex"');
     expect(files.get("/area/kanagawa/yokohama/")).toContain('name="robots" content="noindex"');
     expect(files.get("/sitemap.xml")).not.toContain("/area/kanagawa/");
-    expect(counts.indexed).toBe(6);
+    expect(counts.indexed).toBe(7);
     // 1 軒でも未判定以外があれば今どおり index する。
     expect(seoPages(shops).files.get("/area/kanagawa/")).not.toContain("noindex");
   });
@@ -629,6 +631,105 @@ describe("市区町村のページの URL（#341）", () => {
   it("英字の名前が無い市区町村は、ページを作らずに止める", () => {
     expect(() => seoPages([{ ...shop, city: "架空市" }])).toThrow(
       "市区町村の英字の名前がありません: 神奈川県架空市",
+    );
+  });
+});
+
+/** タグを「|」にした本文（#345 のページの文の並びを見る）。 */
+const text = (html: string) => html.replace(/<[^>]+>/g, "|");
+/** 月の見出しから次の月の見出しまで。 */
+const section = (html: string, heading: string) =>
+  text(
+    html
+      .split(`<h2 class="seo-section">${heading}</h2>`)[1]
+      ?.split('<h2 class="seo-section">')[0] ?? "",
+  );
+
+describe("公式で確かめた開店・閉店のページ（#345）", () => {
+  const opened = {
+    name: "試験家 新店",
+    prefecture: "東京都",
+    address: "千代田区1-1",
+    basis: "chain",
+    chain: "町田商店",
+    status: "open",
+    opened: "2026-11-02",
+    checked: "2026-11-04",
+    source: "chain-list",
+  };
+  const found = { ...opened, name: "試験家 日付なし", address: "千代田区2-2", opened: true };
+  const lastMonth = {
+    ...opened,
+    name: "試験家 先月",
+    address: "千代田区3-3",
+    opened: "2026-10-26",
+  };
+  const closed = { ...opened, name: "試験家 閉店", address: "千代田区4-4", status: "closed" };
+  const visit = { ...closed, name: "試験家 実食", address: "千代田区5-5", source: "owner-visit" };
+  const plain = { ...opened, name: "試験家 確かめただけ", address: "千代田区6-6" };
+  delete (plain as { opened?: unknown }).opened;
+  const today = new Date("2026-11-05T00:00:00Z");
+
+  it("記録から月ごとに作り、「開いた店」は公式の開店日がその月の店だけ", () => {
+    const html = seoPages(
+      shops,
+      new Map(),
+      [opened, found, lastMonth, closed, visit, plain],
+      today,
+    ).files.get("/new/")!;
+    const now = section(html, "2026年11月（今月）");
+    expect(now).toContain("|開いた店|1 軒|");
+    expect(now).toContain("試験家 新店");
+    expect(now).toContain(
+      "11月2日に開店（公式に書いてある開店日）。系列の公式の店舗一覧で確かめた（2026-11-04）",
+    );
+    // 開店日の無い店は「開いた店」に入れず、確かめた日を出す。
+    expect(now.split("|開店を確かめた店|1 軒|")[1]).toContain("試験家 日付なし");
+    expect(now.split("|開店を確かめた店|1 軒|")[0]).not.toContain("試験家 日付なし");
+    expect(now).toContain(
+      "開店を系列の公式の店舗一覧で確かめた（2026-11-04）。開店日は公式に書いてありません",
+    );
+    // 先月開いた店は、確かめたのが今月でも先月に置く（「今月開いた」と読ませない）。
+    expect(now).not.toContain("試験家 先月");
+    expect(section(html, "2026年10月")).toContain("10月26日に開店");
+    // 閉店は確かめた月に。オーナーの実食のような公開しない先は書かない。
+    expect(now.split("|閉店を確かめた店|2 軒|")[1]).toContain(
+      "閉店を系列の公式の店舗一覧で確かめた（2026-11-04）",
+    );
+    expect(now).toContain("試験家 実食");
+    expect(now).toContain("閉店を確かめた（2026-11-04）");
+    expect(html).not.toContain("実食で");
+    // 開店も閉店も示していない記録は載せない。
+    expect(html).not.toContain("試験家 確かめただけ");
+  });
+
+  it("今のデータにある店は店のページへつなぎ、sitemap・都道府県の一覧から行ける", () => {
+    const linked = {
+      id: "node/123",
+      basis: "chain",
+      chain: "町田商店",
+      status: "open",
+      opened: true,
+      checked: "2026-11-04",
+      source: "chain-list",
+    };
+    const { files } = seoPages(shops, new Map(), [linked], today);
+    expect(files.get("/new/")).toContain('<a href="/shop/node-123/">');
+    expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/new/");
+    expect(files.get("/area/")).toContain('href="/new/"');
+    expect(seoPages(shops, new Map(), [], today).files.get("/new/")).toContain("まだありません。");
+  });
+
+  it("実データ: 10 月に開いた 2 店が、確かめた日と出どころつきで出る", () => {
+    const real = JSON.parse(
+      readFileSync(new URL("../data/verified.json", import.meta.url), "utf8"),
+    );
+    const html = seoPages(shops, new Map(), real, today).files.get("/new/")!;
+    const october = section(html, "2026年10月");
+    expect(october).toContain("横浜家系ラーメン 町田商店 松原店");
+    expect(october).toContain("壱角家 御茶ノ水店");
+    expect(october).toContain(
+      "10月26日に開店（公式に書いてある開店日）。系列の公式の店舗一覧で確かめた（2026-11-04）",
     );
   });
 });

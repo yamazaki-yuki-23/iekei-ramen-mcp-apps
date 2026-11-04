@@ -154,6 +154,23 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-note);
 }
+/* 公式で確かめた開店・閉店（/new/、#345）。閉店した店は押せないので札にせず、細い線で区切った箇条にする。 */
+.seo-news {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.seo-news li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width-regular) solid var(--color-border);
+}
+.seo-news li > span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-note);
+}
 /* 県のページの市区町村ごとの区切り（#317）。見出しの横に、その市区町村のページへのリンク。 */
 .seo-city {
   scroll-margin-top: var(--space-4);

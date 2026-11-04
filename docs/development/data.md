@@ -187,6 +187,7 @@ npm run data:build     # 番地の精度で引けた店を shops.json に足す
 | `basis`                         | `chain`（系列。`chain` に系列名）／`self`（店自身が家系と名乗る）                                      |
 | `status`                        | `open`／`closed`／`unlisted`（公式の一覧に無い。閉店の確定ではない）                                   |
 | `checked`                       | 確かめた日（YYYY-MM-DD）。半年で確かめ直す                                                             |
+| `opened`                        | 開店を確かめた店だけ（#345）。公式に開店日が書いてあればその日、無ければ `true`。開店前には付けない    |
 | `source`                        | `chain-list`（系列の公式の店舗一覧）／`official-site`／`official-sns`／`owner-visit`（オーナーの実食） |
 | `url`                           | 確かめた先。画面には出さない                                                                           |
 

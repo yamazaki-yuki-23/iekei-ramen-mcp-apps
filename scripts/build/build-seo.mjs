@@ -15,7 +15,7 @@ const recordOf = new Map(
     .filter((record) => record.status === "open")
     .map((record) => [recordShopId(record), record]),
 );
-const { files, redirects, counts } = seoPages(shops, recordOf);
+const { files, redirects, counts } = seoPages(shops, recordOf, records);
 const legal = legalPages({
   privacy: await readFile(new URL("../../docs/legal/privacy-policy.md", import.meta.url), "utf8"),
   terms: await readFile(new URL("../../docs/legal/terms.md", import.meta.url), "utf8"),
