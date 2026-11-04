@@ -1,8 +1,15 @@
+import { readFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
 const isDevelopment = process.env.NODE_ENV === "development";
+
+// トップの題名と説明文の「掲載 N 軒」（#339）。index.html の %VITE_SHOP_COUNT% を Vite が置き換える。
+// 手で書くと data:build で軒数が変わったときにずれる。
+process.env.VITE_SHOP_COUNT = String(
+  JSON.parse(readFileSync(new URL("data/shops.json", import.meta.url), "utf8")).length,
+);
 
 export default defineConfig(({ mode }) => ({
   // MCP Apps は埋め込み用の単一HTML、Webは静的配信用の独立した出力にする。

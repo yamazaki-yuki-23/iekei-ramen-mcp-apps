@@ -14,6 +14,13 @@ const { harness, close } = createOAuthHarness(assets);
 const request = (path: string, init?: RequestInit) =>
   harness.fetch(`http://localhost${path}`, { ...init, redirect: "manual" });
 
+/** トップの題名と説明文（#339）。軒数は data/shops.json から数え、ビルドが追従しているかを見る。 */
+const shopCount = JSON.parse(
+  readFileSync(new URL("../data/shops.json", import.meta.url), "utf8"),
+).length;
+const topTitle = `近くの家系ラーメンを探す｜現在地から近い3軒を地図で（掲載${shopCount}軒）`;
+const topDescription = `今いる場所から近い家系ラーメンを3軒まで出し、地図と一覧で探せます。掲載${shopCount}軒。一部の店は系列や店の公式の情報で確かめています。距離は直線距離です。`;
+
 const call = (name: string) =>
   request("/mcp", {
     method: "POST",
@@ -111,7 +118,7 @@ describe("workerdのWeb静的配信と既存API", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("text/html");
     const html = await response.text();
-    expect(html).toContain("家系ラーメンを地図で探す｜迷ったら3軒に絞れる");
+    expect(html).toContain(`<title>${topTitle}</title>`);
     const paths = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
     expect(paths.some((p) => p.endsWith(".js"))).toBe(true);
     expect(paths.some((p) => p.endsWith(".css"))).toBe(true);
@@ -141,11 +148,12 @@ describe("workerdのWeb静的配信と既存API", () => {
           tag.match(/\bcontent="([^"]+)"/)?.[1],
         ]),
       );
-      expect(metadata.get("description")).toContain("地図データをもとにした推定です。");
-      expect(metadata.get("og:title")).toBe("家系ラーメンを地図で探す｜迷ったら3軒に絞れる");
-      expect(metadata.get("og:description")).toBe(
-        "今日の家系、決められない人へ。迷ったら3軒まで絞ります。",
-      );
+      // 題名と説明文は検索・SNS で同じ文にし、掲載の軒数はビルドで入れる（#339）。
+      expect(metadata.get("og:title")).toBe(topTitle);
+      expect(metadata.get("twitter:title")).toBe(topTitle);
+      expect(metadata.get("description")).toBe(topDescription);
+      expect(metadata.get("og:description")).toBe(topDescription);
+      expect(metadata.get("twitter:description")).toBe(topDescription);
       expect(metadata.get("og:type")).toBe("website");
       expect(metadata.get("og:url")).toBe("https://iekeiramen.com/");
       expect(metadata.get("twitter:card")).toBe("summary_large_image");
