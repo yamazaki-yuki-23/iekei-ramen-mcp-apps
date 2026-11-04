@@ -64,6 +64,10 @@ URLエンコードする。住所から区を推測せず、逆引きを反映�
 系列は `data/verified.json` の記録（`basis: chain`・`status: open`）で決め、`shops.json` の `brand`
 （店名からの推定）では決めない（記録と 25 軒食い違う）。中身は都道府県ごとの店のカードで、
 `/area/` の「系列」の段から辿れる。系列の説明・歴史・味は書かない。
+**頼み方のページ（`/guide/`、#342）** は、アプリの「注文のしかた」（`OrderGuide.tsx`）と同じ源
+`src/utils/order-guide.ts` から作る（但し書きの `ORDER_DISCLAIMER` も含む）。文言を `seo-pages.mjs` に書き足さない。
+`tests/seo-pages.test.ts` が源の値がページに出ているかを見るので、片方だけ直すと落ちる。店のページの「注文のしかたを見る」・
+県のページの下・Web の「家系とは」からリンクする。中身は一般的な作法で、店ごとの決まり・味・評判は書かない。
 市区町村と店舗のページには、見えている「◯◯の一覧」のリンクと同じ階層の `BreadcrumbList` を
 付ける。全ページの OGP はトップと同じ `og-card.png` を使い、文言は title と description に合わせる。
 

@@ -1398,6 +1398,15 @@
   margin: 0;
 }
 
+/* 頼み方のページ（/guide/、#342）へのリンク。押せる高さは 44px。 */
+.introLink {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-accent-strong);
+}
+
 .introTerms {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -2076,6 +2085,7 @@
 .card:focus-visible,
 .focusHeadLabel:focus-visible,
 .guideSummary:focus-visible,
+.introLink:focus-visible,
 .reportSummary:focus-visible {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 1px;

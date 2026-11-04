@@ -111,6 +111,7 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 | `src/utils/`・`src/types/`                                              | 2 つ以上で使い、外部に触らないもの・型（サーバーも使う）                      |
 | `src/utils/shortlist.ts`                                                | 「迷ったら」の 3 軒の選び方。おすすめ順は作らない                             |
 | `src/utils/route.ts`                                                    | 「まわる店」の順番と距離、地図アプリへ渡す URL                                |
+| `src/utils/order-guide.ts`                                              | 注文のしかたの中身。アプリの `OrderGuide` と頼み方のページ `/guide/` の源     |
 | `src/features/search/utils/model-context.ts`                            | 選んだ 1 軒をモデルへ渡す列（順番・失敗・やり直し）                           |
 | `src/features/search/utils/shop-brief.ts`                               | モデルに渡す文面。推定には但し書きを付ける                                    |
 | `server/lib/oauth.ts`                                                   | Google サインインと、記録の tool に返す 401                                   |

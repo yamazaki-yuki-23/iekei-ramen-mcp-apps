@@ -31,7 +31,8 @@ test("道順が主のボタンで、近い家系 3 軒と「この情報につ�
     /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&destination=/,
   );
   await expect(directions).toBeInViewport();
-  await expect(page.getByRole("link", { name: /注文のしかたを見る/ })).toBeVisible();
+  const order = page.getByRole("link", { name: /注文のしかたを見る/ });
+  await expect(order).toHaveAttribute("href", "/guide/");
   await expect(page.locator(".seo-nearby > li")).toHaveCount(3);
   await expect(page.getByRole("heading", { name: "この情報について" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
@@ -72,4 +73,12 @@ test("送れなかったときは受け口の理由を出し、もう一度押�
   );
   await expect(page.getByRole("button", { name: "場所が違う" })).toBeEnabled();
   expect(bodies).toEqual([{ kind: "wrong-location", shopId: "way/884336378" }]);
+});
+
+test("「注文のしかたを見る」で頼み方のページが開く（#342）", async ({ page }) => {
+  await page.goto(SHOP);
+  await page.getByRole("link", { name: /注文のしかたを見る/ }).click();
+  await expect(page).toHaveURL(/\/guide\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("家系ラーメンの頼み方");
+  await expect(page.getByText(/お店の掲示に従ってください/)).toBeVisible();
 });
