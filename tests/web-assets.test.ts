@@ -72,7 +72,7 @@ describe("workerdのWeb静的配信と既存API", () => {
     for (const path of [
       "/area/",
       "/area/kanagawa/",
-      "/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/",
+      "/area/kanagawa/yokohama/",
       "/chain/machida-shoten/",
       "/shop/node-1774529495/",
     ]) {
@@ -86,8 +86,19 @@ describe("workerdのWeb静的配信と既存API", () => {
     const ward = await request("/area/kanagawa/%E4%B8%AD%E5%8C%BA/");
     expect(ward.status).toBe(301);
     expect(new URL(ward.headers.get("location")!, "http://x").pathname).toBe(
-      "/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/",
+      "/area/kanagawa/yokohama/",
     );
+    // 市区町村のページの日本語の URL は、英字の URL へ 301 で送る（#341）。
+    for (const path of [
+      "/area/aichi/%E5%90%8D%E5%8F%A4%E5%B1%8B%E5%B8%82/",
+      "/area/aichi/%E5%90%8D%E5%8F%A4%E5%B1%8B%E5%B8%82",
+    ]) {
+      const response = await request(path);
+      expect(response.status, path).toBe(301);
+      expect(new URL(response.headers.get("location")!, "http://x").pathname).toBe(
+        "/area/aichi/nagoya/",
+      );
+    }
     // #309 で公開した日本語の URL は、英字の URL へ 301 で送る（#326）。
     for (const path of [
       "/chain/%E7%94%BA%E7%94%B0%E5%95%86%E5%BA%97/",

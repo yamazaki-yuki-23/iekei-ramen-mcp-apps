@@ -42,7 +42,7 @@ describe("静的SEOページ", () => {
     // 家系カメラも検索に載せる（#242）。見本の段階は終わった。
     expect(files.get("/sitemap.xml")).toContain("https://iekeiramen.com/camera/");
     expect(files.get("/area/kanagawa/")).toContain("神奈川県の家系ラーメン2軒");
-    expect(files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toContain("未判定家");
+    expect(files.get("/area/kanagawa/yokohama/")).toContain("未判定家");
     expect(files.get("/shop/node-123/")).not.toContain('name="robots" content="noindex"');
     expect(files.get("/shop/way-456/")).toContain('name="robots" content="noindex"');
     // スマホ幅の下のタブバー（#194）。「探す」がいまいる画面で、アイコンは線の svg。
@@ -322,7 +322,7 @@ describe("系列のページ（#309）", () => {
   it("URL は英字にし、#309 で出した日本語の URL から 301 で送る（#326）", () => {
     expect([...files.keys()].filter((key) => key.startsWith("/chain/"))).toEqual([path]);
     const encoded = encodeURIComponent("町田商店");
-    expect(redirects).toEqual([
+    expect(redirects.filter(([from]: string[]) => from.startsWith("/chain/"))).toEqual([
       [`/chain/${encoded}/`, path],
       [`/chain/${encoded}`, path],
     ]);
@@ -355,7 +355,7 @@ describe("地域ページの題名と説明文（#306）", () => {
       "神奈川県の家系ラーメン 2軒｜地図と市区町村から探す",
       "神奈川県の家系ラーメン2軒を地図と市区町村から探せます。住所・Google マップの道順まで。",
     ]);
-    expect(meta("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toEqual([
+    expect(meta("/area/kanagawa/yokohama/")).toEqual([
       "神奈川県 横浜市の家系ラーメン 2軒｜地図と店舗一覧から探す",
       "神奈川県 横浜市の家系ラーメン2軒を地図と店舗一覧から探せます。住所・Google マップの道順まで。",
     ]);
@@ -384,7 +384,7 @@ describe("県・市区町村のページ（#255）", () => {
       'class="seo-secondary" href="/?prefecture=%E7%A5%9E%E5%A5%88%E5%B7%9D%E7%9C%8C">神奈川県から 3 軒に絞る</a>',
     );
     expect(html).not.toContain("押して、発券");
-    const city = seoPages(shops).files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")!;
+    const city = seoPages(shops).files.get("/area/kanagawa/yokohama/")!;
     expect(city).toContain(">横浜市の店を一覧で見る</a>");
   });
 });
@@ -410,7 +410,7 @@ describe("県のページの店の一覧を市区町村で区切る（#317）", 
   it("上のチップはページの中の見出しへ、見出しの横から市区町村のページへ行ける", () => {
     expect(html).toContain('<a href="#city-1">横浜市<span>3 軒</span></a>');
     expect(html).toContain('<section class="seo-city" id="city-1">');
-    expect(html).toContain('href="/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/">横浜市のページ</a>');
+    expect(html).toContain('href="/area/kanagawa/yokohama/">横浜市のページ</a>');
   });
 
   it("但し書きは一覧の下に 1 回だけ", () => {
@@ -421,7 +421,7 @@ describe("県のページの店の一覧を市区町村で区切る（#317）", 
 describe("薄いページと 404（#169）", () => {
   it("未判定でない店が 1 軒だけの市区町村は noindex・sitemap 外、2 軒なら載せる", () => {
     const one = seoPages(shops);
-    const city = "/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/";
+    const city = "/area/kanagawa/yokohama/";
     expect(one.files.get(city)).toContain('name="robots" content="noindex"');
     expect(one.files.get("/sitemap.xml")).not.toContain(city);
     // 県のページは今どおり載せ、市区町村へのリンクも残す。
@@ -479,9 +479,7 @@ describe("検索結果と共有のための追加（#155）", () => {
     const only = { ...shop, id: "way/9", name: "未判定だけ家", confidence: "candidate" as const };
     const { files, counts } = seoPages([only]);
     expect(files.get("/area/kanagawa/")).toContain('name="robots" content="noindex"');
-    expect(files.get("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toContain(
-      'name="robots" content="noindex"',
-    );
+    expect(files.get("/area/kanagawa/yokohama/")).toContain('name="robots" content="noindex"');
     expect(files.get("/sitemap.xml")).not.toContain("/area/kanagawa/");
     expect(counts.indexed).toBe(6);
     // 1 軒でも未判定以外があれば今どおり index する。
@@ -497,12 +495,12 @@ describe("検索結果と共有のための追加（#155）", () => {
       ).map(({ position, name, item }) => [position, name, item]);
     expect(crumbs("/shop/node-123/")).toEqual([
       [1, "神奈川県", "https://iekeiramen.com/area/kanagawa/"],
-      [2, "横浜市", "https://iekeiramen.com/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/"],
+      [2, "横浜市", "https://iekeiramen.com/area/kanagawa/yokohama/"],
       [3, "試験家", "https://iekeiramen.com/shop/node-123/"],
     ]);
-    expect(crumbs("/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/")).toEqual([
+    expect(crumbs("/area/kanagawa/yokohama/")).toEqual([
       [1, "神奈川県", "https://iekeiramen.com/area/kanagawa/"],
-      [2, "横浜市", "https://iekeiramen.com/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/"],
+      [2, "横浜市", "https://iekeiramen.com/area/kanagawa/yokohama/"],
     ]);
   });
 
@@ -572,5 +570,45 @@ describe("頼み方のページ（/guide/、#342）", () => {
   it("下から近くの 3 軒へつなぎ、県のページからも来られる", () => {
     expect(html).toContain('<a class="seo-primary" href="/">近くの 3 軒を出す</a>');
     expect(files.get("/area/kanagawa/")).toContain('href="/guide/"');
+  });
+});
+
+describe("市区町村のページの URL（#341）", () => {
+  const real: Shop[] = JSON.parse(
+    readFileSync(new URL("../data/shops.json", import.meta.url), "utf8"),
+  );
+  const { files, redirects } = seoPages(real);
+  const cities = [...new Set(real.filter((s) => s.city).map((s) => `${s.prefecture}\t${s.city}`))];
+  const cityPages = [...files.keys()].filter((key) => /^\/area\/[a-z]+\/[^/]+\/$/.test(key));
+
+  it("すべての市区町村のページが英字の URL で、sitemap に % が出ない", () => {
+    expect(cityPages).toHaveLength(cities.length);
+    for (const key of cityPages) expect(key).toMatch(/^\/area\/[a-z]+\/[a-z]+(?:-[a-z]+)?\/$/);
+    expect(files.get("/sitemap.xml")).not.toMatch(/\/area\/[a-z]+\/[^<]*%/);
+    expect(files.get("/area/aichi/nagoya/")).toContain("<title>愛知県 名古屋市の家系ラーメン");
+  });
+
+  it("日本語の URL（末尾の / あり・なし）は、すべて英字の URL へ送る", () => {
+    const to = new Map(redirects);
+    for (const pair of cities) {
+      const [prefecture, city] = pair.split("\t");
+      // 県のページの英字（/area/<県>/）は、その県の店のページのパンくずから取る。
+      const firstShop = files.get(
+        `/shop/${real.find((s) => s.prefecture === prefecture)!.id.replace("/", "-")}/`,
+      )!;
+      const pref = /href="\/area\/([a-z]+)\/"/.exec(firstShop)![1];
+      for (const end of ["/", ""]) {
+        const target = to.get(`/area/${pref}/${encodeURIComponent(city)}${end}`);
+        expect(target, `${prefecture}${city}${end}`).toMatch(/^\/area\/[a-z]+\/[a-z-]+\/$/);
+        expect(files.get(target!)).toContain(`<title>${prefecture} ${city}の家系ラーメン`);
+      }
+    }
+    expect(to.get("/area/aichi/%E5%90%8D%E5%8F%A4%E5%B1%8B%E5%B8%82/")).toBe("/area/aichi/nagoya/");
+  });
+
+  it("英字の名前が無い市区町村は、ページを作らずに止める", () => {
+    expect(() => seoPages([{ ...shop, city: "架空市" }])).toThrow(
+      "市区町村の英字の名前がありません: 神奈川県架空市",
+    );
   });
 });

@@ -2,16 +2,16 @@
 /swipe /match/ 301
 /swipe/ /match/ 301
 
-# OSM の市区町村の欄が壊れていた 6 軒を、総務省の一覧の名前にそろえた（#349）。前の市区町村のページを生かしておく。
-/area/yamagata/%E9%85%92%E7%94%B0%E5%B8%82%E4%B8%8A%E5%AE%89%E7%94%BA/ /area/yamagata/%E9%85%92%E7%94%B0%E5%B8%82/ 301
-/area/yamagata/%E9%85%92%E7%94%B0%E5%B8%82%E4%B8%8A%E5%AE%89%E7%94%BA /area/yamagata/%E9%85%92%E7%94%B0%E5%B8%82/ 301
-/area/akita/%E6%A8%AA%E6%89%8B/ /area/akita/%E6%A8%AA%E6%89%8B%E5%B8%82/ 301
-/area/akita/%E6%A8%AA%E6%89%8B /area/akita/%E6%A8%AA%E6%89%8B%E5%B8%82/ 301
-/area/kanagawa/%E4%B8%AD%E5%8C%BA/ /area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/ 301
-/area/kanagawa/%E4%B8%AD%E5%8C%BA /area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/ 301
-/area/chiba/%E4%B8%AD%E5%A4%AE%E5%8C%BA/ /area/chiba/%E5%8D%83%E8%91%89%E5%B8%82/ 301
-/area/chiba/%E4%B8%AD%E5%A4%AE%E5%8C%BA /area/chiba/%E5%8D%83%E8%91%89%E5%B8%82/ 301
-/area/wakayama/%E5%92%8C%E6%AD%8C%E5%B1%B1%E7%9C%8C%20%E5%BE%A1%E5%9D%8A%E5%B8%82%E6%B9%AF%E5%B7%9D%E7%94%BA%E8%B2%A1%E9%83%A870-8/ /area/wakayama/%E5%BE%A1%E5%9D%8A%E5%B8%82/ 301
-/area/wakayama/%E5%92%8C%E6%AD%8C%E5%B1%B1%E7%9C%8C%20%E5%BE%A1%E5%9D%8A%E5%B8%82%E6%B9%AF%E5%B7%9D%E7%94%BA%E8%B2%A1%E9%83%A870-8 /area/wakayama/%E5%BE%A1%E5%9D%8A%E5%B8%82/ 301
-/area/kumamoto/%E7%86%8A%E6%9C%AC%E5%B8%82%E4%B8%AD%E5%A4%AE%E5%8C%BA/ /area/kumamoto/%E7%86%8A%E6%9C%AC%E5%B8%82/ 301
-/area/kumamoto/%E7%86%8A%E6%9C%AC%E5%B8%82%E4%B8%AD%E5%A4%AE%E5%8C%BA /area/kumamoto/%E7%86%8A%E6%9C%AC%E5%B8%82/ 301
+# OSM の市区町村の欄が壊れていた 6 軒を、総務省の一覧の名前にそろえた（#349）。前の市区町村のページを生かしておく（送り先は #341 の英字の URL）。
+/area/yamagata/%E9%85%92%E7%94%B0%E5%B8%82%E4%B8%8A%E5%AE%89%E7%94%BA/ /area/yamagata/sakata/ 301
+/area/yamagata/%E9%85%92%E7%94%B0%E5%B8%82%E4%B8%8A%E5%AE%89%E7%94%BA /area/yamagata/sakata/ 301
+/area/akita/%E6%A8%AA%E6%89%8B/ /area/akita/yokote/ 301
+/area/akita/%E6%A8%AA%E6%89%8B /area/akita/yokote/ 301
+/area/kanagawa/%E4%B8%AD%E5%8C%BA/ /area/kanagawa/yokohama/ 301
+/area/kanagawa/%E4%B8%AD%E5%8C%BA /area/kanagawa/yokohama/ 301
+/area/chiba/%E4%B8%AD%E5%A4%AE%E5%8C%BA/ /area/chiba/chiba/ 301
+/area/chiba/%E4%B8%AD%E5%A4%AE%E5%8C%BA /area/chiba/chiba/ 301
+/area/wakayama/%E5%92%8C%E6%AD%8C%E5%B1%B1%E7%9C%8C%20%E5%BE%A1%E5%9D%8A%E5%B8%82%E6%B9%AF%E5%B7%9D%E7%94%BA%E8%B2%A1%E9%83%A870-8/ /area/wakayama/gobo/ 301
+/area/wakayama/%E5%92%8C%E6%AD%8C%E5%B1%B1%E7%9C%8C%20%E5%BE%A1%E5%9D%8A%E5%B8%82%E6%B9%AF%E5%B7%9D%E7%94%BA%E8%B2%A1%E9%83%A870-8 /area/wakayama/gobo/ 301
+/area/kumamoto/%E7%86%8A%E6%9C%AC%E5%B8%82%E4%B8%AD%E5%A4%AE%E5%8C%BA/ /area/kumamoto/kumamoto/ 301
+/area/kumamoto/%E7%86%8A%E6%9C%AC%E5%B8%82%E4%B8%AD%E5%A4%AE%E5%8C%BA /area/kumamoto/kumamoto/ 301
