@@ -82,6 +82,12 @@ describe("workerdのWeb静的配信と既存API", () => {
       expect(html).toContain('rel="canonical"');
       expect(html).toContain('rel="icon"');
     }
+    // 市区町村の名前を総務省の一覧にそろえた店の、前の市区町村のページ（#349）。
+    const ward = await request("/area/kanagawa/%E4%B8%AD%E5%8C%BA/");
+    expect(ward.status).toBe(301);
+    expect(new URL(ward.headers.get("location")!, "http://x").pathname).toBe(
+      "/area/kanagawa/%E6%A8%AA%E6%B5%9C%E5%B8%82/",
+    );
     // #309 で公開した日本語の URL は、英字の URL へ 301 で送る（#326）。
     for (const path of [
       "/chain/%E7%94%BA%E7%94%B0%E5%95%86%E5%BA%97/",

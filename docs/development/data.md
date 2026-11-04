@@ -37,6 +37,13 @@
   「整形 → 逆引き → もう一度整形」になる。座標が動いた店は引き直す。
 - [scripts/data/build-dataset.mjs](../../scripts/data/build-dataset.mjs) — 判定結果の整形と重複除去。判定は持たない。
   areas.json は**欠けているところだけ**に使う（現地で入力された OSM のタグを上書きしない）。
+- 市区町村の名前は [data/municipalities.json](../../data/municipalities.json)（総務省の全国地方公共団体コード、
+  2026-11-04 に取得した版。都道府県 → 名前 → 読み）にそろえる（#349、[municipalities.mjs](../../scripts/data/municipalities.mjs)）。
+  OSM の `addr:city` には町名まで入ったもの（「酒田市上安町」）・「市」の無いもの（「横手」）・区だけのもの（「中区」）があり、
+  1 軒だけの壊れた市区町村のページができていた。政令市は市でまとめ、区と町名は住所の頭に回す。
+  **当てられない名前が残ると `data:build` は止まる。** 市町村の合併・改名があったら、総務省のページ
+  （`https://www.soumu.go.jp/denshijiti/code.html`）の Excel から作り直す。名前を変えた市区町村の前のページは
+  `public/_redirects` で送る
 
 ### 判定の段階と住所の出どころ（README から移した）
 
