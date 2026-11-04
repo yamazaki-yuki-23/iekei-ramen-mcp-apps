@@ -66,6 +66,8 @@ URLエンコードする。住所から区を推測せず、逆引きを反映�
 `/area/` の「系列」の段から辿れる。系列の説明・歴史・味は書かない。
 市区町村と店舗のページには、見えている「◯◯の一覧」のリンクと同じ階層の `BreadcrumbList` を
 付ける。全ページの OGP はトップと同じ `og-card.png` を使い、文言は title と description に合わせる。
+トップ（`index.html`）の題名と説明文の「掲載 N 軒」は手で書かず、`%VITE_SHOP_COUNT%` を Vite が置き換える（#339）。
+値は `vite.config.ts` が `data/shops.json` の件数から入れるので、`data:build` で軒数が変われば次のビルドで追従する。
 
 アプリへのリンクは、URL の形で最初に開くものが決まる（`src/features/search/utils/web-entry.ts`）。
 
