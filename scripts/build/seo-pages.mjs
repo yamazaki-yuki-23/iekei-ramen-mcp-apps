@@ -338,9 +338,11 @@ export function seoPages(shops, recordOf = new Map()) {
     files.set(
       path,
       page({
-        title: `${chain}の家系ラーメン ${list.length}軒｜都道府県ごとの店舗一覧`,
-        heading: [`${chain}の`, "家系ラーメン"],
-        description: `${chain}の家系ラーメン${list.length}軒を都道府県ごとの一覧から探せます。${reach(list)}`,
+        // 系列名で調べる人は「店舗一覧」と打つので先に出す（#340）。運営元の公式サイトと
+        // 間違えさせないよう、説明文に出どころと、運営元のサイトではないことを書く。
+        title: `${chain}の店舗一覧（${list.length}軒）｜都道府県ごとに探せる家系ラーメン`,
+        heading: [`${chain}の`, "家系ラーメン", "店舗一覧"],
+        description: `${chain}の店舗一覧（${list.length}軒）を都道府県ごとに探せます。系列の公式の店舗一覧で確かめた店を載せています（運営元のサイトではありません）。${reach(list)}`,
         path,
         count: list.length,
         crumbs: `<a href="/area/#chains">系列</a>`,
