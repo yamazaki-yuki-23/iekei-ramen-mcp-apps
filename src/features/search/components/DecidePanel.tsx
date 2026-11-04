@@ -3,6 +3,7 @@ import { basisLabel, describeBasis, pickRange } from "../../../utils/shortlist";
 import type { DecideInfo, Origin, Shop } from "../../../types";
 import styles from "../styles/search.module.css";
 import { ResultCaveat } from "./ResultCaveat";
+import { CAN_SHARE, ShareThree } from "./ShareThree";
 import { ShopList } from "./ShopList";
 import { StateNote, ZERO_ANNOUNCE } from "./StateNote";
 
@@ -85,6 +86,39 @@ function rerollLabel(info: DecideInfo | undefined): string {
   return info && info.rounds > 1 && info.round + 1 >= info.rounds
     ? "最初の 3 軒に戻る"
     : "次の 3 軒を見る";
+}
+
+/**
+ * 次の 3 軒へ。共有の 3 軒（#344。Web だけ）には「次」が無いので、開いた人の近くの 3 軒へ 1 回で移る。
+ * 行き先はトップ（`/` はふだんの入口で、接続元から推定した近くの 3 軒を出す）。URL から `three` も外れる。
+ */
+function NextThree({
+  info,
+  busy,
+  onReroll,
+}: {
+  info?: DecideInfo;
+  busy: boolean;
+  onReroll: () => void;
+}) {
+  if (info?.basis === "shared")
+    return CAN_SHARE ? (
+      <a className={styles.button} href="/">
+        自分の近くの 3 軒を出す
+      </a>
+    ) : null;
+  return (
+    <button
+      type="button"
+      className={styles.buttonSecondary}
+      onClick={onReroll}
+      disabled={busy || (info?.rounds ?? 1) <= 1}
+      // 文言が変わっても、キーボードの焦点を戻せるように（use-keyboard-focus-return.ts）。
+      data-focus-key="decide-reroll"
+    >
+      {rerollLabel(info)}
+    </button>
+  );
 }
 
 interface Props {
@@ -210,16 +244,8 @@ export function DecidePanel({
                 : `この ${shops.length} 軒から選ぶ`}
           </button>
         )}
-        <button
-          type="button"
-          className={styles.buttonSecondary}
-          onClick={onReroll}
-          disabled={busy || (info?.rounds ?? 1) <= 1}
-          // 文言が変わっても、キーボードの焦点を戻せるように（use-keyboard-focus-return.ts）。
-          data-focus-key="decide-reroll"
-        >
-          {rerollLabel(info)}
-        </button>
+        <NextThree info={info} busy={busy} onReroll={onReroll} />
+        {CAN_SHARE && <ShareThree shops={shops} />}
         {hasRoundLine(info) && (
           <span className={styles.decideRound} data-announce>
             {roundLabel(info, shops.length, prefecture)}

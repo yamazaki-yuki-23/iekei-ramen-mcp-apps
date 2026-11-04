@@ -2,6 +2,7 @@ import { tabBarHtml } from "../../src/utils/tabbar.ts";
 import { legalLinksHtml } from "../../src/utils/legal-links.ts";
 import { legalMarkdown } from "./legal-markdown.mjs";
 import { ALL_PREFECTURES } from "../../src/utils/prefectures.ts";
+import { SHOP_ID, shopSlug } from "../../src/utils/shop-id.ts";
 import { distanceKm, formatDistance } from "../../src/utils/geo.ts";
 import { openingHoursLabel } from "../../src/utils/opening-hours.ts";
 import {
@@ -82,7 +83,7 @@ const appLink = (prefecture, keyword) =>
   `/?${new URLSearchParams({ prefecture, ...(keyword ? { keyword } : {}) })}`;
 const prefPath = (prefecture) => `/area/${prefectureSlugs.get(prefecture)}/`;
 const cityPath = (prefecture, city) => `${prefPath(prefecture)}${encodeURIComponent(city)}/`;
-const shopPath = (shop) => `/shop/${shop.id.replace("/", "-")}/`;
+const shopPath = (shop) => `/shop/${shopSlug(shop.id)}/`;
 
 /**
  * 共有されたときのカード。トップ（index.html）と同じ画像を使い、文言はそのページの
@@ -267,11 +268,7 @@ export function seoPages(shops, recordOf = new Map()) {
   const ids = new Set();
   const titles = new Map();
   for (const shop of shops) {
-    if (
-      !prefectureSlugs.has(shop.prefecture) ||
-      !/^(?:node|way|relation)\/\d+$|^(?:manual|verified)\/[0-9a-f]{20}$/.test(shop.id) ||
-      ids.has(shop.id)
-    )
+    if (!prefectureSlugs.has(shop.prefecture) || !SHOP_ID.test(shop.id) || ids.has(shop.id))
       throw new Error("SEO用の店舗IDまたは都道府県が不正です");
     if (shop.city && (/[\\/]/.test(shop.city) || /^\.+$/.test(shop.city)))
       throw new Error("SEO用の市区町村名が不正です");

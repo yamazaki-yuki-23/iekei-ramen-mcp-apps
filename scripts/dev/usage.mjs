@@ -11,7 +11,7 @@
  * wrangler のログイン（OAuth）では読めない。Analytics の権限が無く 403 になる。
  *
  * 書いている欄は server/lib/usage.ts の toDataPoint と揃えてある。
- *   blob1 = tool 名 / blob2 = member・anonymous / blob3 = スタンプの向き
+ *   blob1 = tool 名 / blob2 = member・anonymous / blob3 = スタンプの向き・共有の URL から（shared、#344）
  */
 const DATASET = "iekei_ramen_usage";
 const WEEKS = 12;
@@ -61,7 +61,14 @@ if (data.length === 0) {
       週: String(r.week).slice(0, 10),
       tool: r.tool,
       誰: r.who === "member" ? "サインイン済み" : "匿名",
-      スタンプ: r.stamp === "visited" ? "押した" : r.stamp === "unvisited" ? "外した" : "",
+      内訳:
+        r.stamp === "visited"
+          ? "押した"
+          : r.stamp === "unvisited"
+            ? "外した"
+            : r.stamp === "shared"
+              ? "共有の URL から"
+              : "",
       件数: Number(r.calls),
     })),
   );

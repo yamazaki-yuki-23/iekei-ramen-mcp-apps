@@ -1,4 +1,5 @@
 import { ALL_PREFECTURES } from "../../../utils/prefectures";
+import { shopIdFromSlug } from "../../../utils/shop-id";
 
 /**
  * 条件の無い入口は「迷ったら」（券売機、#144）。位置の許可は求めず、接続元から推定した
@@ -10,6 +11,19 @@ const HOME = { name: "decide-iekei-ramen", arguments: { near: "auto" } };
 /** 静的ページの検索条件だけを受け取る。任意のtoolや座標はURLから実行しない。 */
 export function webEntry(search: string) {
   const params = new URLSearchParams(search);
+  /*
+   * 共有された 3 軒（#344）。持つのは店の ID だけ（座標を入れると、共有した人の居場所が分かる）。
+   * 掲載の店の ID の形で 1〜3 つ・重なり無しのときだけ受け取り、ほかは通常の入口にする。
+   */
+  const three = params.get("three");
+  if (three !== null) {
+    const ids = three.split(",").map(shopIdFromSlug);
+    return ids.length <= 3 &&
+      ids.every((id) => id !== undefined) &&
+      new Set(ids).size === ids.length
+      ? { name: "decide-iekei-ramen", arguments: { shared: ids } }
+      : HOME;
+  }
   const pref = params.get("prefecture");
   const keyword = params.get("keyword")?.trim();
   if (

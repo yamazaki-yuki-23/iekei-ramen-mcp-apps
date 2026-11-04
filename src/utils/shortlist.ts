@@ -134,6 +134,7 @@ export function describeBasis(
   origin?: Origin,
   keyword?: string,
 ): string {
+  if (info.basis === "shared") return `共有された URL の ${shown} 軒です。`;
   const how =
     info.basis === "distance"
       ? `${origin ? originLabel(origin) : "基準地点"}から近い順`
@@ -146,7 +147,11 @@ export function describeBasis(
 
 /** 見出しの横に出す、並べた根拠の短い言い方。「1 位」のような順位の言葉は使わない。 */
 export function basisLabel(info: Pick<DecideInfo, "basis">): string {
-  return info.basis === "distance" ? "近い順" : "営業時間が分かる店から順";
+  return info.basis === "distance"
+    ? "近い順"
+    : info.basis === "shared"
+      ? "共有された URL の順"
+      : "営業時間が分かる店から順";
 }
 
 /**

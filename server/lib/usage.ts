@@ -35,6 +35,8 @@ export interface UsageEvent {
   signedIn: boolean;
   /** スタンプのときだけ。押したか外したか。 */
   stamp?: "visited" | "unvisited";
+  /** 「迷ったら」を共有の URL から開いたときだけ（#344）。どの店かは書かない。 */
+  shared?: true;
 }
 
 const isCounted = (name: string): name is CountedTool =>
@@ -51,6 +53,8 @@ export function usageEvent(name: string, args: unknown, signedIn: boolean): Usag
     const visited = (args as { visited?: unknown } | undefined)?.visited;
     event.stamp = visited === false ? "unvisited" : "visited";
   }
+  if (name === "decide-iekei-ramen" && Array.isArray((args as { shared?: unknown })?.shared))
+    event.shared = true;
   return event;
 }
 
@@ -62,13 +66,17 @@ export function usageEvent(name: string, args: unknown, signedIn: boolean): Usag
  * | index1 | tool 名（同じ tool の件数をまとめて数えるため） |
  * | blob1 | tool 名 |
  * | blob2 | `member` / `anonymous` |
- * | blob3 | スタンプのときだけ `visited` / `unvisited`（ほかは空） |
+ * | blob3 | スタンプのときだけ `visited` / `unvisited`、共有の URL から開いた「迷ったら」は `shared`（ほかは空） |
  * | double1 | 1 |
  */
 export function toDataPoint(event: UsageEvent): AnalyticsEngineDataPoint {
   return {
     indexes: [event.tool],
-    blobs: [event.tool, event.signedIn ? "member" : "anonymous", event.stamp ?? ""],
+    blobs: [
+      event.tool,
+      event.signedIn ? "member" : "anonymous",
+      event.stamp ?? (event.shared ? "shared" : ""),
+    ],
     doubles: [1],
   };
 }

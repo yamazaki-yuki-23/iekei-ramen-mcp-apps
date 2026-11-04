@@ -5,6 +5,7 @@ import type { AppPayload } from "../../src/types";
 import { originLabel } from "../../src/utils/geo.ts";
 import { TASTES } from "../../src/utils/labels";
 import { describeBasis, describeScope, shortlist } from "../../src/utils/shortlist.ts";
+import { SHOP_ID } from "../../src/utils/shop-id.ts";
 import { conditionFields, PayloadSchema } from "../lib/schema.ts";
 import type { ToolContext } from "../types/tool-context.ts";
 import { decidePrompt } from "../utils/summaries.ts";
@@ -66,16 +67,57 @@ export function registerDecideIekeiRamen({
           .min(0)
           .optional()
           .describe("何巡目か（0 始まり）。増やすと次の 3 軒。末尾まで行くと先頭へ戻る"),
+        shared: z
+          .array(z.string().regex(SHOP_ID))
+          .min(1)
+          .max(3)
+          .optional()
+          .describe(
+            "Web の共有 URL で渡された店 ID（3 つまで）。この店だけをこの順で出す。" +
+              "載っていない ID は捨て、1 つも残らなければ near: auto と同じ。モデルからは使わない",
+          ),
       }),
       outputSchema: PayloadSchema,
       ...toolMetadata("decide-iekei-ramen"),
     },
     async (
-      { prefecture, taste, keyword, lat, lon, label, near, source, round },
+      { prefecture, taste, keyword, lat, lon, label, near, source, round, shared },
       ctx,
     ): Promise<CallToolResult> => {
       const incomplete = incompleteCoordinates(lat, lon);
       if (incomplete) return incomplete;
+
+      /*
+       * 共有の URL（#344）。URL は店の ID だけを持ち、座標は持たない（共有した人の居場所が
+       * 分かるため）。距離も出さない。載っていない・閉じた店の ID は捨てる。
+       */
+      const picks = (shared ?? []).flatMap((id) => dataset.find((shop) => shop.id === id) ?? []);
+      if (picks.length > 0) {
+        const info = {
+          round: 0,
+          rounds: 1,
+          poolTotal: picks.length,
+          basis: "shared" as const,
+          widened: false,
+        };
+        return {
+          content: [
+            {
+              type: "text",
+              text: decidePrompt(picks, describeBasis(info, picks.length), "共有された URL", info),
+            },
+          ],
+          structuredContent: await withVisitor({
+            mode: "decide",
+            shops: picks,
+            total: picks.length,
+            query: {},
+            decide: info,
+          }),
+        };
+      }
+      // 共有の ID が 1 つも残らなければ、Web の最初の画面と同じ入口にする。
+      if (shared) near ??= "auto";
 
       /*
        * 出どころは受け取ったものをそのまま持つ。ここで place に固定すると、

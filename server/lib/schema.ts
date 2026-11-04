@@ -101,7 +101,7 @@ export const PayloadSchema = z.object({
       round: z.number(),
       rounds: z.number(),
       poolTotal: z.number(),
-      basis: z.enum(["distance", "hours"]),
+      basis: z.enum(["distance", "hours", "shared"]),
       widened: z.boolean(),
       includesLikely: z.boolean().optional(),
       needsOrigin: z.boolean().optional(),
