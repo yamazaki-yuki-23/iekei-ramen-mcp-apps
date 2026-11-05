@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { test } from "./fixtures";
 
 /*
@@ -20,11 +20,21 @@ async function open(page: Page) {
  * 位置で比べると、ホバーと関係なく食い違った（#344 の CI で 15 回中 7 回落ちた）。
  * lift = 丼の上端から箸の上端まで / bowl = ロゴの上端から丼の上端まで。
  */
+/** 描き直しの最中は boundingBox() が null を返す（#350）。描かれるまで待ってから上端を読む。 */
+async function y(l: Locator) {
+  let top = 0;
+  await expect(async () => {
+    const box = await l.boundingBox();
+    if (!box) throw new Error("ロゴがまだ描かれていない");
+    top = box.y;
+  }).toPass({ timeout: 5000 });
+  return top;
+}
+
 async function tops(page: Page) {
   const mark = page.locator("[data-chopsticks]").first();
   const bowl = mark.locator("xpath=following-sibling::*[local-name()='path']");
   const svg = mark.locator("xpath=ancestor::*[local-name()='svg']");
-  const y = async (l: typeof mark) => (await l.boundingBox())!.y;
   const [sticks, top, logo] = [await y(mark), await y(bowl), await y(svg)];
   return { lift: Math.round((top - sticks) * 10) / 10, bowl: Math.round((top - logo) * 10) / 10 };
 }
