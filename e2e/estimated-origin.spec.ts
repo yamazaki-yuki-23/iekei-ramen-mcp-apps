@@ -173,3 +173,46 @@ test("家系マッチで前の場所の続きが遅れて届いても、新し�
   await expect(card).toHaveAttribute("aria-label", /^21枚目、/);
   await expect(card).not.toContainText("埼玉県");
 });
+
+test("家系マッチで「現在地で出し直す」を待つ間に押し直しても、検索を重ねない（#364）", async ({
+  page,
+}) => {
+  await allowYokohama(page);
+  await startFromEdge(page, "find-nearby-iekei-ramen");
+  const release = await holdPreciseSearch(page);
+  let precise = 0;
+  page.on("request", (request) => {
+    if (request.postDataJSON?.()?.params?.arguments?.source === "precise") precise++;
+  });
+  await page.goto(`${WEB}/match/`);
+  await expect(page.locator("article[data-shop-id]:not([aria-hidden])")).toBeVisible();
+  const again = page.getByRole("button", { name: "現在地で出し直す" });
+  await again.click();
+  await expect(page.getByRole("status")).toHaveText("現在地を確かめています…");
+  await again.click();
+  release();
+  await expect(page.getByText("現在地", { exact: true })).toBeVisible();
+  await page.waitForTimeout(500);
+  expect(precise).toBe(1);
+  await expect(page.getByRole("status")).toHaveText("");
+});
+
+test("家系マッチで出し直しの通信が失敗したら、山はそのままで失敗を伝える（#364）", async ({
+  page,
+}) => {
+  await allowYokohama(page);
+  await startFromEdge(page, "find-nearby-iekei-ramen");
+  await page.route("**/mcp", async (route) => {
+    if (route.request().postDataJSON()?.params?.arguments?.source === "precise")
+      return route.abort();
+    return route.fallback();
+  });
+  await page.goto(`${WEB}/match/`);
+  const card = page.locator("article[data-shop-id]:not([aria-hidden])");
+  await expect(card).toHaveAttribute("aria-label", /^1枚目、/);
+  const before = await card.getAttribute("data-shop-id");
+  await page.getByRole("button", { name: "現在地で出し直す" }).click();
+  await expect(page.getByRole("status")).toHaveText("通信に失敗しました。もう一度押してください。");
+  await expect(card).toHaveAttribute("data-shop-id", before ?? "");
+  await expect(page.getByText(/さいたま市/).first()).toBeVisible();
+});

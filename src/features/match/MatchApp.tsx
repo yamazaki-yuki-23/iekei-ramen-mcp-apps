@@ -85,6 +85,7 @@ export function MatchApp() {
   const [flying, setFlying] = useState(false);
   // 山を入れ替えた回数と、いま飛んでいる札を払い始めたときの回数（#364）。
   const deckGeneration = useRef(0);
+  const locating = useRef(false);
   const flownIn = useRef(0);
 
   useEffect(() => {
@@ -195,12 +196,25 @@ export function MatchApp() {
 
   /** 端末の位置で山を最初から（#364）。取れなければ今の山のまま、一言だけ出す。 */
   const locate = async () => {
-    if (flying) return;
-    setLocateNote("");
-    if (!(await searchHere())) {
+    // 待っている間に押し直しても重ねない（古い応答が後から届いて山をもう一度入れ替える。#364）。
+    if (flying || locating.current) return;
+    locating.current = true;
+    setLocateNote("現在地を確かめています…");
+    let found: boolean;
+    try {
+      found = await searchHere();
+    } catch {
+      // 位置は取れたが店を読み込めなかった。今の山はそのまま。
+      setLocateNote("通信に失敗しました。もう一度押してください。");
+      return;
+    } finally {
+      locating.current = false;
+    }
+    if (!found) {
       setLocateNote("現在地を使えませんでした。位置情報の許可を確かめてください。");
       return;
     }
+    setLocateNote("");
     deckGeneration.current += 1;
     setFlying(false);
     setPos(0);
