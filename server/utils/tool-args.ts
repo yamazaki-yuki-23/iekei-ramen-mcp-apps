@@ -1,5 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import type { Bounds, Origin, OriginSource, Shop, TasteKey } from "../../src/types";
+import { distanceKm } from "../../src/utils/geo.ts";
 
 /**
  * 片方だけの座標は受け付けない。
@@ -55,6 +56,21 @@ export function filterShops(
     }
     return true;
   });
+}
+
+const lowerNames = (s: Shop) => [s.name, s.nameEn].flatMap((n) => (n ? [n.toLowerCase()] : []));
+
+/**
+ * キーワードに合った店の並び（#366）。店名を打つ人はその店に行きたいので、
+ * 店名の完全一致 → 店名の部分一致 → 系列・地名などの一致 の順にする。
+ * 基準地点があれば、それぞれの中を近い順（直線距離）にする。無ければ元の順のまま。
+ */
+export function rankByKeyword(shops: Shop[], keyword: string, origin?: Origin): Shop[] {
+  const kw = keyword.trim().toLowerCase();
+  const tier = (s: Shop) =>
+    lowerNames(s).includes(kw) ? 0 : lowerNames(s).some((n) => n.includes(kw)) ? 1 : 2;
+  const away = (s: Shop) => (origin ? distanceKm(origin.lat, origin.lon, s.lat, s.lon) : 0);
+  return shops.toSorted((a, b) => tier(a) - tier(b) || away(a) - away(b));
 }
 
 /** 引数から基準地点を組み立てる。**既定の出どころは tool ごとに違う**ので受け取る。
