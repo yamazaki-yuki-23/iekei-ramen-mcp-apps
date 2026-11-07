@@ -266,7 +266,7 @@ const chainPath = (chain) => {
   return `/chain/${slug}/`;
 };
 const chainLead =
-  "系列の公式の店舗一覧で確かめた店です。違う店を見つけたら、店のページから教えてください。";
+  "系列や店の公式の情報で確かめた店です。違う店を見つけたら、店のページから教えてください。";
 /** 系列のページは店が 2 軒から作る（#309）。1 軒だけだと中身が店のページとほぼ同じになる（#169 と同じ考え）。 */
 const CHAIN_MIN = 2;
 
@@ -429,7 +429,7 @@ export function seoPages(shops, recordOf = new Map(), records = [], today = new 
         // 間違えさせないよう、説明文に出どころと、運営元のサイトではないことを書く。
         title: `${chain}の店舗一覧（${list.length}軒）｜都道府県ごとに探せる家系ラーメン`,
         heading: [`${chain}の`, "家系ラーメン", "店舗一覧"],
-        description: `${chain}の店舗一覧（${list.length}軒）を都道府県ごとに探せます。系列の公式の店舗一覧で確かめた店を載せています（運営元のサイトではありません）。${reach(list)}`,
+        description: `${chain}の店舗一覧（${list.length}軒）を都道府県ごとに探せます。系列や店の公式の情報で確かめた店を載せています（運営元のサイトではありません）。${reach(list)}`,
         path,
         count: list.length,
         crumbs: `<a href="/area/#chains">系列</a>`,
