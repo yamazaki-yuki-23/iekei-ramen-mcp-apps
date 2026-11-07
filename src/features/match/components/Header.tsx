@@ -7,10 +7,19 @@ export function Header({
   place,
   wants,
   onWants,
+  onLocate,
+  locateNote,
 }: {
   place: string;
   wants: number;
   onWants(): void;
+  /**
+   * 端末の位置で出し直す（#364）。最初の場所は接続元からの推定のことがある。押したときだけ位置情報を求める。
+   * 押した後も出したままにする（消すと行が詰まって札がずれ、焦点も行き場を失う）。
+   */
+  onLocate?: () => void;
+  /** 出し直せなかったときの一言（拒否・時間切れ）。 */
+  locateNote?: string;
 }) {
   const [muted, setMutedState] = useState(isMuted);
   return (
@@ -24,7 +33,19 @@ export function Header({
       </div>
       <div className={styles.head}>
         <h1 className={styles.pageTitle}>家系マッチ</h1>
-        {place && <span className={styles.place}>{place}</span>}
+        {place && (
+          <div className={styles.placeRow}>
+            <span className={styles.place}>{place}</span>
+            {onLocate && (
+              <button type="button" className={styles.placeAction} onClick={onLocate}>
+                現在地で出し直す
+              </button>
+            )}
+          </div>
+        )}
+        <span className={styles.place} role="status">
+          {locateNote}
+        </span>
       </div>
       <div className={styles.headRight}>
         <button

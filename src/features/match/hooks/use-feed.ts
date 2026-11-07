@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PREFETCH_AT } from "../utils/swipe";
 import { SWIPE_STEP } from "../../../lib/feed";
 import type { Origin, Shop } from "../../../types";
-import { createFeed } from "../../../lib/feed";
+import { createFeed, type Page } from "../../../lib/feed";
 
 type Status = "loading" | "ready" | "noplace" | "error";
 
@@ -19,6 +19,8 @@ export function useFeed() {
   // 続きの取得に失敗した。終わり（exhausted）とは分ける: 一時の失敗で「全部見た」にしない。
   const [failed, setFailed] = useState(false);
   const fetching = useRef(false);
+  // 探し直すたびに進める。前の場所の続きが遅れて返っても、新しい山に混ぜない（#364）。
+  const generation = useRef(0);
 
   useEffect(() => {
     feed.current ??= createFeed();
@@ -41,9 +43,12 @@ export function useFeed() {
   const loadMore = useCallback(() => {
     if (fetching.current || !feed.current) return;
     fetching.current = true;
+    const mine = generation.current;
+    const stale = () => mine !== generation.current;
     feed.current
       .next(shops.length)
       .then((page) => {
+        if (stale()) return;
         setFailed(false);
         setShops((now) => {
           const seen = new Set(now.map((n) => n.id));
@@ -52,9 +57,9 @@ export function useFeed() {
         if (page.shops.length < SWIPE_STEP) setExhausted(true);
       })
       // 失敗は覚えておき、押されたら取り直す（retry）。勝手に繰り返さない。
-      .catch(() => setFailed(true))
+      .catch(() => !stale() && setFailed(true))
       .finally(() => {
-        fetching.current = false;
+        if (!stale()) fetching.current = false;
       });
   }, [shops.length]);
 
@@ -69,18 +74,44 @@ export function useFeed() {
     [exhausted, failed, shops.length, loadMore],
   );
 
-  /** 地名から探し直す。見つからなければ false（画面が言い分ける）。失敗は投げる。 */
-  const searchPlace = useCallback(async (query: string) => {
-    if (!feed.current) return false;
-    const page = await feed.current.fromPlace(query);
-    if (!page) return false;
+  const restart = useCallback((page: Page) => {
+    generation.current += 1;
+    fetching.current = false;
     setShops(page.shops);
     setOrigin(page.origin);
     setExhausted(page.shops.length < SWIPE_STEP);
     setFailed(false);
     setStatus("ready");
-    return true;
   }, []);
 
-  return { shops, origin, status, exhausted, failed, prefetch, retry: loadMore, searchPlace };
+  /** 地名から探し直す。見つからなければ false（画面が言い分ける）。失敗は投げる。 */
+  const searchPlace = useCallback(
+    async (query: string) => {
+      const page = await feed.current?.fromPlace(query);
+      if (!page) return false;
+      restart(page);
+      return true;
+    },
+    [restart],
+  );
+
+  /** 端末の位置で探し直す（#364）。取れなければ false。 */
+  const searchHere = useCallback(async () => {
+    const page = await feed.current?.here();
+    if (!page) return false;
+    restart(page);
+    return true;
+  }, [restart]);
+
+  return {
+    shops,
+    origin,
+    status,
+    exhausted,
+    failed,
+    prefetch,
+    retry: loadMore,
+    searchPlace,
+    searchHere,
+  };
 }

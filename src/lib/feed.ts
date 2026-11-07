@@ -127,7 +127,7 @@ export function createFeed() {
       ++asked;
       return nearby(await ready(), 0, origin);
     },
-    /** ブラウザの位置で探し直す（家系カメラ #190。店の中にいるので、市区町村の推定より近くを正しく出す）。 */
+    /** ブラウザの位置で探し直す（家系カメラ #190、家系マッチの「現在地で出し直す」#364）。取れなければ null。 */
     async here(): Promise<Page | null> {
       const mine = ++asked;
       const [client, pos] = await Promise.all([ready(), requestBrowserPosition()]);

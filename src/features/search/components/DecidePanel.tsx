@@ -23,17 +23,14 @@ const EMPTY_WITH_KEYWORD =
 /* 会話の中だけ。選んだ店をチャットで聞く道を言う（但し書きは ResultCaveat）。 */
 const ASK_HINT = "気になる店は押して選んでから、チャットで聞いてください。";
 
+/** 食券の列の見出しと札。Web では 3 枚の下の「現在地で出し直す」（#364）も持つ。 */
+export type DecideTitle = { heading: string; tag: string | null; onLocate?: () => void };
+
 /**
  * 食券の列の見出し。並べた根拠（近い順など）を札で横に添える。下に「近い順に 1〜3 軒目」の
  * 行が出るときは、同じことを 2 度言うので札を出さない（#301）。
  */
-function DecideHead({
-  title,
-  showTag,
-}: {
-  title?: { heading: string; tag: string | null };
-  showTag: boolean;
-}) {
+function DecideHead({ title, showTag }: { title?: DecideTitle; showTag: boolean }) {
   if (!title) return null;
   return (
     <div className={styles.decideHead}>
@@ -146,7 +143,7 @@ interface Props {
   /** 報告の口があるか（Web）。但し書きの報告の案内を変える。 */
   reports: boolean;
   /** 列の見出しと、並べた根拠の札（Web の「迷ったら」）。会話の中ではページの見出しが持つ。 */
-  title?: { heading: string; tag: string | null };
+  title?: DecideTitle;
 }
 
 /**
@@ -244,6 +241,21 @@ export function DecidePanel({
         )}
         <NextThree info={info} busy={busy} onReroll={onReroll} />
         {CAN_SHARE && <ShareThree shops={shops} />}
+        {/*
+         * 見出しの「〇〇付近」は接続元からの推定のことがある（#364）。出し直す券売機は約 2 画面下なので、
+         * 3 枚のすぐ下から端末の位置で出し直せるようにする。位置情報は押したときだけ求める。
+         * 見出しの横に置くと 1 行増え、スマホ幅の最初の画面に 3 枚が入らなかった（#204・#279）。
+         */}
+        {title?.onLocate && (
+          <button
+            type="button"
+            className={styles.buttonSecondary}
+            onClick={title.onLocate}
+            disabled={busy}
+          >
+            現在地で出し直す
+          </button>
+        )}
         {hasRoundLine(info) && (
           <span className={styles.decideRound} data-announce>
             {roundLabel(info, shops.length)}

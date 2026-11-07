@@ -59,7 +59,9 @@ interface Step {
  */
 export function MatchApp() {
   const reduce = useReducedMotion();
-  const { shops, origin, status, exhausted, failed, prefetch, retry, searchPlace } = useFeed();
+  const { shops, origin, status, exhausted, failed, prefetch, retry, searchPlace, searchHere } =
+    useFeed();
+  const [locateNote, setLocateNote] = useState("");
   // 音の仕組みは手が空いたときに先に作る。最初の払いを重くしない（#214）。
   useEffect(prepareWhenIdle, []);
   const fxLayer = useRef<HTMLDivElement>(null);
@@ -81,6 +83,12 @@ export function MatchApp() {
   const [today, setToday] = useState<Shop | null>(null);
   // 札が飛んでいる間（決まるまで）。戻す・この店に決める を止め、履歴を食い違わせない。
   const [flying, setFlying] = useState(false);
+  // 山を入れ替えた回数と、いま飛んでいる札を払い始めたときの回数（#364）。
+  const deckGeneration = useRef(0);
+  const locating = useRef(false);
+  // 山を入れ替えたら札の重なりも作り直す。上の札が同じ店だと、中の「飛んでいる」印が戻らず払えなくなる。
+  const [deckKey, setDeckKey] = useState(0);
+  const flownIn = useRef(0);
 
   useEffect(() => {
     if (fxLayer.current && appRef.current) fx.current ??= createFx(fxLayer.current, appRef.current);
@@ -94,6 +102,8 @@ export function MatchApp() {
   useEffect(() => prefetch(pos, rangeEnd, deck.length), [pos, rangeEnd, deck.length, prefetch]);
 
   const decide = (dir: SwipeDir) => {
+    // 払っている間に「現在地で出し直す」で山が入れ替わったら、前の山の札の決定は捨てる（#364）。
+    if (flownIn.current !== deckGeneration.current) return setFlying(false);
     const shop = visible[pos];
     if (!shop) return;
     const nextWant = dir === "want" ? wantStreak + 1 : 0;
@@ -186,6 +196,37 @@ export function MatchApp() {
     setFlipIn(false);
   };
 
+  /** 端末の位置で山を最初から（#364）。取れなければ今の山のまま、一言だけ出す。 */
+  const locate = async () => {
+    // 待っている間に押し直しても重ねない（古い応答が後から届いて山をもう一度入れ替える。#364）。
+    if (flying || locating.current) return;
+    locating.current = true;
+    setLocateNote("現在地を確かめています…");
+    let found: boolean;
+    try {
+      found = await searchHere();
+    } catch {
+      // 位置は取れたが店を読み込めなかった。今の山はそのまま。
+      setLocateNote("通信に失敗しました。もう一度押してください。");
+      return;
+    } finally {
+      locating.current = false;
+    }
+    if (!found) {
+      setLocateNote("現在地を使えませんでした。位置情報の許可を確かめてください。");
+      return;
+    }
+    setLocateNote("");
+    deckGeneration.current += 1;
+    setDeckKey((n) => n + 1);
+    setFlying(false);
+    setPos(0);
+    setRangeEnd(SWIPE_STEP);
+    setHistory([]);
+    setPassStreak(0);
+    setFlipIn(false);
+  };
+
   const decideToday = () => {
     if (!current || flying) return;
     sound.issue();
@@ -258,13 +299,17 @@ export function MatchApp() {
       );
     return (
       <CardStack
+        key={deckKey}
         ref={stack}
         cards={visible.slice(pos, pos + 3)}
         firstNumber={pos + 1}
         flipIn={flipIn}
         reduce={reduce}
         onDecide={decide}
-        onFly={() => setFlying(true)}
+        onFly={() => {
+          flownIn.current = deckGeneration.current;
+          setFlying(true);
+        }}
         onLean={(dx, p) => fx.current?.lean(dx, p)}
         onSettle={() => fx.current?.settle()}
         onRevealed={revealed}
@@ -279,6 +324,8 @@ export function MatchApp() {
       <main className={styles.app} ref={appRef}>
         <Header
           place={origin ? originLabel(origin) : ""}
+          onLocate={() => void locate()}
+          locateNote={locateNote}
           wants={wants.length}
           onWants={() => setView("wants")}
         />

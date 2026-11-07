@@ -29,6 +29,7 @@ import { CONNECTING_HOST } from "./utils/connecting";
 import type { FormValues } from "./components/SearchForm";
 import { createStampQueue } from "./utils/stamp-queue";
 import { SearchAppInner } from "./components/SearchAppInner";
+import type { CapturePayload } from "./lib/issue-tickets";
 import { useKeyboardFocusReturn } from "./hooks/use-keyboard-focus-return";
 import { useResultAnnouncement } from "./hooks/use-result-announcement";
 import { createDeliveryQueue } from "./utils/model-context";
@@ -137,7 +138,7 @@ export function SearchApp({
   const capturePayload = useCallback(() => {
     const draftAtStart = draftRevision.current;
     const hostAtStart = hostRevision.current;
-    return (next: AppPayload) => {
+    const accept = (next: AppPayload) => {
       if (hostRevision.current !== hostAtStart) return false;
       // 条件が違う結果を下書きの隣に出さず、再検索まで既存の stale を維持する。
       // 券売機（decide）も同じ。発券の後にキーを押し直したら、古い発券の結果で
@@ -151,6 +152,10 @@ export function SearchApp({
       replacePayload(next);
       return true;
     };
+    // 呼ぶ前に待つもの（位置の取得）の間に下書きやホストの条件が変わったか（#364）。
+    const fresh = () =>
+      hostRevision.current === hostAtStart && draftRevision.current === draftAtStart;
+    return Object.assign(accept, { fresh });
   }, [replacePayload]);
 
   /**
@@ -280,7 +285,7 @@ interface ConnectedProps extends PresentationProps {
   clearStops: () => void;
   form: FormValues;
   onForm: (form: FormValues) => void;
-  capturePayload: () => (payload: AppPayload) => boolean;
+  capturePayload: CapturePayload;
   pendingCalls: number;
   trackCall: (delta: 1 | -1) => void;
   hostContextPatch: McpUiHostContext | undefined;
