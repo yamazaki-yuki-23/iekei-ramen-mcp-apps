@@ -16,7 +16,13 @@ describe("確かめた記録（data/verified.json）", () => {
     expect(["open", "closed", "unlisted"]).toContain(r.status);
     expect(r.checked).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(new Date(r.checked as string).toISOString().slice(0, 10)).toBe(r.checked);
-    expect(["official-site", "official-sns", "chain-list", "owner-visit"]).toContain(r.source);
+    expect([
+      "official-site",
+      "official-sns",
+      "official-release",
+      "chain-list",
+      "owner-visit",
+    ]).toContain(r.source);
     if (r.source !== "owner-visit") expect(String(r.url)).toMatch(/^https?:\/\//);
     // 開店（#345）。公式に開店日が書いてあれば日付、書いていなければ true。開いた後に確かめた店だけ。
     if ("opened" in r) {
