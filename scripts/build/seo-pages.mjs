@@ -41,6 +41,7 @@ const CHECKED_AT = {
   "chain-list": "系列の公式の店舗一覧",
   "official-site": "店の公式サイト",
   "official-sns": "店の公式 SNS",
+  "official-release": "運営会社の発表",
 };
 /**
  * 「家系かどうか」の欄（#316）。公式の情報で確かめた記録（`status: open`）がある店は、

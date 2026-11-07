@@ -274,6 +274,12 @@ describe("店のページの「家系かどうか」（#316）", () => {
       new Map([["node/123", chainRecord("試験商店", "official-site")]]),
     ).files;
     expect(about(site.get("/shop/node-123/")!)).toBe("店の公式サイトで確かめた（2026-10-24）");
+    // 公式サイトの無い店は、運営会社の発表で確かめる（#356）。公式サイトとは書かない。
+    const release = seoPages(
+      shops,
+      new Map([["node/123", chainRecord("試験商店", "official-release")]]),
+    ).files;
+    expect(about(release.get("/shop/node-123/")!)).toBe("運営会社の発表で確かめた（2026-10-24）");
     // 記録の url は画面に出さない。誤りの報告の案内と参考値の断りは残す。
     const html = listed.get("/shop/node-123/")!;
     expect(html).not.toContain("https://example");
