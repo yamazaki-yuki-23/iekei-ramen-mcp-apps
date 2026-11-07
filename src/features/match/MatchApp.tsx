@@ -59,7 +59,9 @@ interface Step {
  */
 export function MatchApp() {
   const reduce = useReducedMotion();
-  const { shops, origin, status, exhausted, failed, prefetch, retry, searchPlace } = useFeed();
+  const { shops, origin, status, exhausted, failed, prefetch, retry, searchPlace, searchHere } =
+    useFeed();
+  const [locateNote, setLocateNote] = useState("");
   // 音の仕組みは手が空いたときに先に作る。最初の払いを重くしない（#214）。
   useEffect(prepareWhenIdle, []);
   const fxLayer = useRef<HTMLDivElement>(null);
@@ -186,6 +188,21 @@ export function MatchApp() {
     setFlipIn(false);
   };
 
+  /** 端末の位置で山を最初から（#364）。取れなければ今の山のまま、一言だけ出す。 */
+  const locate = async () => {
+    if (flying) return;
+    setLocateNote("");
+    if (!(await searchHere())) {
+      setLocateNote("現在地を使えませんでした。位置情報の許可を確かめてください。");
+      return;
+    }
+    setPos(0);
+    setRangeEnd(SWIPE_STEP);
+    setHistory([]);
+    setPassStreak(0);
+    setFlipIn(false);
+  };
+
   const decideToday = () => {
     if (!current || flying) return;
     sound.issue();
@@ -279,6 +296,8 @@ export function MatchApp() {
       <main className={styles.app} ref={appRef}>
         <Header
           place={origin ? originLabel(origin) : ""}
+          onLocate={() => void locate()}
+          locateNote={locateNote}
           wants={wants.length}
           onWants={() => setView("wants")}
         />

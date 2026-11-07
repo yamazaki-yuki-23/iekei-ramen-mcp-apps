@@ -769,6 +769,32 @@
   flex-wrap: wrap;
 }
 
+/*
+ * 見出しの横の「現在地で出し直す」（#364）。見た目は .modeLink と同じ文字のボタン。押せる高さは 44px のまま、
+ * 上下を負の余白で戻して行の高さを変えない（スマホ幅の最初の画面に食券 3 枚を収める決まり、#204・#279）。
+ */
+.headAction {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-min-size);
+  margin-block: calc((var(--control-min-size) - 1lh) / -2);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-accent-strong);
+  font: inherit;
+  font-size: var(--font-size-note);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.headAction:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .decideTitle {
   margin: 0;
   font-size: var(--font-heading-xl-size);
@@ -2093,6 +2119,7 @@
 .key:focus-visible,
 .issue:focus-visible,
 .modeLink:focus-visible,
+.headAction:focus-visible,
 .buttonDanger:focus-visible,
 .chip:focus-visible,
 .card:focus-visible,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PREFETCH_AT } from "../utils/swipe";
 import { SWIPE_STEP } from "../../../lib/feed";
 import type { Origin, Shop } from "../../../types";
-import { createFeed } from "../../../lib/feed";
+import { createFeed, type Page } from "../../../lib/feed";
 
 type Status = "loading" | "ready" | "noplace" | "error";
 
@@ -69,18 +69,42 @@ export function useFeed() {
     [exhausted, failed, shops.length, loadMore],
   );
 
-  /** 地名から探し直す。見つからなければ false（画面が言い分ける）。失敗は投げる。 */
-  const searchPlace = useCallback(async (query: string) => {
-    if (!feed.current) return false;
-    const page = await feed.current.fromPlace(query);
-    if (!page) return false;
+  const restart = useCallback((page: Page) => {
     setShops(page.shops);
     setOrigin(page.origin);
     setExhausted(page.shops.length < SWIPE_STEP);
     setFailed(false);
     setStatus("ready");
-    return true;
   }, []);
 
-  return { shops, origin, status, exhausted, failed, prefetch, retry: loadMore, searchPlace };
+  /** 地名から探し直す。見つからなければ false（画面が言い分ける）。失敗は投げる。 */
+  const searchPlace = useCallback(
+    async (query: string) => {
+      const page = await feed.current?.fromPlace(query);
+      if (!page) return false;
+      restart(page);
+      return true;
+    },
+    [restart],
+  );
+
+  /** 端末の位置で探し直す（#364）。取れなければ false。 */
+  const searchHere = useCallback(async () => {
+    const page = await feed.current?.here();
+    if (!page) return false;
+    restart(page);
+    return true;
+  }, [restart]);
+
+  return {
+    shops,
+    origin,
+    status,
+    exhausted,
+    failed,
+    prefetch,
+    retry: loadMore,
+    searchPlace,
+    searchHere,
+  };
 }

@@ -100,6 +100,36 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * 場所と「現在地で出し直す」（#364）。押せる高さは 44px のまま、上下を負の余白で戻して行の高さを変えない。
+ * 入りきらなければボタンを次の行へ回し、場所の名前を切らない（375px で「さ…」になった）。
+ */
+.placeRow {
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+/* 見た目は「迷ったら」のほかの探し方のリンク（.modeLink）と同じ。 */
+.placeAction {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-min-size);
+  margin-block: calc((var(--control-min-size) - 1lh) / -2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent-strong);
+  font: inherit;
+  font-size: var(--font-size-note);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
 .headRight {
   display: flex;
   gap: 6px;

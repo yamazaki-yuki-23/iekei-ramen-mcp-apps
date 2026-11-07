@@ -28,7 +28,7 @@ import { AppHeader } from "./AppHeader";
 import { CountTag } from "./CountTag";
 import type { PresentationProps } from "../SearchApp";
 import { pageHead } from "../utils/heading";
-import { issueWith } from "../lib/issue-tickets";
+import { issueWith, withLocate } from "../lib/issue-tickets";
 export interface InnerProps extends PresentationProps {
   app: UiHost;
   /** つながって最初の結果がそろうまで（Web）。押せない状態で描き、結果の場所は骨組みが取る（#214）。 */
@@ -77,8 +77,8 @@ function supportedAction<Action extends (...args: never[]) => unknown>(
 
 /**
  * 絞り込みを置く場所。Web の地図だけ、地図と一覧の間に置く（#125）。
- * 最初の画面で地図が先に見え、絞り込みは一覧の 20 件より前に来る。
- * DOM の順で決める（CSS の order だと、読み上げと Tab の順が見た目とずれる）。
+ * 最初の画面で地図が先に見え（「近くにこれだけある」）、絞り込みは一覧の 20 件より前に来る。
+ * 会話の中（MCP）は従来どおり条件が先。DOM の順で決める（CSS の order だと、読み上げと Tab の順が見た目とずれる）。
  *
  * 読み込み中・失敗のあいだも位置を変えない（ResultView が地図だけ状態に差し替える）。
  * 置き場所を切り替えると、押していた選択肢が作り直されて焦点が消える。
@@ -296,13 +296,9 @@ export function SearchAppInner({
       brands={payload.brands ?? []}
     />
   );
-  /*
-   * Web の地図は、絞り込みより先に出す（#125）。最初の画面で「近くにこれだけある」が
-   * 見えるように。並びは DOM で入れ替える（CSS の order だと、読み上げと Tab の順が
-   * 見た目とずれる）。会話の中（MCP）は従来どおり条件が先。
-   */
   const placed = placeControls(Hero, mode, controls);
   const head = pageHead(Hero, mode, heading, count);
+  const locate = issueWith(undefined, activeKeyword, runDecide, reserveResult);
   const results = (
     <>
       {/* 詳細は選んだカードの直下に出す。一覧の上に置くと、選んだ瞬間に
@@ -336,7 +332,7 @@ export function SearchAppInner({
         onSignIn={supportedAction(app.capabilities.visitSignIn, () => void askToSignIn())}
         belowMap={placed.belowMap}
         aside={placed.aside}
-        decideTitle={placeholderTitle(head.decideTitle, look)}
+        decideTitle={withLocate(placeholderTitle(head.decideTitle, look), locate, form)}
         onRetry={retry}
         failure={failure}
         reports={app.capabilities.reports === true}

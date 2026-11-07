@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { AppPayload, Bounds, SearchMode, Shop } from "../../../types";
 import type { ResultLook } from "../../../utils/skeleton";
-import { DecidePanel } from "./DecidePanel";
+import { DecidePanel, type DecideTitle } from "./DecidePanel";
 import { Pending } from "../../../components/Pending";
 import type { FullscreenControl } from "./MapToolbar";
 import { preloadMapView } from "../lib/lazy-map";
@@ -173,7 +173,7 @@ interface Props {
    */
   aside?: ReactNode;
   /** 食券の列の見出し（Web の「迷ったら」）。ページの見出しから移したもの。 */
-  decideTitle?: { heading: string; tag: string | null };
+  decideTitle?: DecideTitle;
   /** 取得に失敗したとき、最後に送った条件のまま取り直す。 */
   onRetry: () => void;
   /** 呼び出しの失敗の理由。結果の代わりに出す失敗と 1 つにまとめる（読み上げを 2 回にしない）。 */

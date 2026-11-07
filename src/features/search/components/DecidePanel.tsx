@@ -23,6 +23,9 @@ const EMPTY_WITH_KEYWORD =
 /* 会話の中だけ。選んだ店をチャットで聞く道を言う（但し書きは ResultCaveat）。 */
 const ASK_HINT = "気になる店は押して選んでから、チャットで聞いてください。";
 
+/** 食券の列の見出しと札。Web では「現在地で出し直す」（#364）も持つ。 */
+export type DecideTitle = { heading: string; tag: string | null; onLocate?: () => void };
+
 /**
  * 食券の列の見出し。並べた根拠（近い順など）を札で横に添える。下に「近い順に 1〜3 軒目」の
  * 行が出るときは、同じことを 2 度言うので札を出さない（#301）。
@@ -30,9 +33,11 @@ const ASK_HINT = "気になる店は押して選んでから、チャットで�
 function DecideHead({
   title,
   showTag,
+  busy,
 }: {
-  title?: { heading: string; tag: string | null };
+  title?: DecideTitle;
   showTag: boolean;
+  busy: boolean;
 }) {
   if (!title) return null;
   return (
@@ -41,6 +46,20 @@ function DecideHead({
         {title.heading}
       </h2>
       {showTag && title.tag && <span className={styles.count}>{title.tag}</span>}
+      {/*
+       * 見出しの「〇〇付近」は接続元からの推定のことがある（#364）。出し直す券売機は約 2 画面下なので、
+       * ここからも端末の位置で出し直せるようにする。位置情報は押したときだけ求める。
+       */}
+      {title.onLocate && (
+        <button
+          type="button"
+          className={styles.headAction}
+          onClick={title.onLocate}
+          disabled={busy}
+        >
+          現在地で出し直す
+        </button>
+      )}
     </div>
   );
 }
@@ -146,7 +165,7 @@ interface Props {
   /** 報告の口があるか（Web）。但し書きの報告の案内を変える。 */
   reports: boolean;
   /** 列の見出しと、並べた根拠の札（Web の「迷ったら」）。会話の中ではページの見出しが持つ。 */
-  title?: { heading: string; tag: string | null };
+  title?: DecideTitle;
 }
 
 /**
@@ -213,7 +232,7 @@ export function DecidePanel({
        * 並べた根拠の長い文（「352 軒を…に並べた、1〜3 軒目です。」）は画面に出さない（#152）。
        * 見出し（どこから）・札（近い順など）・「近い順に 1〜3 軒目」で足りる。文はモデルへ渡す。
        */}
-      <DecideHead title={title} showTag={!hasRoundLine(info)} />
+      <DecideHead title={title} showTag={!hasRoundLine(info)} busy={busy} />
       {!title && info && (
         <p className={styles.decideBasis}>{`${basisLabel(info)}に並べています。`}</p>
       )}

@@ -29,3 +29,10 @@ export function originLabel(origin: Origin): string {
   // 「から近い順」のように、場所の抜けた文言になる。
   return origin.label?.trim() || `${origin.lat.toFixed(4)}, ${origin.lon.toFixed(4)}`;
 }
+
+/**
+ * 基準地点が推定（接続元・ホストの大まかな位置）か。推定のまま「近くで」を出すと、携帯回線では
+ * 別の市の店になる（#364）。そのときは押した時点でブラウザの位置を先に試す。
+ */
+export const isEstimated = (origin: Origin | undefined) =>
+  origin?.source === "edge" || origin?.source === "host";
