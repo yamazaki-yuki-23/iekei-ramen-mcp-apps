@@ -9,6 +9,8 @@ export interface Shop {
   nameEn?: string;
   /** チェーンのブランド名（判明している場合）。 */
   brand?: string;
+  /** 公式の情報で確かめた系列名（data/verified.json。サーバーが読み込むときに付ける、#368）。 */
+  chain?: string;
   /** 味の傾向。ブランドから判定できたものだけ入り、それ以外は "unknown"。 */
   taste: TasteKey;
   /** 家系だと言い切れる度合い。詳しくは CONFIDENCE を見ること。 */

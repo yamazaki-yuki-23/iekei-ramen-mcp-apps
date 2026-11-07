@@ -16,6 +16,7 @@ import { ResultView } from "./ResultView";
 import { ResultCaveat } from "./ResultCaveat";
 import { REPORT_HINT, StateNote } from "./StateNote";
 import styles from "../styles/search.module.css";
+import { startBounds } from "../utils/bounds";
 import { VisitedPanel } from "./VisitedPanel";
 
 /* 和文は 1 文を 1 本の文字列にする（JSX の改行は空白 1 個に畳まれる）。 */
@@ -386,7 +387,7 @@ export function Results({
         routeOrigin={routeOrigin}
         fullscreen={fullscreen}
         onSearchArea={onSearchArea}
-        bounds={payload.query.bounds}
+        bounds={startBounds(mode, payload.query)}
         origin={payload.query.origin}
         busy={busy}
         visitedIds={visitedIds}

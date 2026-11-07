@@ -83,8 +83,7 @@ const escape = (value) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character],
   );
 const region = (shop) => [shop.prefecture, shop.city].filter(Boolean).join(" ");
-const appLink = (prefecture, keyword) =>
-  `/?${new URLSearchParams({ prefecture, ...(keyword ? { keyword } : {}) })}`;
+const appLink = (prefecture) => `/?${new URLSearchParams({ prefecture })}`;
 const prefPath = (prefecture) => `/area/${prefectureSlugs.get(prefecture)}/`;
 /**
  * 市区町村のページの URL（#341）。県・系列と同じく英字にする。名前は総務省の一覧の読みから作る
@@ -217,8 +216,19 @@ function shopList(shops) {
  * 市区町村のページへのリンクは見出しの横に残す。
  */
 function cityShopList(groups) {
-  return `<h2 class="seo-section">店舗</h2>${groups.map(({ id, href, city, shops }) => `<section class="seo-city" id="${id}"><div class="seo-city-head"><h3>${escape(city)}<span>${shops.length} 軒</span></h3>${href ? `<a class="seo-sub-link" href="${href}">${escape(city)}のページ</a>` : ""}</div>${cards(shops)}</section>`).join("")}<p class="seo-caveat">${note}</p>`;
+  return `<h2 class="seo-section">店舗</h2>${groups.map(({ id, href, city, shops }) => `<section class="seo-city" id="${id}"><div class="seo-city-head"><h3>${escape(city)}<span>${shops.length} 軒</span></h3>${href ? `<a class="seo-sub-link" href="${href}">${escape(city)}のページ</a>` : ""}</div>${cards(shops)}${backTo(groups, "市区町村")}</section>`).join("")}<p class="seo-caveat">${note}</p>`;
 }
+
+/**
+ * 長い一覧の区切りの最後に置く、上のチップへ戻るリンク（#368）。県・系列のページは 2 万 px 近くあり、
+ * 途中まで読むと別の市・県へ移る手段が無かった。浮かせたボタンにはしない（動きは控えめ・本文の邪魔をしない）。
+ * 区切りが 2 つ以下なら、戻るほどの長さが無いので出さない。
+ */
+const JUMP_ID = "jump";
+const backTo = (groups, label) =>
+  groups.length > 2
+    ? `<p class="seo-back"><a class="seo-sub-link" href="#${JUMP_ID}">${label}の一覧へ戻る</a></p>`
+    : "";
 
 /** 店のカード（食券の形）。 */
 function cards(shops) {
@@ -479,7 +489,8 @@ export function seoPages(shops, recordOf = new Map(), records = [], today = new 
         path,
         count: list.length,
         crumbs: `<a href="/area/#chains">系列</a>`,
-        content: `<p class="seo-lead">${chainLead}</p>${chips([...byPref].map(([prefecture, group]) => ({ href: `#${anchor(prefecture)}`, label: prefecture, count: group.length })))}${[...byPref].map(([prefecture, group]) => `<h2 class="seo-section" id="${anchor(prefecture)}">${escape(prefecture)}</h2>${cards(group)}`).join("")}<p class="seo-caveat">${note}</p>`,
+        // 「〇〇 近く」で来た人が、自分の県まで読み進めずに近い店へ行けるように（#368）。
+        content: `<p class="seo-lead">${chainLead}</p><div class="seo-actions">${primary(`/?${new URLSearchParams({ keyword: chain, view: "three" })}`, `近くの${chain}を出す`)}</div><h2 class="seo-section" id="${JUMP_ID}">都道府県</h2>${chips([...byPref].map(([prefecture, group]) => ({ href: `#${anchor(prefecture)}`, label: prefecture, count: group.length })))}${[...byPref].map(([prefecture, group]) => `<h2 class="seo-section" id="${anchor(prefecture)}">${escape(prefecture)}</h2>${cards(group)}${backTo([...byPref], "都道府県")}`).join("")}<p class="seo-caveat">${note}</p>`,
       }),
     );
     indexed.push(path);
@@ -517,7 +528,7 @@ export function seoPages(shops, recordOf = new Map(), records = [], today = new 
         noindex: allCandidates(list),
         count: list.length,
         crumbs: `<a href="/area/">都道府県</a>`,
-        content: `<p class="seo-lead">${listLead}</p><div class="seo-actions">${primary(`/?${new URLSearchParams({ prefecture, view: "map" })}`, `${prefecture}の地図を開く`)}<a class="seo-secondary" href="${escape(appLink(prefecture))}">${prefecture}から 3 軒に絞る</a></div><h2 class="seo-section">市区町村</h2>${cityLinks}${cityShopList(groups)}<p><a class="seo-sub-link" href="/guide/">初めての人へ: 家系ラーメンの頼み方</a></p>`,
+        content: `<p class="seo-lead">${listLead}</p><div class="seo-actions">${primary(`/?${new URLSearchParams({ prefecture, view: "map" })}`, `${prefecture}の地図を開く`)}<a class="seo-secondary" href="${escape(appLink(prefecture))}">${prefecture}から 3 軒に絞る</a></div><h2 class="seo-section" id="${JUMP_ID}">市区町村</h2>${cityLinks}${cityShopList(groups)}<p><a class="seo-sub-link" href="/guide/">初めての人へ: 家系ラーメンの頼み方</a></p>`,
       }),
     );
     if (!allCandidates(list)) indexed.push(path);
@@ -539,7 +550,8 @@ export function seoPages(shops, recordOf = new Map(), records = [], today = new 
         ]),
         count: list.length,
         crumbs: `<a href="/area/">都道府県</a> / <a href="${prefPath(prefecture)}">${escape(prefecture)}</a>`,
-        content: `<p class="seo-lead">${listLead}</p>${primary(appLink(prefecture, city), `${city}の店を一覧で見る`)}${shopList(list)}`,
+        // ボタンは県のページと同じ 2 つ（#368）。一覧はこのページの下にあるので、アプリの一覧へは送らない。
+        content: `<p class="seo-lead">${listLead}</p><div class="seo-actions">${primary(`/?${new URLSearchParams({ prefecture, keyword: city, view: "map" })}`, `${city}の地図を開く`)}<a class="seo-secondary" href="${escape(`/?${new URLSearchParams({ prefecture, keyword: city, view: "three" })}`)}">${city}から 3 軒に絞る</a></div>${shopList(list)}`,
       }),
     );
     if (!thinCity(list)) indexed.push(path);

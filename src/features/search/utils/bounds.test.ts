@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeBounds } from "./bounds";
+import { aroundOrigin, normalizeBounds, startBounds } from "./bounds";
 import type { Bounds } from "../../../types";
 
 /** 横浜あたりを囲む、ふつうの範囲。 */
@@ -87,5 +87,29 @@ describe("normalizeBounds", () => {
       east: 10,
       west: -10,
     });
+  });
+});
+
+describe("aroundOrigin", () => {
+  it("基準地点を真ん中に、市が入るくらいの範囲を返す", () => {
+    const box = aroundOrigin({ lat: 35.4658, lon: 139.6223 });
+    expect((box.north + box.south) / 2).toBeCloseTo(35.4658, 6);
+    expect((box.east + box.west) / 2).toBeCloseTo(139.6223, 6);
+    // 南北で約 10km（緯度 1 度 ≒ 111km）。日本全体（約 20 度）に戻らない。
+    expect((box.north - box.south) * 111).toBeGreaterThan(8);
+    expect((box.north - box.south) * 111).toBeLessThan(12);
+  });
+});
+
+describe("startBounds", () => {
+  const origin = { lat: 35.4658, lon: 139.6223 };
+  it("選んだ範囲 → 基準地点のまわり → 結果の全体、の順に決める", () => {
+    expect(startBounds("map", { bounds: YOKOHAMA, origin })).toEqual(YOKOHAMA);
+    expect(startBounds("map", { origin })).toEqual(aroundOrigin(origin));
+    expect(startBounds("map", {})).toBeUndefined();
+  });
+  it("県を選んでいるとき・地図以外では、基準地点へ寄せない", () => {
+    expect(startBounds("map", { prefecture: "神奈川県", origin })).toBeUndefined();
+    expect(startBounds("nearby", { origin })).toBeUndefined();
   });
 });

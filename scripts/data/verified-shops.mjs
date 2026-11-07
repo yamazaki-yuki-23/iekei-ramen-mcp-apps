@@ -1,12 +1,7 @@
-import { createHash } from "node:crypto";
+import { geoKey, recordShopId } from "../../src/lib/record-id.ts";
 import { distanceM } from "./classify.mjs";
 
-/** 記録と、引いた座標（data/verified-geo.json）を結ぶ鍵。住所を直したら別の鍵になり、引き直される。 */
-export const geoKey = (record) => `${record.prefecture}${record.address}`;
-
-/** 記録が指す店の ID。今のデータにある店は `id`、足した店は都道府県と住所から作る。 */
-export const recordShopId = (record) =>
-  record.id ?? `verified/${createHash("sha256").update(geoKey(record)).digest("hex").slice(0, 20)}`;
+export { geoKey, recordShopId };
 
 const KANJI_DIGITS = "〇一二三四五六七八九";
 const digitsOf = (text) => [...text].reduce((sum, c) => sum * 10 + KANJI_DIGITS.indexOf(c), 0);

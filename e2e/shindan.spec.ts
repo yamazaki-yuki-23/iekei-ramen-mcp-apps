@@ -14,8 +14,8 @@ test("6 問を 1 タップずつ答えると、結果のカードと注文の言
   await page.goto(URL);
   const progress = page.getByRole("progressbar", { name: "進み具合" });
   for (const [i, label] of [
-    "硬め",
-    "濃いめ",
+    "かため",
+    "こいめ",
     "多め",
     "1 杯たのむ",
     "少し入れる",
@@ -55,12 +55,12 @@ test("6 問を 1 タップずつ答えると、結果のカードと注文の言
 
 test("ひとつ戻ると前の問いに戻り、もう一度診断すると 1 問目から", async ({ page }) => {
   await page.goto(URL);
-  await page.getByRole("button", { name: "普通", exact: true }).click();
+  await page.getByRole("button", { name: "ふつう", exact: true }).click();
   await expect(page.getByRole("heading", { name: "味の濃さは？" })).toBeFocused();
   await page.getByRole("button", { name: "ひとつ戻る" }).click();
   await expect(page.getByRole("heading", { name: "麺の硬さは？" })).toBeFocused();
   for (let i = 0; i < 6; i++)
-    await page.getByRole("button", { name: /^(普通|1 杯たのむ|少し入れる|半分くらい)$/ }).click();
+    await page.getByRole("button", { name: /^(ふつう|1 杯たのむ|少し入れる|半分くらい)$/ }).click();
   await expect(page.getByRole("heading", { level: 2, name: "ふつうを極めし者" })).toBeVisible();
   await page.getByRole("button", { name: "もう一度診断する" }).click();
   await expect(page.getByRole("heading", { name: "麺の硬さは？" })).toBeFocused();
@@ -72,7 +72,7 @@ test("シェアされたタイプの URL から診断すると、1 問目から�
   await page.goto(`${URL}futsuu/`);
   await expect(page.getByRole("heading", { name: "麺の硬さは？" })).toBeVisible();
   await expect(page.getByText(/友達は「ふつうを極めし者」でした/)).toBeVisible();
-  for (const label of ["硬め", "濃いめ", "多め", "たのまない", "入れない", "麺だけ"])
+  for (const label of ["かため", "こいめ", "多め", "たのまない", "入れない", "麺だけ"])
     await page.getByRole("button", { name: label, exact: true }).click();
   const compare = page.getByRole("region", { name: "友達と比べる" });
   await expect(compare.getByRole("heading", { level: 3 })).toHaveText([
@@ -80,6 +80,12 @@ test("シェアされたタイプの URL から診断すると、1 問目から�
     "カタコイオオメ三冠王",
   ]);
   await expect(compare.getByText(/相方どうし。/)).toBeVisible();
+});
+
+test("麺・味・脂の答えは、頼み方のページと同じ言葉と並び（#368）", async ({ page }) => {
+  await page.goto(URL);
+  const options = page.getByRole("button").filter({ hasText: /^(やわらかめ|ふつう|かため)$/ });
+  await expect(options).toHaveText(["やわらかめ", "ふつう", "かため"]);
 });
 
 test("トップの一言の下から、家系タイプ診断へ行ける", async ({ page }) => {
@@ -94,7 +100,7 @@ test("焦点の輪は 2 色（黄の輪と縁）", async ({ page }) => {
   await page.goto(URL);
   // 丼のロゴ → 音を消す → 1 つ目の答え。
   for (let i = 0; i < 3; i++) await page.keyboard.press("Tab");
-  const option = page.getByRole("button", { name: "硬め", exact: true });
+  const option = page.getByRole("button", { name: "やわらかめ", exact: true });
   await expect(option).toBeFocused();
   expect(await option.evaluate((el) => getComputedStyle(el).boxShadow)).toMatch(/0px 0px 0px 5px/);
 });
@@ -106,18 +112,18 @@ test("珍しさで演出が変わり、動きを減らす設定では止まる",
       await page.getByRole("button", { name: label, exact: true }).click();
   };
   const card = page.locator("article[data-rarity]").first();
-  await answer(["硬め", "濃いめ", "多め", "1 杯たのむ", "少し入れる", "飲み干す"]);
+  await answer(["かため", "こいめ", "多め", "1 杯たのむ", "少し入れる", "飲み干す"]);
   await expect(card).toHaveAttribute("data-rarity", "激レア");
   await expect(page.getByText("激レア！")).toBeVisible();
-  await answer(["硬め", "普通", "普通", "1 杯たのむ", "少し入れる", "飲み干す"]);
+  await answer(["かため", "ふつう", "ふつう", "1 杯たのむ", "少し入れる", "飲み干す"]);
   await expect(card).toHaveAttribute("data-rarity", "レア");
   await expect(page.getByText("激レア！")).toHaveCount(0);
-  await answer(["硬め", "薄め", "普通", "1 杯たのむ", "少し入れる", "飲み干す"]);
+  await answer(["かため", "うすめ", "ふつう", "1 杯たのむ", "少し入れる", "飲み干す"]);
   await expect(card).toHaveAttribute("data-rarity", "定番");
   await expect(page.getByText("いちばん多くの組み合わせが行き着く注文")).toBeVisible();
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await answer(["硬め", "濃いめ", "多め", "1 杯たのむ", "少し入れる", "飲み干す"]);
+  await answer(["かため", "こいめ", "多め", "1 杯たのむ", "少し入れる", "飲み干す"]);
   const moving = await card.evaluate(
     (el) =>
       [el, ...el.querySelectorAll("*")].filter((n) => {
@@ -165,16 +171,16 @@ test("答え・発券・レア・激レアで音が鳴り、高い音は出さ�
     await page.waitForTimeout(1600);
   };
   // 定番: 答えの音 6 回（録音）と発券の「ゴトッ」（低い合成音とノイズ）だけ。
-  await answer(["硬め", "薄め", "普通", "1 杯たのむ", "少し入れる", "飲み干す"]);
+  await answer(["かため", "うすめ", "ふつう", "1 杯たのむ", "少し入れる", "飲み干す"]);
   let log = await sounds();
   expect(log.filter((s) => s.kind === "buffer")).toHaveLength(6);
   expect(log.filter((s) => s.kind === "tone").map((s) => s.freq)).toEqual([120]);
   // レア: 発券に加えて、銀の光の短い音（3 音）。
-  await answer(["硬め", "普通", "普通", "1 杯たのむ", "少し入れる", "飲み干す"]);
+  await answer(["かため", "ふつう", "ふつう", "1 杯たのむ", "少し入れる", "飲み干す"]);
   log = await sounds();
   expect(log.filter((s) => s.kind === "tone").map((s) => s.freq)).toEqual([120, 523, 659, 784]);
   // 激レア: 低い和音と発券。
-  await answer(["硬め", "濃いめ", "多め", "1 杯たのむ", "少し入れる", "飲み干す"]);
+  await answer(["かため", "こいめ", "多め", "1 杯たのむ", "少し入れる", "飲み干す"]);
   log = await sounds();
   const tones = log.filter((s) => s.kind === "tone").map((s) => s.freq!);
   expect(tones).toContain(98);
@@ -184,7 +190,7 @@ test("答え・発券・レア・激レアで音が鳴り、高い音は出さ�
   await page.goto(URL);
   await page.getByRole("button", { name: "音を消す" }).click();
   await page.reload();
-  for (const label of ["硬め", "濃いめ", "多め", "1 杯たのむ", "少し入れる", "飲み干す"])
+  for (const label of ["かため", "こいめ", "多め", "1 杯たのむ", "少し入れる", "飲み干す"])
     await page.getByRole("button", { name: label, exact: true }).click();
   await page.waitForTimeout(1600);
   expect(await sounds()).toEqual([]);

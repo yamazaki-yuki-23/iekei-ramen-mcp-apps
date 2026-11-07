@@ -6,17 +6,25 @@
  * 不明で、店と結び付けられない）。相方は人どうしの話。豆知識は一般論として書く。
  * 回答は送らず、残さない（この端末の画面の中だけで結果を出す）。
  */
+import { PREFERENCES } from "./order-guide.ts";
 
 export interface Question {
   title: string;
   /** 答えは 3 つ。0 が「強め」、1 が「ふつう」、2 が「控えめ」。 */
   options: [string, string, string];
+  /** 控えめから並べて見せる（頼み方の画面と同じ並び、#368）。答えの番号は変えない。 */
+  mildFirst?: true;
 }
 
+/**
+ * 麺・味・脂は、頼み方（order-guide.ts）の言葉と並びをそのまま使う（#368）。
+ * 診断だけ「硬め / 普通 / 柔らかめ」と書くと、頼み方で覚えた言葉と食い違う。
+ */
+const preference = ({ label, options: [mild, plain, strong] }: (typeof PREFERENCES)[number]) =>
+  ({ title: `${label}は？`, options: [strong, plain, mild], mildFirst: true }) satisfies Question;
+
 export const QUESTIONS: Question[] = [
-  { title: "麺の硬さは？", options: ["硬め", "普通", "柔らかめ"] },
-  { title: "味の濃さは？", options: ["濃いめ", "普通", "薄め"] },
-  { title: "油の量は？", options: ["多め", "普通", "少なめ"] },
+  ...PREFERENCES.map(preference),
   { title: "ライスはどうする？", options: ["おかわりまで", "1 杯たのむ", "たのまない"] },
   { title: "卓上のにんにく・豆板醤は？", options: ["たっぷり入れる", "少し入れる", "入れない"] },
   { title: "スープは最後まで飲む？", options: ["飲み干す", "半分くらい", "麺だけ"] },
@@ -79,8 +87,8 @@ export const TYPES: Record<TypeKey, ShindanType> = {
     name: "濃厚フルスロットル",
     catch: "濃さも油も全開。麺だけは自分のペースで",
     aruaru: [
-      "「濃いめ多め」と言うとき、声の大きさも多めになる",
-      "「濃いめ」で増えるのは醤油のタレ、かえし。ライスが進むのはそのせい",
+      "「こいめ多め」と言うとき、声の大きさも多めになる",
+      "「こいめ」で増えるのは醤油のタレ、かえし。ライスが進むのはそのせい",
       "空の丼を見て小さくうなずいてから、席を立つ",
     ],
     partner: "yasashi",
@@ -93,7 +101,7 @@ export const TYPES: Record<TypeKey, ShindanType> = {
     catch: "攻めるのは一つだけ。そこに全部を賭ける",
     aruaru: [
       "全部強めにすると、どこが良かったのか分からなくなる。それを知っている",
-      "濃いめか多めか毎回少し悩んで、結局いつもと同じ方",
+      "こいめか多めか毎回少し悩んで、結局いつもと同じ方",
       "「どっち派？」と聞かれると、急に饒舌になる",
     ],
     partner: "katame",
@@ -105,8 +113,8 @@ export const TYPES: Record<TypeKey, ShindanType> = {
     name: "カタメ一択",
     catch: "麺の硬さだけは、譲れない",
     aruaru: [
-      "「硬め」は茹で時間を短くする注文。スープを吸う前の歯ごたえを狙っている",
-      "「硬め」を言い忘れた日は、食べ終わるまで少し悔しい",
+      "「かため」は茹で時間を短くする注文。スープを吸う前の歯ごたえを狙っている",
+      "「かため」を言い忘れた日は、食べ終わるまで少し悔しい",
       "最初のひと口は、必ず麺から",
     ],
     partner: "sajikagen",
@@ -131,8 +139,8 @@ export const TYPES: Record<TypeKey, ShindanType> = {
     name: "明日の自分にやさしい人",
     catch: "家系は好き。でも明日の自分も大事",
     aruaru: [
-      "「柔らかめで」を、少し小声で言いがち",
-      "薄め・少なめはスープを最後まで飲みやすい。飲み干せたときの達成感は、このタイプが一番大きい",
+      "「やわらかめで」を、少し小声で言いがち",
+      "うすめ・少なめはスープを最後まで飲みやすい。飲み干せたときの達成感は、このタイプが一番大きい",
       "店を出たあと、まだ体が軽いことに少し驚く",
     ],
     partner: "fullthrottle",
@@ -142,7 +150,7 @@ export const TYPES: Record<TypeKey, ShindanType> = {
   garyu: {
     key: "garyu",
     name: "我流の調合師",
-    catch: "硬めで薄め。自分だけの正解を知っている",
+    catch: "かためでうすめ。自分だけの正解を知っている",
     aruaru: [
       "店員さんに一瞬「え？」という顔をされたことがある",
       "人に注文を笑われても、まったく気にしない",

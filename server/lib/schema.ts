@@ -40,6 +40,7 @@ const ShopSchema = z.object({
   name: z.string(),
   nameEn: z.string().optional(),
   brand: z.string().optional(),
+  chain: z.string().optional(),
   taste: TasteSchema,
   confidence: z.enum(["confirmed", "likely", "candidate"]),
   prefecture: z.string(),

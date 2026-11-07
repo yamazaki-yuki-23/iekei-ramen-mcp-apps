@@ -115,8 +115,10 @@ for (const web of [true, false]) {
         }),
       ).toBeVisible();
       await app.getByRole("button", { name: "この条件で探す", exact: true }).click();
-      await expect(app.locator("button[data-shop-id]")).toHaveCount(1);
-      await expect(app.locator("button[data-shop-id]").first()).toContainText("吉村家");
+      // 吉村家と、吉村家の系列と確かめた厚木家（店名に「吉村」は無い。#368 で系列名も照合する）。
+      await expect(app.locator("button[data-shop-id]")).toHaveCount(2);
+      await expect(app.locator('button[data-shop-id="node/1774529495"]')).toContainText("吉村家");
+      await expect(app.locator('button[data-shop-id="node/4935164601"]')).toHaveCount(1);
       await expect(app.getByLabel("キーワード")).toHaveValue("吉村");
     } finally {
       held.release();

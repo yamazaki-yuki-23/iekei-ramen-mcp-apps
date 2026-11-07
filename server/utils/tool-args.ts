@@ -49,7 +49,8 @@ export function filterShops(
     // 範囲は南西・北東の角で来る。日付変更線はまたがない（国内だけのデータ）。
     if (b && (s.lat < b.south || s.lat > b.north || s.lon < b.west || s.lon > b.east)) return false;
     if (kw) {
-      const hay = [s.name, s.nameEn, s.brand, s.city, s.address].join(" ").toLowerCase();
+      // 確かめた系列名も照合する（#368）。系列のページと同じ店が、系列名のキーワードで出る。
+      const hay = [s.name, s.nameEn, s.brand, s.chain, s.city, s.address].join(" ").toLowerCase();
       if (!hay.includes(kw)) return false;
     }
     return true;
