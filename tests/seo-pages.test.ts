@@ -311,7 +311,7 @@ describe("系列のページ（#309）", () => {
     );
     expect(html).toContain("<h1>町田商店の<wbr>家系ラーメン<wbr>店舗一覧</h1>");
     expect(html).toContain(
-      'content="町田商店の店舗一覧（2軒）を都道府県ごとに探せます。系列の公式の店舗一覧で確かめた店を載せています（運営元のサイトではありません）。住所・Google マップの道順まで。"',
+      'content="町田商店の店舗一覧（2軒）を都道府県ごとに探せます。系列や店の公式の情報で確かめた店を載せています（運営元のサイトではありません）。住所・Google マップの道順まで。"',
     );
     expect(html).not.toMatch(
       /<title>[^<]*(候補|判定した結果)|description" content="[^"]*(候補|判定した結果)/,
@@ -319,7 +319,7 @@ describe("系列のページ（#309）", () => {
     // 都道府県の並び順（神奈川県より東京都が先）で見出しを置き、見出しへ飛ぶチップを付ける。
     expect(html.indexOf('id="pref-tokyo"')).toBeLessThan(html.indexOf('id="pref-kanagawa"'));
     expect(html).toContain('href="#pref-kanagawa">神奈川県<span>1 軒</span>');
-    expect(html).toContain("系列の公式の店舗一覧で確かめた店です。");
+    expect(html).toContain("系列や店の公式の情報で確かめた店です。");
     expect(files.get("/sitemap.xml")).toContain(`https://iekeiramen.com${path}`);
     expect(files.get("/area/")).toContain(`href="${path}">町田商店<span>2 軒</span>`);
     // 1 軒だけの系列は作らない。系列の記録が無ければ、都道府県の一覧に「系列」の段も出さない。
