@@ -189,7 +189,7 @@ npm run data:build     # 番地の精度で引けた店を shops.json に足す
 | `checked`                       | 確かめた日（YYYY-MM-DD）。半年で確かめ直す                                                                                                                             |
 | `opened`                        | 開店を確かめた店だけ（#345）。公式に開店日が書いてあればその日、無ければ `true`。開店前には付けない                                                                    |
 | `source`                        | `chain-list`（系列の公式の店舗一覧）／`official-site`／`official-sns`／`official-release`（運営会社の発表。公式サイトの無い店。#356）／`owner-visit`（オーナーの実食） |
-| `url`                           | 確かめた先。画面には出さない                                                                                                                                           |
+| `url`                           | 確かめた先。店のページの「公式の情報」にリンクとして出す（#367。オーナーの判断、2026-11-07）。グルメ記事・まとめ・地図サービスの URL は入れない                        |
 
 - **今のデータにある店は、OSM の店名・座標を写さず `id` で指すだけにする。** OSM（ODbL）の
   データと、自分で確かめた事実を別のデータとして分けておくため（OSMF の Collective Database

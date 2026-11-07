@@ -36,7 +36,7 @@ const listLead =
  * 中身は消さず、項目ごとの表にする（家系かどうか・味・営業時間と電話・違っていたら）。
  */
 const ESTIMATED = "地図の記載と既知のブランドからの推定";
-/** 確かめた先の言い方。記録の `url` は画面に出さない（docs/development/data.md）。 */
+/** 確かめた先の言い方。記録の `url` は、店のページに確かめた先へのリンクとして出す（#367）。 */
 const CHECKED_AT = {
   "chain-list": "系列の公式の店舗一覧",
   "official-site": "店の公式サイト",
@@ -51,11 +51,34 @@ const basisLabel = (record) =>
   record?.status === "open" && CHECKED_AT[record.source]
     ? `${CHECKED_AT[record.source]}${/[A-Za-z]$/.test(CHECKED_AT[record.source]) ? " " : ""}で確かめた（${record.checked}）`
     : ESTIMATED;
-const ABOUT = [
-  ["味の分類", "既知のブランドからの参考値（食べて決めたものではありません）"],
-  ["営業時間・電話", "地図の記載。変わることがあるので、行く前に店の公式情報で確かめてください"],
-  ["違っていたら", "上の「この店の情報、違っていませんか？」から"],
-];
+const TASTE_NOTE = ["味の分類", "既知のブランドからの参考値（食べて決めたものではありません）"];
+const REPORT_NOTE = ["違っていたら", "上の「この店の情報、違っていませんか？」から"];
+/**
+ * 確かめた先へのリンク（#367）。自分たちで公式と確かめた記録（`status: open`）の `url` だけを出す。
+ * 外のサイトなので新しいタブで開き、そのことを文字でも書く。http(s) 以外は出さない。
+ */
+const sourceLink = (record) =>
+  record?.status === "open" && CHECKED_AT[record.source] && /^https?:\/\//.test(record.url ?? "")
+    ? `<a href="${escape(record.url)}" target="_blank" rel="noopener noreferrer">${CHECKED_AT[record.source]}${/[A-Za-z]$/.test(CHECKED_AT[record.source]) ? " " : ""}を開く</a><small>（別のサイト・新しいタブ）</small>`
+    : undefined;
+/**
+ * 「この情報について」の行（#255・#367）。項目は `[見出し, 文字, HTML]`（HTML は escape しない）。
+ * 営業時間・電話の行は、地図に記載があるときだけ出す（無いものを「地図の記載」と書かない）。
+ */
+function aboutRows(shop, record) {
+  const link = sourceLink(record);
+  const hasFacts = Boolean(shop.openingHours || shop.phone);
+  return [
+    ["家系かどうか", basisLabel(record)],
+    link && ["公式の情報", "", link],
+    TASTE_NOTE,
+    hasFacts && [
+      "営業時間・電話",
+      `地図の記載。変わることがあるので、行く前に${link ? "上の公式の情報か、" : ""}店の公式情報で確かめてください`,
+    ],
+    REPORT_NOTE,
+  ].filter(Boolean);
+}
 /**
  * 店のページから送れる報告の種類（#255）。ボタンの名前と、受け口（/reports）の kind。
  * 受け口の検査（src/lib/reports.ts）がどの kind も受け取ることは、tests/seo-pages.test.ts が見張る。
@@ -201,7 +224,12 @@ function shopContent(shop, shops, record) {
     )
     .join("");
   const report = `<section class="seo-report" aria-labelledby="report-title" data-report-shop="${escape(shop.id)}"><h2 id="report-title">この店の情報、違っていませんか？</h2><div class="seo-report-buttons">${REPORT_KINDS.map(({ kind, label }) => `<button type="button" data-kind="${kind}">${escape(label)}</button>`).join("")}</div><div class="seo-report-confirm" hidden><p class="seo-report-question"></p><div class="seo-report-buttons"><button type="button" data-confirm>送る</button><button type="button" data-cancel>やめる</button></div></div><p class="seo-note">サインインは不要です。押すと、送る前に確かめます。</p><p class="seo-report-status" role="status" tabindex="-1"></p></section>`;
-  const about = `<section class="seo-about" aria-labelledby="about-title"><h2 id="about-title">この情報について</h2><dl>${[["家系かどうか", basisLabel(record)], ...ABOUT].map(([term, text]) => `<div><dt>${term}</dt><dd>${escape(text)}</dd></div>`).join("")}</dl></section>`;
+  const about = `<section class="seo-about" aria-labelledby="about-title"><h2 id="about-title">この情報について</h2><dl>${aboutRows(
+    shop,
+    record,
+  )
+    .map(([term, text, html]) => `<div><dt>${term}</dt><dd>${html ?? escape(text)}</dd></div>`)
+    .join("")}</dl></section>`;
   return `<p class="seo-lead">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p>${factList}<div class="seo-actions">${primary(directions, "Google マップで道順を見る", true)}<a class="seo-secondary" href="/guide/">注文のしかたを見る<small>お好み・卓上・ライス</small></a></div><h2 class="seo-section">この店から近い家系（直線距離）</h2><ul class="seo-nearby">${near}</ul>${report}${about}<script src="/shop-report.js" defer></script>`;
 }
 
