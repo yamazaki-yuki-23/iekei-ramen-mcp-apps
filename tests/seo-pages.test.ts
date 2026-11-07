@@ -227,7 +227,7 @@ describe("初めて来た人向けの店のページ（#255）", () => {
   });
 
   it("但し書きは「この情報について」の表にし、中身（推定・参考値・地図の記載・報告の口）を残す", () => {
-    const html = shopPage([shop]);
+    const html = shopPage([{ ...shop, openingHours: "10:30-25:00" }]);
     for (const term of ["家系かどうか", "味の分類", "営業時間・電話", "違っていたら"])
       expect(html).toContain(`<dt>${term}</dt>`);
     expect(html).toContain("地図の記載と既知のブランドからの推定");
@@ -282,11 +282,65 @@ describe("店のページの「家系かどうか」（#316）", () => {
       new Map([["node/123", chainRecord("試験商店", "official-release")]]),
     ).files;
     expect(about(release.get("/shop/node-123/")!)).toBe("運営会社の発表で確かめた（2026-10-24）");
-    // 記録の url は画面に出さない。誤りの報告の案内と参考値の断りは残す。
+    // 誤りの報告の案内と参考値の断りは残す。
     const html = listed.get("/shop/node-123/")!;
-    expect(html).not.toContain("https://example");
     expect(html).toContain("この店の情報、違っていませんか？");
     expect(html).toContain("既知のブランドからの参考値");
+  });
+});
+
+/** 記録 1 件を持たせた店のページ（#367）。 */
+const withUrl = (record: object) =>
+  seoPages(shops, new Map([["node/123", record]])).files.get("/shop/node-123/")!;
+const official = (html: string) => html.match(/<dt>公式の情報<\/dt><dd>(.*?)<\/dd>/)?.[1];
+
+describe("店のページの確かめた先へのリンク（#367）", () => {
+  it("公式で確かめた先へ、出典の種類の言い方で、新しいタブのリンクを出す", () => {
+    const cases = [
+      ["chain-list", "系列の公式の店舗一覧を開く"],
+      ["official-site", "店の公式サイトを開く"],
+      ["official-sns", "店の公式 SNS を開く"],
+      ["official-release", "運営会社の発表を開く"],
+    ];
+    for (const [source, label] of cases) {
+      const html = withUrl({
+        ...chainRecord("試験商店", source),
+        url: "https://example.com/a?b=1&c=2",
+      });
+      expect(official(html)).toBe(
+        `<a href="https://example.com/a?b=1&amp;c=2" target="_blank" rel="noopener noreferrer">${label}</a><small>（別のサイト・新しいタブ）</small>`,
+      );
+    }
+    // 公式の http のままのサイト（魂心家など）も出す。
+    expect(
+      official(withUrl({ ...chainRecord("魂心家"), url: "http://www.konshinya.com/" })),
+    ).toContain('href="http://www.konshinya.com/"');
+  });
+
+  it("記録が無い・url が無い・閉店・オーナーの実食・http(s) 以外は、行ごと出さない", () => {
+    const none = [
+      undefined,
+      chainRecord("試験商店"),
+      { ...chainRecord("試験商店"), status: "closed", url: "https://example.com/" },
+      { basis: "self", status: "open", checked: "2026-10-24", source: "owner-visit" },
+      { ...chainRecord("試験商店"), url: "javascript:alert(1)" },
+    ];
+    for (const record of none) {
+      const html = record ? withUrl(record) : shopPage([shop]);
+      expect(html).not.toContain("<dt>公式の情報</dt>");
+      expect(html).not.toContain("javascript:");
+    }
+  });
+
+  it("営業時間も電話も無い店では「営業時間・電話」の行を出さない", () => {
+    expect(shopPage([shop])).not.toContain("<dt>営業時間・電話</dt>");
+    expect(shopPage([{ ...shop, phone: "+81-0564-31-7060" }])).toContain("<dt>営業時間・電話</dt>");
+    // 公式の情報があるときは、行く前に確かめる先としてそちらを挙げる。
+    const both = seoPages(
+      [{ ...shop, openingHours: "10:30-25:00" }, shops[1]],
+      new Map([["node/123", { ...chainRecord("試験商店"), url: "https://example.com/" }]]),
+    ).files.get("/shop/node-123/")!;
+    expect(both).toContain("行く前に上の公式の情報か、店の公式情報で確かめてください");
   });
 });
 

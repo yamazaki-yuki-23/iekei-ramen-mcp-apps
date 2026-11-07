@@ -423,6 +423,16 @@
   margin: 0;
   color: var(--color-text-muted);
 }
+/* 確かめた先へのリンク（#367）。行の中の文字のリンクなので、押せる高さ 44px のまま行の高さを変えない。 */
+.seo-about dd a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-min-size);
+  margin-block: calc((var(--control-min-size) - 1lh) / -2);
+}
+.seo-about dd small {
+  font-size: inherit;
+}
 /* 頼み方のページ（/guide/、#342）。項目・答え（太字）・理由（控えめ）の順。 */
 .seo-guide {
   display: grid;
