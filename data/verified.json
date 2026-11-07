@@ -225,7 +225,7 @@
   {"id":"node/2713922685","basis":"chain","chain":"壱角家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://gardengroup.co.jp/brand/ichikakuya/"},
   {"id":"node/5892532611","basis":"chain","chain":"壱角家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://gardengroup.co.jp/brand/ichikakuya/"},
   {"id":"node/11278671555","basis":"chain","chain":"壱角家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://gardengroup.co.jp/brand/ichikakuya/"},
-  {"id":"way/383388465","basis":"chain","chain":"壱角家","status":"unlisted","checked":"2026-10-24","source":"chain-list","url":"https://gardengroup.co.jp/brand/ichikakuya/"},
+  {"id":"way/383388465","basis":"chain","chain":"壱角家","status":"open","checked":"2026-11-07","source":"chain-list","url":"https://gardengroup.co.jp/brand/ichikakuya/"},
   {"id":"way/408285679","basis":"chain","chain":"壱角家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://gardengroup.co.jp/brand/ichikakuya/"},
   {"id":"node/1862725374","basis":"chain","chain":"壱角家","status":"unlisted","checked":"2026-10-24","source":"chain-list","url":"https://gardengroup.co.jp/brand/ichikakuya/"},
   {"id":"node/10983338602","basis":"chain","chain":"壱角家","status":"open","checked":"2026-10-24","source":"chain-list","url":"https://gardengroup.co.jp/brand/ichikakuya/"},
@@ -467,5 +467,15 @@
   {"name":"麺家よし川 心斎橋店","prefecture":"大阪府","address":"大阪市中央区南船場3-5-27 アルファ心斎橋 1階","osmId":"node/2450194701","basis":"self","status":"open","checked":"2026-10-25","source":"official-site","url":"https://menya-yoshikawa.com/"},
   {"name":"麺家よし川 十三店","prefecture":"大阪府","address":"大阪市淀川区十三本町1-2-23","basis":"self","status":"open","checked":"2026-10-25","source":"official-site","url":"https://menya-yoshikawa.com/"},
   {"name":"麺家 アカボシ","prefecture":"大阪府","address":"大阪市福島区吉野3-7-7","osmId":"node/12716164601","basis":"self","status":"open","checked":"2026-10-25","source":"official-site","url":"https://menya-akaboshi.com/"},
-  {"name":"麺家よし川 天王寺店","prefecture":"大阪府","address":"大阪市阿倍野区阿倍野筋1丁目5-1 あべのルシアスビルB1F","basis":"self","status":"open","checked":"2026-10-25","source":"official-site","url":"https://menya-yoshikawa.com/"}
+  {"name":"麺家よし川 天王寺店","prefecture":"大阪府","address":"大阪市阿倍野区阿倍野筋1丁目5-1 あべのルシアスビルB1F","basis":"self","status":"open","checked":"2026-10-25","source":"official-site","url":"https://menya-yoshikawa.com/"},
+  {"name":"横浜道 新宿西口店","prefecture":"東京都","address":"新宿区西新宿1-4-5 西新宿オークビル 1F","basis":"chain","chain":"壱角家","status":"open","checked":"2026-11-07","source":"chain-list","url":"https://gardengroup.co.jp/brand/ichikakuya/"},
+  {"name":"横浜道 蒲田店","prefecture":"東京都","address":"大田区蒲田5-9-11 1F","basis":"chain","chain":"壱角家","status":"open","checked":"2026-11-07","source":"chain-list","url":"https://gardengroup.co.jp/brand/ichikakuya/"},
+  {"id":"way/568149584","basis":"chain","chain":"壱角家","status":"open","checked":"2026-11-07","source":"chain-list","url":"https://gardengroup.co.jp/brand/ichikakuya/"},
+  {"name":"鶴乃家 広島大州店","prefecture":"広島県","address":"広島市南区大州1丁目3-39","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"https://nbf-nip.com/business/tsurunoya/"},
+  {"name":"鶴乃家 広島緑井店","prefecture":"広島県","address":"広島市安佐南区緑井6丁目1-6","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"https://nbf-nip.com/business/tsurunoya/"},
+  {"name":"鶴乃家 イオンモール広島府中店","prefecture":"広島県","address":"安芸郡府中町大須2丁目1-1 3F","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"https://nbf-nip.com/business/tsurunoya/"},
+  {"name":"鶴乃家 東広島西条店","prefecture":"広島県","address":"東広島市西条中央1丁目16-12","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"https://nbf-nip.com/business/tsurunoya/"},
+  {"id":"way/1317832058","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"https://nbf-nip.com/business/tsurunoya/"},
+  {"id":"node/10240161955","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"https://nbf-nip.com/business/tsurunoya/"},
+  {"id":"node/11359795983","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"http://www.manpukuya.jp/"}
 ]
