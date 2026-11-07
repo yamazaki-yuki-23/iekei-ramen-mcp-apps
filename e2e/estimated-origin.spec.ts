@@ -248,3 +248,26 @@ test("「現在地で出し直す」の位置を待つ間に券売機の条件�
   await expect(rich).toHaveAttribute("aria-pressed", "true");
   await expect(decideTitle(page)).toContainText("さいたま市");
 });
+
+test("家系マッチで同じ場所に出し直して上の札が同じ店でも、そのあと払える（#364）", async ({
+  page,
+}) => {
+  await allowYokohama(page);
+  await startFromEdge(page, "find-nearby-iekei-ramen");
+  await page.goto(`${WEB}/match/`);
+  const card = page.locator("article[data-shop-id]:not([aria-hidden])");
+  const again = page.getByRole("button", { name: "現在地で出し直す" });
+  await again.click();
+  await expect(page.getByText("現在地", { exact: true })).toBeVisible();
+  const top = await card.getAttribute("data-shop-id");
+  // 同じ場所でもう一度。応答を止めたまま払い始め、飛んでいる間に返す（上の札は同じ店）。
+  const release = await holdPreciseSearch(page);
+  await again.click();
+  await page.getByRole("button", { name: /^行きたい →/ }).click();
+  release();
+  await expect(page.getByRole("status")).toHaveText("");
+  await expect(card).toHaveAttribute("data-shop-id", top ?? "");
+  await expect(card).toHaveAttribute("aria-label", /^1枚目、/);
+  await page.getByRole("button", { name: /^行きたい →/ }).click();
+  await expect(card).toHaveAttribute("aria-label", /^2枚目、/);
+});

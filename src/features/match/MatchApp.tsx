@@ -86,6 +86,8 @@ export function MatchApp() {
   // 山を入れ替えた回数と、いま飛んでいる札を払い始めたときの回数（#364）。
   const deckGeneration = useRef(0);
   const locating = useRef(false);
+  // 山を入れ替えたら札の重なりも作り直す。上の札が同じ店だと、中の「飛んでいる」印が戻らず払えなくなる。
+  const [deckKey, setDeckKey] = useState(0);
   const flownIn = useRef(0);
 
   useEffect(() => {
@@ -216,6 +218,7 @@ export function MatchApp() {
     }
     setLocateNote("");
     deckGeneration.current += 1;
+    setDeckKey((n) => n + 1);
     setFlying(false);
     setPos(0);
     setRangeEnd(SWIPE_STEP);
@@ -296,6 +299,7 @@ export function MatchApp() {
       );
     return (
       <CardStack
+        key={deckKey}
         ref={stack}
         cards={visible.slice(pos, pos + 3)}
         firstNumber={pos + 1}
