@@ -85,6 +85,23 @@ describe("判定と味の但し書き", () => {
     },
   );
 
+  it("系列名のキーワードは、名前の違う系列の店も含む（系列のページと同じ店、#368）", async () => {
+    // 厚木家は data/verified.json で吉村家の系列と確かめた店。店名に「吉村家」は無い。
+    const atsugi = "node/4935164601";
+    expect(shopsData.find((s) => s.id === atsugi)?.name).not.toContain("吉村家");
+    const { payload } = await callApp("search-iekei-ramen", { keyword: "吉村家" });
+    expect(payload.shops.map((s) => s.id)).toContain(atsugi);
+    // 「近くの吉村家を出す」と同じ入口。厚木家の目の前なら、厚木家が 3 軒に入る。
+    const shop = shopsData.find((s) => s.id === atsugi)!;
+    const near = await callApp("decide-iekei-ramen", {
+      keyword: "吉村家",
+      lat: shop.lat,
+      lon: shop.lon,
+      source: "precise",
+    });
+    expect(near.payload.shops.map((s) => s.id)).toContain(atsugi);
+  });
+
   it("地図は地名で開くと、その市の店が入る範囲で開く（#368）", async () => {
     const city = shopsData.filter((s) => s.prefecture === "神奈川県" && s.city === "横浜市");
     const { payload } = await callApp("show-iekei-ramen-map", {
