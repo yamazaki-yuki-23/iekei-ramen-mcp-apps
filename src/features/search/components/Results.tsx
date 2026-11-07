@@ -363,7 +363,6 @@ export function Results({
             detail={detail}
             reportHint={reportHint}
             reports={reports}
-            prefecture={payload.query.prefecture}
           />
         }
       />

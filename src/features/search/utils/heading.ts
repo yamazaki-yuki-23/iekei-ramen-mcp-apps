@@ -45,9 +45,10 @@ export function buildHeading(mode: SearchMode, payload: AppPayload, ready: boole
 }
 
 /**
- * 見出しの横の件数。「掲載 558 軒（200 軒を表示）」。
+ * 見出しの下の件数。「558 軒（200 軒を表示）」。
  *
- * 全国の総数ではなく、このアプリに載せている軒数なので「掲載」と書く（#316。前は「判定した結果の」）。
+ * **「掲載」は付けない（#369）。** 「掲載 N 軒」は載せている店の全部（サイトのタイトル・トップ）だけに
+ * 使う。結果の数にも付けると、同じ「掲載」が全体の数と結果の数の 2 通りに読めた（現在地の「掲載 5 軒」）。
  * 「迷ったら」は件数の代わりに並べた根拠（「近い順」など）を出す。位置は 3 軒の下に
  * 出す（「352 件（3 件表示）」が何の件数か読めなかった）。行った店は記録の軒数。
  */
@@ -62,8 +63,7 @@ export function formatCount(
   if (mode === "decide")
     return decide && shown > 0 && decide.basis !== "shared" ? basisLabel(decide) : null;
   if (mode === "visited") return `${total} 軒`;
-  const counted = `掲載 ${total} 軒`;
-  return total > shown ? `${counted}（${shown} 軒を表示）` : counted;
+  return total > shown ? `${total} 軒（${shown} 軒を表示）` : `${total} 軒`;
 }
 
 /**
