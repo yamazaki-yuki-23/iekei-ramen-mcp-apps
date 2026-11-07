@@ -118,14 +118,14 @@ function Question({
           {q.title}
         </h2>
         <div className={styles.options}>
-          {q.options.map((label, i) => (
+          {(q.mildFirst ? ([2, 1, 0] as const) : ([0, 1, 2] as const)).map((answer) => (
             <button
-              key={label}
+              key={q.options[answer]}
               type="button"
               className={styles.option}
-              onClick={() => onAnswer(i as Answer)}
+              onClick={() => onAnswer(answer)}
             >
-              {label}
+              {q.options[answer]}
             </button>
           ))}
         </div>

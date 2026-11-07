@@ -49,3 +49,36 @@ export function normalizeBounds(raw: {
   if (west > east) return { north, south, ...WHOLE_WORLD };
   return { north, south, east, west };
 }
+
+/** 基準地点から南北・東西に約 5km。市が 1 つ入るくらいの縮尺（#368）。 */
+const AROUND_LAT = 0.045;
+const AROUND_LON = 0.055;
+
+/**
+ * 「地図で」を開いたときの最初の範囲（#368）。基準地点があれば、そのまわりで開く。
+ *
+ * **県や範囲を選んでいるときは使わない。** そちらは「どこ」を言い直しているので、県の全体・
+ * 選んだ範囲で開く。基準地点は印と同心円のためにも持ち込まれるので、それだけで寄せると、
+ * 県を選び直したのに元の場所へ戻ってしまう。
+ */
+export function aroundOrigin(origin: { lat: number; lon: number }): Bounds {
+  return normalizeBounds({
+    north: origin.lat + AROUND_LAT,
+    south: origin.lat - AROUND_LAT,
+    east: origin.lon + AROUND_LON,
+    west: origin.lon - AROUND_LON,
+  });
+}
+
+/**
+ * 地図の最初の範囲。選んだ範囲があればそれ、県を選んでいなければ基準地点のまわり（#368。
+ * 日本全体だと何度も寄せることになる）、どちらも無ければ結果の全体に合わせる（undefined）。
+ */
+export function startBounds(
+  mode: string,
+  query: { bounds?: Bounds; prefecture?: string; origin?: { lat: number; lon: number } },
+): Bounds | undefined {
+  if (query.bounds) return query.bounds;
+  if (mode !== "map" || query.prefecture || !query.origin) return undefined;
+  return aroundOrigin(query.origin);
+}

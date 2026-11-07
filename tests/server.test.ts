@@ -85,6 +85,27 @@ describe("判定と味の但し書き", () => {
     },
   );
 
+  it("地図は地名で開くと、その市の店が入る範囲で開く（#368）", async () => {
+    const city = shopsData.filter((s) => s.prefecture === "神奈川県" && s.city === "横浜市");
+    const { payload } = await callApp("show-iekei-ramen-map", {
+      prefecture: "神奈川県",
+      keyword: "横浜市",
+    });
+    const b = payload.query.bounds!;
+    // 市の店は 1 軒も範囲から外れない。範囲は県全体より狭い（県で開くと日本の県の縮尺のまま）。
+    for (const s of city)
+      expect(s.lat >= b.south && s.lat <= b.north && s.lon >= b.west && s.lon <= b.east).toBe(true);
+    expect(payload.shops.length).toBeGreaterThanOrEqual(city.length);
+    expect(payload.query.prefecture).toBeUndefined();
+    // 合う店が無ければ、県で開く（範囲を作らない）。
+    const none = await callApp("show-iekei-ramen-map", {
+      prefecture: "神奈川県",
+      keyword: "存在しない町",
+    });
+    expect(none.payload.query.bounds).toBeUndefined();
+    expect(none.payload.query.prefecture).toBe("神奈川県");
+  });
+
   it("モデル向け検索にも実食ではない参考値と、未判定を補わない指示を添える", async () => {
     // 味の判定がある店（総本山の吉村家は rich）。町田商店は公式の一覧から足した味の分からない店が
     // 上位に並ぶことがあり、店の並び次第で注記が出なくなる（#250 で 15 軒足して踏んだ）。

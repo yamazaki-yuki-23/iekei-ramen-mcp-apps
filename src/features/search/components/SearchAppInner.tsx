@@ -25,6 +25,7 @@ import type { AppPayload, Origin, SearchMode, Shop, VisitResult } from "../../..
 import styles from "../styles/search.module.css";
 import type { UiHost } from "../types/host";
 import { AppHeader } from "./AppHeader";
+import { CountTag } from "./CountTag";
 import type { PresentationProps } from "../SearchApp";
 import { pageHead } from "../utils/heading";
 import { issueWith } from "../lib/issue-tickets";
@@ -355,11 +356,7 @@ export function SearchAppInner({
       data-tool-result-ready={resultReceived}
       data-mode={mode}
     >
-      <AppHeader
-        h1={head.h1}
-        count={head.count}
-        reserve={waiting && !head.decideTitle ? countPlaceholder(mode) : undefined}
-      />
+      <AppHeader h1={head.h1} />
 
       <ModeTabs
         mode={mode}
@@ -370,6 +367,10 @@ export function SearchAppInner({
         variant={Hero ? "links" : "tabs"}
       />
       <ModePanel mode={mode} tabs={!Hero}>
+        <CountTag
+          count={head.count}
+          reserve={waiting && !head.decideTitle ? countPlaceholder(mode) : undefined}
+        />
         {placed.hero}
         {placed.top}
         {results}

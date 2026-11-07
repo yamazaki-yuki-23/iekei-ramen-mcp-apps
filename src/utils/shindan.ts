@@ -6,17 +6,25 @@
  * 不明で、店と結び付けられない）。相方は人どうしの話。豆知識は一般論として書く。
  * 回答は送らず、残さない（この端末の画面の中だけで結果を出す）。
  */
+import { PREFERENCES } from "./order-guide.ts";
 
 export interface Question {
   title: string;
   /** 答えは 3 つ。0 が「強め」、1 が「ふつう」、2 が「控えめ」。 */
   options: [string, string, string];
+  /** 控えめから並べて見せる（頼み方の画面と同じ並び、#368）。答えの番号は変えない。 */
+  mildFirst?: true;
 }
 
+/**
+ * 麺・味・脂は、頼み方（order-guide.ts）の言葉と並びをそのまま使う（#368）。
+ * 診断だけ「硬め / 普通 / 柔らかめ」と書くと、頼み方で覚えた言葉と食い違う。
+ */
+const preference = ({ label, options: [mild, plain, strong] }: (typeof PREFERENCES)[number]) =>
+  ({ title: `${label}は？`, options: [strong, plain, mild], mildFirst: true }) satisfies Question;
+
 export const QUESTIONS: Question[] = [
-  { title: "麺の硬さは？", options: ["硬め", "普通", "柔らかめ"] },
-  { title: "味の濃さは？", options: ["濃いめ", "普通", "薄め"] },
-  { title: "油の量は？", options: ["多め", "普通", "少なめ"] },
+  ...PREFERENCES.map(preference),
   { title: "ライスはどうする？", options: ["おかわりまで", "1 杯たのむ", "たのまない"] },
   { title: "卓上のにんにく・豆板醤は？", options: ["たっぷり入れる", "少し入れる", "入れない"] },
   { title: "スープは最後まで飲む？", options: ["飲み干す", "半分くらい", "麺だけ"] },

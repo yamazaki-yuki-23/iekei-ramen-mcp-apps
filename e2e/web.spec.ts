@@ -338,3 +338,21 @@ test("地図の印の見方は「?」で開き、Esc・閉じる・札の外で�
   await page.mouse.click(map.x + 60, map.y + map.height - 60);
   await expect(heading).toHaveCount(0);
 });
+
+test("スマホの幅でも、どのタブでもタブの位置が変わらない（#368）", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 664 });
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  const tab = page.getByRole("button", { name: "店名で", exact: true });
+  const top = async () => {
+    await page.evaluate(() => scrollTo(0, 0));
+    return Math.round((await tab.boundingBox())!.y + (await page.evaluate(() => scrollY)));
+  };
+  const first = await top();
+  // 「店名で」は「掲載 N 軒（200 軒を表示）」の札が付く。見出しの行に並べると 2 行目へ落ちていた。
+  for (const mode of ["form", "nearby", "map", "decide"] as const) {
+    await openMode(page, mode);
+    await expect(page.locator('main[data-pending-calls="0"]')).toBeVisible();
+    expect(await top(), mode).toBe(first);
+  }
+});

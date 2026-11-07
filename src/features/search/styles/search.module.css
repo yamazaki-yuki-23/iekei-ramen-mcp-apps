@@ -108,6 +108,19 @@
   line-height: var(--font-heading-lg-line-height);
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing-tight);
+  /*
+   * 1 行に収める（#368）。折り返すとタブの位置がタブごとに変わる。はみ出す分（「〇〇付近の
+   * 近くの家系ラーメン」の末尾）は省略記号にする。読み上げには全文が載る。
+   */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 件数の札の行。タブの下、結果の上（#368）。 */
+.countLine {
+  margin: 0;
 }
 
 /*

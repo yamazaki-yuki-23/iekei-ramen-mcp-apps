@@ -327,6 +327,22 @@ describe("系列のページ（#309）", () => {
     expect(seoPages(shops).files.get("/area/")).not.toContain('id="chains"');
   });
 
+  it("見出しの下に「近くの〇〇を出す」、長い一覧には区切りごとに戻るリンク（#368）", () => {
+    const html = files.get(path)!;
+    expect(html).toContain(
+      `href="/?${new URLSearchParams({ keyword: "町田商店", view: "three" }).toString().replaceAll("&", "&amp;")}">近くの町田商店を出す</a>`,
+    );
+    // 2 県だけなら戻るほどの長さが無い。3 県からは各県の最後に、上の都道府県のチップへ戻るリンク。
+    expect(html).not.toContain("都道府県の一覧へ戻る");
+    const osaka: Shop = { ...shop, id: "node/789", prefecture: "大阪府", city: "大阪市" };
+    const three = seoPages(
+      [...shops, tokyo, osaka],
+      new Map([...chainOf, ["node/789", chainRecord("町田商店")]]),
+    ).files.get(path)!;
+    expect(three.match(/href="#jump">都道府県の一覧へ戻る</g)).toHaveLength(3);
+    expect(three).toContain('<h2 class="seo-section" id="jump">都道府県</h2>');
+  });
+
   it("URL は英字にし、#309 で出した日本語の URL から 301 で送る（#326）", () => {
     expect([...files.keys()].filter((key) => key.startsWith("/chain/"))).toEqual([path]);
     const encoded = encodeURIComponent("町田商店");
@@ -393,7 +409,12 @@ describe("県・市区町村のページ（#255）", () => {
     );
     expect(html).not.toContain("押して、発券");
     const city = seoPages(shops).files.get("/area/kanagawa/yokohama/")!;
-    expect(city).toContain(">横浜市の店を一覧で見る</a>");
+    // 市区町村のボタンは県のページと同じ 2 つ（#368）。地図は地名を添え、範囲はサーバーが作る。
+    expect(city).toContain(
+      `href="/?${new URLSearchParams({ prefecture: "神奈川県", keyword: "横浜市", view: "map" }).toString().replaceAll("&", "&amp;")}">横浜市の地図を開く</a>`,
+    );
+    expect(city).toContain(">横浜市から 3 軒に絞る</a>");
+    expect(city).not.toContain("一覧で見る");
   });
 });
 
@@ -469,6 +490,25 @@ describe("Webの検索条件リンク", () => {
     expect(webEntry("?keyword=吉村家")).toEqual({
       name: "search-iekei-ramen",
       arguments: { keyword: "吉村家" },
+    });
+  });
+  it("市区町村は地図と 3 軒、系列は近くの 3 軒で開ける（#368）", () => {
+    expect(webEntry("?prefecture=神奈川県&keyword=横浜市&view=map")).toEqual({
+      name: "show-iekei-ramen-map",
+      arguments: { prefecture: "神奈川県", keyword: "横浜市" },
+    });
+    expect(webEntry("?prefecture=神奈川県&keyword=横浜市&view=three")).toEqual({
+      name: "decide-iekei-ramen",
+      arguments: { prefecture: "神奈川県", keyword: "横浜市" },
+    });
+    expect(webEntry("?keyword=町田商店&view=three")).toEqual({
+      name: "decide-iekei-ramen",
+      arguments: { keyword: "町田商店", near: "auto" },
+    });
+    // 座標は URL から受け取らない（view を付けても同じ）。
+    expect(webEntry("?view=map&lat=35.46&lon=139.62")).toEqual({
+      name: "decide-iekei-ramen",
+      arguments: { near: "auto" },
     });
   });
   it("共有の URL（three）は掲載の店の ID の形で 1〜3 つだけ受け取る（#344）", () => {

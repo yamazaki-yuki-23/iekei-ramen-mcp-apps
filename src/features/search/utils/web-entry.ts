@@ -31,9 +31,25 @@ export function webEntry(search: string) {
     (keyword && keyword.length > 100)
   )
     return HOME;
-  // 都道府県のページの「〇〇県の地図を開く」の行き先（#307）。その県にズームした地図で開く。
-  if (pref && !keyword && params.get("view") === "map")
-    return { name: "show-iekei-ramen-map", arguments: { prefecture: pref } };
+  const view = params.get("view");
+  /*
+   * 都道府県のページの「〇〇県の地図を開く」の行き先（#307）。その県にズームした地図で開く。
+   * 市区町村のページ（#368）は地名を添える。範囲はサーバーが市の店から作る（座標は受け取らない）。
+   */
+  if (pref && view === "map")
+    return {
+      name: "show-iekei-ramen-map",
+      arguments: { prefecture: pref, ...(keyword ? { keyword } : {}) },
+    };
+  /*
+   * 市区町村・系列のページの「3 軒」（#368）。市は県の中の地名で、系列は全国から近い順に
+   * （位置の許可は求めない。トップと同じ near: "auto"）。
+   */
+  if (keyword && view === "three")
+    return {
+      name: "decide-iekei-ramen",
+      arguments: pref ? { prefecture: pref, keyword } : { keyword, near: "auto" },
+    };
   /*
    * 県だけなら、その県の券売機（「迷ったら」の 3 軒）で開く（#152）。都道府県のページの
    * 「〇〇県で発券する」の行き先。市区町村・店名が付くときは一覧（検索）で開く。

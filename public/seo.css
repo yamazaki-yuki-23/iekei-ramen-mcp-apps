@@ -171,6 +171,28 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-note);
 }
+/*
+ * 店のページがある行は、行全体を押せる範囲にする（#368）。店名の文字だけ（高さ 18px）だと、
+ * 縦に並ぶ一覧で押し分けにくい。焦点の輪は店名に出す（読み上げの名前も店名のまま）。
+ */
+.seo-news li:has(a) {
+  position: relative;
+}
+.seo-news li a {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-min-size);
+}
+.seo-news li a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+/* 長い一覧の区切りの最後の「〇〇の一覧へ戻る」（#368）。右に寄せ、一覧の流れを切らない。 */
+.seo-back {
+  margin: var(--space-2) 0 0;
+  text-align: right;
+}
 /* 県のページの市区町村ごとの区切り（#317）。見出しの横に、その市区町村のページへのリンク。 */
 .seo-city {
   scroll-margin-top: var(--space-4);
