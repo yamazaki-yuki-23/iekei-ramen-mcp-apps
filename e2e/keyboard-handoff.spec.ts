@@ -26,7 +26,7 @@ test("キーボードで「次の 3 軒」を押すと、焦点はそのボタ�
   await page.keyboard.press("Enter");
   await settled(page);
   await expect.poll(() => focusedText(page)).toBe("次の 3 軒を見る");
-  await expect(page.getByRole("status").filter({ hasText: "軒中" })).toContainText("4〜6 軒目");
+  await expect(page.getByRole("status").filter({ hasText: "軒目" })).toContainText("4〜6 軒目");
 });
 
 test("キーボードで探し方と「この条件で探す」を押しても、焦点はそのボタンに残る", async ({
@@ -84,7 +84,7 @@ test("0 件の結果は見出しの件数で読み上げ、0 軒を 2 度読ま�
   await page.locator("#kw").fill("存在しない店名ZZZ");
   await page.getByRole("button", { name: "この条件で探す", exact: true }).click();
   await settled(page);
-  const announced = page.getByRole("status").filter({ hasText: "掲載 0 軒" });
+  const announced = page.getByRole("status").filter({ hasText: /(^|[^\d])0 軒/ });
   await expect(announced).toHaveCount(1);
   await expect(announced).not.toContainText("見つかった店は 0 軒");
 });

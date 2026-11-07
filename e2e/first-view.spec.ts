@@ -59,12 +59,15 @@ for (const [width, height] of [
     await expect.poll(gap).toBeGreaterThanOrEqual(0);
   });
 
-test("「近い順」の札は、「全国 ◯ 軒中、近い順に…」の行と一緒には出さない", async ({ page }) => {
+test("「近い順」の札は、「近い順に 1〜3 軒目」の行と一緒には出さない。母数は出さない（#369）", async ({
+  page,
+}) => {
   await page.goto(TOP);
   await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
-  const round = page.getByText(/軒中、.+に \d/);
+  const round = page.getByText(/^\S+に \d+〜\d+ 軒目$/);
   await expect(round).toBeVisible();
-  const basis = (await round.innerText()).match(/軒中、(.+?)に \d/)![1];
+  await expect(page.getByText(/軒中/)).toHaveCount(0);
+  const basis = (await round.innerText()).match(/^(\S+?)に \d/)![1];
   await expect(page.getByText(basis, { exact: true })).toHaveCount(0);
 });
 

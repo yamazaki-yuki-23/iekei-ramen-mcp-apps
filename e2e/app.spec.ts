@@ -2,7 +2,7 @@
  * MCP Apps の E2E。
  * 実ブラウザ・実ホスト・実 MCP サーバーを通して 3 モードを操作する。
  */
-import { expect } from "@playwright/test";
+import { expect, type FrameLocator } from "@playwright/test";
 import { test } from "./fixtures";
 import { countShops, TOTAL, type Bounds } from "./dataset";
 import {
@@ -25,7 +25,8 @@ test.describe("検索フォーム", () => {
     await waitForApp(app);
 
     await expect(app.getByRole("heading", { name: /全国の家系ラーメン/ })).toBeVisible();
-    await expect(app.getByText(/掲載 \d+ 軒/)).toBeVisible();
+    // 結果の数に「掲載」は付けない（#369）。全件は 200 軒まで出すので「N 軒（200 軒を表示）」。
+    await expect(app.getByText(/^\d+ 軒（\d+ 軒を表示）$/)).toBeVisible();
     expect(await shopCards(app).count()).toBeGreaterThan(10);
   });
 
@@ -311,10 +312,14 @@ test.describe("モード切り替え", () => {
   });
 });
 
-/** 根拠の一文から母数（「〜 軒を」）を取り出す。 */
-/** 「全国 352 軒中、近い順に 1〜3 軒目」から母数を取る（#152 で長い根拠の文は画面から外した）。 */
-function poolSize(round: string): string | undefined {
-  return round.match(/(\d+) 軒中/)?.[1];
+/**
+ * 出ている店がどれもキーワードに合うか。母数は画面に出さない（#369）ので、キーワードが落ちて
+ * 全国に広がっていないことは、並んだ店で確かめる（広がると無関係な店が混ざる）。
+ */
+async function allMatch(app: FrameLocator, keyword: string) {
+  const texts = await shopCards(app).allInnerTexts();
+  expect(texts.length).toBeGreaterThan(0);
+  for (const text of texts) expect(text).toContain(keyword);
 }
 
 test.describe("迷ったら（3 軒に絞る）", () => {
@@ -466,17 +471,14 @@ test.describe("迷ったら（3 軒に絞る）", () => {
      * キーワードを落とすと母数が全国に広がり、「次の候補」として無関係な店が
      * 出る。効いている語は根拠の一文にも書いて、隠れた絞り込みにしない。
      */
-    const round = app.getByText(/ 軒中、.+に \d+〜\d+ 軒目$/);
     await expect(app.getByText("キーワード「横浜」")).toBeVisible();
-    const pool = await round.innerText();
+    await allMatch(app, "横浜");
 
     await app.getByRole("button", { name: "次の 3 軒を見る" }).click();
     await expect(app.getByText(/ 4〜6 軒目$/)).toBeVisible();
 
     await expect(app.getByText("キーワード「横浜」")).toBeVisible();
-    const after = await round.innerText();
-    // 母数（〜軒）が変わっていないこと。広がると無関係な店が混ざる。
-    expect(poolSize(after)).toBe(poolSize(pool));
+    await allMatch(app, "横浜");
   });
 
   test("同じタブをもう一度押しても、効いているキーワードを落とさない", async ({ page }) => {
@@ -487,14 +489,12 @@ test.describe("迷ったら（3 軒に絞る）", () => {
      */
     const app = await callTool(page, "decide-iekei-ramen", { keyword: "横浜" });
     await waitForApp(app);
-    const round = app.getByText(/ 軒中、.+に \d+〜\d+ 軒目$/);
-    const before = await round.innerText();
+    await allMatch(app, "横浜");
 
     await app.getByRole("tab", { name: "迷ったら" }).click();
 
     await expect(app.getByText("キーワード「横浜」")).toBeVisible();
-    const after = await round.innerText();
-    expect(poolSize(after)).toBe(poolSize(before));
+    await allMatch(app, "横浜");
   });
 
   test("現在地の精度を、迷ったらを経由しても書き換えない", async ({ page }) => {
@@ -1787,7 +1787,7 @@ test.describe("この範囲の店を出す", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/掲載 \d+ 軒/)
+        .getByText(/^\d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -1863,7 +1863,7 @@ test.describe("隣の世界まで動かしたとき", () => {
     await expect
       .poll(async () => {
         const text = await app
-          .getByText(/掲載 \d+ 軒/)
+          .getByText(/^\d+ 軒/)
           .first()
           .textContent();
         return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -1918,7 +1918,7 @@ test.describe("範囲と他の条件の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/掲載 \d+ 軒/)
+        .getByText(/^\d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -2034,7 +2034,7 @@ test.describe("範囲と他の条件の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/掲載 \d+ 軒/)
+        .getByText(/^\d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -2109,7 +2109,7 @@ test.describe("まわる店と範囲の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/掲載 \d+ 軒/)
+        .getByText(/^\d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -2139,7 +2139,7 @@ test.describe("まわる店と範囲の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/掲載 \d+ 軒/)
+        .getByText(/^\d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);

@@ -56,7 +56,7 @@ test("SEOの県だけのリンクは、その県の券売機（迷ったら）�
   await expect(page.getByRole("combobox", { name: "都道府県" })).toHaveValue("神奈川県");
   await expect(page.locator("button[data-shop-id]")).toHaveCount(3);
   // 母数がどこの数かを書く（県で絞ったら県名、#152）。
-  await expect(page.getByText(/^神奈川県 \d+ 軒中、.+に 1〜3 軒目$/)).toBeVisible();
+  await expect(page.getByText(/^\S+に 1〜3 軒目$/)).toBeVisible();
 });
 
 test("SEOの地域・店名リンクから同じ検索条件でWebが開く", async ({ page, request }) => {
@@ -135,7 +135,7 @@ test("Webを直接開いて検索・現在地・地図・まわる店を使え�
   const map = await tool(request, "show-iekei-ramen-map", { prefecture: "神奈川県" });
   // 地図の一覧は既存の仕様どおり先頭20件。全件数は見出しでも確認する。
   await expect.poll(() => ids(page)).toEqual(map.shops.slice(0, 20).map((shop) => shop.id));
-  await expect(page.locator("main")).toContainText(`掲載 ${map.total} 軒`);
+  await expect(page.locator("main")).toContainText(`${map.total} 軒`);
   await expect(page.getByRole("button", { name: "全画面" })).toHaveCount(0);
   await expect(route.getByRole("heading")).toHaveText("まわる店（2 / 3 軒）");
   expect(errors).toEqual([]);
@@ -349,7 +349,7 @@ test("スマホの幅でも、どのタブでもタブの位置が変わらな�
     return Math.round((await tab.boundingBox())!.y + (await page.evaluate(() => scrollY)));
   };
   const first = await top();
-  // 「店名で」は「掲載 N 軒（200 軒を表示）」の札が付く。見出しの行に並べると 2 行目へ落ちていた。
+  // 「店名で」は「N 軒（200 軒を表示）」の札が付く。見出しの行に並べると 2 行目へ落ちていた。
   for (const mode of ["form", "nearby", "map", "decide"] as const) {
     await openMode(page, mode);
     await expect(page.locator('main[data-pending-calls="0"]')).toBeVisible();

@@ -24,7 +24,7 @@ const EMPTY_WITH_KEYWORD =
 const ASK_HINT = "気になる店は押して選んでから、チャットで聞いてください。";
 
 /**
- * 食券の列の見出し。並べた根拠（近い順など）を札で横に添える。下に「全国 ◯ 軒中、近い順に…」の
+ * 食券の列の見出し。並べた根拠（近い順など）を札で横に添える。下に「近い順に 1〜3 軒目」の
  * 行が出るときは、同じことを 2 度言うので札を出さない（#301）。
  */
 function DecideHead({
@@ -70,15 +70,15 @@ function EmptyNote({
 }
 
 /**
- * 何軒の中の何軒目か（#152）。「全国 352 軒中、近い順に 1〜3 軒目」。
- * 母数は地域で絞った数ではないので、どこの数かを必ず書く。見出しが「さいたま市付近」の
- * ときに「352 軒中」だけだと、その近くに 352 軒あると読まれた。
+ * 「近い順に 1〜3 軒目」。母数（「全国 651 軒中、」）は出さない（#369）。母数は家系かどうかの
+ * 手がかりで店を除いた数で、家系判定の段階を遠回しに画面へ出していた。何組目かはこの行と
+ * 「次の 3 軒を見る」で分かる。
  */
-function roundLabel(info: DecideInfo, shown: number, prefecture?: string): string {
-  return `${prefecture || "全国"} ${info.poolTotal} 軒中、${basisLabel(info)}に ${pickRange(info, shown)}`;
+function roundLabel(info: DecideInfo, shown: number): string {
+  return `${basisLabel(info)}に ${pickRange(info, shown)}`;
 }
 
-/** 「全国 ◯ 軒中、近い順に 1〜3 軒目」の行を出すか（組が 2 つ以上あるとき）。 */
+/** 「近い順に 1〜3 軒目」の行を出すか（組が 2 つ以上あるとき）。 */
 function hasRoundLine(info: DecideInfo | undefined): info is DecideInfo {
   return Boolean(info && info.rounds > 1);
 }
@@ -145,8 +145,6 @@ interface Props {
   reportHint?: string;
   /** 報告の口があるか（Web）。但し書きの報告の案内を変える。 */
   reports: boolean;
-  /** 絞り込んだ都道府県。母数が全国か県かを書くのに使う。 */
-  prefecture?: string;
   /** 列の見出しと、並べた根拠の札（Web の「迷ったら」）。会話の中ではページの見出しが持つ。 */
   title?: { heading: string; tag: string | null };
 }
@@ -176,7 +174,6 @@ export function DecidePanel({
   detail,
   reportHint,
   reports,
-  prefecture,
   title,
 }: Props) {
   const basis = info ? describeBasis(info, shops.length, origin, keyword) : "";
@@ -214,7 +211,7 @@ export function DecidePanel({
       {filter}
       {/*
        * 並べた根拠の長い文（「352 軒を…に並べた、1〜3 軒目です。」）は画面に出さない（#152）。
-       * 見出し（どこから）・札（近い順など）・「全国 352 軒中、近い順に 1〜3 軒目」で足りる。文はモデルへ渡す。
+       * 見出し（どこから）・札（近い順など）・「近い順に 1〜3 軒目」で足りる。文はモデルへ渡す。
        */}
       <DecideHead title={title} showTag={!hasRoundLine(info)} />
       {!title && info && (
@@ -249,7 +246,7 @@ export function DecidePanel({
         {CAN_SHARE && <ShareThree shops={shops} />}
         {hasRoundLine(info) && (
           <span className={styles.decideRound} data-announce>
-            {roundLabel(info, shops.length, prefecture)}
+            {roundLabel(info, shops.length)}
           </span>
         )}
       </div>
