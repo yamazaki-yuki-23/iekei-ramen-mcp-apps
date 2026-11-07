@@ -377,6 +377,18 @@
 .seo-report-buttons button:disabled:not([aria-pressed="true"]) {
   opacity: 0.45;
 }
+/* 押し間違いを送らない（#365）。その場で問い、「送る」だけ茶赤の枠で示す。 */
+.seo-report-confirm {
+  margin-top: var(--space-3);
+}
+.seo-report-question {
+  margin: 0 0 var(--space-2);
+}
+.seo-report-buttons button[data-confirm] {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+  font-weight: 700;
+}
 .seo-report .seo-note {
   margin: var(--space-2) 0 0;
 }

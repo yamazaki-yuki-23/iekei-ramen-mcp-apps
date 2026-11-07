@@ -221,6 +221,8 @@ describe("初めて来た人向けの店のページ（#255）", () => {
       expect(html).toContain(`<button type="button" data-kind="${kind}">${label}</button>`);
       expect(ReportSchema.safeParse({ kind, shopId: "node/123" }).success).toBe(true);
     }
+    expect(html).toContain('<div class="seo-report-confirm" hidden>');
+    expect(html).not.toContain("すぐ送られます");
     expect(html).toContain('<script src="/shop-report.js" defer></script>');
   });
 
