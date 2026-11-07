@@ -101,3 +101,75 @@ test("家系マッチも、推定の場所から端末の位置で出し直せ�
   // ボタンは出したまま（消すと行が詰まって札がずれる）。
   await expect(page.getByRole("button", { name: "現在地で出し直す" })).toBeVisible();
 });
+
+/** 端末の位置の検索（source: precise）の応答を、release() まで止めておく。 */
+async function holdPreciseSearch(page: Page) {
+  let release: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/mcp", async (route) => {
+    const body = route.request().postDataJSON();
+    if (body?.params?.arguments?.source === "precise") await gate;
+    return route.fallback();
+  });
+  return () => release?.();
+}
+
+test("家系マッチで払っている途中に出し直しが届いても、前の山の札の決定を新しい山に持ち込まない（#364）", async ({
+  page,
+}) => {
+  await allowYokohama(page);
+  await startFromEdge(page, "find-nearby-iekei-ramen");
+  const release = await holdPreciseSearch(page);
+  await page.goto(`${WEB}/match/`);
+  const card = page.locator("article[data-shop-id]:not([aria-hidden])");
+  await expect(card).toHaveAttribute("aria-label", /^1枚目、/);
+  await page.getByRole("button", { name: "現在地で出し直す" }).click();
+  // 出し直しの応答を止めたまま「行きたい」で払い始め、札が飛んでいる間（約 220ms）に応答を返す。
+  await page.getByRole("button", { name: /^行きたい →/ }).click();
+  release();
+  await expect(page.getByText("現在地", { exact: true })).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(card).toHaveAttribute("aria-label", /^1枚目、/);
+  await expect(page.getByRole("button", { name: /^行きたいリスト \d+$/ })).toHaveText(
+    "行きたいリスト 0",
+  );
+});
+
+test("家系マッチで前の場所の続きが遅れて届いても、新しい山に混ぜない（#364）", async ({ page }) => {
+  await allowYokohama(page);
+  // 後から登録した route が先に動く。推定の位置を足す方より後に登録して、先に止める。
+  await startFromEdge(page, "find-nearby-iekei-ramen");
+  let releaseNext: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => (releaseNext = resolve));
+  let heldNext = false;
+  await page.route("**/mcp", async (route) => {
+    const args = route.request().postDataJSON()?.params?.arguments;
+    // 推定の場所（さいたま市）の続き（offset 20）だけ止める。
+    if (args?.source === "edge" && args.offset > 0) {
+      heldNext = true;
+      await gate;
+    }
+    return route.fallback();
+  });
+  await page.goto(`${WEB}/match/`);
+  const card = page.locator("article[data-shop-id]:not([aria-hidden])");
+  await expect(card).toHaveAttribute("aria-label", /^1枚目、/);
+  // 残りが少なくなると続きを先に取る。15 枚払うと、さいたま市の続きが出て止まる。
+  for (let i = 1; i <= 15; i++) {
+    await page.keyboard.press("ArrowLeft");
+    await expect(card).toHaveAttribute("aria-label", new RegExp(`^${i + 1}枚目、`));
+  }
+  await expect.poll(() => heldNext).toBe(true);
+  await page.getByRole("button", { name: "現在地で出し直す" }).click();
+  await expect(card).toHaveAttribute("aria-label", /^1枚目、/);
+  releaseNext?.();
+  await page.waitForTimeout(500);
+  // 横浜駅の 20 軒を払い、範囲を広げた 21 枚目が、さいたま市の続きではない。
+  for (let i = 1; i <= 20; i++) {
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForTimeout(260);
+  }
+  await page.getByRole("button", { name: "範囲を広げる" }).click();
+  await expect(card).toHaveAttribute("aria-label", /^21枚目、/);
+  await expect(card).not.toContainText("埼玉県");
+});

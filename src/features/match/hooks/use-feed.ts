@@ -19,6 +19,8 @@ export function useFeed() {
   // 続きの取得に失敗した。終わり（exhausted）とは分ける: 一時の失敗で「全部見た」にしない。
   const [failed, setFailed] = useState(false);
   const fetching = useRef(false);
+  // 探し直すたびに進める。前の場所の続きが遅れて返っても、新しい山に混ぜない（#364）。
+  const generation = useRef(0);
 
   useEffect(() => {
     feed.current ??= createFeed();
@@ -41,9 +43,12 @@ export function useFeed() {
   const loadMore = useCallback(() => {
     if (fetching.current || !feed.current) return;
     fetching.current = true;
+    const mine = generation.current;
+    const stale = () => mine !== generation.current;
     feed.current
       .next(shops.length)
       .then((page) => {
+        if (stale()) return;
         setFailed(false);
         setShops((now) => {
           const seen = new Set(now.map((n) => n.id));
@@ -52,9 +57,9 @@ export function useFeed() {
         if (page.shops.length < SWIPE_STEP) setExhausted(true);
       })
       // 失敗は覚えておき、押されたら取り直す（retry）。勝手に繰り返さない。
-      .catch(() => setFailed(true))
+      .catch(() => !stale() && setFailed(true))
       .finally(() => {
-        fetching.current = false;
+        if (!stale()) fetching.current = false;
       });
   }, [shops.length]);
 
@@ -70,6 +75,8 @@ export function useFeed() {
   );
 
   const restart = useCallback((page: Page) => {
+    generation.current += 1;
+    fetching.current = false;
     setShops(page.shops);
     setOrigin(page.origin);
     setExhausted(page.shops.length < SWIPE_STEP);

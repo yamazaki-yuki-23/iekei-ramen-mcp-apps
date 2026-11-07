@@ -83,6 +83,9 @@ export function MatchApp() {
   const [today, setToday] = useState<Shop | null>(null);
   // 札が飛んでいる間（決まるまで）。戻す・この店に決める を止め、履歴を食い違わせない。
   const [flying, setFlying] = useState(false);
+  // 山を入れ替えた回数と、いま飛んでいる札を払い始めたときの回数（#364）。
+  const deckGeneration = useRef(0);
+  const flownIn = useRef(0);
 
   useEffect(() => {
     if (fxLayer.current && appRef.current) fx.current ??= createFx(fxLayer.current, appRef.current);
@@ -96,6 +99,8 @@ export function MatchApp() {
   useEffect(() => prefetch(pos, rangeEnd, deck.length), [pos, rangeEnd, deck.length, prefetch]);
 
   const decide = (dir: SwipeDir) => {
+    // 払っている間に「現在地で出し直す」で山が入れ替わったら、前の山の札の決定は捨てる（#364）。
+    if (flownIn.current !== deckGeneration.current) return setFlying(false);
     const shop = visible[pos];
     if (!shop) return;
     const nextWant = dir === "want" ? wantStreak + 1 : 0;
@@ -196,6 +201,8 @@ export function MatchApp() {
       setLocateNote("現在地を使えませんでした。位置情報の許可を確かめてください。");
       return;
     }
+    deckGeneration.current += 1;
+    setFlying(false);
     setPos(0);
     setRangeEnd(SWIPE_STEP);
     setHistory([]);
@@ -281,7 +288,10 @@ export function MatchApp() {
         flipIn={flipIn}
         reduce={reduce}
         onDecide={decide}
-        onFly={() => setFlying(true)}
+        onFly={() => {
+          flownIn.current = deckGeneration.current;
+          setFlying(true);
+        }}
         onLean={(dx, p) => fx.current?.lean(dx, p)}
         onSettle={() => fx.current?.settle()}
         onRevealed={revealed}
