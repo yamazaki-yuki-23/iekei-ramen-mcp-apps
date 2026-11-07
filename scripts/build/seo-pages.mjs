@@ -302,11 +302,17 @@ const newsSection = (label, list) =>
  * 開店は `opened` のある記録、閉店は `status: closed` の記録。月ごとに並べ、開店日が公式に書いてある店は
  * その月に、書いていない店（`opened: true`）と閉店は確かめた月に置く。「開いた店」と書くのは、公式の開店日が
  * その月の店だけ（それ以外は「開店を確かめた店」）。開店前の店は opened を持たないので載らない。
+ * /new/ には今月を含む直近 3 か月だけを出し、それより前は月ごとのページ /new/YYYY-MM/ に出す（#358）。
  */
-function newShopsPage(records, shops, today) {
+const NEW_RECENT_MONTHS = 3;
+const newLead =
+  '<p class="seo-lead">公式の情報で開店・閉店を確かめた店です。開店前の店は載せません。開店日は公式に書いてあるときだけ出し、無ければ確かめた日を出します。</p>';
+const monthLabel = (month) => `${Number(month.slice(0, 4))}年${Number(month.slice(5, 7))}月`;
+
+function newsEntries(records, shops) {
   const shopIds = new Set(shops.map((shop) => shop.id));
   const shopOf = new Map(shops.map((shop) => [shop.id, shop]));
-  const entries = records.flatMap((record) => {
+  return records.flatMap((record) => {
     const kind =
       record.status === "closed"
         ? "closed"
@@ -321,24 +327,61 @@ function newShopsPage(records, shops, today) {
     const month = (kind === "opened" ? record.opened : record.checked).slice(0, 7);
     return [{ kind, record, month, shop: shopIds.has(id) ? shop : undefined }];
   });
+}
+
+const newsMonth = (inMonth, heading) => {
+  const of = (kind) => inMonth.filter((e) => e.kind === kind);
+  return `<h2 class="seo-section">${heading}</h2>${newsSection("開いた店", of("opened"))}${newsSection("開店を確かめた店", of("found"))}${newsSection("閉店を確かめた店", of("closed"))}`;
+};
+
+/** /new/ と、過ぎた月のページ（path → HTML）。 */
+function newShopsPages(records, shops, today) {
+  const entries = newsEntries(records, shops);
   const months = [...new Set(entries.map((e) => e.month))].toSorted().toReversed();
+  const inMonth = (month) => entries.filter((e) => e.month === month);
   const thisMonth = today.toISOString().slice(0, 7);
-  const body = months
-    .map((month) => {
-      const inMonth = entries.filter((e) => e.month === month);
-      const of = (kind) => inMonth.filter((e) => e.kind === kind);
-      return `<h2 class="seo-section">${Number(month.slice(0, 4))}年${Number(month.slice(5, 7))}月${month === thisMonth ? "（今月）" : ""}</h2>${newsSection("開いた店", of("opened"))}${newsSection("開店を確かめた店", of("found"))}${newsSection("閉店を確かめた店", of("closed"))}`;
-    })
+  const first = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - (NEW_RECENT_MONTHS - 1), 1),
+  );
+  const oldest = first.toISOString().slice(0, 7);
+  const recent = months.filter((month) => month >= oldest);
+  const past = months.filter((month) => month < oldest);
+  const pages = new Map();
+  for (const month of past) {
+    const label = monthLabel(month);
+    pages.set(
+      `/new/${month}/`,
+      page({
+        title: `家系ラーメンの開店・閉店（${label}）｜公式の情報で確かめた店`,
+        heading: ["家系ラーメンの", `開店・閉店（${label}）`],
+        description: `${label}に開店・閉店を、系列の公式の店舗一覧などで確かめた家系ラーメンです。開店日は公式に書いてあるときだけ載せます。`,
+        path: `/new/${month}/`,
+        crumbs: `<a href="/area/">都道府県</a> / <a href="/new/">開店・閉店</a>`,
+        content: `${newLead}${newsMonth(inMonth(month), label)}<p class="seo-caveat">${note}</p>`,
+      }),
+    );
+  }
+  const body = recent
+    .map((month) =>
+      newsMonth(inMonth(month), `${monthLabel(month)}${month === thisMonth ? "（今月）" : ""}`),
+    )
     .join("");
-  return page({
-    title: "家系ラーメンの開店・閉店｜公式の情報で確かめた店を月ごとに",
-    heading: ["家系ラーメンの", "開店・閉店"],
-    description:
-      "系列の公式の店舗一覧などで開店・閉店を確かめた家系ラーメンを、月ごとに並べています。開店日は公式に書いてあるときだけ載せます。",
-    path: "/new/",
-    crumbs: `<a href="/area/">都道府県</a>`,
-    content: `<p class="seo-lead">公式の情報で開店・閉店を確かめた店です。開店前の店は載せません。開店日は公式に書いてあるときだけ出し、無ければ確かめた日を出します。</p>${body || '<p class="seo-note">まだありません。</p>'}<p class="seo-caveat">${note}</p>`,
-  });
+  const archive = past.length
+    ? `<h2 class="seo-section">それより前の月</h2>${chips(past.map((month) => ({ href: `/new/${month}/`, label: monthLabel(month), count: inMonth(month).length })))}`
+    : "";
+  pages.set(
+    "/new/",
+    page({
+      title: "家系ラーメンの開店・閉店｜公式の情報で確かめた店を月ごとに",
+      heading: ["家系ラーメンの", "開店・閉店"],
+      description:
+        "系列の公式の店舗一覧などで開店・閉店を確かめた家系ラーメンを、月ごとに並べています。開店日は公式に書いてあるときだけ載せます。",
+      path: "/new/",
+      crumbs: `<a href="/area/">都道府県</a>`,
+      content: `${newLead}${body || '<p class="seo-note">ここ 3 か月はまだありません。</p>'}${archive}<p class="seo-caveat">${note}</p>`,
+    }),
+  );
+  return pages;
 }
 
 /**
@@ -350,8 +393,11 @@ function newShopsPage(records, shops, today) {
  */
 export function seoPages(shops, recordOf = new Map(), records = [], today = new Date()) {
   const files = new Map();
-  const indexed = ["/", "/match/", "/camera/", "/shindan/", "/area/", "/guide/", "/new/"];
-  files.set("/new/", newShopsPage(records, shops, today));
+  const indexed = ["/", "/match/", "/camera/", "/shindan/", "/area/", "/guide/"];
+  for (const [path, html] of newShopsPages(records, shops, today)) {
+    files.set(path, html);
+    indexed.push(path);
+  }
   const prefs = new Map();
   const cities = new Map();
   const chains = new Map();

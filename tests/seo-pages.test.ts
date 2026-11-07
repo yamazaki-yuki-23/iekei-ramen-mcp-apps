@@ -726,6 +726,40 @@ describe("公式で確かめた開店・閉店のページ（#345）", () => {
     expect(seoPages(shops, new Map(), [], today).files.get("/new/")).toContain("まだありません。");
   });
 
+  it("/new/ は今月を含む直近 3 か月だけ。それより前の月は /new/YYYY-MM/ に移し、新しい順にリンクする（#358）", () => {
+    const august = { ...opened, name: "試験家 8月", address: "千代田区7-7", opened: "2026-08-03" };
+    const records = [opened, lastMonth, august];
+    // 12/31 は 10・11・12 月が直近 3 か月。まだ移さない。
+    const dec = seoPages(shops, new Map(), records, new Date("2026-12-31T12:00:00Z")).files;
+    expect(dec.get("/new/")).toContain('<h2 class="seo-section">2026年10月</h2>');
+    expect(dec.has("/new/2026-10/")).toBe(false);
+    expect(dec.has("/new/2026-08/")).toBe(true);
+    // 1 月になると 10 月が外れる（11・12・1 月）。
+    const { files } = seoPages(shops, new Map(), records, new Date("2027-01-10T00:00:00Z"));
+    const top = files.get("/new/")!;
+    expect(top).toContain('<h2 class="seo-section">2026年11月</h2>');
+    expect(top).not.toContain("試験家 先月");
+    expect(top).not.toContain("試験家 8月");
+    const archive = top.split('<h2 class="seo-section">それより前の月</h2>')[1]!;
+    expect(archive.indexOf('href="/new/2026-10/"')).toBeLessThan(
+      archive.indexOf('href="/new/2026-08/"'),
+    );
+    expect(archive).toContain('<a href="/new/2026-10/">2026年10月<span>1 軒</span></a>');
+    const october = files.get("/new/2026-10/")!;
+    expect(october).toContain("<title>家系ラーメンの開店・閉店（2026年10月）｜");
+    expect(section(october, "2026年10月")).toContain("試験家 先月");
+    expect(october).not.toContain("試験家 新店");
+    expect(october).toContain('<a href="/new/">開店・閉店</a>');
+    expect(october).toContain("既知のブランドからの参考値");
+    const sitemap = files.get("/sitemap.xml")!;
+    expect(sitemap).toContain("https://iekeiramen.com/new/2026-10/");
+    expect(sitemap).toContain("https://iekeiramen.com/new/2026-08/");
+    // 直近 3 か月に記録が無くても、過ぎた月へは行ける。
+    const later = seoPages(shops, new Map(), records, new Date("2027-06-01T00:00:00Z")).files;
+    expect(later.get("/new/")).toContain("まだありません。");
+    expect(later.get("/new/")).toContain('href="/new/2026-11/"');
+  });
+
   it("実データ: 10 月に開いた 2 店が、確かめた日と出どころつきで出る", () => {
     const real = JSON.parse(
       readFileSync(new URL("../data/verified.json", import.meta.url), "utf8"),
