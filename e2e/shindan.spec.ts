@@ -60,7 +60,7 @@ test("ひとつ戻ると前の問いに戻り、もう一度診断すると 1 �
   await page.getByRole("button", { name: "ひとつ戻る" }).click();
   await expect(page.getByRole("heading", { name: "麺の硬さは？" })).toBeFocused();
   for (let i = 0; i < 6; i++)
-    await page.getByRole("button", { name: /^(普通|1 杯たのむ|少し入れる|半分くらい)$/ }).click();
+    await page.getByRole("button", { name: /^(ふつう|1 杯たのむ|少し入れる|半分くらい)$/ }).click();
   await expect(page.getByRole("heading", { level: 2, name: "ふつうを極めし者" })).toBeVisible();
   await page.getByRole("button", { name: "もう一度診断する" }).click();
   await expect(page.getByRole("heading", { name: "麺の硬さは？" })).toBeFocused();
