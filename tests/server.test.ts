@@ -85,6 +85,12 @@ describe("判定と味の但し書き", () => {
     },
   );
 
+  it("店名を打ったら、その名前の店が 1 番目に出る（#366）", async () => {
+    const { payload, text } = await callApp("search-iekei-ramen", { keyword: "吉村家" });
+    expect(payload.shops[0]).toMatchObject({ id: "node/1774529495", name: "吉村家" });
+    expect(text).toContain("吉村家");
+  });
+
   it("系列名のキーワードは、名前の違う系列の店も含む（系列のページと同じ店、#368）", async () => {
     // 厚木家は data/verified.json で吉村家の系列と確かめた店。店名に「吉村家」は無い。
     const atsugi = "node/4935164601";
