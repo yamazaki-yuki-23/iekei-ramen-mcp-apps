@@ -28,7 +28,7 @@ import { AppHeader } from "./AppHeader";
 import { CountTag } from "./CountTag";
 import type { PresentationProps } from "../SearchApp";
 import { pageHead } from "../utils/heading";
-import { issueWith, withLocate } from "../lib/issue-tickets";
+import { issueWith, withLocate, type CapturePayload } from "../lib/issue-tickets";
 export interface InnerProps extends PresentationProps {
   app: UiHost;
   /** つながって最初の結果がそろうまで（Web）。押せない状態で描き、結果の場所は骨組みが取る（#214）。 */
@@ -37,7 +37,7 @@ export interface InnerProps extends PresentationProps {
   resultReceived: boolean;
   form: FormValues;
   onForm: (form: FormValues) => void;
-  capturePayload: () => (payload: AppPayload) => boolean;
+  capturePayload: CapturePayload;
   /** 再マウントをまたいで残る案内メッセージ。 */
   notice: string | null;
   onNotice: (notice: string | null) => void;
@@ -298,7 +298,8 @@ export function SearchAppInner({
   );
   const placed = placeControls(Hero, mode, controls);
   const head = pageHead(Hero, mode, heading, count);
-  const locate = issueWith(undefined, activeKeyword, runDecide, reserveResult);
+  const locate = (fresh: () => boolean) =>
+    issueWith(undefined, activeKeyword, runDecide, reserveResult)("near", form, fresh);
   const results = (
     <>
       {/* 詳細は選んだカードの直下に出す。一覧の上に置くと、選んだ瞬間に
@@ -332,7 +333,7 @@ export function SearchAppInner({
         onSignIn={supportedAction(app.capabilities.visitSignIn, () => void askToSignIn())}
         belowMap={placed.belowMap}
         aside={placed.aside}
-        decideTitle={withLocate(placeholderTitle(head.decideTitle, look), locate, form)}
+        decideTitle={withLocate(placeholderTitle(head.decideTitle, look), locate, capturePayload)}
         onRetry={retry}
         failure={failure}
         reports={app.capabilities.reports === true}

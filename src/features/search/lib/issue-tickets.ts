@@ -2,7 +2,7 @@ import type { FormValues } from "../components/SearchForm";
 import type { Where } from "../components/TicketMachine";
 import type { DecideTitle } from "../components/DecidePanel";
 import { requestBrowserPosition } from "../../../lib/browser-position";
-import type { Origin } from "../../../types";
+import type { AppPayload, Origin } from "../../../types";
 import { isEstimated } from "../../../utils/geo";
 
 /**
@@ -43,11 +43,15 @@ export function issueWith(
  */
 export function withLocate(
   title: DecideTitle | undefined,
-  issue: ReturnType<typeof issueWith>,
-  values: FormValues,
+  locate: (fresh: () => boolean) => void,
+  capture: CapturePayload,
 ): DecideTitle | undefined {
-  return title && { ...title, onLocate: () => issue("near", values, () => true) };
+  // 押した時点で条件の版を覚える。位置を待つ間に券売機のキーを変えたら、古い条件で出し直さない。
+  return title && { ...title, onLocate: () => locate(capture().fresh) };
 }
+
+/** 呼び出しの開始時点を記録し、応答を反映する（SearchApp）。fresh は開始から条件が変わっていないか。 */
+export type CapturePayload = () => ((payload: AppPayload) => boolean) & { fresh: () => boolean };
 
 /** 位置を待つ間の通し番号（use-server-tools の reserveResult）。 */
 type Reservation = { current: () => boolean; release: () => void; cancel: () => void };

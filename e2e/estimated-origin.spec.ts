@@ -216,3 +216,35 @@ test("家系マッチで出し直しの通信が失敗したら、山はその�
   await expect(card).toHaveAttribute("data-shop-id", before ?? "");
   await expect(page.getByText(/さいたま市/).first()).toBeVisible();
 });
+
+test("「現在地で出し直す」の位置を待つ間に券売機の条件を変えたら、古い条件で出し直さない（#364）", async ({
+  page,
+}) => {
+  // 位置の取得を止めておき、テストから返す。
+  await page.addInitScript(() => {
+    const pending: PositionCallback[] = [];
+    Object.assign(window, {
+      releasePosition: () =>
+        pending.shift()?.({
+          coords: { latitude: 35.4658, longitude: 139.6222 },
+          timestamp: Date.now(),
+        } as GeolocationPosition),
+    });
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: { getCurrentPosition: (success: PositionCallback) => pending.push(success) },
+    });
+  });
+  await openTop(page);
+  await page.getByRole("button", { name: "現在地で出し直す" }).click();
+  const rich = page.getByRole("button", { name: "直系・濃厚", exact: true });
+  await rich.click();
+  await page.evaluate(() =>
+    (window as unknown as { releasePosition: () => void }).releasePosition(),
+  );
+  await page.waitForTimeout(800);
+  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
+  // 選び直したキーは戻らず、3 軒も古い条件（こだわらない）で入れ替わらない。
+  await expect(rich).toHaveAttribute("aria-pressed", "true");
+  await expect(decideTitle(page)).toContainText("さいたま市");
+});
