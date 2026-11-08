@@ -590,10 +590,10 @@ export function useServerTools({
     const at = (resultSeq.current += 1);
     setInFlight((n) => n + 1);
     // 何度呼ばれても 1 回だけ外す（番号が進んだときと、予約した側の finally の両方から来る）。
-    let released = false;
+    const lease = { released: false };
     const release = () => {
-      if (released) return;
-      released = true;
+      if (lease.released) return;
+      lease.released = true;
       if (reservation.current === release) reservation.current = null;
       setInFlight((n) => n - 1);
     };

@@ -24,19 +24,20 @@ export function useFeed() {
 
   useEffect(() => {
     feed.current ??= createFeed();
-    let active = true;
+    // 変数は書き換えず、箱の中身を変える（oxlint の React の規則 immutability）。
+    const run = { active: true };
     feed.current
       .first()
       .then((page) => {
-        if (!active) return;
+        if (!run.active) return;
         setShops(page.shops);
         setOrigin(page.origin);
         setExhausted(page.shops.length < SWIPE_STEP);
         setStatus(page.shops.length > 0 ? "ready" : page.origin ? "ready" : "noplace");
       })
-      .catch(() => active && setStatus("error"));
+      .catch(() => run.active && setStatus("error"));
     return () => {
-      active = false;
+      run.active = false;
     };
   }, []);
 
