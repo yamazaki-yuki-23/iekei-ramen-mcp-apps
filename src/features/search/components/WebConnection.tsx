@@ -40,19 +40,20 @@ export function WebConnection({ onPayload, children }: HostConnectionProps) {
   const [host, setHost] = useState<UiHost | null>(null);
   const [error, setError] = useState<Error | null>(null);
   useEffect(() => {
-    let active = true;
-    let client: Client | undefined;
+    // 変数は書き換えず、箱の中身を変える（oxlint の React の規則 immutability）。
+    const run: { active: boolean; client?: Client } = { active: true };
     const connect = async () => {
       try {
         const { Client, StreamableHTTPClientTransport } = await clientModule;
-        if (!active) return;
-        client = new Client({ name: "Iekei Ramen Web", version: "0.1.0" });
+        if (!run.active) return;
+        const client = new Client({ name: "Iekei Ramen Web", version: "0.1.0" });
+        run.client = client;
         await client.connect(
           new StreamableHTTPClientTransport(new URL("/mcp", window.location.href)),
         );
-        if (!active) return;
+        if (!run.active) return;
         const result = await client.callTool(webEntry(window.location.search));
-        if (!active) return;
+        if (!run.active) return;
         const payload = readPayload(result);
         if (result.isError || !payload) throw new Error("検索結果を読み込めませんでした。");
         onPayload(payload);
@@ -60,13 +61,14 @@ export function WebConnection({ onPayload, children }: HostConnectionProps) {
         setHost(createWebHost(client));
         setError(null);
       } catch {
-        if (active) setError(new Error("接続できませんでした。ページを再読み込みしてください。"));
+        if (run.active)
+          setError(new Error("接続できませんでした。ページを再読み込みしてください。"));
       }
     };
     void connect();
     return () => {
-      active = false;
-      void client?.close();
+      run.active = false;
+      void run.client?.close();
     };
   }, [onPayload]);
   return children({ host, error });

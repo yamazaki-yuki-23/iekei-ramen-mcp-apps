@@ -187,12 +187,21 @@ function Result({
   // 家系マッチのレア札と同じ低い和音。レア: 銀の光が横切るのに合わせて短く柔らかい音。
   // 時刻は shindan.module.css のカードの出る遅れ・銀の光の遅れに合わせる。高い音は出さない（1.4kHz のローパス）。
   useEffect(() => {
-    const timers: number[] = [];
-    const at = (ms: number, play: () => void) => timers.push(window.setTimeout(play, ms));
-    if (level === "激レア") at(0, () => sound.rare());
-    at(level === "激レア" ? 650 : level === "レア" ? 250 : 0, () => sound.issue());
-    if (level === "レア") at(1000, () => sound.shimmer());
-    return () => timers.forEach((t) => window.clearTimeout(t));
+    const issue = window.setTimeout(
+      () => sound.issue(),
+      level === "激レア" ? 650 : level === "レア" ? 250 : 0,
+    );
+    const accent = window.setTimeout(
+      () => {
+        if (level === "激レア") sound.rare();
+        else if (level === "レア") sound.shimmer();
+      },
+      level === "激レア" ? 0 : 1000,
+    );
+    return () => {
+      window.clearTimeout(issue);
+      window.clearTimeout(accent);
+    };
   }, [level]);
   return (
     <section className={styles.result} aria-labelledby="r-title">
