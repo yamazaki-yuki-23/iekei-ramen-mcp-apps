@@ -106,6 +106,43 @@ test.describe("現在地から探す", () => {
     await expect(shopCards(app).first()).toContainText(/\d+(\.\d+)?(m|km)/);
   });
 
+  test("地名の欄で、日本語の変換を確定する Enter では検索しない", async ({ page }) => {
+    // 「よこはまえき」を変換する Enter で検索が走ると、変換前の文字で探してしまう。
+    const geocodes: string[] = [];
+    page.on("request", (req) => {
+      if (req.url() !== E2E_SERVER_URL || req.method() !== "POST") return;
+      const body = req.postDataJSON() as { params?: { name?: string } } | null;
+      if (body?.params?.name === "geocode-place") geocodes.push(req.url());
+    });
+    const app = await callTool(page, "search-iekei-ramen");
+    await waitForApp(app);
+    await app.getByRole("tab", { name: "現在地から探す" }).click();
+    const place = app.locator("#place");
+    await place.fill("よこはまえき");
+    // 変換中の Enter。Chrome・Firefox は isComposing、Safari は keyCode 229 で来る。
+    for (const init of [{ isComposing: true }, { keyCode: 229 }])
+      await place.evaluate(
+        (el, extra) =>
+          el.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              key: "Enter",
+              bubbles: true,
+              cancelable: true,
+              ...extra,
+            }),
+          ),
+        init,
+      );
+    await page.waitForTimeout(500);
+    expect(geocodes).toHaveLength(0);
+
+    // 確定したあとの Enter では探す。
+    await place.fill("横浜駅");
+    await place.press("Enter");
+    await expect(app.getByRole("heading", { name: /の近くの家系ラーメン/ })).toBeVisible();
+    expect(geocodes).toHaveLength(1);
+  });
+
   test("地名の検索が止められたら、見つからないとは言わずに理由を出す", async ({ page }) => {
     /*
      * 連打止めは Worker にしか無い（main.ts には無い）ので、応答を差し替える。

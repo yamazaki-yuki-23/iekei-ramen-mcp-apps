@@ -130,7 +130,17 @@ export function NearbyPanel({
         </span>
       </div>
 
-      <div className={styles.row}>
+      {/*
+       * Enter は form の送信に任せる（#384）。キーを自前で受けると、日本語の変換を確定する
+       * Enter でも検索が走る。ブラウザは変換の Enter では送信しない。
+       */}
+      <form
+        className={styles.row}
+        onSubmit={(e) => {
+          e.preventDefault();
+          void searchPlace();
+        }}
+      >
         <label className={styles.label} htmlFor="place">
           地名で指定
         </label>
@@ -143,22 +153,15 @@ export function NearbyPanel({
           placeholder="横浜駅 / 新宿区 / 東京都港区…"
           value={place}
           onChange={(e) => setPlace(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void searchPlace();
-            }
-          }}
         />
         <button
-          type="button"
+          type="submit"
           className={styles.buttonSecondary}
-          onClick={() => void searchPlace()}
           disabled={busy || place.trim() === ""}
         >
           この場所の近くを探す
         </button>
-      </div>
+      </form>
       {/*
        * 途中経過と失敗の行。読み上げの領域にするため、文が無いときも置いておく（#156）。
        * 空のときは .liveLine:empty が並びから外すので、間隔は増えない。
