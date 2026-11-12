@@ -207,6 +207,21 @@ function nearest(shop, shops, n) {
     .slice(0, n);
 }
 
+/**
+ * 店のページの説明文（#382）。そのページに実際に出ているものだけを挙げる。営業時間・電話は
+ * 地図に記載がある店だけ、公式の情報は確かめた記録（`status: open`）のリンクがある店だけ。
+ */
+export function shopDescription(shop, shops, record) {
+  const facts = [shop.openingHours && "営業時間", shop.phone && "電話番号"].filter(Boolean);
+  const items = [
+    facts.length && `${facts.join("・")}（地図の記載）`,
+    sourceLink(record) && "公式の情報へのリンク",
+    "Google マップの道順",
+    nearest(shop, shops, NEARBY).length && "近くの家系（直線距離）",
+  ].filter(Boolean);
+  return `${shop.name}の店舗情報。地域は${[region(shop), shop.address].filter(Boolean).join(" ")}。${items.join("、")}を載せています。`;
+}
+
 /** 店のページの中身（#255）。行き先 → 注文のしかた → 近い家系 → 報告 → この情報について。 */
 function shopContent(shop, shops, record) {
   const facts = [
@@ -606,7 +621,7 @@ export function seoPages(shops, recordOf = new Map(), records = [], today = new 
       path,
       page({
         title,
-        description: `${shop.name}の店舗情報。地域は${[region(shop), shop.address].filter(Boolean).join(" ")}。地図の位置を確認できます。`,
+        description: shopDescription(shop, shops, recordOf.get(shop.id)),
         path,
         heading: shop.name,
         noindex: shop.confidence === "candidate",
