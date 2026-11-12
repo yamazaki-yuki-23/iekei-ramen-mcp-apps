@@ -344,6 +344,48 @@ describe("店のページの確かめた先へのリンク（#367）", () => {
   });
 });
 
+/** 店のページの説明文（meta description）。 */
+const description = (html: string) => html.match(/name="description" content="([^"]*)"/)![1];
+const describedShop = (s: Shop, record?: object) =>
+  description(
+    seoPages([s, near("node/9", "隣家", 35.47)], new Map(record ? [[s.id, record]] : [])).files.get(
+      "/shop/node-123/",
+    )!,
+  );
+
+describe("店のページの説明文（#382）", () => {
+  it("営業時間・電話・公式のリンクが無い店には、その言葉を書かない", () => {
+    const text = describedShop(shop);
+    expect(text).toBe(
+      "試験家の店舗情報。地域は神奈川県 横浜市 西区岡野。Google マップの道順、近くの家系（直線距離）を載せています。",
+    );
+    for (const word of ["営業時間", "電話", "公式"]) expect(text).not.toContain(word);
+  });
+
+  it("地図に記載がある営業時間・電話だけを、地図の記載として挙げる", () => {
+    expect(describedShop({ ...shop, openingHours: "11:00-22:00" })).toContain(
+      "。営業時間（地図の記載）、Google マップの道順",
+    );
+    expect(describedShop({ ...shop, phone: "+81-45-000-0000" })).toContain(
+      "。電話番号（地図の記載）、",
+    );
+    expect(
+      describedShop({ ...shop, openingHours: "11:00-22:00", phone: "+81-45-000-0000" }),
+    ).toContain("。営業時間・電話番号（地図の記載）、");
+  });
+
+  it("公式の情報は、確かめた記録（status: open）のリンクがある店だけに書く", () => {
+    const open = { ...chainRecord("試験商店"), url: "https://example.com/" };
+    expect(describedShop(shop, open)).toContain("。公式の情報へのリンク、Google マップの道順");
+    for (const record of [
+      chainRecord("試験商店"),
+      { ...open, status: "closed" },
+      { ...open, url: "javascript:alert(1)" },
+    ])
+      expect(describedShop(shop, record)).not.toContain("公式");
+  });
+});
+
 describe("系列のページ（#309）", () => {
   const tokyo: Shop = {
     ...shop,
