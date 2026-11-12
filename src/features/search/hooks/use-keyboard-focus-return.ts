@@ -136,6 +136,8 @@ export function useKeyboardFocusReturn() {
     const onKeyDown = (event: KeyboardEvent) => {
       byKey = true;
       const field = event.target;
+      // 日本語の変換を確定する Enter は送信しないので、追わない（#384。Safari は keyCode 229 で来る）。
+      if (event.isComposing || event.keyCode === 229) return;
       if (event.key === "Enter" && field instanceof HTMLInputElement && field.dataset.resultInput)
         watchFrom(field);
     };
