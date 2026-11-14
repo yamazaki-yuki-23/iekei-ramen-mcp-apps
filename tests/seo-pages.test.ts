@@ -386,6 +386,50 @@ describe("店のページの説明文（#382）", () => {
   });
 });
 
+/** 店のページの「〇〇の店舗一覧」のリンク（#381）。 */
+const chainLink = (html: string) =>
+  html.match(/<p class="seo-back"><a [^>]*href="\/chain\/[^"]*"[^>]*>[^<]*<\/a><\/p>/)?.[0];
+const twoShops = [shop, near("node/9", "隣家", 35.47)];
+const head = (html: string) => html.slice(0, html.indexOf("</head>"));
+const pageOf = (records: [string, object][], list = twoShops) =>
+  seoPages(list, new Map(records)).files.get("/shop/node-123/")!;
+
+describe("店のページから系列のページへのリンク（#381）", () => {
+  it("系列のページに載る店は、近い家系の下に系列の店舗一覧へのリンクを持つ", () => {
+    const html = pageOf([
+      ["node/123", chainRecord("町田商店")],
+      ["node/9", chainRecord("町田商店")],
+    ]);
+    expect(chainLink(html)).toBe(
+      '<p class="seo-back"><a class="seo-sub-link" href="/chain/machida-shoten/">町田商店の店舗一覧（2 軒）</a></p>',
+    );
+    expect(html.indexOf("この店から近い家系")).toBeLessThan(html.indexOf("町田商店の店舗一覧"));
+  });
+
+  it("系列のページに載らない店（記録なし・系列でない・系列が 1 軒だけ）には何も足さない", () => {
+    const cases: [string, object][][] = [
+      [],
+      [
+        [
+          "node/123",
+          { basis: "self", status: "open", checked: "2026-10-24", source: "owner-visit" },
+        ],
+      ],
+      [["node/123", chainRecord("町田商店")]],
+    ];
+    for (const records of cases) expect(pageOf(records)).not.toContain('href="/chain/');
+  });
+
+  it("リンクを足しても、店のページのタイトルと説明文は変えない", () => {
+    const linked = pageOf([
+      ["node/123", chainRecord("町田商店")],
+      ["node/9", chainRecord("町田商店")],
+    ]);
+    const plain = pageOf([["node/123", chainRecord("町田商店")]]);
+    expect(head(linked)).toBe(head(plain));
+  });
+});
+
 describe("系列のページ（#309）", () => {
   const tokyo: Shop = {
     ...shop,
