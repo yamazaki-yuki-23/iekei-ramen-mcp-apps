@@ -222,8 +222,11 @@ export function shopDescription(shop, shops, record) {
   return `${shop.name}の店舗情報。地域は${[region(shop), shop.address].filter(Boolean).join(" ")}。${items.join("、")}を載せています。`;
 }
 
-/** 店のページの中身（#255）。行き先 → 注文のしかた → 近い家系 → 報告 → この情報について。 */
-function shopContent(shop, shops, record) {
+/**
+ * 店のページの中身（#255）。行き先 → 注文のしかた → 近い家系 → 報告 → この情報について。
+ * 系列のページに載る店だけ、近い家系の下にその系列の一覧へのリンクを置く（#381）。
+ */
+function shopContent(shop, shops, record, chain) {
   const facts = [
     shop.openingHours && ["営業時間", openingHoursLabel(shop.openingHours)],
     shop.phone && ["電話", domesticPhone(shop.phone)],
@@ -245,7 +248,7 @@ function shopContent(shop, shops, record) {
   )
     .map(([term, text, html]) => `<div><dt>${term}</dt><dd>${html ?? escape(text)}</dd></div>`)
     .join("")}</dl></section>`;
-  return `<p class="seo-lead">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p>${factList}<div class="seo-actions">${primary(directions, "Google マップで道順を見る", true)}<a class="seo-secondary" href="/guide/">注文のしかたを見る<small>お好み・卓上・ライス</small></a></div><h2 class="seo-section">この店から近い家系（直線距離）</h2><ul class="seo-nearby">${near}</ul>${report}${about}<script src="/shop-report.js" defer></script>`;
+  return `<p class="seo-lead">${escape([region(shop), shop.address].filter(Boolean).join(" "))}</p>${factList}<div class="seo-actions">${primary(directions, "Google マップで道順を見る", true)}<a class="seo-secondary" href="/guide/">注文のしかたを見る<small>お好み・卓上・ライス</small></a></div><h2 class="seo-section">この店から近い家系（直線距離）</h2><ul class="seo-nearby">${near}</ul>${chain ? `<p class="seo-back"><a class="seo-sub-link" href="${chainPath(chain.name)}">${escape(chain.name)}の店舗一覧（${chain.count} 軒）</a></p>` : ""}${report}${about}<script src="/shop-report.js" defer></script>`;
 }
 
 /** 店の一覧。但し書きは一覧のすぐ下に 1 回。 */
@@ -487,6 +490,12 @@ export function seoPages(shops, recordOf = new Map(), records = [], today = new 
   const chainList = [...chains]
     .filter(([, list]) => list.length >= CHAIN_MIN)
     .toSorted(([, a], [, b]) => b.length - a.length);
+  // 系列のページに載る店（#361 の決まりで選んだ店）だけが、店のページから系列へリンクする（#381）。
+  const chainOf = new Map(
+    chainList.flatMap(([name, list]) =>
+      list.map((shop) => [shop.id, { name, count: list.length }]),
+    ),
+  );
   const chainLinks = chainList.length
     ? `<h2 class="seo-section" id="chains">系列</h2>${chips(chainList.map(([name, list]) => ({ href: chainPath(name), label: name, count: list.length })))}`
     : "";
@@ -634,7 +643,7 @@ export function seoPages(shops, recordOf = new Map(), records = [], today = new 
           ]),
         ],
         crumbs: `<a href="/area/">都道府県</a> / <a href="${prefPath(shop.prefecture)}">${escape(shop.prefecture)}</a>${shop.city ? ` / <a href="${cityPath(shop.prefecture, shop.city)}">${escape(shop.city)}</a>` : ""}`,
-        content: shopContent(shop, shops, recordOf.get(shop.id)),
+        content: shopContent(shop, shops, recordOf.get(shop.id), chainOf.get(shop.id)),
       }),
     );
     if (shop.confidence !== "candidate") indexed.push(path);
