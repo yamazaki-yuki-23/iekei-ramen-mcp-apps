@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import shops from "../data/shops.json";
 // @ts-expect-error データ生成スクリプトと共有する素の JS モジュール
 import {
   buildAddress,
@@ -278,6 +279,43 @@ describe("buildAddress", () => {
   it("住所タグが無ければ undefined を返す", () => {
     expect(buildAddress(tags({}))).toEqual({ city: undefined, address: undefined });
   });
+
+  /*
+   * 街区符号の欄に「番-号」がまるごと入り、住居番号の欄にも同じ番地が入っている店がある（#399）。
+   * 「-」で繋ぐと「19-12-19-12」のように番地が二重になる（実データ: 壱八家・しゃかりき家）。
+   */
+  it("街区符号と住居番号に同じ番地が入っていたら、二重に書かない（#399）", () => {
+    expect(
+      buildAddress(
+        tags({
+          "addr:city": "横浜市",
+          "addr:suburb": "西区",
+          "addr:quarter": "高島",
+          "addr:neighbourhood": "2丁目",
+          "addr:block_number": "19-12",
+          "addr:housenumber": "19-12 スカイビル10F",
+        }),
+      ),
+    ).toEqual({ city: "横浜市", address: "西区高島2丁目19-12 スカイビル10F" });
+    expect(
+      buildAddress(
+        tags({
+          "addr:quarter": "野口町",
+          "addr:neighbourhood": "良野",
+          "addr:block_number": "42-3",
+          "addr:housenumber": "42-3",
+        }),
+      ),
+    ).toEqual({ city: undefined, address: "野口町良野42-3" });
+  });
+
+  it("番と号が同じ数字（1 番 1 号）は、二重とみなさずに繋ぐ（#399）", () => {
+    expect(
+      buildAddress(
+        tags({ "addr:quarter": "本町", "addr:block_number": "1", "addr:housenumber": "1" }),
+      ),
+    ).toEqual({ city: undefined, address: "本町1-1" });
+  });
 });
 
 describe("toShop", () => {
@@ -437,5 +475,15 @@ describe("shopState — 現地で入力された宣言を渡す", () => {
      */
     const { shop } = shopState(tags({ name: "ありがた家", cuisine: "ramen" }));
     expect(JSON.stringify(shop)).toBe('{"name":"ありがた家","cuisine":"ramen"}');
+  });
+});
+
+describe("掲載の店の住所", () => {
+  // 「19-12-19-12」のように、同じ番地（数字を「-」で繋いだもの）が続けて 2 回書かれていない（#399）。
+  it("同じ番地が二重に書かれていない（#399）", () => {
+    const repeated = shops
+      .filter((shop) => /(\d+(?:-\d+)+)-\1(?!\d)/.test(shop.address ?? ""))
+      .map((shop) => `${shop.id} ${shop.name} ${shop.address}`);
+    expect(repeated).toEqual([]);
   });
 });
