@@ -106,8 +106,63 @@ export function canStartWorker(timeoutMs = 5_000): Promise<boolean> {
   });
 }
 
+/**
+ * 使っていない地図と、その入れ物（#397）。
+ *
+ * 結果が届くたびに画面は key で作り直される（SearchAppInner）。地図まで作り直すと、
+ * 範囲で探すたびに地図が無地 → 道路だけ → 印、と描き直り、カードより先にちらついていた
+ * （実測: 無地が約 100ms、印が戻るまで約 150ms）。地図だけは捨てずにここへ預け、
+ * 新しい MapView が入れ物ごと付け替えて使い回す。
+ *
+ * ponytail: 1 ページに地図は 1 つの前提。同時に 2 つ出す画面ができても、預けるのは 1 つで、
+ * 預け直すときに前の 1 つを壊すので漏れはしない（使い回せるのが 1 つになるだけ）。
+ */
+let kept: { map: MapLibreMap; container: HTMLDivElement } | undefined;
+
+/**
+ * 地図を枠へ出す。預けた地図があれば入れ物ごと付け替え、無ければ作る。
+ * 受け取ったら預かりは空にする（2 つの MapView が同じ地図を取らない）。作れなければ投げる。
+ */
+export function openMap(
+  host: HTMLElement,
+  initial: Bounds | undefined,
+  className: string,
+  onOverlaysReady: () => void,
+) {
+  const taken = kept;
+  kept = undefined;
+  if (taken) {
+    host.appendChild(taken.container);
+    delete taken.container.dataset.moving;
+    return { ...taken, reused: true };
+  }
+  const container = document.createElement("div");
+  container.className = className;
+  container.setAttribute("role", "application");
+  container.setAttribute("aria-label", "家系ラーメン店の地図");
+  host.appendChild(container);
+  try {
+    return { map: createMap(container, initial, onOverlaysReady), container, reused: false };
+  } catch (error) {
+    container.remove();
+    throw error;
+  }
+}
+
+/** 使い終えた地図を預ける。前に預けた別の地図があれば、そちらは壊す。 */
+export function keepMap(map: MapLibreMap, container: HTMLDivElement) {
+  container.remove();
+  if (kept && kept.map !== map) kept.map.remove();
+  kept = { map, container };
+}
+
+/** 使い回す地図を、payload の範囲に合わせる。作るときの `bounds` と同じ寄せ方にする。 */
+export function showBounds(map: MapLibreMap, bounds: Bounds) {
+  map.fitBounds(toLngLatBounds(bounds), { duration: 0 });
+}
+
 /** 地図を作る。重なり順の層もここで作る（店・順路・基準地点のデータは後から差し替える）。 */
-export function createMap(
+function createMap(
   container: HTMLElement,
   initial: Bounds | undefined,
   /** 店のピンを重ねる層ができたとき（背景の地図データを待たない）。 */
@@ -189,8 +244,8 @@ type FeatureCollection = { type: "FeatureCollection"; features: Feature[] };
 const empty: FeatureCollection = { type: "FeatureCollection", features: [] };
 
 /**
- * 重ねる層のデータ源。**地図を壊した後は undefined。** 結果が入れ替わると地図ごと作り直され、
- * 地図を先に壊してから、順路の線や基準地点を消す後片付けが走る（壊れた地図に触ると例外で落ちる）。
+ * 重ねる層のデータ源。**地図を壊した後は undefined。** 描けずに地図を壊したあとも、
+ * 順路の線や基準地点を消す後片付けが走る（壊れた地図に触ると例外で落ちる）。
  */
 function source(map: MapLibreMap, id: string): GeoJSONSource | undefined {
   if (!(map as unknown as { style?: unknown }).style) return undefined;

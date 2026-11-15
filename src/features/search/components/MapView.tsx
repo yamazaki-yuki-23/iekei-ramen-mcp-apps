@@ -1,6 +1,6 @@
 import type { ErrorEvent, Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMarkerFocus } from "../hooks/use-marker-focus";
 import { useVisitedMarkers } from "../hooks/use-visited-markers";
 import type { Bounds, Shop } from "../../../types";
@@ -8,15 +8,17 @@ import styles from "../styles/search.module.css";
 import {
   boundsOf,
   canStartWorker,
-  createMap,
   drawOrigin,
   drawRoute,
   drawShops,
   FIT_MAX_ZOOM,
   focusWithoutScrolling,
   JAPAN_BOUNDS,
+  keepMap,
+  openMap,
   ROUTE_MAX_ZOOM,
   SELECT_ZOOM,
+  showBounds,
   viewBounds,
   type MapOrigin,
 } from "../lib/map-layers";
@@ -52,10 +54,9 @@ interface Props {
   /**
    * 最初に表示する範囲。
    *
-   * **payload から渡す。** 結果が差し替わるとこの部品ごと作り直されるので
-   * （payload ごとに key を振ってある）、地図は毎回新品で生まれる。
-   * 覚えていたつもりの画角は残らず、「この範囲で発券」の直後に日本全体へ
-   * 戻ってしまう（実測: 範囲で 489 件に絞った直後、もう一度押すと 558 件）。
+   * **payload から渡す。** 結果が差し替わるとこの部品ごと作り直される（payload ごとに key）。
+   * 地図は使い回す（#397）が画角はこれに合わせ直すので、覚えていたつもりの画角は残らない
+   * （渡さないと「この範囲で発券」の直後に日本全体へ戻る。実測: 489 件の直後に 558 件）。
    */
   initialBounds?: Bounds;
   /**
@@ -90,7 +91,8 @@ export function MapView({
   visitedIds,
   onCannotDraw,
 }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  // 地図の入れ物を差し込む枠。入れ物は使い回すので React の外で作る（#397）。
+  const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const buttonsRef = useRef<Map<string, HTMLButtonElement>>(new Map());
   const shopDrawingRef = useRef<ReturnType<typeof drawShops> | null>(null);
@@ -135,15 +137,18 @@ export function MapView({
     onCannotDrawRef.current = onCannotDraw;
   }, [onCannotDraw]);
 
-  // 地図の生成は 1 度だけ。以降はデータだけ差し替える。
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || mapRef.current) return;
-    let map: ReturnType<typeof createMap>;
+  /*
+   * 地図の用意は 1 度だけ。前の画面の地図があれば入れ物ごと付け替えて使い回す（#397）。
+   * **描く前（layout effect）に付け替える。** 描いた後だと、地図の無い枠が 1 度描かれてちらつく。
+   */
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host || mapRef.current) return;
+    let opened: ReturnType<typeof openMap>;
     try {
       // 店のピンを重ねる層ができたら描き始める（背景の地図データを待たない）。
-      map = createMap(container, initialBounds, () => {
-        setZoom(map.getZoom());
+      opened = openMap(host, initialBounds, styles.mapCanvas, () => {
+        setZoom(opened.map.getZoom());
         setReady(true);
       });
     } catch {
@@ -152,6 +157,7 @@ export function MapView({
       onCannotDrawRef.current?.();
       return;
     }
+    const { map, container, reused } = opened;
     mapRef.current = map;
     /*
      * 描けないと分かったら、**案内に切り替える前に地図を壊す。** 切り替えると地図の入れ物は
@@ -167,16 +173,18 @@ export function MapView({
       setCannotDraw(true);
       onCannotDrawRef.current?.();
       mapRef.current = null;
+      container.remove();
       try {
         map.remove();
       } catch {
         // 壊せなかった地図は、外れた入れ物ごと捨てる（ほかに手は無い）。
       }
     };
-    // 描画の Worker が動くかを、地図とは別に確かめる（6 系は動かなくても地図の側でエラーにならない）。
-    void canStartWorker().then((ok) => {
-      if (!ok) giveUp();
-    });
+    // 描画の Worker が動くかを別に確かめる（6 系は動かなくてもエラーにならない）。使い回しは確かめ済み。
+    if (!reused)
+      void canStartWorker().then((ok) => {
+        if (!ok) giveUp();
+      });
     // Worker が止められたことは、地図のエラーとして届くこともある。
     const onError = (e: ErrorEvent) => {
       if (/worker/i.test(e.error?.message ?? "")) giveUp();
@@ -213,6 +221,13 @@ export function MapView({
     map.on("zoomend", onZoomEnd);
     // 「この範囲で発券」は、押した瞬間にここから読む。
     onReadyRef.current?.(() => viewBounds(map));
+    if (reused) {
+      // 入れ物の寸法と画角を、この画面に合わせ直してから描き始める。
+      map.resize();
+      if (initialBounds) showBounds(map, initialBounds);
+      setZoom(map.getZoom());
+      setReady(true);
+    }
     // 見切れた地図を押したときに、外側のページが動いて押下が空振りしないように（#58）。
     const releaseFocus = focusWithoutScrolling(map);
     return () => {
@@ -226,7 +241,8 @@ export function MapView({
       // 描けずに壊した後なら、もう壊さない。
       if (!alive) return;
       alive = false;
-      map.remove();
+      // 壊さずに預ける。次の画面の MapView が付け替えて使う（#397）。
+      keepMap(map, container);
       mapRef.current = null;
     };
     // initialBounds は名前のとおり初期値。あとから変わっても作り直さない。
@@ -282,7 +298,7 @@ export function MapView({
    * 下半分が描かれない。**枠そのものを見張る**（ホストの窓の伸縮、セーフエリアの変化もある）。
    */
   useEffect(() => {
-    const el = containerRef.current;
+    const el = hostRef.current;
     if (!mapRef.current || !el) return;
     // 描けずに地図を壊した後は触らない（いまの地図を見る）。
     const observer = new ResizeObserver(() => mapRef.current?.resize());
@@ -351,12 +367,7 @@ export function MapView({
 
   return (
     <div className={expanded ? `${styles.map} ${styles.mapExpanded}` : styles.map}>
-      <div
-        className={styles.mapCanvas}
-        ref={containerRef}
-        role="application"
-        aria-label="家系ラーメン店の地図"
-      />
+      <div className={styles.mapCanvas} ref={hostRef} />
       <MapLegend />
     </div>
   );
