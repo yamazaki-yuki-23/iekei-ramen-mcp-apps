@@ -1856,6 +1856,36 @@ test.describe("この範囲の店を出す", () => {
     await search.click();
     await expect.poll(count).toBe(area);
   });
+
+  test("押しても地図を作り直さない（#397）", async ({ page }) => {
+    /*
+     * 結果ごとに画面は作り直されるが、地図は使い回す。作り直すと範囲で探すたびに
+     * 地図が無地 → 道路だけ → 印、と描き直ってちらついた。canvas に印を付けておき、
+     * 2 回探しても同じ canvas のまま（印が残っている）かを見る。
+     */
+    const app = await callTool(page, "show-iekei-ramen-map");
+    await waitForApp(app);
+    const canvas = app.locator("canvas.maplibregl-canvas");
+    await canvas.evaluate((el) => (el.dataset.e2eKept = "1"));
+    const search = app.getByRole("button", { name: "この範囲の店を出す" });
+
+    for (let i = 0; i < 2; i++) {
+      await search.click();
+      await expect(
+        app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
+      ).toBeVisible();
+      await expect(app.locator("main[data-pending-calls]")).toHaveAttribute(
+        "data-pending-calls",
+        "0",
+      );
+    }
+    await expect(canvas).toHaveAttribute("data-e2e-kept", "1");
+    await expect(app.locator("canvas.maplibregl-canvas")).toHaveCount(1);
+    // 店のピンも、使い回した地図の上に描き直されている。
+    await expect(
+      app.locator("div[role=application] :is(.shop-pin, .cluster-pin)").first(),
+    ).toBeVisible();
+  });
 });
 
 test.describe("隣の世界まで動かしたとき", () => {

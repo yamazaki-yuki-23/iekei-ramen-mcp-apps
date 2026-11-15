@@ -83,7 +83,7 @@ let protocolAdded = false;
  * なるか、黙って返事が来ない。6 系の地図は、Worker が動かなくても店のデータを「読めた」扱いにするので、
  * 地図の側からは見分けられない。
  */
-export function canStartWorker(timeoutMs = 5_000): Promise<boolean> {
+function canStartWorker(timeoutMs = 5_000): Promise<boolean> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(new Blob(["postMessage(1);"], { type: "text/javascript" }));
     let worker: Worker;
@@ -106,8 +106,89 @@ export function canStartWorker(timeoutMs = 5_000): Promise<boolean> {
   });
 }
 
+/**
+ * 使っていない地図と、その入れ物（#397）。
+ *
+ * 結果が届くたびに画面は key で作り直される（SearchAppInner）。地図まで作り直すと、
+ * 範囲で探すたびに地図が無地 → 道路だけ → 印、と描き直り、カードより先にちらついていた
+ * （実測: 無地が約 100ms、印が戻るまで約 150ms）。地図だけは捨てずにここへ預け、
+ * 新しい MapView が入れ物ごと付け替えて使い回す。
+ *
+ * ponytail: 1 ページに地図は 1 つの前提。同時に 2 つ出す画面ができても、預けるのは 1 つで、
+ * 預け直すときに前の 1 つを壊すので漏れはしない（使い回せるのが 1 つになるだけ）。
+ */
+let kept: OpenedMap | undefined;
+
+/**
+ * 枠に出した地図。`overlays` は重ねる層ができたか（`style.load` の後か）と、できたときに知らせる先。
+ * `worker` は描画の Worker が動くかの確かめ（作ったときに 1 度だけ始める）。
+ *
+ * **確かめ終わる前に預けられても、結果はいまの持ち主が受け取る。** 開発時の StrictMode は
+ * 付ける → 外す → 付け直す を `style.load` や Worker の確かめより先に行う。知らせる先が作った
+ * 時の MapView のままだと、新しい MapView は層ができたことを知らずにピンを描かず、Worker が
+ * 止められていても案内に切り替わらない（Codex の指摘 2 件）。
+ */
+type OpenedMap = {
+  map: MapLibreMap;
+  container: HTMLDivElement;
+  overlays: { ready: boolean; notify?: () => void };
+  worker: Promise<boolean>;
+};
+
+/**
+ * 地図を枠へ出す。預けた地図があれば入れ物ごと付け替え、無ければ作る。
+ * 受け取ったら預かりは空にする（2 つの MapView が同じ地図を取らない）。作れなければ投げる。
+ * 層がもうできていれば `overlays.ready` が真で、`onOverlaysReady` は呼ばれない。
+ */
+export function openMap(
+  host: HTMLElement,
+  initial: Bounds | undefined,
+  className: string,
+  onOverlaysReady: () => void,
+) {
+  const taken = kept;
+  kept = undefined;
+  if (taken) {
+    host.appendChild(taken.container);
+    delete taken.container.dataset.moving;
+    taken.overlays.notify = onOverlaysReady;
+    return { ...taken, reused: true };
+  }
+  const container = document.createElement("div");
+  container.className = className;
+  container.setAttribute("role", "application");
+  container.setAttribute("aria-label", "家系ラーメン店の地図");
+  host.appendChild(container);
+  const overlays: OpenedMap["overlays"] = { ready: false, notify: onOverlaysReady };
+  try {
+    const map = createMap(container, initial, () => {
+      overlays.ready = true;
+      overlays.notify?.();
+    });
+    // 6 系は Worker が動かなくても地図の側でエラーにならないので、別に確かめる。
+    return { map, container, overlays, worker: canStartWorker(), reused: false };
+  } catch (error) {
+    container.remove();
+    throw error;
+  }
+}
+
+/** 使い終えた地図を預ける。前に預けた別の地図があれば、そちらは壊す。 */
+export function keepMap({ map, container, overlays, worker }: OpenedMap) {
+  container.remove();
+  // 外れた MapView には知らせない（次の持ち主が openMap で付け替える）。
+  overlays.notify = undefined;
+  if (kept && kept.map !== map) kept.map.remove();
+  kept = { map, container, overlays, worker };
+}
+
+/** 使い回す地図を、payload の範囲に合わせる。作るときの `bounds` と同じ寄せ方にする。 */
+export function showBounds(map: MapLibreMap, bounds: Bounds) {
+  map.fitBounds(toLngLatBounds(bounds), { duration: 0 });
+}
+
 /** 地図を作る。重なり順の層もここで作る（店・順路・基準地点のデータは後から差し替える）。 */
-export function createMap(
+function createMap(
   container: HTMLElement,
   initial: Bounds | undefined,
   /** 店のピンを重ねる層ができたとき（背景の地図データを待たない）。 */
@@ -189,8 +270,8 @@ type FeatureCollection = { type: "FeatureCollection"; features: Feature[] };
 const empty: FeatureCollection = { type: "FeatureCollection", features: [] };
 
 /**
- * 重ねる層のデータ源。**地図を壊した後は undefined。** 結果が入れ替わると地図ごと作り直され、
- * 地図を先に壊してから、順路の線や基準地点を消す後片付けが走る（壊れた地図に触ると例外で落ちる）。
+ * 重ねる層のデータ源。**地図を壊した後は undefined。** 描けずに地図を壊したあとも、
+ * 順路の線や基準地点を消す後片付けが走る（壊れた地図に触ると例外で落ちる）。
  */
 function source(map: MapLibreMap, id: string): GeoJSONSource | undefined {
   if (!(map as unknown as { style?: unknown }).style) return undefined;
