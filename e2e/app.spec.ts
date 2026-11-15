@@ -1843,7 +1843,7 @@ test.describe("この範囲の店を出す", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/^\d+ 軒/)
+        .getByText(/^(?:全国 )?\d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -1853,6 +1853,8 @@ test.describe("この範囲の店を出す", () => {
     const whole = await count();
     expect(whole).toBe(TOTAL);
     await expect(app.getByRole("heading", { name: "全国の家系ラーメン" })).toBeVisible();
+    // 範囲で探す前の札は全国の数だと名乗る。数だけだと、映っている店の数と取り違える（#402）。
+    await expect(app.getByText(`全国 ${TOTAL} 軒`, { exact: true })).toBeVisible();
 
     // 塊を押すと、その中身が画面いっぱいになるまで寄る。
     await (await smallestCluster(app)).pin.click();
@@ -1865,6 +1867,8 @@ test.describe("この範囲の店を出す", () => {
     await expect(
       app.getByRole("heading", { name: "地図に出ている範囲の家系ラーメン" }),
     ).toBeVisible();
+    // 範囲で探した後は、その範囲の数。「全国」とは名乗らない（#402）。
+    await expect(app.getByText(/^全国 \d+ 軒/)).toHaveCount(0);
 
     /*
      * もう一度押しても件数が変わらないこと＝**寄せ直していない**こと。
@@ -1949,7 +1953,7 @@ test.describe("隣の世界まで動かしたとき", () => {
     await expect
       .poll(async () => {
         const text = await app
-          .getByText(/^\d+ 軒/)
+          .getByText(/^(?:全国 )?\d+ 軒/)
           .first()
           .textContent();
         return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -2004,7 +2008,7 @@ test.describe("範囲と他の条件の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/^\d+ 軒/)
+        .getByText(/^(?:全国 )?\d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -2120,7 +2124,7 @@ test.describe("範囲と他の条件の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/^\d+ 軒/)
+        .getByText(/^(?:全国 )?\d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -2195,7 +2199,7 @@ test.describe("まわる店と範囲の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/^\d+ 軒/)
+        .getByText(/^(?:全国 )?\d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);
@@ -2225,7 +2229,7 @@ test.describe("まわる店と範囲の両立", () => {
     await waitForApp(app);
     const count = async () => {
       const text = await app
-        .getByText(/^\d+ 軒/)
+        .getByText(/^(?:全国 )?\d+ 軒/)
         .first()
         .textContent();
       return Number(/(\d+) 軒/.exec(text ?? "")?.[1]);

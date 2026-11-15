@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { buildHeading, formatCount, isPayloadReady } from "../utils/heading";
 import { resultLook, skeletonShops } from "../../../utils/skeleton";
+import { scopeLabel } from "../../../utils/scope";
 import type { AppPayload, SearchMode } from "../../../types";
 import { useSlow } from "../../../hooks/use-slow";
 
@@ -47,6 +48,8 @@ export function useResultState({
         ? skeletonShops(mode, mode === "visited" ? payload.visited?.length : undefined)
         : [];
   const count =
-    showResults || keep ? formatCount(mode, payload.total, shops.length, payload.decide) : null;
+    showResults || keep
+      ? formatCount(mode, payload.total, shops.length, payload.decide, scopeLabel(payload.query))
+      : null;
   return { payloadReady, showResults, waiting, look, heading, shops, count };
 }
