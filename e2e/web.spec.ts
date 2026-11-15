@@ -192,7 +192,11 @@ test("「店名で」の 0 軒から探した語が地名でもなければ、�
   await page.goto(`${WEB_URL}/?keyword=${encodeURIComponent("よしむらや")}`);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
   await page.getByRole("button", { name: "「よしむらや」の近くを探す" }).click();
-  await expect(page.getByText("「よしむらや」という地名は見つかりませんでした。")).toBeVisible();
+  // 結果は読み上げにも伝える。焦点は押した釦に残るので、待ち受けの領域（role="status"）に出す。
+  const status = page.getByRole("status");
+  await expect(
+    status.filter({ hasText: "「よしむらや」という地名は見つかりませんでした。" }),
+  ).toBeVisible();
   // 行き止まりにしない。報告の案内は残る。
   await expect(page.getByText(/^知っている店が出てこないときは/)).toBeVisible();
 });

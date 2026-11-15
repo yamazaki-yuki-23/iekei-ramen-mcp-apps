@@ -34,6 +34,8 @@ interface Props {
   emptyHint?: string;
   /** 空のときの次の行動（「店名で」から地名の検索へ、#401）。 */
   emptyAction?: { label: string; onClick: () => void };
+  /** 空のときの釦を押した後の経過。読み上げの領域に出す。 */
+  emptyStatus?: string;
   /**
    * 訪問済みの店舗 ID。
    *
@@ -212,6 +214,7 @@ export function ShopList({
   emptyMessage,
   emptyHint,
   emptyAction,
+  emptyStatus,
   visitedIds,
 }: Props) {
   /*
@@ -222,7 +225,7 @@ export function ShopList({
   const labels = useMemo(() => sameNameLabels(shops), [shops]);
   if (shops.length === 0) {
     return (
-      <StateNote kind="empty" hint={emptyHint} action={emptyAction}>
+      <StateNote kind="empty" hint={emptyHint} action={emptyAction} status={emptyStatus}>
         {emptyMessage ?? "条件に合う店舗が見つかりませんでした。"}
       </StateNote>
     );

@@ -306,6 +306,7 @@ export function ResultView({
         emptyMessage={place?.message ?? EMPTY_MESSAGE[mode]}
         emptyHint={mode === "form" ? reportHint : undefined}
         emptyAction={place?.action}
+        emptyStatus={place?.status}
         visitedIds={visitedIds}
       />
     </Pending>

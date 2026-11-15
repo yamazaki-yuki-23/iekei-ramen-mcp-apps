@@ -17,9 +17,13 @@ export function usePlaceFallback(
   const q = query?.trim();
   if (!q || !searchPlace) return undefined;
   return {
-    message:
-      status ??
-      `「${q}」に当たる店名・ブランドはありませんでした。駅名や地名なら、その近くを探せます。`,
+    message: `「${q}」に当たる店名・ブランドはありませんでした。駅名や地名なら、その近くを探せます。`,
+    /*
+     * 探している・見つからなかったことは、待ち受けの読み上げ領域に出す（Codex の指摘）。焦点は押した
+     * 釦に残り、payload も変わらないので、本文を書き換えるだけでは読み上げに伝わらない。
+     * 領域は最初から置く（空の文字列）。出てから中身を入れないと読まれない。
+     */
+    status: status ?? "",
     action: {
       label: `「${q}」の近くを探す`,
       onClick: () => {
