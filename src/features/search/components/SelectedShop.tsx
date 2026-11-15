@@ -25,6 +25,8 @@ interface Props {
   onAsk?: () => void;
   /** 外部地図を開く。 */
   onOpenMap: () => void;
+  /** 店のページ（公式の情報・営業時間・近くの家系）を開く（#400）。 */
+  onOpenPage: () => void;
   onClear: () => void;
   asking: boolean;
   /** この店が「まわる店」に入っているか。 */
@@ -57,6 +59,7 @@ export function SelectedShop({
   report,
   onAsk,
   onOpenMap,
+  onOpenPage,
   onClear,
   asking,
   inRoute,
@@ -97,6 +100,13 @@ export function SelectedShop({
       <div className={styles.selectedActions}>
         <button type="button" className={styles.button} onClick={onOpenMap}>
           Google マップで道順を見る
+        </button>
+        {/*
+         * 行く前に公式の情報で営業を確かめられるように（#400）。外のページを開くのは道順と同じく
+         * ホストに任せる（会話の中は iframe から勝手に移れない）ので、道順と同じボタンにする。
+         */}
+        <button type="button" className={styles.buttonSecondary} onClick={onOpenPage}>
+          店のページを見る
         </button>
         {onAsk && (
           <button

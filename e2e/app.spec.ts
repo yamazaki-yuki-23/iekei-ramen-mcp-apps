@@ -867,6 +867,25 @@ test.describe("モデルへの受け渡し", () => {
     await expect(panel.getByRole("button", { name: "この店について聞く" })).toBeVisible();
   });
 
+  test("会話の中では、店のページを本番の URL でホストに開いてもらう（#400）", async ({ page }) => {
+    const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
+    await waitForApp(app);
+    const id = (await shopCards(app).first().getAttribute("data-shop-id"))!;
+    await shopCards(app).first().click();
+    // ホスト（basic-host）は openLink を window.open で開く。実際には開かずに URL を受け取る。
+    await page.evaluate(() => {
+      window.open = (url) => {
+        document.documentElement.dataset.openedUrl = String(url);
+        return null;
+      };
+    });
+    await app.getByRole("button", { name: "店のページを見る" }).click();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-opened-url",
+      `https://iekeiramen.com/shop/${id.replace("/", "-")}/`,
+    );
+  });
+
   test("選んだ店をホストのモデルコンテキストに渡す", async ({ page }) => {
     const app = await callTool(page, "search-iekei-ramen", { prefecture: "神奈川県" });
     await waitForApp(app);

@@ -5,6 +5,7 @@ import { ReportSchema } from "../src/lib/reports";
 import { type Shop } from "../src/types";
 import { CONFIDENCE } from "../src/utils/labels";
 import { webEntry } from "../src/features/search/utils/web-entry";
+import { shopPageUrl } from "../src/features/search/utils/shop-page";
 import { ORDER_DISCLAIMER, ORDER_SETS, PREFERENCES, SIDE_TIPS } from "../src/utils/order-guide";
 
 const shop: Shop = {
@@ -969,5 +970,22 @@ describe("公式で確かめた開店・閉店のページ（#345）", () => {
     expect(october).toContain(
       "10月26日に開店（公式に書いてある開店日）。系列の公式の店舗一覧で確かめた（2026-11-04）",
     );
+  });
+});
+
+describe("アプリの店の詳細から行く店のページ（#400）", () => {
+  /*
+   * 店の詳細の「店のページを見る」は、どの店にも出す。**ページが無い店があれば 404 へ送る**ので、
+   * 掲載の全店にページがあることをここで見張る（候補の店は noindex だが、ページはある）。
+   */
+  it("掲載の全店に、アプリが指す店のページがある", () => {
+    const real: Shop[] = JSON.parse(
+      readFileSync(new URL("../data/shops.json", import.meta.url), "utf8"),
+    );
+    const { files } = seoPages(real);
+    const missing = real
+      .map((s) => new URL(shopPageUrl(s.id), "https://iekeiramen.com").pathname)
+      .filter((path) => !files.has(path));
+    expect(missing).toEqual([]);
   });
 });
