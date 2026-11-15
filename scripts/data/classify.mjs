@@ -202,13 +202,20 @@ export function knownFacts(tags) {
  * 区・町名・丁目は続けて書くが、街区符号（block_number = 番）と
  * 住居番号（housenumber = 号）は別の数字なので「-」で繋ぐ。
  * 全部を続けて書くと「下忍」+「3594」+「1」が「下忍35941」になってしまう。
+ *
+ * **街区符号に「番-号」がまるごと入り、住居番号も同じ番地で始まるときは住居番号だけを使う**（#399）。
+ * 繋ぐと「19-12-19-12 スカイビル10F」と番地が二重になる。街区符号が「-」を含むときに限る。
+ * 「1 番 1 号」（街区符号 1・住居番号 1）は正しく「1-1」なので繋ぐ。
  */
 export function buildAddress(tags) {
   const city = tags["addr:city"] || undefined;
   const area = [tags["addr:suburb"], tags["addr:quarter"], tags["addr:neighbourhood"]]
     .filter(Boolean)
     .join("");
-  const number = [tags["addr:block_number"], tags["addr:housenumber"]].filter(Boolean).join("-");
+  const block = tags["addr:block_number"];
+  const house = tags["addr:housenumber"];
+  const repeated = block?.includes("-") && house?.startsWith(block);
+  const number = repeated ? house : [block, house].filter(Boolean).join("-");
   const address = area + number;
 
   // suburb が「横浜市西区」のように city を含むことがあるので取り除く。
