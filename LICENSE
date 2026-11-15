@@ -1,0 +1,23 @@
+このリポジトリは、コードとデータで扱いが違います。
+This repository has different terms for its code and its data.
+
+1. コード（data/ 以外のすべて） / Code (everything outside data/)
+
+   Copyright (c) 2026 山﨑悠樹 (Yuki Yamazaki). All rights reserved.
+
+   コードを使う・写す・変える・配る許可は出していません。
+   No permission is granted to use, copy, modify, or distribute the code.
+
+2. データ（data/ 以下） / Data (under data/)
+
+   data/ 以下の店舗データは、Open Database License (ODbL) v1.0 で提供します。
+   The shop data under data/ is made available under the
+   Open Database License (ODbL) v1.0:
+   https://opendatacommons.org/licenses/odbl/1-0/
+
+   © OpenStreetMap contributors
+   https://www.openstreetmap.org/copyright
+
+   一部の店は、系列や店の公式の情報で確かめた記録を含みます。
+   Some entries include records checked against official information
+   published by the chain or the shop.
