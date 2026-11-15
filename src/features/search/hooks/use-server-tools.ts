@@ -62,6 +62,8 @@ interface Options {
    * どこまで写すかは受け取る側が決める（「行った店」の画面だけ一覧も差し替える）。
    */
   onVisits: (next: VisitResult) => void;
+  /** 送った「行った」を、応答が届くまで印に出す（#396）。 */
+  onMarkVisit: (shopId: string, visited: boolean, sent: Promise<void>) => void;
   /** 「行った店」では取り消したカードも除くため、完全な一覧を要求する。 */
   includeVisitedShops: boolean;
   /**
@@ -92,6 +94,7 @@ export function useServerTools({
   awaitContext,
   releaseSelection,
   onVisits,
+  onMarkVisit,
   includeVisitedShops,
   trackCall,
   stampQueue,
@@ -365,13 +368,15 @@ export function useServerTools({
       setMutations((n) => n + 1);
       trackCall(1);
       setFailure(null);
-      return stampQueue(() => sendStamp(shopId, visited)).finally(() => {
+      const sent = stampQueue(() => sendStamp(shopId, visited)).finally(() => {
         setInFlight((n) => n - 1);
         setMutations((n) => n - 1);
         trackCall(-1);
       });
+      onMarkVisit(shopId, visited, sent);
+      return sent;
     },
-    [sendStamp, trackCall, stampQueue],
+    [sendStamp, trackCall, stampQueue, onMarkVisit],
   );
 
   /** 行った店の一覧と制覇率を取り直す。こちらは画面ごと入れ替わる。 */
