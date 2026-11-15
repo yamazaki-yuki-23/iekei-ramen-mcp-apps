@@ -47,10 +47,14 @@ const CHECKED_AT = {
  * 「家系かどうか」の欄（#316）。公式の情報で確かめた記録（`status: open`）がある店は、
  * 確かめた先と日付を書く。記録が無い店は推定のまま。
  */
-const basisLabel = (record) =>
-  record?.status === "open" && CHECKED_AT[record.source]
-    ? `${CHECKED_AT[record.source]}${/[A-Za-z]$/.test(CHECKED_AT[record.source]) ? " " : ""}で確かめた（${record.checked}）`
-    : ESTIMATED;
+const basisLabel = (record) => {
+  if (record?.status !== "open" || !CHECKED_AT[record.source]) return ESTIMATED;
+  const where = `${CHECKED_AT[record.source]}${/[A-Za-z]$/.test(CHECKED_AT[record.source]) ? " " : ""}`;
+  // 公式に家系の名乗りが無い店（#389）。公式で確かめたのは営業だけなので、家系と確かめたようには書かない。
+  return record.basis === "owner"
+    ? `公式に家系の名乗りは無く、運営者の判断（営業は${where}で確かめた。${record.checked}）`
+    : `${where}で確かめた（${record.checked}）`;
+};
 const TASTE_NOTE = ["味の分類", "既知のブランドからの参考値（食べて決めたものではありません）"];
 const REPORT_NOTE = ["違っていたら", "上の「この店の情報、違っていませんか？」から"];
 /**

@@ -289,6 +289,22 @@ describe("店のページの「家系かどうか」（#316）", () => {
   });
 });
 
+describe("家系の根拠がオーナーの判断の店（#389）", () => {
+  it("公式で確かめたのは営業だけと書き、家系と確かめたようには書かない", () => {
+    const record = {
+      basis: "owner",
+      status: "open",
+      checked: "2026-11-15",
+      source: "official-sns",
+      url: "https://x.com/example",
+    };
+    const html = seoPages(shops, new Map([["node/123", record]])).files.get("/shop/node-123/")!;
+    expect(about(html)).toBe(
+      "公式に家系の名乗りは無く、運営者の判断（営業は店の公式 SNS で確かめた。2026-11-15）",
+    );
+  });
+});
+
 /** 記録 1 件を持たせた店のページ（#367）。 */
 const withUrl = (record: object) =>
   seoPages(shops, new Map([["node/123", record]])).files.get("/shop/node-123/")!;

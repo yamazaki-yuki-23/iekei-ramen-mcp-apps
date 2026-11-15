@@ -478,5 +478,18 @@
   {"name":"鶴乃家 東広島西条店","prefecture":"広島県","address":"東広島市西条中央1丁目16-12","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"https://nbf-nip.com/business/tsurunoya/"},
   {"id":"way/1317832058","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"https://nbf-nip.com/business/tsurunoya/"},
   {"id":"node/10240161955","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"https://nbf-nip.com/business/tsurunoya/"},
-  {"id":"node/11359795983","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"http://www.manpukuya.jp/"}
+  {"id":"node/11359795983","basis":"self","status":"open","checked":"2026-11-07","source":"official-site","url":"http://www.manpukuya.jp/"},
+  {"id":"node/599232585","basis":"self","status":"open","checked":"2026-11-15","source":"official-sns","url":"https://www.instagram.com/seiya_kyodo/"},
+  {"id":"way/726542064","basis":"chain","chain":"王道家","status":"open","checked":"2026-11-15","source":"official-sns","url":"https://x.com/tamakiya2021"},
+  {"id":"node/822443540","basis":"self","status":"open","checked":"2026-11-15","source":"official-sns","url":"https://x.com/musashi_matudo"},
+  {"id":"node/978841175","basis":"owner","status":"open","checked":"2026-11-15","source":"official-sns","url":"https://x.com/_machidaya_"},
+  {"id":"node/1438368802","basis":"self","status":"open","checked":"2026-11-15","source":"official-sns","url":"https://x.com/iseharaya"},
+  {"id":"node/1776253768","basis":"self","status":"open","checked":"2026-11-15","source":"official-sns","url":"https://x.com/noukouya"},
+  {"id":"node/2339808900","basis":"self","status":"open","checked":"2026-11-15","source":"official-site","url":"https://jyoujyouya.com/"},
+  {"id":"node/2356914222","basis":"self","status":"open","checked":"2026-11-15","source":"official-sns","url":"https://x.com/shonannoie"},
+  {"id":"node/2696243708","basis":"self","status":"open","checked":"2026-11-15","source":"official-site","url":"https://www.ginya-web.com/"},
+  {"id":"node/2877528127","basis":"owner","status":"open","checked":"2026-11-15","source":"official-sns","url":"https://x.com/seitenya_7108"},
+  {"name":"横浜家系ラーメン みさきや","prefecture":"東京都","address":"町田市金森東3-14-15","basis":"self","status":"open","checked":"2026-11-15","source":"official-sns","url":"https://www.instagram.com/misakiya_hattori/"},
+  {"name":"千家","prefecture":"神奈川県","address":"横浜市南区前里町3-75","basis":"self","status":"open","checked":"2026-11-15","source":"official-sns","url":"https://www.instagram.com/yokohamasenya/"},
+  {"name":"本ごう家","prefecture":"東京都","address":"文京区本郷3-36-9","basis":"chain","chain":"王道家","status":"open","checked":"2026-11-15","source":"official-sns","url":"https://x.com/hongouya_iekei"}
 ]
