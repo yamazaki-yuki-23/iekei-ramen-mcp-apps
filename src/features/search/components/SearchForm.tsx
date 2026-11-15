@@ -85,7 +85,7 @@ export function SearchForm({ prefectures, values, onChange, onSubmit, busy, hide
             data-result-input="keyword"
             className={styles.input}
             type="search"
-            placeholder="店名・ブランド・地名"
+            placeholder="店名・ブランド・市区町村"
             value={values.keyword}
             onChange={(e) => onChange({ ...values, keyword: e.target.value })}
           />

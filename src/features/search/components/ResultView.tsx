@@ -4,6 +4,7 @@ import type { Bounds, Origin, SearchMode, Shop } from "../../../types";
 import styles from "../styles/search.module.css";
 import { MapToolbar, type FullscreenControl } from "./MapToolbar";
 import { MapView } from "../lib/lazy-map";
+import { usePlaceFallback } from "../hooks/use-place-fallback";
 import { MapLoadBoundary } from "./MapLoadBoundary";
 import { ShopList } from "./ShopList";
 import { Pending } from "../../../components/Pending";
@@ -52,6 +53,9 @@ interface Props {
   belowMap?: ReactNode;
   /** 検索が空のときに添える、報告の口への案内。報告できないホストでは渡さない。 */
   reportHint?: string;
+  /** 「店名で」に入れた語と、それを地名として探す口。0 軒のときに使う（#401）。 */
+  placeQuery?: string;
+  onSearchPlace?: (query: string) => Promise<unknown>;
   /** 読み込み中・失敗の表示。あれば地図と一覧の代わりに出す（絞り込みは残す）。 */
   status?: ReactNode;
   /** 結果の領域の見え方（#214）。骨組みの間は地図を描かず、同じ大きさの箱で場所を取る。 */
@@ -118,6 +122,8 @@ function MapArea({
  */
 export function ResultView({
   reportHint,
+  placeQuery,
+  onSearchPlace,
   belowMap,
   status,
   look = "live",
@@ -135,6 +141,7 @@ export function ResultView({
   busy = false,
   visitedIds,
 }: Props) {
+  const place = usePlaceFallback(mode === "form" ? placeQuery : undefined, onSearchPlace);
   /*
    * いま地図に出ている範囲の読み取り口。**値ではなく読み方を持つ。**
    * 値で持つと、寄せ終わる前に押されたときに古い範囲で探してしまう。
@@ -296,8 +303,9 @@ export function ResultView({
         selectedId={selectedId}
         onSelect={onSelect}
         detail={detail}
-        emptyMessage={EMPTY_MESSAGE[mode]}
+        emptyMessage={place?.message ?? EMPTY_MESSAGE[mode]}
         emptyHint={mode === "form" ? reportHint : undefined}
+        emptyAction={place?.action}
         visitedIds={visitedIds}
       />
     </Pending>

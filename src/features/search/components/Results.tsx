@@ -216,6 +216,8 @@ interface Props {
   onForget: () => void;
   /** 会話でサインインを頼む。 */
   onSignIn?: () => void;
+  /** 地名で近くを探す。「店名で」が 0 軒のときの口（#401）。 */
+  onSearchPlace?: (query: string) => Promise<unknown>;
 }
 
 /**
@@ -254,6 +256,7 @@ export function Results({
   visitedIds,
   onForget,
   onSignIn,
+  onSearchPlace,
 }: Props) {
   /*
    * 結果が出た後に、地図（MapLibre）を先に読んでおく（lazy-map.ts の preloadMapView・#154）。
@@ -394,6 +397,8 @@ export function Results({
         status={status}
         look={look}
         reportHint={reportHint}
+        placeQuery={payload.query.keyword}
+        onSearchPlace={onSearchPlace}
       />
       {/* 但し書きは結果のすぐ下に 1 回（#152）。出す店が無いときは言うことが無い。 */}
       {!status && shops.length > 0 && <ResultCaveat reports={reports} />}

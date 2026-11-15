@@ -198,8 +198,7 @@ export function SearchAppInner({
   const visitsAvailable = signedIn || app.capabilities.visitSignIn;
   const visitedIds = useMemo(() => new Set(visited ?? []), [visited]);
 
-  // 「迷ったら」は「次の 3 軒を見る」で巡回する。payload に乗ってくる値を初期値にして、
-  // ここで進める（サーバーが範囲外を丸めるので、増やし続けても壊れない）。
+  // 「迷ったら」は「次の 3 軒を見る」で巡回する。payload の値から進める（範囲外はサーバーが丸める）。
   const round = payload.decide?.round ?? 0;
   /*
    * いま効いているキーワード。モデルがキーワード付きで「迷ったら」を開いた
@@ -339,6 +338,7 @@ export function SearchAppInner({
         visitedIds={visitedIds}
         onForget={runForget}
         onSignIn={supportedAction(app.capabilities.visitSignIn, () => void askToSignIn())}
+        onSearchPlace={searchPlace}
         belowMap={placed.belowMap}
         aside={placed.aside}
         decideTitle={withLocate(placeholderTitle(head.decideTitle, look), locate, capturePayload)}

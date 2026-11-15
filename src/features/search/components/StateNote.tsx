@@ -44,6 +44,11 @@ export const ZERO_ANNOUNCE = "見つかった店は 0 軒";
  */
 export function StateNote({ kind, children, hint, action, announce }: Props) {
   const role = kind === "error" ? "alert" : kind === "loading" ? "status" : undefined;
+  const button = action && (
+    <button type="button" className={styles.buttonSecondary} onClick={action.onClick}>
+      {action.label}
+    </button>
+  );
   return (
     <div
       className={KIND_CLASS[kind]}
@@ -58,12 +63,13 @@ export function StateNote({ kind, children, hint, action, announce }: Props) {
         <i />
       </span>
       <p className={styles.stateText}>{children}</p>
+      {/*
+       * 空のときは、次にできること（地名で探す、#401）を先に、報告の案内を後に置く。報告は最後の口。
+       * 失敗のときは、理由を読んでから「もう一度試す」を押すので、案内が先。
+       */}
+      {kind === "empty" && button}
       {hint && <p className={styles.stateHint}>{hint}</p>}
-      {action && (
-        <button type="button" className={styles.buttonSecondary} onClick={action.onClick}>
-          {action.label}
-        </button>
-      )}
+      {kind !== "empty" && button}
     </div>
   );
 }

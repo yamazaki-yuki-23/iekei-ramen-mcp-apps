@@ -305,7 +305,8 @@ test("会話の中: 0 件の結果から同じ探し方で探し直す間も、�
   await waitForApp(app);
   await app.locator("#kw").fill("存在しない店名ZZZ");
   await app.getByRole("button", { name: "この条件で探す", exact: true }).click();
-  const empty = app.getByText("条件に合う店舗が見つかりませんでした。");
+  // 0 軒の表示は入れた語を名乗る（#401）。待つ間は前の結果（ZZZ）のまま残る。
+  const empty = app.getByText(/^「存在しない店名ZZZ」に当たる店名・ブランドはありませんでした。/);
   await expect(empty).toBeVisible();
   await slowDown(page, E2E_SERVER_URL, 2500);
   await app.locator("#kw").fill("存在しない店名YYY");

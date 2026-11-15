@@ -75,7 +75,13 @@ test.describe("検索フォーム", () => {
     await app.locator("#kw").fill("存在しない店名ZZZ");
     await app.getByRole("button", { name: "この条件で探す", exact: true }).click();
 
-    await expect(app.getByText("条件に合う店舗が見つかりませんでした。")).toBeVisible();
+    // 入れた語を名乗り、地名で探す口を出す（#401）。
+    await expect(
+      app.getByText(/^「存在しない店名ZZZ」に当たる店名・ブランドはありませんでした。/),
+    ).toBeVisible();
+    await expect(
+      app.getByRole("button", { name: "「存在しない店名ZZZ」の近くを探す" }),
+    ).toBeVisible();
     await expect(shopCards(app)).toHaveCount(0);
   });
 });
