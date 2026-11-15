@@ -29,6 +29,13 @@ const NEEDS_SEARCH = {
 const UNAVAILABLE = "結果を取得できませんでした。通信が切れたか、サーバーが応答しませんでした。";
 
 /**
+ * 語だけで探したときの語（#401）。県や味でも絞った 0 軒は、店名が無いとは限らない（吉村家は
+ * 濃厚なので、クリーミーで絞ると 0 軒）。そのときは地名の口を出さず、今までの文のまま（Codex の指摘）。
+ */
+const keywordOnly = (query: AppPayload["query"]) =>
+  !query.prefecture && (!query.taste || query.taste === "unknown") ? query.keyword : undefined;
+
+/**
  * 揃うまでの表示。読み込み中・検索待ち・失敗（もう一度試す）を StateNote でそろえる。
  * 失敗の理由があれば、同じ表示の中に添える（別の欄に分けると、1 回の失敗で 2 つ読み上げる）。
  */
@@ -397,7 +404,7 @@ export function Results({
         status={status}
         look={look}
         reportHint={reportHint}
-        placeQuery={payload.query.keyword}
+        placeQuery={keywordOnly(payload.query)}
         onSearchPlace={onSearchPlace}
       />
       {/* 但し書きは結果のすぐ下に 1 回（#152）。出す店が無いときは言うことが無い。 */}

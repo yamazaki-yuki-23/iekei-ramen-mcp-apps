@@ -68,6 +68,17 @@ test.describe("検索フォーム", () => {
     await expect(shopCards(app).first()).toContainText("吉村家");
   });
 
+  test("県や味で絞った 0 軒は、店名が無いとは言わず、地名の口も出さない（#401）", async ({
+    page,
+  }) => {
+    // 吉村家は掲載されている（味は濃厚）。クリーミーで絞ると 0 軒になるが、店名が無いわけではない。
+    const app = await callTool(page, "search-iekei-ramen", { keyword: "吉村家", taste: "creamy" });
+    await waitForApp(app);
+    await expect(app.getByText("条件に合う店舗が見つかりませんでした。")).toBeVisible();
+    await expect(app.getByText(/に当たる店名・ブランドはありませんでした/)).toHaveCount(0);
+    await expect(app.getByRole("button", { name: /の近くを探す$/ })).toHaveCount(0);
+  });
+
   test("該当が無ければその旨を表示する", async ({ page }) => {
     const app = await callTool(page, "search-iekei-ramen");
     await waitForApp(app);
