@@ -68,6 +68,17 @@ test.describe("検索フォーム", () => {
     await expect(shopCards(app).first()).toContainText("吉村家");
   });
 
+  test("県や味で絞った 0 軒は、店名が無いとは言わず、地名の口も出さない（#401）", async ({
+    page,
+  }) => {
+    // 吉村家は掲載されている（味は濃厚）。クリーミーで絞ると 0 軒になるが、店名が無いわけではない。
+    const app = await callTool(page, "search-iekei-ramen", { keyword: "吉村家", taste: "creamy" });
+    await waitForApp(app);
+    await expect(app.getByText("条件に合う店舗が見つかりませんでした。")).toBeVisible();
+    await expect(app.getByText(/に当たる店名・ブランドはありませんでした/)).toHaveCount(0);
+    await expect(app.getByRole("button", { name: /の近くを探す$/ })).toHaveCount(0);
+  });
+
   test("該当が無ければその旨を表示する", async ({ page }) => {
     const app = await callTool(page, "search-iekei-ramen");
     await waitForApp(app);
@@ -75,7 +86,13 @@ test.describe("検索フォーム", () => {
     await app.locator("#kw").fill("存在しない店名ZZZ");
     await app.getByRole("button", { name: "この条件で探す", exact: true }).click();
 
-    await expect(app.getByText("条件に合う店舗が見つかりませんでした。")).toBeVisible();
+    // 入れた語を名乗り、地名で探す口を出す（#401）。
+    await expect(
+      app.getByText(/^「存在しない店名ZZZ」に当たる店名・ブランドはありませんでした。/),
+    ).toBeVisible();
+    await expect(
+      app.getByRole("button", { name: "「存在しない店名ZZZ」の近くを探す" }),
+    ).toBeVisible();
     await expect(shopCards(app)).toHaveCount(0);
   });
 });

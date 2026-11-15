@@ -21,6 +21,8 @@ interface Props {
   hint?: string;
   /** 次にできること（もう一度試す、など）。 */
   action?: { label: string; onClick: () => void };
+  /** 釦を押した後の経過（地名を探している、見つからなかった）。待ち受けの読み上げ領域に出す。 */
+  status?: string;
   /**
    * 結果が入れ替わったときに読み上げる文（use-result-announcement.ts）。画面の文をそのまま
    * 複製すると、同じ文が 2 か所に並ぶので、短い別の言い方を渡す。
@@ -42,8 +44,13 @@ export const ZERO_ANNOUNCE = "見つかった店は 0 軒";
  *
  * 読み上げ: 読み込み中は status（割り込まない）、エラーは alert（すぐ伝える）。
  */
-export function StateNote({ kind, children, hint, action, announce }: Props) {
+export function StateNote({ kind, children, hint, action, status, announce }: Props) {
   const role = kind === "error" ? "alert" : kind === "loading" ? "status" : undefined;
+  const button = action && (
+    <button type="button" className={styles.buttonSecondary} onClick={action.onClick}>
+      {action.label}
+    </button>
+  );
   return (
     <div
       className={KIND_CLASS[kind]}
@@ -58,12 +65,18 @@ export function StateNote({ kind, children, hint, action, announce }: Props) {
         <i />
       </span>
       <p className={styles.stateText}>{children}</p>
-      {hint && <p className={styles.stateHint}>{hint}</p>}
-      {action && (
-        <button type="button" className={styles.buttonSecondary} onClick={action.onClick}>
-          {action.label}
-        </button>
+      {/*
+       * 空のときは、次にできること（地名で探す、#401）を先に、報告の案内を後に置く。報告は最後の口。
+       * 失敗のときは、理由を読んでから「もう一度試す」を押すので、案内が先。
+       */}
+      {kind === "empty" && button}
+      {status !== undefined && (
+        <p className={styles.stateHint} role="status">
+          {status}
+        </p>
       )}
+      {hint && <p className={styles.stateHint}>{hint}</p>}
+      {kind !== "empty" && button}
     </div>
   );
 }

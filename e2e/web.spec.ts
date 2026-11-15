@@ -164,6 +164,43 @@ test("店の詳細から、その店のページを開ける（#400）", async (
   expect(await response.text()).toContain(name);
 });
 
+test("「店名で」が 0 軒のとき、入れた語の近くを地名で探せる（#401）", async ({ page }) => {
+  // 地名の検索は E2E 用の差し替え応答（e2e/fixtures/nominatim.json）。公開 Nominatim へは出ない。
+  await page.goto(`${WEB_URL}/?keyword=${encodeURIComponent("横浜駅")}`);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  await expect(cards(page)).toHaveCount(0);
+  const empty = page.getByText(/^「横浜駅」に当たる店名・ブランドはありませんでした。/);
+  await expect(empty).toBeVisible();
+  const near = page.getByRole("button", { name: "「横浜駅」の近くを探す" });
+  // 報告の案内は消さず、地名の口の下に残す。
+  const report = page.getByText(/^知っている店が出てこないときは/);
+  await expect(report).toBeVisible();
+  const [nearY, reportY] = await Promise.all([
+    near.boundingBox().then((b) => b!.y),
+    report.boundingBox().then((b) => b!.y),
+  ]);
+  expect(nearY).toBeLessThan(reportY);
+
+  await near.click();
+  await expect(page.getByText("基準: 横浜駅（指定した地名）")).toBeVisible();
+  await expect(cards(page).first()).toBeVisible();
+});
+
+test("「店名で」の 0 軒から探した語が地名でもなければ、見つからないと書く（#401）", async ({
+  page,
+}) => {
+  await page.goto(`${WEB_URL}/?keyword=${encodeURIComponent("よしむらや")}`);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  await page.getByRole("button", { name: "「よしむらや」の近くを探す" }).click();
+  // 結果は読み上げにも伝える。焦点は押した釦に残るので、待ち受けの領域（role="status"）に出す。
+  const status = page.getByRole("status");
+  await expect(
+    status.filter({ hasText: "「よしむらや」という地名は見つかりませんでした。" }),
+  ).toBeVisible();
+  // 行き止まりにしない。報告の案内は残る。
+  await expect(page.getByText(/^知っている店が出てこないときは/)).toBeVisible();
+});
+
 test("Webの接続失敗を表示し、再読み込みで検索へ戻れる", async ({ page }) => {
   await page.route(`${WEB_URL}/mcp`, (route) =>
     route.fulfill({ status: 503, body: "unavailable" }),
