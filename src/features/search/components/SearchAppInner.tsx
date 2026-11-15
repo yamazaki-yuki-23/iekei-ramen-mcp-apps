@@ -28,6 +28,7 @@ import { AppHeader } from "./AppHeader";
 import { CountTag } from "./CountTag";
 import type { PresentationProps } from "../SearchApp";
 import { pageHead } from "../utils/heading";
+import { shopPageUrl } from "../utils/shop-page";
 import { issueWith, withLocate, type CapturePayload } from "../lib/issue-tickets";
 export interface InnerProps extends PresentationProps {
   app: UiHost;
@@ -230,8 +231,7 @@ export function SearchAppInner({
     signedIn,
   });
 
-  // 現在地モードは基準地点が決まるまで結果を出さない
-  // （直前のモードの payload が順位付きで残ってしまうため）。
+  // 現在地モードは基準地点が決まるまで結果を出さない（直前の payload が順位付きで残るため）。
   const awaitingOrigin = mode === "nearby" && payload.query.origin === undefined;
 
   const { payloadReady, waiting, look, heading, shops, count } = useResultState({
@@ -259,6 +259,7 @@ export function SearchAppInner({
       }
       onAsk={supportedAction(app.capabilities.model, () => void askAboutShop(selected))}
       onOpenMap={() => openInMaps(selected)}
+      onOpenPage={() => openExternal(shopPageUrl(selected.id))}
       onClear={() => {
         // 閉じたら、焦点を元のカードへ戻す（#212）。カードは残り、詳細だけが外れる。
         flushSync(() => onSelect(null));

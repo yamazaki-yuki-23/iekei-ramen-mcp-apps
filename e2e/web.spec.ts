@@ -1,7 +1,7 @@
 import { test } from "./fixtures";
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import type { AppPayload } from "../src/types";
-import { openMode } from "./helpers";
+import { openMode, shopName } from "./helpers";
 import { resultCaveat } from "../src/utils/data-caveats";
 
 const WEB_URL = "http://localhost:3134";
@@ -139,6 +139,29 @@ test("Webを直接開いて検索・現在地・地図・まわる店を使え�
   await expect(page.getByRole("button", { name: "全画面" })).toHaveCount(0);
   await expect(route.getByRole("heading")).toHaveText("まわる店（2 / 3 軒）");
   expect(errors).toEqual([]);
+});
+
+test("店の詳細から、その店のページを開ける（#400）", async ({ page, request }) => {
+  await page.goto(WEB_URL);
+  await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  const first = cards(page).first();
+  const id = (await first.getAttribute("data-shop-id"))!;
+  const name = (await shopName(first)).trim();
+  await first.click();
+  // 開くのはブラウザ（新しいタブ）。実際には開かずに、渡す URL を確かめる。
+  await page.evaluate(() => {
+    window.open = (url) => {
+      document.documentElement.dataset.openedUrl = String(url);
+      return null;
+    };
+  });
+  await page.getByRole("button", { name: "店のページを見る" }).click();
+  const href = `/shop/${id.replace("/", "-")}/`;
+  await expect(page.locator("html")).toHaveAttribute("data-opened-url", href);
+  // 行き先が本当にある（404 へ送らない）。ビルドした静的ページを同じサーバーから読む。
+  const response = await request.get(WEB_URL + href);
+  expect(response.status()).toBe(200);
+  expect(await response.text()).toContain(name);
 });
 
 test("Webの接続失敗を表示し、再読み込みで検索へ戻れる", async ({ page }) => {
