@@ -41,11 +41,61 @@ async function openTop(page: Page) {
 test("推定の位置で出ていても、券売機の「近くで」は端末の位置の 3 軒を出す（#364）", async ({
   page,
 }) => {
-  await allowYokohama(page);
+  // 許可は開いた後に出す。開く前から許可があると、最初の 3 軒から端末の位置になる（#398）。
   await openTop(page);
+  await allowYokohama(page);
   await page.getByRole("button", { name: /^近くで/ }).click();
   await page.getByRole("button", { name: /^この条件で 3 軒を出す/ }).click();
   await expect(decideTitle(page)).toHaveText(/^迷ったらこの 3 軒（現在地）$/);
+});
+
+/** 端末の位置を求めた回数を数える（許可の問い合わせを出していないかを見る）。 */
+async function countPositionRequests(page: Page) {
+  await page.addInitScript(() => {
+    const geo = navigator.geolocation;
+    const original = geo.getCurrentPosition.bind(geo);
+    (window as unknown as { positionRequests: number }).positionRequests = 0;
+    geo.getCurrentPosition = (...args) => {
+      (window as unknown as { positionRequests: number }).positionRequests += 1;
+      original(...args);
+    };
+  });
+  return () =>
+    page.evaluate(() => (window as unknown as { positionRequests: number }).positionRequests);
+}
+
+const nearbyTab = (page: Page) =>
+  page
+    .getByRole("navigation", { name: "探し方" })
+    .getByRole("button", { name: "現在地から", exact: true });
+
+test("位置の許可が済んでいれば、最初の 3 軒を端末の位置で出す（#398）", async ({ page }) => {
+  await allowYokohama(page);
+  await startFromEdge(page, "decide-iekei-ramen");
+  await page.goto(WEB);
+  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
+  await expect(decideTitle(page)).toHaveText(/^迷ったらこの 3 軒（現在地）$/);
+});
+
+test("推定の 3 軒のあとでも、許可が済んでいれば「現在地から」を 1 回押すだけで端末の位置になる（#398）", async ({
+  page,
+}) => {
+  await openTop(page);
+  await allowYokohama(page);
+  await nearbyTab(page).click();
+  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
+  await expect(page.getByText("基準: 現在地", { exact: true })).toBeVisible();
+});
+
+test("位置の許可がまだなら、問い合わせを出さずに推定の位置で出す（#398）", async ({ page }) => {
+  await page.context().clearPermissions();
+  const requests = await countPositionRequests(page);
+  await openTop(page);
+  // 「現在地から」へ移っても推定の基準のまま。端末の位置は求めない。
+  await nearbyTab(page).click();
+  await expect(page.locator("main")).toHaveAttribute("data-pending-calls", "0");
+  await expect(page.getByText(/^基準: さいたま市（/)).toBeVisible();
+  expect(await requests()).toBe(0);
 });
 
 test("位置情報を拒否したときは、今までどおり推定の位置で出す（#364）", async ({ page }) => {
@@ -60,8 +110,8 @@ test("位置情報を拒否したときは、今までどおり推定の位置�
 test("見出しの横の「現在地で出し直す」から、端末の位置の 3 軒に変わる（#364）", async ({
   page,
 }) => {
-  await allowYokohama(page);
   await openTop(page);
+  await allowYokohama(page);
   const before = await page
     .locator("ul > li > button[data-shop-id]")
     .first()
