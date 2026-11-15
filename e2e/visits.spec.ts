@@ -221,6 +221,73 @@ test.describe("サインイン済み", () => {
     expect(stamps[1].payload.visited).toEqual([]);
   });
 
+  test("「行った」の印は、応答を待たずに付き、失敗したら元に戻る（#396）", async ({ page }) => {
+    /*
+     * 応答を手で止めておき、**止めている間に**印が付いていることを見る。
+     * 時間で遅らせるだけだと、遅い CI で応答が先に届き、待っていても通ってしまう。
+     * 2 回目（取り消し）は失敗の応答を返し、重ねていた見た目が戻って案内が出ることを見る。
+     */
+    let release!: () => void;
+    let calls = 0;
+    await page.route(`**/${MEMBER_SERVER_URL.split("//")[1]}`, async (route) => {
+      const request = route.request().postDataJSON();
+      if (request?.params?.name !== "stamp-iekei-ramen") {
+        await route.continue();
+        return;
+      }
+      calls += 1;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      if (calls === 1) {
+        const response = await route.fetch();
+        const body = await response.text();
+        await held;
+        await route.fulfill({ response, body });
+        return;
+      }
+      await held;
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: request.id,
+          result: { isError: true, content: [{ type: "text", text: "失敗" }] },
+        }),
+      });
+    });
+    const app = await callTool(
+      page,
+      "search-iekei-ramen",
+      { prefecture: "神奈川県" },
+      MEMBER_SERVER_NAME,
+    );
+    await waitForApp(app);
+    await selectFirst(app);
+    const badge = shopCards(app).first().getByText("行った", { exact: true });
+
+    await app.getByRole("button", { name: "行った", exact: true }).click();
+    await expect.poll(() => calls).toBe(1);
+    await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
+    await expect(badge).toBeVisible();
+    release();
+    await expect(app.locator("main[data-pending-calls]")).toHaveAttribute(
+      "data-pending-calls",
+      "0",
+    );
+    await expect(badge).toBeVisible();
+
+    // 取り消しは失敗させる。止めている間は外れて見え、失敗の応答で付き直す。
+    await app.getByRole("button", { name: "行ったを取り消す" }).click();
+    await expect.poll(() => calls).toBe(2);
+    await expect(app.getByRole("button", { name: "行った", exact: true })).toBeVisible();
+    await expect(badge).toHaveCount(0);
+    release();
+    await expect(app.getByText(/^記録できませんでした/)).toBeVisible();
+    await expect(app.getByRole("button", { name: "行ったを取り消す" })).toBeVisible();
+    await expect(badge).toBeVisible();
+  });
+
   test("壊れた軽量応答では印を付けず、エラー表示後にも再試行できる", async ({ page }) => {
     let broken = true;
     await page.route(`**/${MEMBER_SERVER_URL.split("//")[1]}`, async (route) => {

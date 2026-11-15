@@ -15,8 +15,10 @@
  */
 import type { McpUiDisplayMode, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import {
+  startTransition,
   useCallback,
   useEffect,
+  useOptimistic,
   useRef,
   useState,
   type ComponentType,
@@ -330,6 +332,23 @@ function SearchAppConnected({
   const [stampQueue] = useState(createStampQueue);
 
   /**
+   * 押した「行った」を、応答を待たずに印へ出す（#396）。
+   *
+   * **送っている間だけ重ねる。** 送り終われば応答で差し替わった記録に戻るので、
+   * 失敗したときは何もしなくても印が元に戻る。結果ごとに作り直される Inner に
+   * 置くと、送っている間にホストから結果が届いたとき印が一度消える（#171 の場面）。
+   */
+  const [visited, overlayVisit] = useOptimistic(payload?.visited, overlay);
+  const markVisit = useCallback(
+    (shopId: string, next: boolean, sent: Promise<void>) =>
+      startTransition(async () => {
+        overlayVisit({ shopId, visited: next });
+        await sent;
+      }),
+    [overlayVisit],
+  );
+
+  /**
    * 受け渡しを積む。effect からも、失敗した解除のやり直しからも、ここを通す。
    * 片方で別に組むと列が分かれて、完了順の入れ替わりが戻ってくる。
    */
@@ -480,6 +499,8 @@ function SearchAppConnected({
       onRemoveStop={removeStop}
       onClearStops={clearStops}
       onVisits={applyVisits}
+      visited={visited}
+      onMarkVisit={markVisit}
       pendingCalls={pendingCalls}
       trackCall={trackCall}
       stampQueue={stampQueue}
@@ -490,6 +511,16 @@ function SearchAppConnected({
       hostContext={{ ...app.getHostContext(), ...hostContextPatch }}
     />
   );
+}
+
+/** 送っている「行った」を記録に重ねる。匿名（記録なし）のときは触らない。 */
+function overlay(
+  ids: string[] | undefined,
+  { shopId, visited }: { shopId: string; visited: boolean },
+): string[] | undefined {
+  if (!ids) return ids;
+  const rest = ids.filter((id) => id !== shopId);
+  return visited ? [...rest, shopId] : rest;
 }
 
 /** tool の引数を、検索フォームの初期値に写す。 */

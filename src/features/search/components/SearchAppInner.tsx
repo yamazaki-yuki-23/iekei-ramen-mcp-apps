@@ -53,6 +53,10 @@ export interface InnerProps extends PresentationProps {
   onClearStops: () => void;
   /** 記録の更新を反映する（検索結果の画面は動かさない）。 */
   onVisits: (next: VisitResult) => void;
+  /** 行った店の記録。送っている「行った」を重ねてある（外側が持つ・#396）。 */
+  visited: string[] | undefined;
+  /** 送った「行った」を、応答が届くまで印に出す。 */
+  onMarkVisit: (shopId: string, visited: boolean, sent: Promise<void>) => void;
   /** 返ってきていない呼び出しの数（外側が持つ）。 */
   pendingCalls: number;
   trackCall: (delta: 1 | -1) => void;
@@ -130,6 +134,8 @@ export function SearchAppInner({
   onRemoveStop,
   onClearStops,
   onVisits,
+  visited,
+  onMarkVisit,
   pendingCalls,
   trackCall,
   stampQueue,
@@ -175,6 +181,7 @@ export function SearchAppInner({
     awaitContext,
     releaseSelection,
     onVisits,
+    onMarkVisit,
     includeVisitedShops: payload.mode === "visited",
     trackCall,
     stampQueue,
@@ -188,7 +195,7 @@ export function SearchAppInner({
    */
   const signedIn = payload.visited !== undefined;
   const visitsAvailable = signedIn || app.capabilities.visitSignIn;
-  const visitedIds = useMemo(() => new Set(payload.visited ?? []), [payload.visited]);
+  const visitedIds = useMemo(() => new Set(visited ?? []), [visited]);
 
   // 「迷ったら」は「次の 3 軒を見る」で巡回する。payload に乗ってくる値を初期値にして、
   // ここで進める（サーバーが範囲外を丸めるので、増やし続けても壊れない）。
