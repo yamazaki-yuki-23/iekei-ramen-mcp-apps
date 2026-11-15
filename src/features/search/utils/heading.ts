@@ -57,13 +57,20 @@ export function formatCount(
   total: number,
   shown: number,
   decide: DecideInfo | undefined,
+  /** 結果が「どこ」のものか（`scopeLabel`）。 */
+  scope?: string,
 ): string | null {
   // 0 軒のときは並べたものが無いので、根拠も名乗らない。
   // 共有の 3 軒は見出しが「シェアされた 3 軒」と言うので、札で繰り返さない。
   if (mode === "decide")
     return decide && shown > 0 && decide.basis !== "shared" ? basisLabel(decide) : null;
   if (mode === "visited") return `${total} 軒`;
-  return total > shown ? `${total} 軒（${shown} 軒を表示）` : `${total} 軒`;
+  const count = total > shown ? `${total} 軒（${shown} 軒を表示）` : `${total} 軒`;
+  /*
+   * 範囲で探す前の地図は「全国 857 軒」（#402）。地図は一部の地域を映しているので、数だけだと
+   * 見えている店の数と取り違える。範囲・県で絞った後は、見出しがどこの数かを名乗る。
+   */
+  return mode === "map" && scope === "全国" ? `全国 ${count}` : count;
 }
 
 /**
