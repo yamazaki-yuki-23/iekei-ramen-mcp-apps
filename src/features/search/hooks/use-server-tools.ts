@@ -18,6 +18,8 @@ import type {
   VisitResult,
 } from "../../../types";
 import type { StampQueue } from "../utils/stamp-queue";
+import { positionIfGranted } from "../../../lib/browser-position";
+import { isEstimated } from "../../../utils/geo";
 
 /*
  * 記録に失敗したときの文。**サインインの切れも同じ見え方になる。**
@@ -437,6 +439,56 @@ export function useServerTools({
   /** サインインしていない人が「行った店」を開いたとき、会話でサインインを頼む。 */
   const askToSignIn = useCallback(() => sendText(visitedSignInText), [sendText]);
 
+  /**
+   * 呼び出しより前に待つ処理（券売機の「近くで」の位置取得）のために、通し番号を
+   * 先に 1 つ取る。返す関数は「この後に一覧を差し替える操作が走っていないか」。
+   *
+   * **取った時点で進めるのが要点**（#146）。待つ間に、前から走っていた呼び出しの
+   * 応答が届くと、それが最新に見えて採用され、画面の作り直しで新しい発券が捨てられる。
+   * 先に進めておけば、その古い応答は追い越されたものとして捨てられる。待つ間に始まった
+   * 操作（次の 3 軒・キーワードを外す・タブ）も番号を進めるので、ここで見分けられる。
+   *
+   * 待つ間は取得中として数える（busy）。古い応答が捨てられて呼び出しが 0 件になっても、
+   * 位置待ちの間に古い店を選べたり、聞けたりしないように。stale は触らない（前の呼び出しが
+   * 立てた stale を消すと、捨てた結果がまた見える）。release は待ちが終わったら必ず呼ぶ。
+   */
+  const reserveResult = useCallback(() => {
+    reservation.current?.();
+    // この予約が、応答待ちの呼び出しを追い越したか。追い越した分の stale だけを取り消しで戻す。
+    const overtook = replacingSeq.current === resultSeq.current;
+    const at = (resultSeq.current += 1);
+    setInFlight((n) => n + 1);
+    // 何度呼ばれても 1 回だけ外す（番号が進んだときと、予約した側の finally の両方から来る）。
+    const lease = { released: false };
+    const release = () => {
+      if (lease.released) return;
+      lease.released = true;
+      if (reservation.current === release) reservation.current = null;
+      setInFlight((n) => n - 1);
+    };
+    reservation.current = release;
+    const current = () => resultSeq.current === at;
+    /*
+     * 発券そのものを取り消す（キーの押し直しなど）。外すだけでなく、まだ誰も番号を進めて
+     * いなければ stale も戻す。予約が追い越した前の呼び出し（次の 3 軒など）が立てた stale が
+     * 残ると、その応答は捨てられるので、表示中の正しい食券が「取得できませんでした」に変わる。
+     * 位置が取れて普通に終わったときは release だけ（続けて発券が stale を引き継ぐ）。
+     */
+    const cancel = () => {
+      // 前から残っていた stale（失敗・下書きと違う応答）は、この予約のせいではないので戻さない。
+      if (current() && overtook) setStale(false);
+      release();
+    };
+    return { current, release, cancel };
+  }, []);
+
+  /**
+   * 基準地点から近い 5 軒。
+   *
+   * **基準が接続元・ホストからの推定なら、位置の許可がもう「許可」のときだけ端末の位置に
+   * 替える（#398）。** 推定から測った距離で店を選ばせない。問い合わせは出さない。待つ間は
+   * 番号を取っておき、別の操作が始まったら捨てる（券売機の「近くで」と同じ。#364）。
+   */
   const runNearby = useCallback(
     function runNearbyOp(
       lat: number,
@@ -446,15 +498,26 @@ export function useServerTools({
     ) {
       lastAction.current = () => runNearbyOp(lat, lon, label, source);
       onNotice(null);
-      void call("find-nearby-iekei-ramen", {
-        lat,
-        lon,
-        limit: 5,
-        label,
-        source,
+      const find = (at: Pick<Origin, "lat" | "lon" | "label" | "source">) =>
+        void call("find-nearby-iekei-ramen", { ...at, limit: 5 });
+      if (!isEstimated({ lat, lon, source })) return find({ lat, lon, label, source });
+      const waiting = reserveResult();
+      void positionIfGranted().then((pos) => {
+        waiting.release();
+        if (!waiting.current()) return;
+        find(
+          pos
+            ? {
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude,
+                label: "現在地",
+                source: "precise",
+              }
+            : { lat, lon, label, source },
+        );
       });
     },
-    [call, onNotice],
+    [call, onNotice, reserveResult],
   );
 
   /**
@@ -574,49 +637,6 @@ export function useServerTools({
       sendText(async () => decideMessageText(shops, basis, await releaseSelection(), info)),
     [releaseSelection, sendText],
   );
-
-  /**
-   * 呼び出しより前に待つ処理（券売機の「近くで」の位置取得）のために、通し番号を
-   * 先に 1 つ取る。返す関数は「この後に一覧を差し替える操作が走っていないか」。
-   *
-   * **取った時点で進めるのが要点**（#146）。待つ間に、前から走っていた呼び出しの
-   * 応答が届くと、それが最新に見えて採用され、画面の作り直しで新しい発券が捨てられる。
-   * 先に進めておけば、その古い応答は追い越されたものとして捨てられる。待つ間に始まった
-   * 操作（次の 3 軒・キーワードを外す・タブ）も番号を進めるので、ここで見分けられる。
-   *
-   * 待つ間は取得中として数える（busy）。古い応答が捨てられて呼び出しが 0 件になっても、
-   * 位置待ちの間に古い店を選べたり、聞けたりしないように。stale は触らない（前の呼び出しが
-   * 立てた stale を消すと、捨てた結果がまた見える）。release は待ちが終わったら必ず呼ぶ。
-   */
-  const reserveResult = useCallback(() => {
-    reservation.current?.();
-    // この予約が、応答待ちの呼び出しを追い越したか。追い越した分の stale だけを取り消しで戻す。
-    const overtook = replacingSeq.current === resultSeq.current;
-    const at = (resultSeq.current += 1);
-    setInFlight((n) => n + 1);
-    // 何度呼ばれても 1 回だけ外す（番号が進んだときと、予約した側の finally の両方から来る）。
-    const lease = { released: false };
-    const release = () => {
-      if (lease.released) return;
-      lease.released = true;
-      if (reservation.current === release) reservation.current = null;
-      setInFlight((n) => n - 1);
-    };
-    reservation.current = release;
-    const current = () => resultSeq.current === at;
-    /*
-     * 発券そのものを取り消す（キーの押し直しなど）。外すだけでなく、まだ誰も番号を進めて
-     * いなければ stale も戻す。予約が追い越した前の呼び出し（次の 3 軒など）が立てた stale が
-     * 残ると、その応答は捨てられるので、表示中の正しい食券が「取得できませんでした」に変わる。
-     * 位置が取れて普通に終わったときは release だけ（続けて発券が stale を引き継ぐ）。
-     */
-    const cancel = () => {
-      // 前から残っていた stale（失敗・下書きと違う応答）は、この予約のせいではないので戻さない。
-      if (current() && overtook) setStale(false);
-      release();
-    };
-    return { current, release, cancel };
-  }, []);
 
   /** 最後に一覧を差し替えようとした操作を、同じ引数で前後の処理ごともう一度行う。 */
   const retry = useCallback(() => {

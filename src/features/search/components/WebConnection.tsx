@@ -1,5 +1,6 @@
 import type { Client } from "@modelcontextprotocol/client";
 import { useEffect, useState } from "react";
+import { positionIfGranted } from "../../../lib/browser-position";
 import { readPayload } from "../../../utils/payload";
 import { webEntry } from "../utils/web-entry";
 import type { HostConnectionProps, UiHost } from "../types/host";
@@ -42,6 +43,16 @@ export function WebConnection({ onPayload, children }: HostConnectionProps) {
   useEffect(() => {
     // 変数は書き換えず、箱の中身を変える（oxlint の React の規則 immutability）。
     const run: { active: boolean; client?: Client } = { active: true };
+    const entry = webEntry(window.location.search);
+    /*
+     * 接続元から推定する入口（near: "auto"）でも、位置の許可がもう「許可」なら端末の位置で出す
+     * （#398）。推定の位置から測った距離で店を選ばせない。問い合わせは出さない。接続と並べて取り、
+     * 最初の 3 軒を待たせすぎないよう 3 秒で諦めて推定に戻す。
+     */
+    const located =
+      "near" in entry.arguments && entry.arguments.near === "auto"
+        ? positionIfGranted(3_000)
+        : Promise.resolve(null);
     const connect = async () => {
       try {
         const { Client, StreamableHTTPClientTransport } = await clientModule;
@@ -52,7 +63,23 @@ export function WebConnection({ onPayload, children }: HostConnectionProps) {
           new StreamableHTTPClientTransport(new URL("/mcp", window.location.href)),
         );
         if (!run.active) return;
-        const result = await client.callTool(webEntry(window.location.search));
+        const pos = await located;
+        if (!run.active) return;
+        const result = await client.callTool(
+          pos
+            ? {
+                name: entry.name,
+                arguments: {
+                  ...entry.arguments,
+                  near: undefined,
+                  lat: pos.coords.latitude,
+                  lon: pos.coords.longitude,
+                  label: "現在地",
+                  source: "precise",
+                },
+              }
+            : entry,
+        );
         if (!run.active) return;
         const payload = readPayload(result);
         if (result.isError || !payload) throw new Error("検索結果を読み込めませんでした。");

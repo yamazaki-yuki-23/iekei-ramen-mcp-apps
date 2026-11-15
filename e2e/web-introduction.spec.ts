@@ -197,10 +197,12 @@ test("現在地の取得に失敗したら、「もう一度試す」は同じ�
   page,
   context,
 }) => {
-  await context.grantPermissions(["geolocation"], { origin: WEB_URL });
-  await context.setGeolocation({ latitude: 35.466, longitude: 139.622 });
   await page.goto(WEB_URL);
   await expect(page.locator("main[data-tool-result-ready=true]")).toBeVisible();
+  // 許可は開いた後に出す。開く前から許可があると、最初の 3 軒から端末の位置になり（#398）、
+  // 「現在地から」へ移った時点で近くを探してしまう（ここで見たいのは釦で探す 1 回目の失敗）。
+  await context.grantPermissions(["geolocation"], { origin: WEB_URL });
+  await context.setGeolocation({ latitude: 35.466, longitude: 139.622 });
   // 近くを探す最初の 1 回だけ落とす。届かなかった地点は payload に無いので、
   // payload から組み直すと地点を失う（前の地点か、地点の入力へ戻る）。
   const nearby: string[] = [];
