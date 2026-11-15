@@ -222,11 +222,13 @@ export function MapView({
     // 「この範囲で発券」は、押した瞬間にここから読む。
     onReadyRef.current?.(() => viewBounds(map));
     if (reused) {
-      // 入れ物の寸法と画角を、この画面に合わせ直してから描き始める。
+      // 入れ物の寸法と画角を、この画面に合わせ直してから描き始める（層がまだなら、できた知らせで）。
       map.resize();
       if (initialBounds) showBounds(map, initialBounds);
-      setZoom(map.getZoom());
-      setReady(true);
+      if (opened.overlays.ready) {
+        setZoom(map.getZoom());
+        setReady(true);
+      }
     }
     // 見切れた地図を押したときに、外側のページが動いて押下が空振りしないように（#58）。
     const releaseFocus = focusWithoutScrolling(map);
@@ -242,7 +244,7 @@ export function MapView({
       if (!alive) return;
       alive = false;
       // 壊さずに預ける。次の画面の MapView が付け替えて使う（#397）。
-      keepMap(map, container);
+      keepMap(opened);
       mapRef.current = null;
     };
     // initialBounds は名前のとおり初期値。あとから変わっても作り直さない。

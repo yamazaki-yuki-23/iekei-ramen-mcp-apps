@@ -117,11 +117,25 @@ export function canStartWorker(timeoutMs = 5_000): Promise<boolean> {
  * ponytail: 1 ページに地図は 1 つの前提。同時に 2 つ出す画面ができても、預けるのは 1 つで、
  * 預け直すときに前の 1 つを壊すので漏れはしない（使い回せるのが 1 つになるだけ）。
  */
-let kept: { map: MapLibreMap; container: HTMLDivElement } | undefined;
+let kept: OpenedMap | undefined;
+
+/**
+ * 枠に出した地図。`overlays` は重ねる層ができたか（`style.load` の後か）と、できたときに知らせる先。
+ *
+ * **知らせる先は、いまの持ち主に付け替える。** 層ができる前に預けられた地図を使い回すと
+ * （開発時の StrictMode は付ける → 外す → 付け直す を `style.load` より先に行う）、作った時の
+ * 知らせる先は外れた MapView のままで、新しい MapView は層ができたことを知らずにピンを描かない。
+ */
+type OpenedMap = {
+  map: MapLibreMap;
+  container: HTMLDivElement;
+  overlays: { ready: boolean; notify?: () => void };
+};
 
 /**
  * 地図を枠へ出す。預けた地図があれば入れ物ごと付け替え、無ければ作る。
  * 受け取ったら預かりは空にする（2 つの MapView が同じ地図を取らない）。作れなければ投げる。
+ * 層がもうできていれば `overlays.ready` が真で、`onOverlaysReady` は呼ばれない。
  */
 export function openMap(
   host: HTMLElement,
@@ -134,6 +148,7 @@ export function openMap(
   if (taken) {
     host.appendChild(taken.container);
     delete taken.container.dataset.moving;
+    taken.overlays.notify = onOverlaysReady;
     return { ...taken, reused: true };
   }
   const container = document.createElement("div");
@@ -141,8 +156,13 @@ export function openMap(
   container.setAttribute("role", "application");
   container.setAttribute("aria-label", "家系ラーメン店の地図");
   host.appendChild(container);
+  const overlays: OpenedMap["overlays"] = { ready: false, notify: onOverlaysReady };
   try {
-    return { map: createMap(container, initial, onOverlaysReady), container, reused: false };
+    const map = createMap(container, initial, () => {
+      overlays.ready = true;
+      overlays.notify?.();
+    });
+    return { map, container, overlays, reused: false };
   } catch (error) {
     container.remove();
     throw error;
@@ -150,10 +170,12 @@ export function openMap(
 }
 
 /** 使い終えた地図を預ける。前に預けた別の地図があれば、そちらは壊す。 */
-export function keepMap(map: MapLibreMap, container: HTMLDivElement) {
+export function keepMap({ map, container, overlays }: OpenedMap) {
   container.remove();
+  // 外れた MapView には知らせない（次の持ち主が openMap で付け替える）。
+  overlays.notify = undefined;
   if (kept && kept.map !== map) kept.map.remove();
-  kept = { map, container };
+  kept = { map, container, overlays };
 }
 
 /** 使い回す地図を、payload の範囲に合わせる。作るときの `bounds` と同じ寄せ方にする。 */
