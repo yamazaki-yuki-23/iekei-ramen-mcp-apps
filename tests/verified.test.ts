@@ -11,7 +11,8 @@ const text = (v: unknown) => typeof v === "string" && v.trim().length > 0;
 
 describe("確かめた記録（data/verified.json）", () => {
   it.each(records.map((r, i) => [i, r] as const))("%i: 形が決まりどおり", (_, r) => {
-    expect(["self", "chain"]).toContain(r.basis);
+    // owner: 公式に家系の名乗りは無く、家系かどうかはオーナーの判断（#389）。営業は公式の情報で確かめる。
+    expect(["self", "chain", "owner"]).toContain(r.basis);
     if (r.basis === "chain") expect(text(r.chain)).toBe(true);
     expect(["open", "closed", "unlisted"]).toContain(r.status);
     expect(r.checked).toMatch(/^\d{4}-\d{2}-\d{2}$/);
