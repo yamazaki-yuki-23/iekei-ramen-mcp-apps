@@ -55,6 +55,10 @@ describe("地図の使い回し（#397）", () => {
     expect(reused.reused).toBe(true);
     expect(reused.overlays.ready).toBe(false);
 
+    // Worker の確かめも、作ったときに始めた 1 本を新しい持ち主が受け取る（確かめを飛ばさない）。
+    expect(reused.worker).toBeInstanceOf(Promise);
+    expect(reused.worker).toBe(opened.worker);
+
     listeners.get("style.load")?.();
     expect(second).toHaveBeenCalledTimes(1);
     expect(first).not.toHaveBeenCalled();

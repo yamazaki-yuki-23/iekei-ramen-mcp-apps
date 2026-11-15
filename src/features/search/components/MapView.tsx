@@ -7,7 +7,6 @@ import type { Bounds, Shop } from "../../../types";
 import styles from "../styles/search.module.css";
 import {
   boundsOf,
-  canStartWorker,
   drawOrigin,
   drawRoute,
   drawShops,
@@ -180,11 +179,10 @@ export function MapView({
         // 壊せなかった地図は、外れた入れ物ごと捨てる（ほかに手は無い）。
       }
     };
-    // 描画の Worker が動くかを別に確かめる（6 系は動かなくてもエラーにならない）。使い回しは確かめ済み。
-    if (!reused)
-      void canStartWorker().then((ok) => {
-        if (!ok) giveUp();
-      });
+    // 描画の Worker が動くか。使い回した地図でも、確かめの結果はいまの持ち主が受け取る。
+    void opened.worker.then((ok) => {
+      if (!ok) giveUp();
+    });
     // Worker が止められたことは、地図のエラーとして届くこともある。
     const onError = (e: ErrorEvent) => {
       if (/worker/i.test(e.error?.message ?? "")) giveUp();

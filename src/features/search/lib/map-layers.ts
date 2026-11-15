@@ -83,7 +83,7 @@ let protocolAdded = false;
  * なるか、黙って返事が来ない。6 系の地図は、Worker が動かなくても店のデータを「読めた」扱いにするので、
  * 地図の側からは見分けられない。
  */
-export function canStartWorker(timeoutMs = 5_000): Promise<boolean> {
+function canStartWorker(timeoutMs = 5_000): Promise<boolean> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(new Blob(["postMessage(1);"], { type: "text/javascript" }));
     let worker: Worker;
@@ -121,15 +121,18 @@ let kept: OpenedMap | undefined;
 
 /**
  * 枠に出した地図。`overlays` は重ねる層ができたか（`style.load` の後か）と、できたときに知らせる先。
+ * `worker` は描画の Worker が動くかの確かめ（作ったときに 1 度だけ始める）。
  *
- * **知らせる先は、いまの持ち主に付け替える。** 層ができる前に預けられた地図を使い回すと
- * （開発時の StrictMode は付ける → 外す → 付け直す を `style.load` より先に行う）、作った時の
- * 知らせる先は外れた MapView のままで、新しい MapView は層ができたことを知らずにピンを描かない。
+ * **確かめ終わる前に預けられても、結果はいまの持ち主が受け取る。** 開発時の StrictMode は
+ * 付ける → 外す → 付け直す を `style.load` や Worker の確かめより先に行う。知らせる先が作った
+ * 時の MapView のままだと、新しい MapView は層ができたことを知らずにピンを描かず、Worker が
+ * 止められていても案内に切り替わらない（Codex の指摘 2 件）。
  */
 type OpenedMap = {
   map: MapLibreMap;
   container: HTMLDivElement;
   overlays: { ready: boolean; notify?: () => void };
+  worker: Promise<boolean>;
 };
 
 /**
@@ -162,7 +165,8 @@ export function openMap(
       overlays.ready = true;
       overlays.notify?.();
     });
-    return { map, container, overlays, reused: false };
+    // 6 系は Worker が動かなくても地図の側でエラーにならないので、別に確かめる。
+    return { map, container, overlays, worker: canStartWorker(), reused: false };
   } catch (error) {
     container.remove();
     throw error;
@@ -170,12 +174,12 @@ export function openMap(
 }
 
 /** 使い終えた地図を預ける。前に預けた別の地図があれば、そちらは壊す。 */
-export function keepMap({ map, container, overlays }: OpenedMap) {
+export function keepMap({ map, container, overlays, worker }: OpenedMap) {
   container.remove();
   // 外れた MapView には知らせない（次の持ち主が openMap で付け替える）。
   overlays.notify = undefined;
   if (kept && kept.map !== map) kept.map.remove();
-  kept = { map, container, overlays };
+  kept = { map, container, overlays, worker };
 }
 
 /** 使い回す地図を、payload の範囲に合わせる。作るときの `bounds` と同じ寄せ方にする。 */
