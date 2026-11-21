@@ -37,6 +37,13 @@ describe("規約の Markdown（#198）", () => {
   it("文中の < や & はそのまま文字として出す", () => {
     expect(legalMarkdown("a < b & c").html).toBe("<p>a &lt; b &amp; c</p>");
   });
+
+  it("消したあとに新しくできたコメントも消し切る（#414）", () => {
+    // 1 回だけ消すと、「<」+「<!---->」+「!-- x -->」の真ん中が消えて「<!-- x -->」ができ、残る
+    // （CodeQL アラート 2）。何も変わらなくなるまで繰り返す。
+    const { html } = legalMarkdown("<<!---->!-- 内部のメモ -->本文");
+    expect(html).toBe("<p>本文</p>");
+  });
 });
 
 describe("/privacy・/terms のページ（#198）", () => {
