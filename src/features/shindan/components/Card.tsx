@@ -1,5 +1,5 @@
 import { rarity } from "../../../utils/shindan";
-import { editionOf, type AnyType } from "../../../utils/shindan-editions";
+import { editionOf, isMostCommon, type AnyType } from "../../../utils/shindan-editions";
 import styles from "../styles/shindan.module.css";
 import { Face } from "./Face";
 
@@ -38,7 +38,7 @@ export function Card({
           {words.combos} {type.combos} 通り
         </span>
       </div>
-      {!small && rarity(type) === "定番" && <p className={styles.common}>{words.common}</p>}
+      {!small && isMostCommon(type) && <p className={styles.common}>{words.common}</p>}
       {spell && (
         <p className={styles.spell}>
           <span>{words.spell}</span>

@@ -14,6 +14,8 @@ const LEGEND = [
 ];
 const RARE = ["途中で食べる", "あれこれ足す", "いろいろ試す", "スープ", "ひとり", "増す"];
 const COMMON = ["途中で食べる", "一つだけ足す", "一つだけ使う", "スープ", "ひとり", "増す"];
+/** 全部のせの民（2 版でいちばん多い 6 通りの 1 つ）。 */
+const MOST = ["途中で食べる", "あれこれ足す", "一つだけ使う", "スープ", "ひとり", "増す"];
 
 test("6 問を 1 タップずつ答えると、結果のカードと食べ方の言葉が出て、家系マッチへ進める", async ({
   page,
@@ -150,6 +152,10 @@ test("珍しさで演出が変わり、動きを減らす設定では止まる",
   await expect(card).toHaveAttribute("data-rarity", "レア");
   await expect(page.getByText("激レア！")).toHaveCount(0);
   await answer(COMMON);
+  await expect(card).toHaveAttribute("data-rarity", "定番");
+  // ちょい足しの達人（4 通り）は定番でも、いちばん多い組み合わせではない（#410）。
+  await expect(page.getByText("いちばん多くの組み合わせが行き着く食べ方")).toHaveCount(0);
+  await answer(MOST);
   await expect(card).toHaveAttribute("data-rarity", "定番");
   await expect(page.getByText("いちばん多くの組み合わせが行き着く食べ方")).toBeVisible();
 

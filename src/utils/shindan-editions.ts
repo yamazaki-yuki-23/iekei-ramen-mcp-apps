@@ -83,3 +83,10 @@ export const isAnyTypeKey = (key: string): key is AnyTypeKey => Object.hasOwn(AL
 /** そのタイプの版（カードの言葉を版に合わせる）。 */
 export const editionOf = (key: AnyTypeKey): Edition =>
   v2.isTypeKey(key) ? EDITIONS[2] : EDITIONS[1];
+
+/**
+ * そのタイプが、自分の版でいちばん多くの組み合わせ（combos が最大）か。
+ * 「いちばん多くの組み合わせが行き着く…」はこのタイプだけに出す。定番（4 通り以上）でも最大でなければ出さない（#410）。
+ */
+export const isMostCommon = (type: AnyType): boolean =>
+  type.combos === Math.max(...Object.values(editionOf(type.key).types).map((t) => t.combos));

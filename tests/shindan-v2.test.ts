@@ -5,6 +5,7 @@ import {
   CURRENT_EDITION,
   EDITIONS,
   editionOf,
+  isMostCommon,
   pickEdition,
 } from "../src/utils/shindan-editions";
 import { QUESTIONS, shareText, spell, styleWords, TYPES, typeFor } from "../src/utils/shindan-v2";
@@ -111,5 +112,20 @@ describe("診断の版（#410）", () => {
   it("2 版のタイプにも丼の顔がある（シェア画像にも使う）", () => {
     for (const key of Object.keys(TYPES) as (keyof typeof TYPES)[])
       expect(faceSvg(key, 120)).toMatch(/^<svg .*<\/svg>$/);
+  });
+});
+
+/** その版で「いちばん多くの組み合わせ」の一言が出るタイプの key。 */
+const mostCommonKeys = (types: Record<string, Parameters<typeof isMostCommon>[0]>) =>
+  Object.values(types)
+    .filter(isMostCommon)
+    .map((t) => t.key)
+    .toSorted();
+
+describe("「いちばん多くの組み合わせ」の一言（#410）", () => {
+  it("その版で combos が最大のタイプだけに出す（定番でも最大でなければ出さない）", () => {
+    expect(mostCommonKeys(TYPES)).toEqual(["takujo", "zenbunose"]);
+    expect(isMostCommon(TYPES.choitashi)).toBe(false);
+    expect(mostCommonKeys(V1_TYPES)).toEqual(["garyu"]);
   });
 });
