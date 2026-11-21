@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-// @ts-expect-error データ作成スクリプトはJavaScript。
-import { officialCity, withOfficialCity } from "../scripts/data/municipalities.mjs";
+import { officialCity, withOfficialCity } from "../scripts/data/municipalities.ts";
 
 const municipalities = JSON.parse(
   readFileSync(new URL("../data/municipalities.json", import.meta.url), "utf8"),

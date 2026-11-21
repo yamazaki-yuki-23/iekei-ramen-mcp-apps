@@ -1,15 +1,13 @@
 import { describe, expect, it } from "vitest";
 import shops from "../data/shops.json";
-// @ts-expect-error データ生成スクリプトと共有する素の JS モジュール
 import {
   buildAddress,
   knownFacts,
   resolveDuplicates,
   tagsFingerprint,
   toShop,
-} from "../scripts/data/classify.mjs";
-// @ts-expect-error 同上
-import { decide, shopState } from "../scripts/data/judgments.mjs";
+} from "../scripts/data/classify.ts";
+import { decide, shopState } from "../scripts/data/judgments.ts";
 
 /** OSM のタグを組み立てる小さなヘルパ。 */
 const tags = (t: Record<string, string>) => t;

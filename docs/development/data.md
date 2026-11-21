@@ -7,15 +7,15 @@
 店舗データ自体は実行時に書き換えない。訪問記録はD1の`visits`、匿名の訂正報告は
 同じD1の`reports`に入る。報告から店舗データを自動で変更することはない。
 
-- [scripts/data/overpass-query.mjs](../../scripts/data/overpass-query.mjs) — **Overpass のクエリと取得の手順は
+- [scripts/data/overpass-query.ts](../../scripts/data/overpass-query.ts) — **Overpass のクエリと取得の手順は
   ここ 1 か所だけ。** 全国取得と取り直しが別々に写しを持っていて、条件を足したときに
   全国側だけ直していた（取り直した県だけ古い基準で拾ったデータが混ざる）。
   拾うのは「ラーメン店で店名に家」「店名に家系か既知ブランド」「**現地で入力された説明の欄が
   家系**」の 3 通り。3 つめが無いと、名前に「家」を持たない家系が落ちる
   （実測: 東京都だけで壱角屋・春樹・大和家）。
-- [scripts/data/fetch-shops.mjs](../../scripts/data/fetch-shops.mjs) — Overpass API を都道府県ごとに並列 3 で叩く。
+- [scripts/data/fetch-shops.ts](../../scripts/data/fetch-shops.ts) — Overpass API を都道府県ごとに並列 3 で叩く。
   1 県あたり 25〜80 秒かかり、たまに失敗する。失敗した県は
-  `node scripts/data/fetch-missing.mjs 京都府 宮城県` で個別に再取得してマージする。
+  `node scripts/data/fetch-missing.ts 京都府 宮城県` で個別に再取得してマージする。
   **失敗が残っていれば異常終了する。** 成功と同じ終了コードで返すと、県ごと欠けた
   osm-raw.json をそのまま次の工程へ渡す。このファイルは gitignore なので控えが無く、
   欠けたまま上書きすると取り直すしかない（実測: 752 → 435 件にした）。
@@ -25,20 +25,20 @@
   HTTP 200 と空配列**（実測: 茨城県が 0 件で「成功」し、投げ直すと 20 件返った）。
   ③ は本当に 0 件の県（富山県・高知県）と区別が付かないので、**0 件は別の
   エンドポイントで 1 度だけ疑い、2 回目も 0 なら受け入れる**。
-- [scripts/data/judgments.mjs](../../scripts/data/judgments.mjs) — TypeSafe に投げる質問と閾値。
+- [scripts/data/judgments.ts](../../scripts/data/judgments.ts) — TypeSafe に投げる質問と閾値。
   **判定を変えるならこのファイルだけ見ればいい。** 他所に判定ルールを散らさないこと。
-- [scripts/data/judge-all.mjs](../../scripts/data/judge-all.mjs) — 家系判定を実行して `judged.json` に保存。
+- [scripts/data/judge-all.ts](../../scripts/data/judge-all.ts) — 家系判定を実行して `judged.json` に保存。
   確率も保存するので、閾値だけ変えたときは `data:rescore` が API 無しで作り直す。
-- [scripts/data/find-duplicates.mjs](../../scripts/data/find-duplicates.mjs) — 200m 以内のペアが同一店舗かを判定。
-- [scripts/data/fill-areas.mjs](../../scripts/data/fill-areas.mjs) — 住所の欠けている店を座標から逆引きする
+- [scripts/data/find-duplicates.ts](../../scripts/data/find-duplicates.ts) — 200m 以内のペアが同一店舗かを判定。
+- [scripts/data/fill-areas.ts](../../scripts/data/fill-areas.ts) — 住所の欠けている店を座標から逆引きする
   （Nominatim）。**OSM のタグには住所がほとんど入っていない**（564 件中 87 件しか
   市区町村を持たず、東京都の町田商店 14 店は 1 件も持たない）ので、同名の店を
   見分けられない。**判定の後・整形の前に実行する**——shops.json を見る作りにすると
   「整形 → 逆引き → もう一度整形」になる。座標が動いた店は引き直す。
-- [scripts/data/build-dataset.mjs](../../scripts/data/build-dataset.mjs) — 判定結果の整形と重複除去。判定は持たない。
+- [scripts/data/build-dataset.ts](../../scripts/data/build-dataset.ts) — 判定結果の整形と重複除去。判定は持たない。
   areas.json は**欠けているところだけ**に使う（現地で入力された OSM のタグを上書きしない）。
 - 市区町村の名前は [data/municipalities.json](../../data/municipalities.json)（総務省の全国地方公共団体コード、
-  2026-11-04 に取得した版。都道府県 → 名前 → 読み）にそろえる（#349、[municipalities.mjs](../../scripts/data/municipalities.mjs)）。
+  2026-11-04 に取得した版。都道府県 → 名前 → 読み）にそろえる（#349、[municipalities.ts](../../scripts/data/municipalities.ts)）。
   OSM の `addr:city` には町名まで入ったもの（「酒田市上安町」）・「市」の無いもの（「横手」）・区だけのもの（「中区」）があり、
   1 軒だけの壊れた市区町村のページができていた。政令市は市でまとめ、区と町名は住所の頭に回す。
   **当てられない名前が残ると `data:build` は止まる。** 市町村の合併・改名があったら、総務省のページ
@@ -91,13 +91,13 @@ npm run data:build    # 整形（API キー不要）            → data/shops.j
 判定に関わるファイルを変えたときに何を再実行するかは、変えた場所で決まります。
 判定の材料（確率・スコア）は保存してあるので、方針を変えるだけなら API は要りません。
 
-| 変えたもの                                                | 再実行するもの                                      | API  |
-| --------------------------------------------------------- | --------------------------------------------------- | ---- |
-| 家系判定の閾値（`CONFIRMED_AT` など）と `decide()`        | `data:rescore` → `data:areas` → `data:build`        | 不要 |
-| `KNOWN_BRANDS` / `EXCLUDE`（`scripts/data/classify.mjs`） | `data:rescore` → `data:areas` → `data:build`        | 不要 |
-| 重複の閾値（`SAME_SHOP_AT`）                              | `data:build` だけ                                   | 不要 |
-| 質問文（`QUESTIONS`）、`shopState`                        | `data:judge -- --all` → `data:areas` → `data:build` | 要   |
-| 重複判定の質問（`PAIR_QUESTION`）、`PAIR_RADIUS_M`        | `data:dedupe` → `data:build`                        | 要   |
+| 変えたもの                                               | 再実行するもの                                      | API  |
+| -------------------------------------------------------- | --------------------------------------------------- | ---- |
+| 家系判定の閾値（`CONFIRMED_AT` など）と `decide()`       | `data:rescore` → `data:areas` → `data:build`        | 不要 |
+| `KNOWN_BRANDS` / `EXCLUDE`（`scripts/data/classify.ts`） | `data:rescore` → `data:areas` → `data:build`        | 不要 |
+| 重複の閾値（`SAME_SHOP_AT`）                             | `data:build` だけ                                   | 不要 |
+| 質問文（`QUESTIONS`）、`shopState`                       | `data:judge -- --all` → `data:areas` → `data:build` | 要   |
+| 重複判定の質問（`PAIR_QUESTION`）、`PAIR_RADIUS_M`       | `data:dedupe` → `data:build`                        | 要   |
 
 **判定を変えたら `data:areas` を挟みます。** 判定が変わると、それまで一覧に
 載っていなかった店が載ることがあり、その店の地名はまだ引いていません
@@ -145,7 +145,7 @@ npm run data:build     # 番地の精度で引けた店を shops.json に足す
   試した住所は 1 件も返らなかった。国土地理院は当たらなかったときに町や字までで返し、その名前で分かる
 - **番地の精度で当たった店だけ足す。** 返ってきた名前が「〜番」「〜番地」「〜番〜号」で終わり、その末尾の
   数字の並び（「一丁目１番」なら 1, 1）が、公式の住所で**同じ町の名前のすぐ後に**同じ順で出るときだけ
-  （[scripts/data/verified-shops.mjs](../../scripts/data/verified-shops.mjs) の `isPrecise`）。数字が 1 つ
+  （[scripts/data/verified-shops.ts](../../scripts/data/verified-shops.ts) の `isPrecise`）。数字が 1 つ
   住所にあるだけで通すと、丁目と街区を取り違える（「1-20-5」に「一丁目１番」）。町の名前を見ないと、同じ県の
   別の町に当たっても通る（「盛岡市大通1-20-5」に「盛岡市別町一丁目２０番」）。表記の違い（ヶ・ケ・が、字の有無）は
   同じと見る。旧字（「彌富通」と「弥富通」）は見ないので、安全側に落ちる。当たらずに残る数字は 1 つまで

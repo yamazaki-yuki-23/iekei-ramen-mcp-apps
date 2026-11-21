@@ -121,14 +121,14 @@ Googleへのサインインは本人確認で、クライアントへの権限�
 | `server/utils/same-name-place.ts`                                       | 全データで同名の店に、店名だけを出す所で添える町名（`place`）を付ける（#307） |
 | `src/utils/shop-name.ts`                                                | 店名だけを出す所の名前（町名を添える）                                        |
 | `migrations/`                                                           | D1 のスキーマ（デプロイ時に適用）                                             |
-| `scripts/data/overpass-query.mjs`                                       | Overpass のクエリと取得の手順。拾う条件を変えるならここだけ見る               |
-| `scripts/data/fetch-shops.mjs`                                          | OpenStreetMap から店舗データを取得                                            |
-| `scripts/data/judgments.mjs`                                            | TypeSafe に投げる質問と閾値。判定を変えるならここだけ見る                     |
-| `scripts/data/judge-all.mjs`                                            | 家系判定を実行して `data/judged.json` に保存                                  |
-| `scripts/data/find-duplicates.mjs`                                      | 近い 2 件が同一店舗かを判定して `data/duplicates.json` に保存                 |
-| `scripts/data/rescore.mjs`                                              | 保存済みの確率から判定だけ作り直す（API 不要）                                |
-| `scripts/data/fill-areas.mjs`                                           | 住所の欠けている店を座標から逆引き（Nominatim）                               |
-| `scripts/data/build-dataset.mjs`                                        | 判定結果を整形して `data/shops.json` を生成                                   |
+| `scripts/data/overpass-query.ts`                                        | Overpass のクエリと取得の手順。拾う条件を変えるならここだけ見る               |
+| `scripts/data/fetch-shops.ts`                                           | OpenStreetMap から店舗データを取得                                            |
+| `scripts/data/judgments.ts`                                             | TypeSafe に投げる質問と閾値。判定を変えるならここだけ見る                     |
+| `scripts/data/judge-all.ts`                                             | 家系判定を実行して `data/judged.json` に保存                                  |
+| `scripts/data/find-duplicates.ts`                                       | 近い 2 件が同一店舗かを判定して `data/duplicates.json` に保存                 |
+| `scripts/data/rescore.ts`                                               | 保存済みの確率から判定だけ作り直す（API 不要）                                |
+| `scripts/data/fill-areas.ts`                                            | 住所の欠けている店を座標から逆引き（Nominatim）                               |
+| `scripts/data/build-dataset.ts`                                         | 判定結果を整形して `data/shops.json` を生成                                   |
 
 ## tool 一覧
 
@@ -237,7 +237,7 @@ Gate のない直接検索にも本文を含む 10 秒の期限がある。接�
 ## ビルドチェーン
 
 ```
-src/features/search/main-mcp.tsx ─vite+singlefile→ dist/mcp-app.html ─embed-html.mjs→ src/generated/app-html.ts
+src/features/search/main-mcp.tsx ─vite+singlefile→ dist/mcp-app.html ─embed-html.ts→ src/generated/app-html.ts
                                                                               ↓ server.ts が import
 data/shops.json ──────────────────────────────────────────────────→ wrangler が Worker にバンドル
 ```

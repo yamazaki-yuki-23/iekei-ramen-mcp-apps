@@ -7,7 +7,7 @@
     "src/features/camera/main.tsx",
     "mcp-app.html",
     "src/features/search/main-mcp.tsx",
-    "scripts/**/*.mjs",
+    "scripts/**/*.ts",
     "tests/**/*.test.ts",
     "src/**/*.test.ts",
     "server/**/*.test.ts",
@@ -15,7 +15,7 @@
     "pw-shoot.config.ts",
     "doctor.config.ts"
   ],
-  "project": ["**/*.{ts,tsx,mjs}"],
+  "project": ["**/*.{ts,tsx}"],
   "ignoreBinaries": ["ffmpeg"],
   "ignoreDependencies": ["playwright"]
 }

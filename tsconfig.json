@@ -15,7 +15,9 @@
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "erasableSyntaxOnly": true,
+    "moduleDetection": "force"
   },
-  "include": ["src", "server", "vite.config.ts"]
+  "include": ["src", "server", "scripts", "vite.config.ts"]
 }

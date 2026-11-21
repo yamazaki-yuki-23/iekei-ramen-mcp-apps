@@ -59,7 +59,7 @@ export function usageEvent(name: string, args: unknown, signedIn: boolean): Usag
 }
 
 /**
- * Analytics Engine に書く形。並びは週ごとの集計（scripts/dev/usage.mjs）と揃えてある。
+ * Analytics Engine に書く形。並びは週ごとの集計（scripts/dev/usage.ts）と揃えてある。
  *
  * | 欄 | 中身 |
  * | --- | --- |

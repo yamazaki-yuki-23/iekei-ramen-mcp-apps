@@ -5,8 +5,7 @@
  * osm-raw.json 1 本しか無く、欠けたまま上書きすると取り直すしかない。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-// @ts-expect-error データ生成スクリプトと共有する素の JS モジュール
-import { DECLARES, fetchPref, query, toElement } from "../scripts/data/overpass-query.mjs";
+import { DECLARES, fetchPref, query, toElement } from "../scripts/data/overpass-query.ts";
 
 /** 呼ばれた順に応答を返す fetch。何回・どこへ投げたかを残す。 */
 function stubFetch(
@@ -76,7 +75,7 @@ describe("query — 拾う条件", () => {
      * 取得が「家系」の 3 文字だけを探していると、`description` にそう書いた
      * だけの店はそもそも判定まで届かない。
      *
-     * 並べたのは judgments.mjs の name_declares_iekei が例に挙げている綴り。
+     * 並べたのは judgments.ts の name_declares_iekei が例に挙げている綴り。
      */
     const declares = new RegExp(DECLARES);
     for (const written of [
