@@ -13,6 +13,7 @@ import {
 } from "../../utils/shindan-editions";
 import { afterPaint, isMuted, prepareWhenIdle, setMuted, sound, unlock } from "../../lib/sound";
 import { Card } from "./components/Card";
+import { Face } from "./components/Face";
 import styles from "./styles/shindan.module.css";
 
 const focusHeading = (el: HTMLHeadingElement | null) => el?.focus();
@@ -225,11 +226,16 @@ function Result({
       </div>
       <div className={styles.block}>
         <h3>相方</h3>
-        <p>
-          <strong>{partner.name}</strong>
-          <br />
-          {type.partnerWhy}
-        </p>
+        <div className={styles.partner}>
+          <span className={styles.partnerFace}>
+            <Face type={partner} size={72} />
+          </span>
+          <p>
+            <strong>{partner.name}</strong>
+            <br />
+            {type.partnerWhy}
+          </p>
+        </div>
       </div>
       <div className={styles.block}>
         <h3>流儀</h3>
