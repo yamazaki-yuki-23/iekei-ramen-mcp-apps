@@ -4,7 +4,7 @@ import type { AnyTypeKey } from "./shindan-editions";
 
 /*
  * 家系タイプ診断（#167）の丼のキャラクター。丼は同じで、タイプごとに表情と小物だけを変える。
- * 画面（React）とシェア画像（scripts/assets/shindan-og.mjs）の両方が、この形のデータから SVG を描く。
+ * 画面（React）とシェア画像（scripts/assets/shindan-og.ts）の両方が、この形のデータから SVG を描く。
  */
 
 export interface Shape {

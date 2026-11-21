@@ -9,7 +9,7 @@ export default {
     files: [
       // MCP Apps SDK の basic-host を取得しただけのもの（E2E 用、gitignore 済み）。
       "e2e-host/**",
-      // ビルド生成物。dist は vite、src/generated は embed-html.mjs が作る。
+      // ビルド生成物。dist は vite、src/generated は embed-html.ts が作る。
       "dist/**",
       "src/generated/**",
       // スクリーンショットや撮影結果。

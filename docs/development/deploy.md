@@ -28,7 +28,7 @@ Environment は `main` からしか使えないので、ほかのブランチの
 npm run deploy:staging   # いまの作業ツリーを上げる（どのブランチからでも。CI からは上げない）
 ```
 
-`scripts/dev/deploy-staging.mjs` が、ビルド → `dist/web` を `dist/staging` に写して検索エンジン避けを足す →
+`scripts/dev/deploy-staging.ts` が、ビルド → `dist/web` を `dist/staging` に写して検索エンジン避けを足す →
 確認用の D1 に `migrations/` を当てる → `wrangler deploy --env staging`、の順に行う。上げたものは
 次に誰かが上げるまで残る（**上げる前に、いまの中身を確かめ終えたか聞く**）。
 

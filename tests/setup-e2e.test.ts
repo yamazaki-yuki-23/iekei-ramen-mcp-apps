@@ -41,8 +41,8 @@ function fixture() {
     git(["tag", `v${version}`]);
   }
   copyFileSync(
-    new URL("../scripts/dev/setup-e2e.mjs", import.meta.url),
-    join(project, "scripts/dev/setup-e2e.mjs"),
+    new URL("../scripts/dev/setup-e2e.ts", import.meta.url),
+    join(project, "scripts/dev/setup-e2e.ts"),
   );
   const setVersion = (version: string) =>
     writeFileSync(
@@ -96,7 +96,7 @@ if(args[0]==='run' && args[1]==='build') {
     E2E_SETUP_LATEST_VERSION: "2.0.0",
   };
   const run = (extra: Record<string, string> = {}, args: string[] = []) =>
-    spawnSync(process.execPath, [join(project, "scripts/dev/setup-e2e.mjs"), ...args], {
+    spawnSync(process.execPath, [join(project, "scripts/dev/setup-e2e.ts"), ...args], {
       cwd: project,
       env: { ...env, ...extra },
       encoding: "utf8",

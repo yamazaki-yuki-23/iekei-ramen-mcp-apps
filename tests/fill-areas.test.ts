@@ -6,8 +6,8 @@
  */
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { isStale, needsFetch, pickArea } from "../scripts/data/fill-areas.mjs";
-import { readJson } from "../scripts/data/read-json.mjs";
+import { isStale, needsFetch, pickArea } from "../scripts/data/fill-areas.ts";
+import { readJson } from "../scripts/data/read-json.ts";
 
 describe("needsFetch", () => {
   it("まだ引いていなければ引く", () => {

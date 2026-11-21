@@ -37,7 +37,7 @@ React と `/match/` のインラインのスタイルと、Cloudflare Web Analyt
 
 ## 検索エンジン向けの静的ページ
 
-`npm run build:ui` の最後に `scripts/build/build-seo.mjs` が `data/shops.json` から
+`npm run build:ui` の最後に `scripts/build/build-seo.ts` が `data/shops.json` から
 都道府県・市区町村・店舗のHTML、`sitemap.xml`、`robots.txt`を `dist/web/` に生成する。
 生成物はGitに入れず、データの補正がマージされれば次のビルドで更新される。
 Web用Viteの出力を消す処理の後に生成し、WorkerのAPI経路は変更しない。
@@ -45,9 +45,9 @@ Web用Viteの出力を消す処理の後に生成し、WorkerのAPI経路は変�
 都道府県は `/area/kanagawa/` のような固定の英字、市区町村はその下の英字（`/area/aichi/nagoya/`、#341）。
 市区町村の英字は、総務省の一覧（`data/municipalities.json`）の読みをヘボン式にしたもの（長音は書かない、
 「市」「町」は付けない）。同じ県で同じ英字になるものだけ末尾を付ける（広島県の府中市 `fuchu-shi`・府中町 `fuchu-cho`）。
-一覧の読みが拗音を大きい字で書いている分（本庄市「ホンジヨウシ」）は `municipalities.mjs` の表で直す。
+一覧の読みが拗音を大きい字で書いている分（本庄市「ホンジヨウシ」）は `municipalities.ts` の表で直す。
 **英字の名前が無い市区町村にページが要るとビルドが止まる。** 前の日本語の URL（エンコード済み、末尾の `/` あり・なし）は
-`build-seo.mjs` が `dist/web/_redirects` に足した行で 301 にする。住所から区を推測せず、`shops.json` の `city` を使う。
+`build-seo.ts` が `dist/web/_redirects` に足した行で 301 にする。住所から区を推測せず、`shops.json` の `city` を使う。
 店舗は `/shop/node-1774529495/` のように安定IDの `/` を `-` にしたURLを使う。
 市区町村がない手動追加店も都道府県・店舗のページに載せる。
 
@@ -62,9 +62,9 @@ Web用Viteの出力を消す処理の後に生成し、WorkerのAPI経路は変�
 1 軒だけのページは中身がその店のページとほぼ同じになる（実測: index する市区町村 149 → 53）。
 県ページからのリンクは残す。
 **系列のページ（`/chain/machida-shoten/` のような英字）は、店が 2 軒以上の系列だけ作る**（#309）。
-英字の名前は `seo-pages.mjs` の `chainSlugs` が持つ（#326）。表記は系列の公式サイトのドメイン・英字表記に合わせ、無ければヘボン式。
+英字の名前は `seo-pages.ts` の `chainSlugs` が持つ（#326）。表記は系列の公式サイトのドメイン・英字表記に合わせ、無ければヘボン式。
 **表に無い系列にページが要るとビルドが止まる**ので、`chainSlugs` に足す。#309 で公開した日本語の URL（`/chain/%E7%94%BA…/`）は、
-`build-seo.mjs` が `dist/web/_redirects` に足した行で 301 にする（`_redirects` は届いたままのエンコード済みのパスと突き合わせる）。
+`build-seo.ts` が `dist/web/_redirects` に足した行で 301 にする（`_redirects` は届いたままのエンコード済みのパスと突き合わせる）。
 系列は `data/verified.json` の記録（`basis: chain`・`status: open`）で決め、`shops.json` の `brand`
 （店名からの推定）では決めない（記録と 25 軒食い違う）。中身は都道府県ごとの店のカードで、
 `/area/` の「系列」の段から辿れる。系列の説明・歴史・味は書かない。
@@ -76,7 +76,7 @@ Web用Viteの出力を消す処理の後に生成し、WorkerのAPI経路は変�
 `/new/` の下に新しい順のチップでつなぐ。月のページの URL は作った後で変えない。月ごとのページも sitemap に入れる。
 月はビルドした日（UTC）で数えるので、月が替わってから main へのマージでビルドされるまで移らない。
 **頼み方のページ（`/guide/`、#342）** は、アプリの「注文のしかた」（`OrderGuide.tsx`）と同じ源
-`src/utils/order-guide.ts` から作る（但し書きの `ORDER_DISCLAIMER` も含む）。文言を `seo-pages.mjs` に書き足さない。
+`src/utils/order-guide.ts` から作る（但し書きの `ORDER_DISCLAIMER` も含む）。文言を `seo-pages.ts` に書き足さない。
 `tests/seo-pages.test.ts` が源の値がページに出ているかを見るので、片方だけ直すと落ちる。店のページの「注文のしかたを見る」・
 県のページの下・Web の「家系とは」からリンクする。中身は一般的な作法で、店ごとの決まり・味・評判は書かない。
 市区町村と店舗のページには、見えている「◯◯の一覧」のリンクと同じ階層の `BreadcrumbList` を
@@ -106,9 +106,9 @@ Web用Viteの出力を消す処理の後に生成し、WorkerのAPI経路は変�
 
 アイコンは大きさで描き分ける（#130）。タブ・検索結果（16〜96px）は `public/favicon.svg`
 （看板の黄に海苔3枚。ロゴのピンと丼は16pxで潰れるため）、ホーム画面・ディレクトリ用は
-`scripts/assets/icons/logo-icon.svg`（ロゴそのもの）が正本。`node scripts/assets/render-favicon.mjs` で
+`scripts/assets/icons/logo-icon.svg`（ロゴそのもの）が正本。`node scripts/assets/render-favicon.ts` で
 96pxのPNG・180pxのホーム画面用PNG・512pxのディレクトリ用PNG（`icon-512.png`）を作る。
-OGPは `scripts/assets/og-card.svg` が正本で、`node scripts/assets/render-og-card.mjs` で作る。
+OGPは `scripts/assets/og-card.svg` が正本で、`node scripts/assets/render-og-card.ts` で作る。
 再生成にはPlaywrightのChromiumが必要。通常のCIではコミット済み画像を配信する。
 
 Search Consoleの所有権は2026-10-04に確認済み。DNSのTXTレコードを消さない。
@@ -117,7 +117,7 @@ Search Consoleの所有権は2026-10-04に確認済み。DNSのTXTレコード�
 
 ## プライバシーポリシーと利用規約（`/privacy`・`/terms`、#198）
 
-正本は `docs/legal/*.md`。`npm run build:ui` の最後に `scripts/build/build-seo.mjs` が `legalPages`（`scripts/build/seo-pages.mjs`）で
+正本は `docs/legal/*.md`。`npm run build:ui` の最後に `scripts/build/build-seo.ts` が `legalPages`（`scripts/build/seo-pages.ts`）で
 `dist/web/privacy.html`・`terms.html` を作る（静的アセットが `/privacy`・`/terms` で返す）。`【` が残っているとビルドが止まる。
 Web のすべてのページの下と `/connect` のフッターに 2 つへのリンクを出す（`src/utils/legal-links.ts`）。
 **保存するもの・外部に送る先・端末に残すものを変えたら、規約も直す**（直す箇所の表は [docs/legal/README.md](../legal/README.md)）。

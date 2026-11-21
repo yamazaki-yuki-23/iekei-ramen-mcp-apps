@@ -57,10 +57,10 @@ OSMを再取得しても同じIDへの補正は残る。追加のIDは店名と�
 **名乗りは店名だけに書かれているとは限らない。** `description` や `cuisine:ja`、
 `official_name` にも家系だと書いてある（実測: 8 件がこれで「判断できない」から
 確定へ動いた）。**現地で入力された文字は、店名からの推測より強い。**
-[shopState](../../scripts/data/judgments.mjs) が渡す欄を減らすと、判定材料ごと消える。
+[shopState](../../scripts/data/judgments.ts) が渡す欄を減らすと、判定材料ごと消える。
 
-判定を変えるときは [scripts/data/judgments.mjs](../../scripts/data/judgments.mjs) の質問文か閾値を触る。
-`KNOWN_BRANDS` と `EXCLUDE`（[scripts/data/classify.mjs](../../scripts/data/classify.mjs)）は事実の
+判定を変えるときは [scripts/data/judgments.ts](../../scripts/data/judgments.ts) の質問文か閾値を触る。
+`KNOWN_BRANDS` と `EXCLUDE`（[scripts/data/classify.ts](../../scripts/data/classify.ts)）は事実の
 対応表なのでコードに残してあり、モデルの判断より優先する。ジャンル語のリストは
 質問の選択肢に移したので無い。**判定できない件数が多いときは、閾値ではなく
 選択肢の不足か、渡していない欄を疑うこと**（中華料理店の選択肢が無くて `unclear` に
@@ -102,7 +102,7 @@ CSS より強いので、ホストが 0 を送ってくるだけで見た目が�
   選ぶ。32グループ以下では索引を作らず直接調べる。合計どうしを足すと丸め方が
   変わるため、右側の店を元の順で合計へ加える。`tests/cluster-equivalence.test.ts` が
   変更前の実装と所属・順序・中心・選択店を完全一致で比べる。
-  `node scripts/dev/benchmark-clusters.mjs` は同じ環境で前後の中央値・p95・計算回数を
+  `node scripts/dev/benchmark-clusters.ts` は同じ環境で前後の中央値・p95・計算回数を
   比べる。CIの `tests/cluster-work.test.ts` は時刻ではなく操作回数だけを検証する。
 - **外から来た文字を HTML として渡さない。** 基準地点の表示名は tool の引数と geocode の結果なので、
   属性（`aria-label`・`title`）か `textContent` に入れる（[map-layers.ts](../../src/features/search/lib/map-layers.ts)

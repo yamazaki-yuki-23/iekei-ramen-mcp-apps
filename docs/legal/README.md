@@ -2,10 +2,10 @@
 
 プライバシーポリシー（[privacy-policy.md](privacy-policy.md)）と利用規約（[terms.md](terms.md)）の正本。
 **`https://iekeiramen.com/privacy` と `/terms` で公開している**（#198、2026-10-12）。ビルドのときに
-`scripts/build/legal-markdown.mjs` が HTML にし、`scripts/build/seo-pages.mjs` の `legalPages` がほかの静的なページと同じ
+`scripts/build/legal-markdown.ts` が HTML にし、`scripts/build/seo-pages.ts` の `legalPages` がほかの静的なページと同じ
 ヘッダー・フッター・タブバーで包む。`【` が残っているとビルドが止まる。ディレクトリへの掲載の申請（#47）に要る。
 
-**Markdown の書式は、`legal-markdown.mjs` が読むもの（見出し・段落・表・箇条書き・太字・コード・リンク）だけを使う。**
+**Markdown の書式は、`legal-markdown.ts` が読むもの（見出し・段落・表・箇条書き・太字・コード・リンク）だけを使う。**
 
 **文面はコードの実際の振る舞いと揃えてある。** 次のどれかを変えたら、ここも直すこと。
 

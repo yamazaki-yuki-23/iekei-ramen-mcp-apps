@@ -24,13 +24,13 @@ function walk(dir: string): string[] {
 }
 
 /**
- * ほかのコードを測るだけの道具（scripts/dev/benchmark-*.mjs）は、テストと同じく使う側に数えない。
+ * ほかのコードを測るだけの道具（scripts/dev/benchmark-*.ts）は、テストと同じく使う側に数えない。
  * 製品の一部ではなく、測る相手の置き場を動かす理由にならないため。
  */
-const MEASURE_ONLY = /^scripts\/dev\/benchmark-[^/]+\.mjs$/;
+const MEASURE_ONLY = /^scripts\/dev\/benchmark-[^/]+\.ts$/;
 const sources = [...walk("src"), ...walk("server"), ...walk("scripts")].filter(
   (path) =>
-    /\.(ts|tsx|mjs)$/.test(path) &&
+    /\.(ts|tsx)$/.test(path) &&
     !path.startsWith("src/generated/") &&
     !MEASURE_ONLY.test(path) &&
     !path.endsWith(".test.ts"),
@@ -44,7 +44,7 @@ function importsOf(file: string): string[] {
   );
   return specs.flatMap((spec) => {
     const base = normalize(join(dirname(file), spec));
-    const found = ["", ".ts", ".tsx", ".mjs", "/index.ts", "/index.tsx"]
+    const found = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"]
       .map((ext) => base + ext)
       .find((path) => existsSync(join(ROOT, path)) && statSync(join(ROOT, path)).isFile());
     return found ? [found] : [];

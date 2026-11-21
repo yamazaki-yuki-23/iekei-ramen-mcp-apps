@@ -188,7 +188,7 @@ it("Originの無い送信（ブラウザ以外）を拒否し、DBに保存し�
 });
 
 it("100件を超えた報告を同じ受付日時でも重複・欠落なく取得し、前のページ削除後も進める", async () => {
-  const { reportListQuery, reportPage } = await import("../scripts/build/report-pages.mjs");
+  const { reportListQuery, reportPage } = await import("../scripts/build/report-pages.ts");
   const ids = Array.from(
     { length: 101 },
     (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,

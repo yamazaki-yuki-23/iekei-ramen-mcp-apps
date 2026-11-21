@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import shops from "../data/shops.json";
 import verified from "../data/verified.json";
 import verifiedGeo from "../data/verified-geo.json";
-import { paced } from "../scripts/data/geocode-verified.mjs";
+import { paced } from "../scripts/data/geocode-verified.ts";
 import {
   isPrecise,
   maybeSameShop,
   nearbyShops,
   splitCity,
   verifiedShops,
-} from "../scripts/data/verified-shops.mjs";
+} from "../scripts/data/verified-shops.ts";
 
 const record = {
   name: "横浜家系ラーメン 町田商店 盛岡津志田店",

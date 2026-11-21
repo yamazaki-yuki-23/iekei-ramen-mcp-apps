@@ -33,9 +33,9 @@ Web だけの別ページ（`shindan/index.html` → `src/features/shindan/main.
 
 - 回答は送らず、残さない（画面の中だけで結果を出す。サーバーも呼ばない）
 - シェアの URL はタイプごとの紙 `/shindan/<タイプ>/`。中身は診断と同じページで、開くと 1 問目から始まる。
-  `scripts/build/build-seo.mjs` がビルドの後に、OGP の題と画像だけを差し替えて作る
-- シェア画像（`public/og/shindan-<タイプ>.png`、1200×630）は `node scripts/assets/shindan-og.mjs` で作ってコミットする。
-  タイプ名か文言を変えたときだけ回す。key を渡すとその分だけ作る（`node scripts/assets/shindan-og.mjs sansoryu`）。
+  `scripts/build/build-seo.ts` がビルドの後に、OGP の題と画像だけを差し替えて作る
+- シェア画像（`public/og/shindan-<タイプ>.png`、1200×630）は `node scripts/assets/shindan-og.ts` で作ってコミットする。
+  タイプ名か文言を変えたときだけ回す。key を渡すとその分だけ作る（`node scripts/assets/shindan-og.ts sansoryu`）。
   ほかの版の画像を作り直さないため
 - 投稿画面の URL は `src/utils/share.ts`（#46 と共有。X を左、Threads を右に並べる）
 
@@ -163,7 +163,7 @@ Web だけの別ページ（`camera/index.html` → `src/features/camera/main.ts
   （`visited` / `progress`）だけを受け取る。`readVisitResult` / `applyVisits` が
   記録だけを反映し、検索結果と選択を維持する。「行った店」画面は一覧が必要なので
   `true` を渡す。どちらも書き込み後の1回の読み取りから組み、UIの操作は直列に送る
-- 応答サイズの再計測は `node --import tsx scripts/dev/benchmark-stamps.mjs`。
+- 応答サイズの再計測は `node --import tsx scripts/dev/benchmark-stamps.ts`。
   実データの訪問0件・100件・全件で、MCP tool結果のJSON全体をUTF-8で比較する。
   HTTP/SSEの付加分と圧縮後の転送量は含めない。記録はメモリだけで、本番のD1へは書かない
 - **保存するもの・外部に送る先を変えたら、規約の下書き（[docs/legal/](../legal/README.md)）も直す。**

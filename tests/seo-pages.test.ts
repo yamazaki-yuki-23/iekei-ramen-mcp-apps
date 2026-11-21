@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { domesticPhone, REPORT_KINDS, seoPages } from "../scripts/build/seo-pages.mjs";
+import { domesticPhone, REPORT_KINDS, seoPages } from "../scripts/build/seo-pages.ts";
 import { ReportSchema } from "../src/lib/reports";
 import { type Shop } from "../src/types";
 import { CONFIDENCE } from "../src/utils/labels";
