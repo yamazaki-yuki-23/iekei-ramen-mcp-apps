@@ -87,9 +87,24 @@ function list(
   return [`<${tag}>${items.map((item) => `<li>${item}</li>`).join("")}</${tag}>`, i];
 }
 
+/**
+ * HTML のコメントを消す。**何も変わらなくなるまで繰り返す**（#414）。1 回だけだと、
+ * 「<<!---->!-- x -->」の真ん中が消えて新しい「<!-- x -->」ができ、残る（CodeQL アラート 2）。
+ * 出力はどのみち escape() を通るので害は無いが、内部のメモを公開のページに出さない。
+ */
+function withoutComments(text: string) {
+  let before: string;
+  let after = text;
+  do {
+    before = after;
+    after = before.replace(/<!--[\s\S]*?-->/g, "");
+  } while (after !== before);
+  return after;
+}
+
 /** 規約の Markdown を HTML にする。最初の `# 見出し` は返す title に分ける（ページの h1 にする）。 */
 export function legalMarkdown(markdown: string) {
-  const source = markdown.replace(/<!--[\s\S]*?-->/g, "").trim();
+  const source = withoutComments(markdown).trim();
   const blocks = source.split(/\n\s*\n/);
   let title = "";
   const html: string[] = [];
