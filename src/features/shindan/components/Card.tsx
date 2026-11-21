@@ -45,7 +45,9 @@ export function Card({
           {/* 語の途中で折り返さない。「・」は前の語に付け、行頭に来ないようにする（#410）。 */}
           <strong>
             {spell.split("・").map((w, i, all) => (
-              <span key={w} className={styles.phrase}>
+              // 1 版は同じ語が並ぶことがある（「カタメ・ふつう・ふつう」）。並びは固定なので番号で足りる。
+              // oxlint-disable-next-line no-array-index-key
+              <span key={i} className={styles.phrase}>
                 {i < all.length - 1 ? `${w}・` : w}
               </span>
             ))}
