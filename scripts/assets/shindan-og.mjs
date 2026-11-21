@@ -1,22 +1,29 @@
 /*
- * 家系タイプ診断（#167）のシェア画像を 8 枚作る（public/og/shindan-<タイプ>.png、1200×630）。
+ * 家系タイプ診断（#167）のシェア画像を、版ごとのタイプの数だけ作る（public/og/shindan-<タイプ>.png、1200×630）。
  * タイプ名か文言を変えたときだけ手で回し、できた画像をコミットする（ビルドでは作らない）。
  *
- *   node scripts/assets/shindan-og.mjs
+ *   node scripts/assets/shindan-og.mjs            # 全部
+ *   node scripts/assets/shindan-og.mjs sansoryu   # その key だけ（#410）
  */
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { chromium } from "playwright";
-import { rarity, TYPES } from "../../src/utils/shindan.ts";
+import { rarity } from "../../src/utils/shindan.ts";
+import { ALL_TYPES, editionOf } from "../../src/utils/shindan-editions.ts";
 import { faceSvg } from "../../src/utils/shindan-face.ts";
 
 const out = new URL("../../public/og/", import.meta.url);
 await mkdir(out, { recursive: true });
 // 前のタイプの画像を残さない。
-for (const f of await readdir(out)) if (f.startsWith("shindan-")) await rm(new URL(f, out));
+// key を渡したら、その分だけ作る（#410: 2 版を足すときに、1 版の画像を作り直さない）。
+const only = process.argv.slice(2);
+if (only.length === 0)
+  for (const f of await readdir(out)) if (f.startsWith("shindan-")) await rm(new URL(f, out));
 const font = "'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif";
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-for (const type of Object.values(TYPES)) {
+for (const type of Object.values(ALL_TYPES).filter(
+  (t) => only.length === 0 || only.includes(t.key),
+)) {
   const r = rarity(type);
   // 激レアは虹色の光（ホログラム風）を表面に重ねる。
   const holo = `<div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 20%,rgba(255,90,160,.16) 30%,rgba(255,210,80,.16) 38%,rgba(90,230,160,.16) 46%,rgba(80,170,255,.16) 54%,rgba(190,110,255,.16) 62%,transparent 72%)"></div>`;
@@ -31,9 +38,9 @@ for (const type of Object.values(TYPES)) {
     <div style="display:grid;place-items:center;height:100%;border-radius:22px;background:#fbeee8">${faceSvg(type.key, 340)}</div>
     <div style="display:flex;flex-direction:column;gap:22px">
       <div style="font-size:30px;font-weight:700;color:#6b5f57">家系タイプ診断</div>
-      <div style="font-size:${type.name.length > 9 ? 54 : 70}px;font-weight:800;line-height:1.15;text-wrap:balance">${type.name}</div>
+      <div style="font-size:${type.name.length > 7 ? 54 : 70}px;font-weight:800;line-height:1.15;text-wrap:balance">${type.name}</div>
       <div style="font-size:32px;line-height:1.5;color:#4a403a;text-wrap:balance">${type.catch}</div>
-      <div style="display:flex;align-items:center;gap:18px;font-size:28px;color:#6b5f57"><span style="${badge};border-radius:999px;padding:4px 22px;font-size:34px;font-weight:800;color:#211814">${r}</span>27 通りの注文のうち ${type.combos} 通り</div>
+      <div style="display:flex;align-items:center;gap:18px;font-size:28px;color:#6b5f57"><span style="${badge};border-radius:999px;padding:4px 22px;font-size:34px;font-weight:800;color:#211814">${r}</span>${editionOf(type.key).words.combos} ${type.combos} 通り</div>
     </div>
   </div>
   <div style="position:absolute;right:60px;bottom:14px;font-size:24px;font-weight:700">iekeiramen.com</div></body></html>`);

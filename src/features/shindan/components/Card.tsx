@@ -1,12 +1,13 @@
 import { createElement } from "react";
-import { rarity, type ShindanType } from "../../../utils/shindan";
+import { rarity } from "../../../utils/shindan";
+import { editionOf, type AnyType } from "../../../utils/shindan-editions";
 import { faceShapes } from "../../../utils/shindan-face";
 import styles from "../styles/shindan.module.css";
 
 const camel = (k: string) => k.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
 
 /** 丼のキャラクター（タイプごとに表情が変わる）。飾りなので読み上げない。 */
-function Face({ type, size }: { type: ShindanType; size: number }) {
+function Face({ type, size }: { type: AnyType; size: number }) {
   return (
     <svg viewBox="0 0 120 100" width={size} height={(size * 100) / 120} aria-hidden="true">
       {faceShapes(type.key).map((s, i) =>
@@ -35,11 +36,13 @@ export function Card({
   small,
   headingId,
 }: {
-  type: ShindanType;
+  type: AnyType;
   spell?: string;
   small?: boolean;
   headingId?: string;
 }) {
+  // カードの言葉は、そのタイプの版に合わせる（友達のカードは別の版のことがある。#410）。
+  const { words } = editionOf(type.key);
   return (
     <article className={small ? styles.cardSmall : styles.card} data-rarity={rarity(type)}>
       {!small && <Effects level={rarity(type)} />}
@@ -50,14 +53,14 @@ export function Card({
         >
           {rarity(type)}
         </span>
-        <span>27 通りの注文のうち {type.combos} 通り</span>
+        <span>
+          {words.combos} {type.combos} 通り
+        </span>
       </div>
-      {!small && rarity(type) === "定番" && (
-        <p className={styles.common}>いちばん多くの組み合わせが行き着く注文</p>
-      )}
+      {!small && rarity(type) === "定番" && <p className={styles.common}>{words.common}</p>}
       {spell && (
         <p className={styles.spell}>
-          <span>あなたの注文</span>
+          <span>{words.spell}</span>
           <strong>{spell}</strong>
         </p>
       )}

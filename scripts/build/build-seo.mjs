@@ -2,7 +2,8 @@ import { appendFile, mkdir, readFile, writeFile, copyFile } from "node:fs/promis
 import { legalPages, seoPages, siteHeader } from "./seo-pages.mjs";
 import { legalLinksHtml } from "../../src/utils/legal-links.ts";
 import { tabBarHtml } from "../../src/utils/tabbar.ts";
-import { TYPES, shareUrl } from "../../src/utils/shindan.ts";
+import { shareUrl } from "../../src/utils/shindan.ts";
+import { ALL_TYPES } from "../../src/utils/shindan-editions.ts";
 import { recordShopId } from "../data/verified-shops.mjs";
 
 const output = new URL("../../dist/web/", import.meta.url);
@@ -58,7 +59,8 @@ await writeFile(
  * OGP の題と画像だけをタイプごとに差し替える（SNS のカードにタイプの画像が出る）。
  */
 const shindan = await readFile(new URL("shindan/index.html", output), "utf8");
-for (const type of Object.values(TYPES)) {
+// どの版のタイプも（#410）。すでに共有された 1 版の URL も、今までどおり開ける。
+for (const type of Object.values(ALL_TYPES)) {
   const title = `家系タイプ診断｜結果は「${type.name}」`;
   const html = shindan
     .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)

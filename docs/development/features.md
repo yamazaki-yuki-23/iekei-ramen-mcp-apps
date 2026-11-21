@@ -21,13 +21,22 @@ Web だけの別ページ（`match/index.html` → `src/features/match/main.tsx`
 
 ## 家系タイプ診断（`/shindan/`、#167）
 
-Web だけの別ページ（`shindan/index.html` → `src/features/shindan/main.tsx`）。問い・タイプ・注文の呪文は `src/utils/shindan.ts` が持つ。
+Web だけの別ページ（`shindan/index.html` → `src/features/shindan/main.tsx`）。問い・タイプ・言葉は版ごとに持つ（#410）。
+
+- 1 版（注文の好み、#167）は `src/utils/shindan.ts`、2 版（家系の楽しみ方、#410）は `src/utils/shindan-v2.ts`。
+  どちらも文言はオーナーとマーケ担当で決めたもの。言い換えない。1 版は使っていなくても消さない
+- 画面で使う版は `src/utils/shindan-editions.ts` の `CURRENT_EDITION` の 1 か所（今は 2 版）。混ぜるとき（開くたびに
+  どちらか、など）は `pickEdition` だけを変える。版は開いたときに 1 度だけ決め、答えている途中では変えない
+- タイプの key は版をまたいで重ならない（`ALL_TYPES`）。シェアの URL・静的ページ・友達のカードは、どの版のタイプも
+  同じ形で開き、カードの言葉（「27 通りの注文／答えのうち」など）はそのタイプの版に合わせる
+- 丼の顔は `src/utils/shindan-face.ts`（2 版の 8 つはデザイナーが描いた）
 
 - 回答は送らず、残さない（画面の中だけで結果を出す。サーバーも呼ばない）
 - シェアの URL はタイプごとの紙 `/shindan/<タイプ>/`。中身は診断と同じページで、開くと 1 問目から始まる。
   `scripts/build/build-seo.mjs` がビルドの後に、OGP の題と画像だけを差し替えて作る
 - シェア画像（`public/og/shindan-<タイプ>.png`、1200×630）は `node scripts/assets/shindan-og.mjs` で作ってコミットする。
-  タイプ名か文言を変えたときだけ回す
+  タイプ名か文言を変えたときだけ回す。key を渡すとその分だけ作る（`node scripts/assets/shindan-og.mjs sansoryu`）。
+  ほかの版の画像を作り直さないため
 - 投稿画面の URL は `src/utils/share.ts`（#46 と共有。X を左、Threads を右に並べる）
 
 ## 家系カメラ（`/camera/`、#190）
