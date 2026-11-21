@@ -56,7 +56,7 @@ test("6 問を 1 タップずつ答えると、結果のカードと食べ方の
     /url=https%3A%2F%2Fiekeiramen\.com%2Fshindan%2Fsansoryu%2F/,
   );
   expect(sent).toEqual([]);
-  await page.getByRole("link", { name: "このタイプで近くの家系を探す" }).click();
+  await page.getByRole("link", { name: "近くの家系を探す" }).click();
   await expect(page).toHaveURL(/\/match\/$/);
 });
 

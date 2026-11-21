@@ -254,7 +254,7 @@ function Result({
       )}
       <p className={styles.note}>{edition.words.note}</p>
       <a className={styles.primary} href="/match/">
-        このタイプで近くの家系を探す
+        近くの家系を探す
       </a>
       <div className={styles.row}>
         <a className={styles.btn} href={x} target="_blank" rel="noopener noreferrer">
