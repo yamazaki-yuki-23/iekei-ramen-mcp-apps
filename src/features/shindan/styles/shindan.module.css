@@ -300,9 +300,10 @@
   animation-delay: 2.1s;
 }
 
+/* 文字（注文の言葉）に重ねない。絵の右下の余白に置く（#410）。 */
 .sparkle[data-at="d"] {
-  top: 16%;
-  right: 30%;
+  top: 60%;
+  right: 8%;
   animation-delay: 2.55s;
 }
 
@@ -520,7 +521,7 @@
   gap: 2px;
 }
 
-.spell span {
+.spell > span {
   font-size: var(--font-size-note);
   color: var(--color-text-muted);
 }
@@ -533,6 +534,11 @@
   text-wrap: balance;
 }
 
+/* 注文・食べ方の語は途中で折り返さない（語と語の間でだけ折り返す。#410）。 */
+.phrase {
+  white-space: nowrap;
+}
+
 .art {
   position: relative;
   width: 100%;
@@ -541,6 +547,26 @@
   padding: var(--space-2) 0;
   border-radius: var(--radius-md);
   background: var(--color-accent-soft);
+}
+
+/* 相方: 丼の顔とタイプ名・理由を横に並べる（#410）。 */
+.partner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.partner p {
+  margin: 0;
+}
+
+.partnerFace {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+  padding: var(--space-1);
 }
 
 .typeName {

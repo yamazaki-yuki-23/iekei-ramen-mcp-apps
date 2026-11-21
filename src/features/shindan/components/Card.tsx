@@ -1,25 +1,7 @@
-import { createElement } from "react";
-import { rarity, type ShindanType } from "../../../utils/shindan";
-import { faceShapes } from "../../../utils/shindan-face";
+import { rarity } from "../../../utils/shindan";
+import { editionOf, isMostCommon, type AnyType } from "../../../utils/shindan-editions";
 import styles from "../styles/shindan.module.css";
-
-const camel = (k: string) => k.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
-
-/** 丼のキャラクター（タイプごとに表情が変わる）。飾りなので読み上げない。 */
-function Face({ type, size }: { type: ShindanType; size: number }) {
-  return (
-    <svg viewBox="0 0 120 100" width={size} height={(size * 100) / 120} aria-hidden="true">
-      {faceShapes(type.key).map((s, i) =>
-        createElement(s.tag, {
-          // 形の並びは固定（データの順）なので、番号で足りる。
-          // oxlint-disable-next-line no-array-index-key
-          key: i,
-          ...Object.fromEntries(Object.entries(s.attrs).map(([k, v]) => [camel(k), v])),
-        }),
-      )}
-    </svg>
-  );
-}
+import { Face } from "./Face";
 
 /**
  * 結果のカード（トレーディングカードの形）。珍しさは言葉のバッジ（星は店の評価に読まれるので使わない）。
@@ -35,11 +17,13 @@ export function Card({
   small,
   headingId,
 }: {
-  type: ShindanType;
+  type: AnyType;
   spell?: string;
   small?: boolean;
   headingId?: string;
 }) {
+  // カードの言葉は、そのタイプの版に合わせる（友達のカードは別の版のことがある。#410）。
+  const { words } = editionOf(type.key);
   return (
     <article className={small ? styles.cardSmall : styles.card} data-rarity={rarity(type)}>
       {!small && <Effects level={rarity(type)} />}
@@ -50,15 +34,24 @@ export function Card({
         >
           {rarity(type)}
         </span>
-        <span>27 通りの注文のうち {type.combos} 通り</span>
+        <span>
+          {words.combos} {type.combos} 通り
+        </span>
       </div>
-      {!small && rarity(type) === "定番" && (
-        <p className={styles.common}>いちばん多くの組み合わせが行き着く注文</p>
-      )}
+      {!small && isMostCommon(type) && <p className={styles.common}>{words.common}</p>}
       {spell && (
         <p className={styles.spell}>
-          <span>あなたの注文</span>
-          <strong>{spell}</strong>
+          <span>{words.spell}</span>
+          {/* 語の途中で折り返さない。「・」は前の語に付け、行頭に来ないようにする（#410）。 */}
+          <strong>
+            {spell.split("・").map((w, i, all) => (
+              // 1 版は同じ語が並ぶことがある（「カタメ・ふつう・ふつう」）。並びは固定なので番号で足りる。
+              // oxlint-disable-next-line no-array-index-key
+              <span key={i} className={styles.phrase}>
+                {i < all.length - 1 ? `${w}・` : w}
+              </span>
+            ))}
+          </strong>
         </p>
       )}
       <div className={styles.art}>

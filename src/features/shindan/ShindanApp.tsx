@@ -3,30 +3,25 @@ import { LegalLinks } from "../../components/LegalLinks";
 import { useEffect, useState } from "react";
 import { BrandMark } from "../../components/BrandMark";
 import { shareLinks } from "../../utils/share";
+import { type Answer, rarity, shareUrl } from "../../utils/shindan";
 import {
-  QUESTIONS,
-  type Answer,
-  isTypeKey,
-  orderSpell,
-  rarity,
-  type ShindanType,
-  shareText,
-  shareUrl,
-  styleWords,
-  tableTip,
-  TYPES,
-  typeFor,
-} from "../../utils/shindan";
+  ALL_TYPES,
+  type AnyType,
+  type Edition,
+  isAnyTypeKey,
+  pickEdition,
+} from "../../utils/shindan-editions";
 import { afterPaint, isMuted, prepareWhenIdle, setMuted, sound, unlock } from "../../lib/sound";
 import { Card } from "./components/Card";
+import { Face } from "./components/Face";
 import styles from "./styles/shindan.module.css";
 
 const focusHeading = (el: HTMLHeadingElement | null) => el?.focus();
 
 /** シェアされた URL（/shindan/<タイプ>/）から来たら、その友達のタイプ。URL に入るのはタイプだけ。 */
-function friendFromUrl(): ShindanType | null {
+function friendFromUrl(): AnyType | null {
   const key = /^\/shindan\/([a-z]+)\/?$/.exec(window.location.pathname)?.[1];
-  return key && isTypeKey(key) ? TYPES[key] : null;
+  return key && isAnyTypeKey(key) ? ALL_TYPES[key] : null;
 }
 
 /**
@@ -37,6 +32,9 @@ function friendFromUrl(): ShindanType | null {
 export function ShindanApp() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [friend] = useState(friendFromUrl);
+  // 使う版は開いたときに 1 度だけ決める（#410。混ぜるときも、答えている途中で変わらない）。
+  const [edition] = useState(pickEdition);
+  const QUESTIONS = edition.questions;
   // 開いた直後だけは焦点を動かさない。答えた・戻った・やり直した後は、出た問いの見出しへ移す。
   const [moved, setMoved] = useState(false);
   // 音の仕組みは手が空いたときに先に作る。最初の回答を重くしない（#214）。
@@ -63,18 +61,20 @@ export function ShindanApp() {
         <h1 className={styles.title}>家系タイプ診断</h1>
         {step === 0 && friend && (
           <p className={styles.lead}>
-            友達は「{friend.name}」でした。あなたも 6 問に答えると、2 人のカードが並びます。
+            友達は「{friend.name}」でした。あなたも {QUESTIONS.length} 問に答えると、2
+            人のカードが並びます。
           </p>
         )}
         {step < QUESTIONS.length ? (
           <Question
+            questions={QUESTIONS}
             step={step}
             focus={moved}
             onAnswer={(a) => go([...answers, a])}
             onBack={() => go(answers.slice(0, -1))}
           />
         ) : (
-          <Result answers={answers} friend={friend} onRetry={() => go([])} />
+          <Result edition={edition} answers={answers} friend={friend} onRetry={() => go([])} />
         )}
       </main>
       <LegalLinks />
@@ -84,11 +84,13 @@ export function ShindanApp() {
 }
 
 function Question({
+  questions: QUESTIONS,
   step,
   focus,
   onAnswer,
   onBack,
 }: {
+  questions: Edition["questions"];
   step: number;
   focus: boolean;
   onAnswer(a: Answer): void;
@@ -117,6 +119,7 @@ function Question({
         <h2 id="q-title" tabIndex={-1} ref={focus ? focusHeading : undefined}>
           {q.title}
         </h2>
+        {q.note && <p className={styles.count}>{q.note}</p>}
         <div className={styles.options}>
           {(q.mildFirst ? ([2, 1, 0] as const) : ([0, 1, 2] as const)).map((answer) => (
             <button
@@ -140,14 +143,14 @@ function Question({
 }
 
 /** 2 人の関係の一言。相方どうしなら相方の理由、同じタイプならそう言う。 */
-function pairLine(me: ShindanType, friend: ShindanType): string | null {
+function pairLine(me: AnyType, friend: AnyType): string | null {
   if (me.key === friend.key) return "同じタイプ。注文を言う前から、話が通じる二人。";
   if (me.partner === friend.key) return `相方どうし。${me.partnerWhy}`;
   if (friend.partner === me.key) return `相方どうし。${friend.partnerWhy}`;
   return null;
 }
 
-function Compare({ me, friend }: { me: ShindanType; friend: ShindanType }) {
+function Compare({ me, friend }: { me: AnyType; friend: AnyType }) {
   const line = pairLine(me, friend);
   return (
     <section className={styles.compare} aria-labelledby="c-title">
@@ -168,20 +171,22 @@ function Compare({ me, friend }: { me: ShindanType; friend: ShindanType }) {
 }
 
 function Result({
+  edition,
   answers,
   friend,
   onRetry,
 }: {
+  edition: Edition;
   answers: Answer[];
-  friend: ShindanType | null;
+  friend: AnyType | null;
   onRetry(): void;
 }) {
-  const type = typeFor(answers);
-  const spell = orderSpell(answers);
+  const type = edition.typeFor(answers);
+  const spell = edition.spell(answers);
   const url = shareUrl(type.key);
-  const text = shareText(type, spell);
+  const text = edition.shareText(type, spell);
   const { threads, x } = shareLinks(text, url);
-  const partner = TYPES[type.partner];
+  const partner = ALL_TYPES[type.partner];
   const level = rarity(type);
   // 結果の音。全員: 食券が出るときに家系マッチの発券の「ゴトッ」。激レア: 取り出し口が光るのと同時に
   // 家系マッチのレア札と同じ低い和音。レア: 銀の光が横切るのに合わせて短く柔らかい音。
@@ -221,29 +226,35 @@ function Result({
       </div>
       <div className={styles.block}>
         <h3>相方</h3>
-        <p>
-          <strong>{partner.name}</strong>
-          <br />
-          {type.partnerWhy}
-        </p>
+        <div className={styles.partner}>
+          <span className={styles.partnerFace}>
+            <Face type={partner} size={72} />
+          </span>
+          <p>
+            <strong>{partner.name}</strong>
+            <br />
+            {type.partnerWhy}
+          </p>
+        </div>
       </div>
       <div className={styles.block}>
         <h3>流儀</h3>
         <ul className={styles.chips}>
-          {styleWords(answers).map((w) => (
+          {edition.styleWords(answers).map((w) => (
             <li key={w}>{w}</li>
           ))}
         </ul>
       </div>
-      <div className={styles.block}>
-        <h3>卓上の調味料</h3>
-        <p>{tableTip(answers)}</p>
-      </div>
-      <p className={styles.note}>
-        結果はあなたの好みの話です。店の味とは結び付けていません。注文の言い方や豆知識は一般的なもので、店によって違うことがあります。
-      </p>
+      {/* 卓上の豆知識は 1 版だけ（2 版の文言には無い。#410）。 */}
+      {edition.tableTip && (
+        <div className={styles.block}>
+          <h3>卓上の調味料</h3>
+          <p>{edition.tableTip(answers)}</p>
+        </div>
+      )}
+      <p className={styles.note}>{edition.words.note}</p>
       <a className={styles.primary} href="/match/">
-        このタイプで近くの家系を探す
+        近くの家系を探す
       </a>
       <div className={styles.row}>
         <a className={styles.btn} href={x} target="_blank" rel="noopener noreferrer">

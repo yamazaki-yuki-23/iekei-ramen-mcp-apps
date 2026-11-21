@@ -10,6 +10,8 @@ import { PREFERENCES } from "./order-guide.ts";
 
 export interface Question {
   title: string;
+  /** 問いに添える一言（2 版の卓上の問い「店によって違います」）。 */
+  note?: string;
   /** 答えは 3 つ。0 が「強め」、1 が「ふつう」、2 が「控えめ」。 */
   options: [string, string, string];
   /** 控えめから並べて見せる（頼み方の画面と同じ並び、#368）。答えの番号は変えない。 */
@@ -42,14 +44,15 @@ export type TypeKey =
   | "yasashi"
   | "garyu";
 
-export interface ShindanType {
-  key: TypeKey;
+/** タイプ。版ごとに key の種類が違う（2 版は shindan-v2.ts）。 */
+export interface ShindanType<K extends string = TypeKey> {
+  key: K;
   name: string;
   /** 一言。 */
   catch: string;
   /** あるある 3 行（1 行目で笑い、2 行目で「なるほど」、3 行目で「分かる」）。 */
   aruaru: [string, string, string];
-  partner: TypeKey;
+  partner: K;
   partnerWhy: string;
   /** 麺・味・油の 27 通りのうち、このタイプになる組み合わせの数（人数の割合ではない）。 */
   combos: number;
@@ -183,7 +186,7 @@ export function typeFor(answers: Answer[]): ShindanType {
  * 珍しさを言葉で出す（27 通りのうち 1 通りなら「激レア」、2〜3 通りなら「レア」、それより多ければ「定番」）。
  * 星は店の評価に読まれるので使わない。組み合わせの数で、人数の割合ではない。
  */
-export const rarity = (type: ShindanType) =>
+export const rarity = (type: Pick<ShindanType<string>, "combos">) =>
   type.combos === 1 ? "激レア" : type.combos <= 3 ? "レア" : "定番";
 
 const WORDS = [
@@ -223,7 +226,7 @@ export function tableTip(answers: Answer[]): string {
 const SITE = "https://iekeiramen.com/shindan/";
 
 /** シェアする URL。入るのはタイプだけ（回答は入れない）。開くと 1 問目から始まり、最後に 2 人のカードが並ぶ。 */
-export const shareUrl = (key: TypeKey) => `${SITE}${key}/`;
+export const shareUrl = (key: string) => `${SITE}${key}/`;
 
 export function shareText(type: ShindanType, spell: string): string {
   return `私の家系の注文は『${spell}』、${type.name}でした。あなたは？`;
