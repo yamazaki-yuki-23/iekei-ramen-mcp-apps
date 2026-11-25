@@ -401,6 +401,10 @@
           {
             "name": "crypto",
             "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
+          },
+          {
+            "name": "caches",
+            "message": "utils/ は外部に触らない。触るなら lib/ へ（docs/development/structure.md）"
           }
         ]
       }

@@ -128,6 +128,58 @@ describe("workerdでのクライアントごとの同意", () => {
     expect(await clients()).toBe(before + 2);
   });
 
+  it("許可画面も、接続元ごとの 1 分の上限を超えたら 429 で断り、KV に控えを書かない。数えられないときは通す（#427）", async () => {
+    const env = await harness.getWorker<{ OAUTH_KV: KVNamespace }>().getEnv();
+    const transactions = async () =>
+      (await env.OAUTH_KV.list({ prefix: "transaction:" })).keys.length;
+    const client = await register();
+    const before = await transactions();
+    const blocked = await request(authorizePath(client), {
+      headers: { "CF-Connecting-IP": "blocked" },
+    });
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("Retry-After")).toBe("60");
+    expect(await blocked.text()).toMatch(/^サインインの画面を開く回数が多すぎます。/);
+    expect(await transactions()).toBe(before);
+    const broken = await request(authorizePath(client), {
+      headers: { "CF-Connecting-IP": "broken" },
+    });
+    expect(broken.status).toBe(200);
+    expect(await transactions()).toBe(before + 1);
+  });
+
+  it("許可画面は、接続元ごとに 1 日 50 回まで。超えたら翌日まで 429 で、KV に書かない（#427）", async () => {
+    const env = await harness.getWorker<{ OAUTH_KV: KVNamespace }>().getEnv();
+    const transactions = async () =>
+      (await env.OAUTH_KV.list({ prefix: "transaction:" })).keys.length;
+    const client = await register();
+    const from = { headers: { "CF-Connecting-IP": "198.51.100.27" } };
+    const before = await transactions();
+    for (let i = 0; i < 50; i++)
+      expect((await request(authorizePath(client), from)).status).toBe(200);
+    expect(await transactions()).toBe(before + 50);
+    const over = await request(authorizePath(client), from);
+    expect(over.status).toBe(429);
+    // 1 日の上限は、UTC の 0 時まで待つ（1 分の上限の 60 秒より長い）。
+    expect(Number(over.headers.get("Retry-After"))).toBeGreaterThan(60);
+    expect(await transactions()).toBe(before + 50);
+    // 別の接続元は止めない。匿名の検索（/mcp）も止めない。
+    expect(
+      (await request(authorizePath(client), { headers: { "CF-Connecting-IP": "198.51.100.28" } }))
+        .status,
+    ).toBe(200);
+    const search = await request("/mcp", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+        "CF-Connecting-IP": "198.51.100.27",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    });
+    expect(search.status).toBe(200);
+  });
+
   it("PKCEの無い要求は同意画面を出さず、検証済みのclientへinvalid_requestを返す", async () => {
     const client = await register();
     const path = new URL(authorizePath(client), ORIGIN);
