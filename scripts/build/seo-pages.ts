@@ -317,8 +317,55 @@ function shopContent(
 }
 
 /** 店の一覧。但し書きは一覧のすぐ下に 1 回。 */
+/** 住所の町名の順（#424）。同じ町の店が並び、行き先の近くの店を目で拾える。 */
+const byAddress = (a: Shop, b: Shop) =>
+  (a.address ?? "").localeCompare(b.address ?? "", "ja") || a.name.localeCompare(b.name, "ja");
+
+/** 「保土ヶ谷区」と「保土ケ谷区」のように、ヶ・ケの書き分けを同じに見る。 */
+const sameKe = (text: string) => text.replaceAll("ヶ", "ケ");
+/** 政令市の区の名前（data/municipalities.json の「横浜市保土ケ谷区」など）。長い名前から当てる。 */
+const wardsOf = (prefecture: string, city: string) =>
+  Object.keys((municipalities as Record<string, Record<string, string>>)[prefecture] ?? {})
+    .filter((name) => name.startsWith(city) && name.endsWith("区") && name.length > city.length)
+    .map((name) => name.slice(city.length))
+    .toSorted((a, b) => b.length - a.length);
+/**
+ * 住所の頭に書かれた区（政令市）。区の名前は data/municipalities.json の一覧と突き合わせる
+ * （漢字だけで読むと保土ケ谷区を落とした。#424 の Codex の指摘）。書かれていなければ無し。座標などから推測して足さない。
+ */
+const wardOf = (shop: Shop) =>
+  shop.city
+    ? wardsOf(shop.prefecture, shop.city).find((ward) =>
+        sameKe(shop.address ?? "").startsWith(sameKe(ward)),
+      )
+    : undefined;
+
+/**
+ * 市区町村のページの店の一覧（#424）。店は住所の町名の順。政令市で住所に区がある店は、区の見出しでまとめる
+ * （軒数の多い順。県のページの市区町村と同じ並べ方）。区の無い店は最後の「区の記載なし」にまとめ、1 軒も落とさない。
+ * 区のチップは付けない。チップが 1 画面目を占めると、最初の店が画面の外へ出る（#423 と同じ理由）。
+ */
 function shopList(shops: Shop[]) {
-  return `<h2 class="seo-section">店舗</h2>${cards(shops)}<p class="seo-caveat">${note}</p>`;
+  const sorted = shops.toSorted(byAddress);
+  const wards = Map.groupBy(
+    sorted.filter((shop) => wardOf(shop)),
+    (shop) => wardOf(shop)!,
+  );
+  const groups = [...wards].toSorted(
+    ([a, x], [b, y]) => y.length - x.length || a.localeCompare(b, "ja"),
+  );
+  const noWard = sorted.filter((shop) => !wardOf(shop));
+  if (groups.length > 0 && noWard.length > 0) groups.push(["区の記載なし", noWard]);
+  const list =
+    groups.length === 0
+      ? cards(sorted)
+      : groups
+          .map(
+            ([ward, group]) =>
+              `<section class="seo-city"><div class="seo-city-head"><h3>${escape(ward)}<span>${group.length} 軒</span></h3></div>${cards(group)}</section>`,
+          )
+          .join("");
+  return `<h2 class="seo-section">店舗</h2>${list}<p class="seo-caveat">${note}</p>`;
 }
 
 /**

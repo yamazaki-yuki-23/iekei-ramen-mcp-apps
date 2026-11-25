@@ -631,6 +631,74 @@ describe("県のページの店の一覧を市区町村で区切る（#317）", 
   });
 });
 
+/** 大阪市の店（#424 の試験用）。 */
+const osakaShop = (id: string, name: string, address: string): Shop => ({
+  ...shop,
+  id,
+  name,
+  prefecture: "大阪府",
+  city: "大阪市",
+  address,
+});
+
+describe("市区町村のページの店を、町名の順・区ごとに並べる（#424）", () => {
+  const osaka = [
+    osakaShop("node/1", "梅田家", "梅田一丁目"),
+    osakaShop("node/2", "南船場家", "中央区南船場3-5-27"),
+    osakaShop("node/3", "西中島家", "西中島三丁目"),
+    osakaShop("node/4", "難波家", "浪速区難波中2-4-3"),
+    osakaShop("node/5", "久太郎家", "中央区久太郎町3丁目5-4"),
+    osakaShop("node/6", "梅田二家", "梅田二丁目"),
+  ];
+  const html = seoPages(osaka).files.get("/area/osaka/osaka/")!;
+  const heads = [...html.matchAll(/<h3>([^<]+)<span>(\d+) 軒<\/span><\/h3>/g)].map(
+    ([, w, n]) => `${w} ${n}`,
+  );
+  const names = [...html.matchAll(/<a class="seo-card"[^>]*><strong>([^<]+)<\/strong>/g)].map(
+    ([, n]) => n,
+  );
+
+  it("住所に区がある店は区の見出しにまとめ（軒数の多い順）、無い店は最後の「区の記載なし」", () => {
+    expect(heads).toEqual(["中央区 2", "浪速区 1", "区の記載なし 3"]);
+    // 1 軒も落とさない。
+    expect(names.toSorted()).toEqual(osaka.map((s) => s.name).toSorted());
+    // 区は住所に書かれたものだけ。区の無い店に区を足さない。
+    expect(html).not.toMatch(/<h3>北区/);
+  });
+
+  it("同じ町の店は隣どうしに並ぶ（住所の町名の順）", () => {
+    const umeda = names.indexOf("梅田家");
+    expect(names[umeda + 1]).toBe("梅田二家");
+  });
+
+  it("カタカナを含む区（保土ケ谷区）も、ヶ・ケの書き分けに関わらず区にまとめる", () => {
+    const hodogaya = seoPages([
+      { ...shop, id: "node/11", name: "保土ケ谷家", address: "保土ケ谷区岩間町1丁目" },
+      { ...shop, id: "node/12", name: "保土ヶ谷家", address: "保土ヶ谷区天王町2丁目" },
+      { ...shop, id: "node/13", name: "岡野家", address: "西区岡野" },
+    ]).files.get("/area/kanagawa/yokohama/")!;
+    expect(hodogaya).toContain("<h3>保土ケ谷区<span>2 軒</span></h3>");
+    expect(hodogaya).not.toContain("区の記載なし");
+  });
+
+  it("区が 1 つも無い市は、見出しを付けずに町名の順だけ", () => {
+    const plain = seoPages([
+      { ...shop, id: "node/7", name: "本郷家", address: "本郷" },
+      { ...shop, id: "node/8", name: "岡野家", address: "西区岡野" },
+      { ...shop, id: "node/9", name: "未記載家", address: "本郷二丁目" },
+    ]).files.get("/area/kanagawa/yokohama/")!;
+    expect(plain).toContain("<h3>西区<span>1 軒</span></h3>");
+    const town = seoPages([
+      { ...shop, id: "node/7", name: "本郷家", address: "本郷" },
+      { ...shop, id: "node/9", name: "未記載家", address: "本郷二丁目" },
+      { ...shop, id: "node/10", name: "岡野家", address: "岡野" },
+    ]).files.get("/area/kanagawa/yokohama/")!;
+    expect(town).not.toContain("<h3>");
+    const order = [...town.matchAll(/<strong>([^<]+)<\/strong>/g)].map(([, n]) => n);
+    expect(order.indexOf("未記載家")).toBe(order.indexOf("本郷家") + 1);
+  });
+});
+
 describe("薄いページと 404（#169）", () => {
   it("未判定でない店が 1 軒だけの市区町村は noindex・sitemap 外、2 軒なら載せる", () => {
     const one = seoPages(shops);
