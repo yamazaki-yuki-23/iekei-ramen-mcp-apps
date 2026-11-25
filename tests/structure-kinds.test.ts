@@ -48,6 +48,8 @@ const EXTERNAL_GLOBALS = [
   "setInterval",
   "indexedDB",
   "crypto",
+  // Cache API（Workers の caches.default。server/lib/geocode-cache.ts、#427）
+  "caches",
   "createImageBitmap",
   "OffscreenCanvas",
   "CanvasRenderingContext2D",

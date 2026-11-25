@@ -18,13 +18,15 @@ import { createServer } from "./server.ts";
 import type { ServerDeps } from "./types/deps.ts";
 import { MEMBER_TOOLS } from "./utils/tool-metadata.ts";
 import { GeocodeGate } from "./lib/geocode-gate.ts";
+import { geocodeCacheStore } from "./lib/geocode-cache.ts";
+import { allowSignIn, SignInGate, type SignInEntry } from "./lib/sign-in-gate.ts";
 import { recordUsage, usageEvent } from "./lib/usage.ts";
 import { d1Visits } from "./lib/visits.ts";
 import { handleReport } from "./lib/report-endpoint.ts";
 import { MAP_TILES_PATH, serveMapTiles } from "./lib/map-tiles.ts";
 
 // wrangler が Durable Object のクラスを探すのは、入口のモジュールの export。
-export { GeocodeGate };
+export { GeocodeGate, SignInGate };
 
 interface Env extends AuthEnv {
   VISITS: D1Database;
@@ -33,6 +35,10 @@ interface Env extends AuthEnv {
   REPORT_LIMITER?: RateLimit;
   /** 動的クライアント登録（/register）の連打止め。接続元ごとに数える（#259）。 */
   REGISTER_LIMITER?: RateLimit;
+  /** 許可画面（GET /authorize）の連打止め。接続元ごとに数える（#427）。 */
+  AUTHORIZE_LIMITER?: RateLimit;
+  /** KV へ書くサインインの入口を、接続元ごとに 1 日で数える（#427）。 */
+  SIGN_IN_GATE?: DurableObjectNamespace;
   /** Nominatim へ出ていく問い合わせの列。全体で 1 つ。 */
   GEOCODE_GATE?: DurableObjectNamespace;
   /** 使われているかを数える（Workers Analytics Engine）。手元の Node サーバーには無い。 */
@@ -96,29 +102,57 @@ function needsSignIn(body: string): boolean {
 }
 
 /**
- * `/register` の連打止め（#259）。登録は 1 回ごとに `OAUTH_KV` へ書くので、連打されると
- * KV の書き込み枠を使い切り、サインインと地名検索のキャッシュが一緒に止まる。
+ * KV へ書くサインインの入口の連打止め。`POST /register`（#259）と `GET /authorize`（#427）。
+ * どちらも 1 回ごとに `OAUTH_KV` へ書き、KV の書き込みの枠（無料プランはアカウントで 1 日 1,000 件）を
+ * 使い切られると、その日は全員のサインインが止まる。
+ *
+ * 1 分あたりの上限（Rate Limiting binding）と、1 日の上限（SignInGate）の両方を見る。1 分の方だけでは、
+ * 1 分に 1 回でも 1 日で 1,440 回通る。1 分の方で止めた分は 1 日の数に入れない。
  *
  * **数えられないときは通す。** 止めるとサインインの入口がまるごと塞がる。通しても
  * 連打止めが無かったころに戻るだけ。
  */
-async function registerLimited(request: Request, limiter?: RateLimit): Promise<Response | null> {
-  if (!limiter) return null;
+async function signInLimited(
+  request: Request,
+  entry: SignInEntry,
+  limiter: RateLimit | undefined,
+  gate: DurableObjectNamespace | undefined,
+): Promise<Response | null> {
+  const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+  let perMinute = true;
   try {
-    const { success } = await limiter.limit({
-      key: request.headers.get("CF-Connecting-IP") ?? "unknown",
-    });
-    if (success) return null;
+    if (limiter) perMinute = (await limiter.limit({ key: ip })).success;
   } catch {
-    return null;
+    perMinute = true;
   }
-  // OAuth のエラーの形で返す。ホストが理由を読めるように。
+  const perDay = perMinute && (await allowSignIn(gate, ip, entry));
+  if (perMinute && perDay) return null;
+  // 1 日の上限なら、日付が変わる（UTC の 0 時）まで。
+  const retryAfter = perMinute
+    ? Math.ceil(
+        (Date.parse(new Date().toISOString().slice(0, 10)) + 86_400_000 - Date.now()) / 1000,
+      )
+    : 60;
+  const description = perMinute
+    ? "今日はこれ以上受け付けられません。明日お試しください"
+    : "1 分後にお試しください";
+  const headers = {
+    ...CORS_HEADERS,
+    "Retry-After": String(retryAfter),
+    "Cache-Control": "no-store",
+  };
+  // 許可画面はブラウザで開くので文字で、登録はホストが理由を読めるよう OAuth のエラーの形で返す。
+  if (entry === "authorize")
+    return new Response(`サインインの画面を開く回数が多すぎます。${description}`, {
+      status: 429,
+      headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" },
+    });
   return Response.json(
     {
       error: "temporarily_unavailable",
-      error_description: "クライアントの登録が集中しています。1 分後にお試しください",
+      error_description: `クライアントの登録が集中しています。${description}`,
     },
-    { status: 429, headers: { ...CORS_HEADERS, "Retry-After": "60", "Cache-Control": "no-store" } },
+    { status: 429, headers },
   );
 }
 
@@ -211,7 +245,23 @@ export default {
         });
       }
       if (url.pathname === "/register" && request.method === "POST") {
-        const limited = await registerLimited(request, env.REGISTER_LIMITER);
+        const limited = await signInLimited(
+          request,
+          "register",
+          env.REGISTER_LIMITER,
+          env.SIGN_IN_GATE,
+        );
+        if (limited) return limited;
+      }
+      // 許可画面を開くたびに認可ライブラリが KV へ控えを書く（beginConsent）。許可・拒否（POST）は
+      // 開いた画面の控えが無いと進めないので、数えるのは開いた回数だけでよい。
+      if (url.pathname === "/authorize" && request.method === "GET") {
+        const limited = await signInLimited(
+          request,
+          "authorize",
+          env.AUTHORIZE_LIMITER,
+          env.SIGN_IN_GATE,
+        );
         if (limited) return limited;
       }
       if (isOAuthPath(url.pathname)) return handleOAuth(request, env, ctx, origin);
@@ -248,10 +298,10 @@ export default {
       visitor,
       visits: env.VISITS ? d1Visits(env.VISITS) : undefined,
       /*
-       * **OAuth と同じ KV に相乗りする。** 地名は `geocode:` で始まる鍵に置くので
-       * 認可の控えとは混ざらない。消えても問い合わせ直すだけで済む。
+       * **KV には置かない**（#427）。KV の書き込みの枠はアカウントで 1 つで、キャッシュに無い地名を
+       * 引くたびに書くと、サインインの枠を食う。Cache API には書き込みの枠が無い。消えても問い合わせ直すだけ。
        */
-      geocodeCache: env.OAUTH_KV,
+      geocodeCache: geocodeCacheStore(origin),
       // 接続元ごとの連打止め。1 人が列を埋めて、他の人を待たせ続けないように。
       allowGeocode: limiter
         ? async () =>

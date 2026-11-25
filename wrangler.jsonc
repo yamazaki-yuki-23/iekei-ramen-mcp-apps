@@ -60,11 +60,27 @@
     // 動的クライアント登録（/register）。1 回ごとに KV へ書くので、連打で書き込み枠を使い切らせない（#259）。
     // Claude・ChatGPT は自社のサーバーから登録し、多くの利用者が同じ IP になるので緩くしてある。
     { "name": "REGISTER_LIMITER", "namespace_id": "1003", "simple": { "limit": 30, "period": 60 } },
+    // 許可画面（GET /authorize）。開くたびに認可ライブラリが KV へ控えを 1 件書く（#427）。
+    // 利用者のブラウザから来るので、1 人が 1 分に何度も開くことはない。
+    {
+      "name": "AUTHORIZE_LIMITER",
+      "namespace_id": "1004",
+      "simple": { "limit": 10, "period": 60 },
+    },
   ],
   // Nominatim へ出ていく問い合わせを、全体で 1 本の列に並べる（server/lib/geocode-gate.ts）。
+  // SIGN_IN_GATE は、KV へ書くサインインの入口を接続元ごとに 1 日で数える（server/lib/sign-in-gate.ts、#427）。
   // 無料プランで使えるのは SQLite 版だけなので new_sqlite_classes で作る。
-  "durable_objects": { "bindings": [{ "name": "GEOCODE_GATE", "class_name": "GeocodeGate" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GeocodeGate"] }],
+  "durable_objects": {
+    "bindings": [
+      { "name": "GEOCODE_GATE", "class_name": "GeocodeGate" },
+      { "name": "SIGN_IN_GATE", "class_name": "SignInGate" },
+    ],
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["GeocodeGate"] },
+    { "tag": "v2", "new_sqlite_classes": ["SignInGate"] },
+  ],
   // 使われているかを数える（server/lib/usage.ts）。無料枠は書き込み 1 日 10 万件・
   // 読み取り 1 日 1 万回。書くのは tool 名とサインインの有無だけで、個人は特定しない。
   // 週ごとの件数は `npm run usage`。
@@ -142,11 +158,22 @@
           "namespace_id": "2003",
           "simple": { "limit": 30, "period": 60 },
         },
+        {
+          "name": "AUTHORIZE_LIMITER",
+          "namespace_id": "2004",
+          "simple": { "limit": 10, "period": 60 },
+        },
       ],
       "durable_objects": {
-        "bindings": [{ "name": "GEOCODE_GATE", "class_name": "GeocodeGate" }],
+        "bindings": [
+          { "name": "GEOCODE_GATE", "class_name": "GeocodeGate" },
+          { "name": "SIGN_IN_GATE", "class_name": "SignInGate" },
+        ],
       },
-      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GeocodeGate"] }],
+      "migrations": [
+        { "tag": "v1", "new_sqlite_classes": ["GeocodeGate"] },
+        { "tag": "v2", "new_sqlite_classes": ["SignInGate"] },
+      ],
       "analytics_engine_datasets": [{ "binding": "USAGE", "dataset": "iekei_ramen_usage_staging" }],
     },
   },

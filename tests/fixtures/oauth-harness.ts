@@ -22,6 +22,8 @@ export function createOAuthHarness(assetsDirectory?: string) {
           compatibility_flags,
           ...(assetsDirectory ? { assets: { ...assets, directory: assetsDirectory } } : {}),
           kv_namespaces: [{ binding: "OAUTH_KV", id: "test-kv" }],
+          durable_objects: { bindings: [{ name: "SIGN_IN_GATE", class_name: "SignInGate" }] },
+          migrations: [{ tag: "v1", new_sqlite_classes: ["SignInGate"] }],
           d1_databases: [
             {
               binding: "VISITS",

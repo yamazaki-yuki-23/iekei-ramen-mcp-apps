@@ -10,10 +10,14 @@ export interface ServerDeps {
   visits?: VisitStore;
   /**
    * 地名検索の結果の置き場。**Nominatim は結果を手元に持つことを求めている。**
-   * Cache API は workers.dev では効かない（独自ドメインでだけ動く）ので KV に置く。
-   * ローカル実行では無く、毎回問い合わせる。
+   * 本番は Cache API（server/lib/geocode-cache.ts）。KV には置かない（書き込みの枠をサインインと分け合うため、#427）。
+   * Cache API は独自ドメインでだけ動き、本番は独自ドメインだけで動く（#41）。workers.dev の確認用の環境と
+   * ローカル実行では効かず、毎回問い合わせる。
    */
-  geocodeCache?: Pick<KVNamespace, "get" | "put">;
+  geocodeCache?: {
+    get(key: string): Promise<string | null>;
+    put(key: string, value: string, options: { expirationTtl: number }): Promise<void>;
+  };
   /**
    * いま Nominatim へ問い合わせてよいか（同じ接続元からの連打止め）。
    * 無ければ止めない（手元の Node サーバー）。
