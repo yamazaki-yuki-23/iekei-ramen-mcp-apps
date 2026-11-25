@@ -390,6 +390,12 @@ const chainLead =
   "系列や店の公式の情報で確かめた店です。違う店を見つけたら、店のページから教えてください。";
 /** 系列のページは店が 2 軒から作る（#309）。1 軒だけだと中身が店のページとほぼ同じになる（#169 と同じ考え）。 */
 const CHAIN_MIN = 2;
+/**
+ * 都道府県のチップを一覧の上に出すのは、この軒数より多い系列だけ（#423）。
+ * 王道家（14 軒）でチップが 1 画面目を占め、「店舗一覧」で来た人が開いてすぐ店を見られなかった。
+ * 今の系列は 196・137・51 軒と 14 軒以下に分かれるので、その間の 20 で分ける。
+ */
+const CHAIN_CHIPS_OVER = 20;
 
 /** 「2026-10-26」→「10月26日」。 */
 const monthDay = (date: string) => `${Number(date.slice(5, 7))}月${Number(date.slice(8, 10))}日`;
@@ -619,7 +625,8 @@ export function seoPages(
         count: list.length,
         crumbs: `<a href="/area/#chains">系列</a>`,
         // 「〇〇 近く」で来た人が、自分の県まで読み進めずに近い店へ行けるように（#368）。
-        content: `<p class="seo-lead">${chainLead}</p><div class="seo-actions">${primary(`/?${new URLSearchParams({ keyword: chain, view: "three" })}`, `近くの${chain}を出す`)}</div><h2 class="seo-section" id="${JUMP_ID}">都道府県</h2>${chips([...byPref].map(([prefecture, group]) => ({ href: `#${anchor(prefecture)}`, label: prefecture, count: group.length })))}${[...byPref].map(([prefecture, group]) => `<h2 class="seo-section" id="${anchor(prefecture)}">${escape(prefecture)}</h2>${cards(group)}${backTo([...byPref], "都道府県")}`).join("")}<p class="seo-caveat">${note}</p>`,
+        // 店の少ない系列はチップを出さず、ボタンのすぐ下から店の一覧にする（#423）。戻るリンクもチップへ戻るものなので出さない。
+        content: `<p class="seo-lead">${chainLead}</p><div class="seo-actions">${primary(`/?${new URLSearchParams({ keyword: chain, view: "three" })}`, `近くの${chain}を出す`)}</div>${list.length > CHAIN_CHIPS_OVER ? `<h2 class="seo-section" id="${JUMP_ID}">都道府県</h2>${chips([...byPref].map(([prefecture, group]) => ({ href: `#${anchor(prefecture)}`, label: prefecture, count: group.length })))}` : ""}${[...byPref].map(([prefecture, group]) => `<h2 class="seo-section" id="${anchor(prefecture)}">${escape(prefecture)}</h2>${cards(group)}${list.length > CHAIN_CHIPS_OVER ? backTo([...byPref], "都道府県") : ""}`).join("")}<p class="seo-caveat">${note}</p>`,
       }),
     );
     indexed.push(path);

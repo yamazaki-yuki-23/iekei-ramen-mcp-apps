@@ -475,9 +475,8 @@ describe("系列のページ（#309）", () => {
     expect(html).not.toMatch(
       /<title>[^<]*(候補|判定した結果)|description" content="[^"]*(候補|判定した結果)/,
     );
-    // 都道府県の並び順（神奈川県より東京都が先）で見出しを置き、見出しへ飛ぶチップを付ける。
+    // 都道府県の並び順（神奈川県より東京都が先）で見出しを置く。
     expect(html.indexOf('id="pref-tokyo"')).toBeLessThan(html.indexOf('id="pref-kanagawa"'));
-    expect(html).toContain('href="#pref-kanagawa">神奈川県<span>1 軒</span>');
     expect(html).toContain("系列や店の公式の情報で確かめた店です。");
     expect(files.get("/sitemap.xml")).toContain(`https://iekeiramen.com${path}`);
     expect(files.get("/area/")).toContain(`href="${path}">町田商店<span>2 軒</span>`);
@@ -486,20 +485,46 @@ describe("系列のページ（#309）", () => {
     expect(seoPages(shops).files.get("/area/")).not.toContain('id="chains"');
   });
 
-  it("見出しの下に「近くの〇〇を出す」、長い一覧には区切りごとに戻るリンク（#368）", () => {
+  it("見出しの下に「近くの〇〇を出す」、店の少ない系列はすぐ店の一覧（#368・#423）", () => {
     const html = files.get(path)!;
     expect(html).toContain(
       `href="/?${new URLSearchParams({ keyword: "町田商店", view: "three" }).toString().replaceAll("&", "&amp;")}">近くの町田商店を出す</a>`,
     );
-    // 2 県だけなら戻るほどの長さが無い。3 県からは各県の最後に、上の都道府県のチップへ戻るリンク。
+    // 20 軒以下はチップも戻るリンクも出さず、ボタンのすぐ下が最初の県の見出しと店（1 画面目に店が見える）。
+    expect(html).not.toContain('class="seo-chips"');
+    expect(html).not.toContain('id="jump"');
     expect(html).not.toContain("都道府県の一覧へ戻る");
-    const osaka: Shop = { ...shop, id: "node/789", prefecture: "大阪府", city: "大阪市" };
-    const three = seoPages(
-      [...shops, tokyo, osaka],
-      new Map([...chainOf, ["node/789", chainRecord("町田商店")]]),
+    expect(html).toMatch(
+      /近くの町田商店を出す<\/a><\/div><h2 class="seo-section" id="pref-tokyo">東京都<\/h2><ul class="seo-cards">/,
+    );
+  });
+
+  it("店の多い系列（21 軒から）は、都道府県のチップと、区切りごとに戻るリンクを出す（#368・#423）", () => {
+    const prefs = [
+      ["東京都", "町田市"],
+      ["神奈川県", "横浜市"],
+      ["大阪府", "大阪市"],
+    ];
+    const many: Shop[] = Array.from({ length: 21 }, (_, i) => ({
+      ...shop,
+      id: `node/${1000 + i}`,
+      name: `町田商店 ${i + 1}号店`,
+      prefecture: prefs[i % 3][0],
+      city: prefs[i % 3][1],
+      lat: 35 + i / 100,
+    }));
+    const html = seoPages(
+      many,
+      new Map(many.map((s) => [s.id, chainRecord("町田商店")])),
     ).files.get(path)!;
-    expect(three.match(/href="#jump">都道府県の一覧へ戻る</g)).toHaveLength(3);
-    expect(three).toContain('<h2 class="seo-section" id="jump">都道府県</h2>');
+    expect(html).toContain('<h2 class="seo-section" id="jump">都道府県</h2>');
+    expect(html).toContain('href="#pref-kanagawa">神奈川県<span>7 軒</span>');
+    expect(html.match(/href="#jump">都道府県の一覧へ戻る</g)).toHaveLength(3);
+    // 20 軒（1 軒少ない）ならチップを出さない。
+    const twenty = many.slice(0, 20);
+    expect(
+      seoPages(twenty, new Map(twenty.map((s) => [s.id, chainRecord("町田商店")]))).files.get(path),
+    ).not.toContain('class="seo-chips"');
   });
 
   it("URL は英字にし、#309 で出した日本語の URL から 301 で送る（#326）", () => {
