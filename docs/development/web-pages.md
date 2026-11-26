@@ -31,9 +31,16 @@ Always Use HTTPS」をオンにして送る。HSTS は `public/_headers`（`incl
 React と `/match/` のインラインのスタイルと、Cloudflare Web Analytics（`static.cloudflareinsights.com` の
 スクリプトと `cloudflareinsights.com` への送信）。Web Analytics はエッジが差し込むので E2E には出ず、
 許し忘れると本番だけ計測が消える（#268 で一度止めた）。**読み込み先を足したら CSP も足す。** vite preview は `_headers`
-を読まないので、`e2e/csp.spec.ts` が同じ値を付けて主なページを開き、違反 0 件を確かめる。zod は eval を
+を読まないので、`e2e/csp.spec.ts` が `/*` の段のヘッダーを全部付けて主なページを開き、違反 0 件を確かめる。zod は eval を
 試して違反を出すので、Web の入口の最初で `src/utils/zod-jitless.ts` を読み込む。会話の中（MCP Apps）の
 画面はホストの枠で動き、`_headers` は効かない。
+
+重ねる守りとして、静的ページには `X-Content-Type-Options: nosniff`・`Referrer-Policy: strict-origin-when-cross-origin`・
+`Permissions-Policy` も付ける（#428）。`Permissions-Policy` は、使う機能（位置情報・カメラ・共有 `web-share`・
+コピー `clipboard-write`）だけを自分の origin に許し、ほかは閉じる。**ブラウザの機能を新しく使うときは、ここを開ける**
+（閉じたままだと黙って使えない。`e2e/csp.spec.ts` が許す・閉じるを見張る）。Worker が返す応答（`/mcp`・`/health`・
+`/whereami`・`/.well-known/*`・`/reports` など）には `_headers` が届かないので、`server/worker.ts` が
+`X-Content-Type-Options: nosniff` と HSTS（`max-age=31536000`、`includeSubDomains`・`preload` なし）を付ける。
 
 ## 検索エンジン向けの静的ページ
 

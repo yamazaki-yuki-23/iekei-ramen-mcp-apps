@@ -210,6 +210,26 @@ describe("workerdのWeb静的配信と既存API", () => {
     expect(await metadata.json()).toMatchObject({ resource: "http://localhost/mcp" });
   });
 
+  it("Worker が返す応答にも nosniff と HSTS を付ける（#428）", async () => {
+    // 静的ページは public/_headers が付けるが、Worker が返す応答には届かない。
+    for (const path of [
+      "/health",
+      "/whereami",
+      "/.well-known/oauth-protected-resource/mcp",
+      "/mcp",
+    ]) {
+      const response = await request(path);
+      expect(response.headers.get("X-Content-Type-Options"), path).toBe("nosniff");
+      expect(response.headers.get("Strict-Transport-Security"), path).toBe("max-age=31536000");
+    }
+    // 変えられないヘッダーの応答（http から https への転送）にも付く。
+    const redirect = await request("/health", { headers: { "X-Forwarded-Proto": "http" } });
+    expect(redirect.status).toBe(301);
+    expect(redirect.headers.get("Strict-Transport-Security")).toBe("max-age=31536000");
+    const search = await call("search-iekei-ramen");
+    expect(search.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
   it("同じoriginのMCPで匿名検索ができ、訪問記録は401になる", async () => {
     const search = await call("search-iekei-ramen");
     expect(search.status).toBe(200);
