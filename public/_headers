@@ -10,6 +10,12 @@
   Strict-Transport-Security: max-age=31536000
   Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://cloudflareinsights.com; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   X-Frame-Options: DENY
+  # 重ねる守り（#428）。中身から種類を推測させない・参照元は origin だけ渡す（共有の URL の ?three= を外へ出さない）。
+  # 使う機能（位置情報・カメラ・共有・コピー）だけを自分の origin に許し、ほかは閉じる。カメラは家系カメラ
+  # （今は <input capture> で OS のカメラを開くので要らないが、閉じると撮り方を変えたときに黙って止まる）。
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(self), web-share=(self), clipboard-write=(self), microphone=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), midi=(), accelerometer=(), gyroscope=(), magnetometer=(), display-capture=(), screen-wake-lock=(), xr-spatial-tracking=(), browsing-topics=()
 
 # 地図の文字（#246）。会話の中（MCP）はホストの別のドメインの枠から取りに来るので、CORS を付ける。
 # 名前にハッシュが無いので、キャッシュは既定のまま（毎回確かめる）。

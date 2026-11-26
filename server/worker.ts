@@ -169,159 +169,185 @@ const CORS_HEADERS = {
   "Access-Control-Expose-Headers": "Mcp-Session-Id, WWW-Authenticate",
 };
 
+/**
+ * Worker が返す応答に必ず付けるヘッダー（#428）。静的ページは public/_headers が付けるが、Worker が返す応答
+ * （/mcp・/health・/whereami・/.well-known/*・/reports など）には届かない。
+ * - nosniff: ブラウザに中身から種類を推測させない
+ * - HSTS: 静的ページを一度も開かずに /mcp だけ使うクライアントにも届ける。サブドメインは持っていないので
+ *   includeSubDomains・preload は付けない（#168。外すのに何か月もかかる）
+ */
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "Strict-Transport-Security": "max-age=31536000",
+};
+
+/**
+ * 応答にヘッダーを足す。**作り直して足す**（Response.redirect や fetch で受けた応答はヘッダーを変えられない）。
+ * 本文は流れのまま渡すので、/mcp の SSE も途中で溜めない。
+ */
+function withSecurityHeaders(response: Response): Response {
+  const secured = new Response(response.body, response);
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) secured.headers.set(name, value);
+  return secured;
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
-    /*
-     * http で来たら https へ送る（#168）。送らないと、認可のメタデータが http の URL を
-     * 案内してしまう。POST は 301 だと GET に変わるので 308 にする。静的ページは Worker より
-     * 先に返るので、ゾーンの「Always Use HTTPS」で送る（docs/development/web-pages.md）。
-     *
-     * **Cloudflare が付ける X-Forwarded-Proto で見る。** `wrangler dev` は URL と Host を routes の
-     * ホスト名（http://iekeiramen.com）に書き換えて渡し、返した Location は localhost に戻すので、
-     * URL で見ると手元で http://localhost へ送り続けた。手元にはこのヘッダが無い。
-     */
-    if (request.headers.get("X-Forwarded-Proto") === "http") {
-      url.protocol = "https:";
-      const safe = request.method === "GET" || request.method === "HEAD";
-      return Response.redirect(url.toString(), safe ? 301 : 308);
-    }
-    const origin = url.origin;
-
-    if (url.pathname === "/reports") return handleReport(request, env);
-    if (url.pathname === MAP_TILES_PATH) return serveMapTiles(request, env.MAP_TILES);
-
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
-
-    if (url.pathname === "/health") {
-      return new Response("ok", { headers: CORS_HEADERS });
-    }
-
-    // 接続元のおおよその位置を返す。
-    // stdio で動くローカルサーバーには HTTP リクエストが無く、Cloudflare が付ける
-    // 位置情報を読めないため、ここへ問い合わせて代わりに取得する。
-    if (url.pathname === "/whereami") {
-      const cf = (request as { cf?: Record<string, unknown> }).cf;
-      return new Response(
-        JSON.stringify({
-          latitude: cf?.latitude ?? null,
-          longitude: cf?.longitude ?? null,
-          city: cf?.city ?? null,
-          region: cf?.region ?? null,
-        }),
-        { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-      );
-    }
-
-    /*
-     * 401 が指す先（資源メタデータ）。**ライブラリを通さない**——認可サーバー側の
-     * 文書とは持ち主が違い、こちらは KV が無くても返せる。
-     */
-    if (isResourceMetadataPath(url.pathname)) return resourceMetadata(origin, CORS_HEADERS);
-
-    // 文字列だけを返す（JSON にしない。OpenAI の指定）。入れていなければ素の 404 のまま。
-    if (url.pathname === "/.well-known/openai-apps-challenge" && env.OPENAI_APPS_CHALLENGE) {
-      return new Response(env.OPENAI_APPS_CHALLENGE.trim(), {
-        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
-      });
-    }
-
-    /*
-     * 認可サーバーに任せる道。**`/authorize` は含めない**——そこは Google へ
-     * 送り出す入口で、こちらが持つ。
-     *
-     * **KV が無い環境では触らせない。** 認可サーバーは `cloudflare:workers` を
-     * 取り込むので、Node で動かしている手元の開発サーバーでは読み込み自体が
-     * 失敗し、**プロセスごと落ちる**（ESM ローダの失敗は try/catch で拾えない）。
-     * 手元で会員機能を試すときは wrangler（`npm run dev:worker`）を使う。
-     */
-    if (isSignInPath(url.pathname)) {
-      if (!env.OAUTH_KV) {
-        return new Response("この環境ではサインインを使えません（wrangler で起動してください）", {
-          status: 501,
-          headers: CORS_HEADERS,
-        });
-      }
-      if (url.pathname === "/register" && request.method === "POST") {
-        const limited = await signInLimited(
-          request,
-          "register",
-          env.REGISTER_LIMITER,
-          env.SIGN_IN_GATE,
-        );
-        if (limited) return limited;
-      }
-      // 許可画面を開くたびに認可ライブラリが KV へ控えを書く（beginConsent）。許可・拒否（POST）は
-      // 開いた画面の控えが無いと進めないので、数えるのは開いた回数だけでよい。
-      if (url.pathname === "/authorize" && request.method === "GET") {
-        const limited = await signInLimited(
-          request,
-          "authorize",
-          env.AUTHORIZE_LIMITER,
-          env.SIGN_IN_GATE,
-        );
-        if (limited) return limited;
-      }
-      if (isOAuthPath(url.pathname)) return handleOAuth(request, env, ctx, origin);
-      if (url.pathname === "/authorize") return startSignIn(request, env, origin);
-      return finishSignIn(request, env, origin);
-    }
-
-    if (url.pathname !== "/mcp") return notFound(request, url, env);
-
-    /*
-     * 誰のリクエストか。**無ければ匿名**で、そのまま通す。
-     * ここで止めると、検索しに来ただけの人にサインインを強いることになる。
-     */
-    const visitor = await visitorOf(request, env, origin);
-
-    /*
-     * **本文を先に読んで、401 にするか決める。** tool の中からは HTTP の状態を
-     * 決められないので、サインインが要る tool はここで止める。ChatGPT はこの
-     * 401 を見て「アクセス権を更新」を出す（疎通試験で実測済み）。
-     *
-     * **読むのは複製から。POST だけ。** 元の Request をそのまま先へ渡すため。
-     * 作り直すと Cloudflare が付ける `request.cf` が落ち、位置を渡さないホスト
-     * から呼ばれた `find-nearby-iekei-ramen` が現在地を見失う（実測: /whereami が
-     * Saitama を返す状況で origin が null になった）。GET / DELETE は本文が
-     * 空なので読まない。
-     */
-    const raw = request.method === "POST" ? await request.clone().text() : null;
-    // 401 にも CORS を付ける。付けないとブラウザが応答ごと捨て、クライアントには
-    // 「通信に失敗した」としか見えない（サインインが始まらない）。
-    if (!visitor && raw !== null && needsSignIn(raw)) return signInChallenge(origin, CORS_HEADERS);
-
-    const { GEOCODE_LIMITER: limiter, GEOCODE_GATE: gate } = env;
-    return serveMcp(request, {
-      visitor,
-      visits: env.VISITS ? d1Visits(env.VISITS) : undefined,
-      /*
-       * **KV には置かない**（#427）。KV の書き込みの枠はアカウントで 1 つで、キャッシュに無い地名を
-       * 引くたびに書くと、サインインの枠を食う。Cache API には書き込みの枠が無い。消えても問い合わせ直すだけ。
-       */
-      geocodeCache: geocodeCacheStore(origin),
-      // 接続元ごとの連打止め。1 人が列を埋めて、他の人を待たせ続けないように。
-      allowGeocode: limiter
-        ? async () =>
-            (await limiter.limit({ key: request.headers.get("CF-Connecting-IP") ?? "unknown" }))
-              .success
-        : undefined,
-      // 全体の「1 秒 1 回」。送るのは列（Durable Object）自身。
-      nominatim: gate
-        ? (target, init) => gate.get(gate.idFromName("nominatim")).fetch(target, init)
-        : undefined,
-      /*
-       * 使われているかを数える。**SDK が引数を検査して受け付けた呼び出しだけ**が
-       * ここへ来る（引数が足りない・壊れた呼び出しは数えない）。401 を返した呼び出しは
-       * 上で止めているので来ない——匿名でスタンプを押そうとしただけでは、まだ
-       * 使われていない。書くのは tool 名とサインインの有無だけ（server/lib/usage.ts）。
-       */
-      onToolCall: (name, args) => recordUsage(env.USAGE, usageEvent(name, args, Boolean(visitor))),
-    });
+    return withSecurityHeaders(await route(request, env, ctx));
   },
 };
+
+async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const url = new URL(request.url);
+  /*
+   * http で来たら https へ送る（#168）。送らないと、認可のメタデータが http の URL を
+   * 案内してしまう。POST は 301 だと GET に変わるので 308 にする。静的ページは Worker より
+   * 先に返るので、ゾーンの「Always Use HTTPS」で送る（docs/development/web-pages.md）。
+   *
+   * **Cloudflare が付ける X-Forwarded-Proto で見る。** `wrangler dev` は URL と Host を routes の
+   * ホスト名（http://iekeiramen.com）に書き換えて渡し、返した Location は localhost に戻すので、
+   * URL で見ると手元で http://localhost へ送り続けた。手元にはこのヘッダが無い。
+   */
+  if (request.headers.get("X-Forwarded-Proto") === "http") {
+    url.protocol = "https:";
+    const safe = request.method === "GET" || request.method === "HEAD";
+    return Response.redirect(url.toString(), safe ? 301 : 308);
+  }
+  const origin = url.origin;
+
+  if (url.pathname === "/reports") return handleReport(request, env);
+  if (url.pathname === MAP_TILES_PATH) return serveMapTiles(request, env.MAP_TILES);
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  if (url.pathname === "/health") {
+    return new Response("ok", { headers: CORS_HEADERS });
+  }
+
+  // 接続元のおおよその位置を返す。
+  // stdio で動くローカルサーバーには HTTP リクエストが無く、Cloudflare が付ける
+  // 位置情報を読めないため、ここへ問い合わせて代わりに取得する。
+  if (url.pathname === "/whereami") {
+    const cf = (request as { cf?: Record<string, unknown> }).cf;
+    return new Response(
+      JSON.stringify({
+        latitude: cf?.latitude ?? null,
+        longitude: cf?.longitude ?? null,
+        city: cf?.city ?? null,
+        region: cf?.region ?? null,
+      }),
+      { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+    );
+  }
+
+  /*
+   * 401 が指す先（資源メタデータ）。**ライブラリを通さない**——認可サーバー側の
+   * 文書とは持ち主が違い、こちらは KV が無くても返せる。
+   */
+  if (isResourceMetadataPath(url.pathname)) return resourceMetadata(origin, CORS_HEADERS);
+
+  // 文字列だけを返す（JSON にしない。OpenAI の指定）。入れていなければ素の 404 のまま。
+  if (url.pathname === "/.well-known/openai-apps-challenge" && env.OPENAI_APPS_CHALLENGE) {
+    return new Response(env.OPENAI_APPS_CHALLENGE.trim(), {
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+    });
+  }
+
+  /*
+   * 認可サーバーに任せる道。**`/authorize` は含めない**——そこは Google へ
+   * 送り出す入口で、こちらが持つ。
+   *
+   * **KV が無い環境では触らせない。** 認可サーバーは `cloudflare:workers` を
+   * 取り込むので、Node で動かしている手元の開発サーバーでは読み込み自体が
+   * 失敗し、**プロセスごと落ちる**（ESM ローダの失敗は try/catch で拾えない）。
+   * 手元で会員機能を試すときは wrangler（`npm run dev:worker`）を使う。
+   */
+  if (isSignInPath(url.pathname)) {
+    if (!env.OAUTH_KV) {
+      return new Response("この環境ではサインインを使えません（wrangler で起動してください）", {
+        status: 501,
+        headers: CORS_HEADERS,
+      });
+    }
+    if (url.pathname === "/register" && request.method === "POST") {
+      const limited = await signInLimited(
+        request,
+        "register",
+        env.REGISTER_LIMITER,
+        env.SIGN_IN_GATE,
+      );
+      if (limited) return limited;
+    }
+    // 許可画面を開くたびに認可ライブラリが KV へ控えを書く（beginConsent）。許可・拒否（POST）は
+    // 開いた画面の控えが無いと進めないので、数えるのは開いた回数だけでよい。
+    if (url.pathname === "/authorize" && request.method === "GET") {
+      const limited = await signInLimited(
+        request,
+        "authorize",
+        env.AUTHORIZE_LIMITER,
+        env.SIGN_IN_GATE,
+      );
+      if (limited) return limited;
+    }
+    if (isOAuthPath(url.pathname)) return handleOAuth(request, env, ctx, origin);
+    if (url.pathname === "/authorize") return startSignIn(request, env, origin);
+    return finishSignIn(request, env, origin);
+  }
+
+  if (url.pathname !== "/mcp") return notFound(request, url, env);
+
+  /*
+   * 誰のリクエストか。**無ければ匿名**で、そのまま通す。
+   * ここで止めると、検索しに来ただけの人にサインインを強いることになる。
+   */
+  const visitor = await visitorOf(request, env, origin);
+
+  /*
+   * **本文を先に読んで、401 にするか決める。** tool の中からは HTTP の状態を
+   * 決められないので、サインインが要る tool はここで止める。ChatGPT はこの
+   * 401 を見て「アクセス権を更新」を出す（疎通試験で実測済み）。
+   *
+   * **読むのは複製から。POST だけ。** 元の Request をそのまま先へ渡すため。
+   * 作り直すと Cloudflare が付ける `request.cf` が落ち、位置を渡さないホスト
+   * から呼ばれた `find-nearby-iekei-ramen` が現在地を見失う（実測: /whereami が
+   * Saitama を返す状況で origin が null になった）。GET / DELETE は本文が
+   * 空なので読まない。
+   */
+  const raw = request.method === "POST" ? await request.clone().text() : null;
+  // 401 にも CORS を付ける。付けないとブラウザが応答ごと捨て、クライアントには
+  // 「通信に失敗した」としか見えない（サインインが始まらない）。
+  if (!visitor && raw !== null && needsSignIn(raw)) return signInChallenge(origin, CORS_HEADERS);
+
+  const { GEOCODE_LIMITER: limiter, GEOCODE_GATE: gate } = env;
+  return serveMcp(request, {
+    visitor,
+    visits: env.VISITS ? d1Visits(env.VISITS) : undefined,
+    /*
+     * **KV には置かない**（#427）。KV の書き込みの枠はアカウントで 1 つで、キャッシュに無い地名を
+     * 引くたびに書くと、サインインの枠を食う。Cache API には書き込みの枠が無い。消えても問い合わせ直すだけ。
+     */
+    geocodeCache: geocodeCacheStore(origin),
+    // 接続元ごとの連打止め。1 人が列を埋めて、他の人を待たせ続けないように。
+    allowGeocode: limiter
+      ? async () =>
+          (await limiter.limit({ key: request.headers.get("CF-Connecting-IP") ?? "unknown" }))
+            .success
+      : undefined,
+    // 全体の「1 秒 1 回」。送るのは列（Durable Object）自身。
+    nominatim: gate
+      ? (target, init) => gate.get(gate.idFromName("nominatim")).fetch(target, init)
+      : undefined,
+    /*
+     * 使われているかを数える。**SDK が引数を検査して受け付けた呼び出しだけ**が
+     * ここへ来る（引数が足りない・壊れた呼び出しは数えない）。401 を返した呼び出しは
+     * 上で止めているので来ない——匿名でスタンプを押そうとしただけでは、まだ
+     * 使われていない。書くのは tool 名とサインインの有無だけ（server/lib/usage.ts）。
+     */
+    onToolCall: (name, args) => recordUsage(env.USAGE, usageEvent(name, args, Boolean(visitor))),
+  });
+}
 
 /**
  * MCP の応答を作る。**誰として実行するかは呼ぶ側が決める。**
