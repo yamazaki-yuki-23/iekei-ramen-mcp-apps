@@ -5,7 +5,7 @@ import type { AppPayload, Origin } from "../../src/types";
 import { distanceKm, originLabel } from "../../src/utils/geo.ts";
 import { ORIGIN_NOTES } from "../../src/utils/labels";
 import { shopFacts } from "../../src/utils/shop-facts.ts";
-import { PayloadSchema } from "../lib/schema.ts";
+import { PayloadSchema, PLACE_MAX } from "../lib/schema.ts";
 import type { ToolContext } from "../types/tool-context.ts";
 import { summarize } from "../utils/summaries.ts";
 import { incompleteCoordinates, originFrom } from "../utils/tool-args.ts";
@@ -53,7 +53,7 @@ export function registerFindNearbyIekeiRamen({
           .describe(
             "true なら、各店に事実だけの特徴（直系・濃厚、朝 5 時から、その市区町村で 1 軒だけのブランド）を添える",
           ),
-        label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
+        label: z.string().max(PLACE_MAX).optional().describe("基準地点の表示名（例: 横浜駅）"),
         /*
          * OriginSource の 4 値すべてを受ける。2 値に絞っていた頃は、ホスト由来
          * （host）や接続元推定（edge）の座標を持って「迷ったら」から戻ると、

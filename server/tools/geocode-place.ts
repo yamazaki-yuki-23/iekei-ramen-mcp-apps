@@ -15,6 +15,7 @@ import {
   withGeocodeTimeout,
 } from "../lib/geocode-timeout.ts";
 import type { ToolContext } from "../types/tool-context.ts";
+import { PLACE_MAX } from "../lib/schema.ts";
 import { toolMetadata } from "../utils/tool-metadata.ts";
 
 /** 補助: 地名 → 緯度経度。UI から呼ぶ（UI は持たない）。 */
@@ -26,7 +27,7 @@ export function registerGeocodePlace({ server, deps }: ToolContext): void {
       title: "地名から緯度経度を調べる",
       description:
         "地名や住所を OpenStreetMap Nominatim で緯度経度に変換する。find-nearby-iekei-ramen の前段として使う。",
-      inputSchema: z.object({ query: z.string().describe("地名・駅名・住所") }),
+      inputSchema: z.object({ query: z.string().max(PLACE_MAX).describe("地名・駅名・住所") }),
     },
     async ({ query }): Promise<CallToolResult> => {
       const q = normalizePlaceQuery(query);

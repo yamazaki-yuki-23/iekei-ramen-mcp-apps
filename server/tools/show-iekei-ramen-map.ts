@@ -3,7 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { AppPayload, Bounds } from "../../src/types";
 import { ALL_PREFECTURES } from "../../src/utils/prefectures.ts";
-import { BoundsSchema, PayloadSchema } from "../lib/schema.ts";
+import { BoundsSchema, PayloadSchema, PLACE_MAX } from "../lib/schema.ts";
 import type { ToolContext } from "../types/tool-context.ts";
 import { mapSummary } from "../utils/summaries.ts";
 import { filterShops, originFrom } from "../utils/tool-args.ts";
@@ -62,7 +62,7 @@ export function registerShowIekeiRamenMap({ server, dataset, withVisitor }: Tool
           .max(180)
           .optional()
           .describe("利用者が地名や地図で指定した地点の経度"),
-        label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
+        label: z.string().max(PLACE_MAX).optional().describe("基準地点の表示名（例: 横浜駅）"),
         source: z
           .enum(["precise", "host", "edge", "place"])
           .optional()

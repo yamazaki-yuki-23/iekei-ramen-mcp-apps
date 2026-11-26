@@ -6,7 +6,7 @@ import { originLabel } from "../../src/utils/geo.ts";
 import { TASTES } from "../../src/utils/labels";
 import { describeBasis, describeScope, shortlist } from "../../src/utils/shortlist.ts";
 import { SHOP_ID } from "../../src/utils/shop-id.ts";
-import { conditionFields, PayloadSchema } from "../lib/schema.ts";
+import { conditionFields, PayloadSchema, PLACE_MAX } from "../lib/schema.ts";
 import type { ToolContext } from "../types/tool-context.ts";
 import { decidePrompt } from "../utils/summaries.ts";
 import {
@@ -45,7 +45,7 @@ export function registerDecideIekeiRamen({
           .max(180)
           .optional()
           .describe("利用者が地名や地図で指定した地点の経度"),
-        label: z.string().optional().describe("基準地点の表示名（例: 横浜駅）"),
+        label: z.string().max(PLACE_MAX).optional().describe("基準地点の表示名（例: 横浜駅）"),
         near: z
           .union([z.boolean(), z.literal("auto")])
           .optional()

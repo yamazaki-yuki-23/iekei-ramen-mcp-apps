@@ -13,8 +13,7 @@
   # 重ねる守り（#428）。中身から種類を推測させない・参照元は origin だけ渡す（共有の URL の ?three= を外へ出さない）。
   # 使う機能（位置情報・カメラ・コピー）だけを自分の origin に許し、ほかは閉じる。カメラは家系カメラ
   # （今は <input capture> で OS のカメラを開くので要らないが、閉じると撮り方を変えたときに黙って止まる）。
-  # 共有（web-share）は書かない。既定で自分の origin に許され、デスクトップの Chrome は名前を知らず
-  # 「Unrecognized feature」の警告をコンソールに出す（本番で実測）。
+  # 共有（web-share）は書かない。既定で自分の origin に許されるので、書かなくても同じ（#433）。
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(self), camera=(self), clipboard-write=(self), microphone=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), midi=(), accelerometer=(), gyroscope=(), magnetometer=(), display-capture=(), screen-wake-lock=(), xr-spatial-tracking=(), browsing-topics=()

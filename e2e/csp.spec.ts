@@ -61,7 +61,7 @@ test("静的ページのヘッダーで、使う機能（位置情報・カメ�
 }) => {
   expect(HEADERS["x-content-type-options"]).toBe("nosniff");
   expect(HEADERS["referrer-policy"]).toBe("strict-origin-when-cross-origin");
-  // 共有は既定で自分の origin に許される。書くとデスクトップの Chrome が「Unrecognized feature」の警告を出す。
+  // 共有は既定で自分の origin に許されるので書かない（#433）。
   expect(HEADERS["permissions-policy"]).not.toContain("web-share");
   const violations = await withCsp(page);
   await page.goto(`${WEB_URL}/`);

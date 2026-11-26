@@ -151,6 +151,8 @@ export function NearbyPanel({
           className={styles.input}
           type="search"
           placeholder="横浜駅 / 新宿区 / 東京都港区…"
+          // サーバーの上限（server/lib/schema.ts の PLACE_MAX、#429）。住所を貼る人がいるので長め。
+          maxLength={300}
           value={place}
           onChange={(e) => setPlace(e.target.value)}
         />

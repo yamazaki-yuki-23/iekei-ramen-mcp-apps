@@ -86,6 +86,8 @@ export function SearchForm({ prefectures, values, onChange, onSubmit, busy, hide
             className={styles.input}
             type="search"
             placeholder="店名・ブランド・市区町村"
+            // サーバーの上限（server/lib/schema.ts の TEXT_MAX、#429）。超えると検索が誤りで返る。
+            maxLength={100}
             value={values.keyword}
             onChange={(e) => onChange({ ...values, keyword: e.target.value })}
           />
