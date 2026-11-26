@@ -1,5 +1,6 @@
 import shops from "../../data/shops.json";
 import { REPORT_ACCEPTED } from "../../src/utils/report-accepted";
+import { readLimited } from "../utils/read-limited.ts";
 import { receiveReport, ReportSchema } from "../../src/lib/reports";
 
 interface ReportEnv {
@@ -32,34 +33,14 @@ export async function handleReport(request: Request, env: ReportEnv): Promise<Re
       "Retry-After": "60",
     });
   // Content-Lengthは信用せず、実際の読み取りを4KiBまでに制限する。
-  const reader = request.body?.getReader();
-  if (!reader) return reply("報告の内容がありません", 400);
-  let size = 0;
-  const chunks: Uint8Array[] = [];
+  if (!request.body) return reply("報告の内容がありません", 400);
   try {
-    while (true) {
-      // ストリームは逐次読む。並列化すると本文の上限を守れない。
-      // eslint-disable-next-line no-await-in-loop
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > 4096) {
-        // 上限を越えた本文はその場で読み取りを止める。
-        // eslint-disable-next-line no-await-in-loop
-        await reader.cancel();
-        return reply("報告が長すぎます。店名100文字・場所300文字以内で送信してください", 413);
-      }
-      chunks.push(value);
-    }
-    const bytes = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
+    const text = await readLimited(request.body, 4096);
+    if (text === null)
+      return reply("報告が長すぎます。店名100文字・場所300文字以内で送信してください", 413);
     let body: unknown;
     try {
-      body = JSON.parse(new TextDecoder().decode(bytes));
+      body = JSON.parse(text);
     } catch {
       return reply("報告の形式が正しくありません", 400);
     }
@@ -76,7 +57,5 @@ export async function handleReport(request: Request, env: ReportEnv): Promise<Re
   } catch {
     // 自由記述やDBの例外をログに出さない。
     return reply("送信できませんでした。時間をおいてお試しください", 503);
-  } finally {
-    reader.releaseLock();
   }
 }

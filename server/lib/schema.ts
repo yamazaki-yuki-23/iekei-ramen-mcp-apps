@@ -5,10 +5,20 @@ import { ALL_PREFECTURES } from "../../src/utils/prefectures.ts";
 const TasteSchema = z.enum(["rich", "creamy", "chain", "unknown"]);
 
 /**
+ * tool の文字列の引数の長さの上限（#429）。Web の入口（キーワード 100 字、web-entry.ts）と、報告の受け口
+ * （店名 100 字・場所 300 字）にそろえる。地名と基準地点の表示名は、住所や Nominatim の表示名
+ * （`display_name`。地名検索の結果がそのまま入る）が入るので場所と同じ 300 字。
+ * 超えたら SDK の引数の検査で誤りとして返す（0 件の答えにしない）。
+ */
+export const TEXT_MAX = 100;
+export const PLACE_MAX = 300;
+
+/**
  * 地図に出ている範囲。
  *
- * **緯度経度の妥当性はここで弾く。** 地図から渡ってくる値は、引ききった
- * ときに ±180 を超えることがある（Leaflet は世界を繰り返して数える）。
+ * **緯度経度の妥当性はここで弾く。** 地図（MapLibre）は世界を横に繰り返さない設定にしてある
+ * （`renderWorldCopies: false`）が、モデルや古いクライアントからは ±180 を超える値も渡りうる
+ * （Leaflet を使っていたころは、世界を繰り返して数えた値が実際に来た）。
  */
 export const BoundsSchema = z
   .object({
@@ -132,5 +142,5 @@ export const conditionFields = {
     .enum(["rich", "creamy", "chain"])
     .optional()
     .describe("味の傾向: rich=直系・濃厚 / creamy=クリーミー / chain=チェーン・万人向け"),
-  keyword: z.string().optional().describe("店名・ブランド・地名の部分一致キーワード"),
+  keyword: z.string().max(TEXT_MAX).optional().describe("店名・ブランド・地名の部分一致キーワード"),
 };

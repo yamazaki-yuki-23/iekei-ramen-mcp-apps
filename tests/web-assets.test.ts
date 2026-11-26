@@ -47,6 +47,25 @@ afterAll(async () => {
   }
 }, 30_000);
 
+/** /mcp へ本文を送る（#429 の本文の上限のテスト）。 */
+const postMcp = (body: string) =>
+  request("/mcp", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    },
+    body,
+  });
+/** 本文を pad で大きくした tools/call。 */
+const paddedCall = (extra: string) =>
+  JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "tools/call",
+    params: { name: "search-iekei-ramen", arguments: {}, _meta: { pad: extra } },
+  });
+
 describe("workerdのWeb静的配信と既存API", () => {
   it("トップから案内ページに進め、案内のスクリプトとCSSも配信する", async () => {
     const root = await request("/");
@@ -228,6 +247,15 @@ describe("workerdのWeb静的配信と既存API", () => {
     expect(redirect.headers.get("Strict-Transport-Security")).toBe("max-age=31536000");
     const search = await call("search-iekei-ramen");
     expect(search.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
+  it("/mcp の本文は 64 KiB まで。超えたら読み切らずに 413 で断る（#429）", async () => {
+    const big = await postMcp(paddedCall("x".repeat(64 * 1024)));
+    expect(big.status).toBe(413);
+    expect(big.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(((await big.json()) as { error: { code: number } }).error.code).toBe(-32600);
+    // 上限の中なら今までどおり答える。
+    expect((await postMcp(paddedCall("x".repeat(1024)))).status).toBe(200);
   });
 
   it("同じoriginのMCPで匿名検索ができ、訪問記録は401になる", async () => {

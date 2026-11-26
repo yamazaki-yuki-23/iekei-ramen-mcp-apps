@@ -1,7 +1,7 @@
 import { registerAppTool } from "@modelcontextprotocol/ext-apps/server";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { StampResultSchema } from "../lib/schema.ts";
+import { StampResultSchema, TEXT_MAX } from "../lib/schema.ts";
 import type { ToolContext } from "../types/tool-context.ts";
 import { toolMetadata } from "../utils/tool-metadata.ts";
 
@@ -27,7 +27,7 @@ export function registerStampIekeiRamen({
       title: "行った店に印を付ける",
       description: "訪問した家系ラーメン店に印を付ける、または外す。サインインした人だけが使える。",
       inputSchema: z.object({
-        shopId: z.string().describe("店舗 ID"),
+        shopId: z.string().max(TEXT_MAX).describe("店舗 ID"),
         visited: z.boolean().default(true).describe("true で付ける、false で外す"),
         includeShops: z
           .boolean()

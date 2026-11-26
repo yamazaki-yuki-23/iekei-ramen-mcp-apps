@@ -24,6 +24,7 @@ import { recordUsage, usageEvent } from "./lib/usage.ts";
 import { d1Visits } from "./lib/visits.ts";
 import { handleReport } from "./lib/report-endpoint.ts";
 import { MAP_TILES_PATH, serveMapTiles } from "./lib/map-tiles.ts";
+import { readLimited } from "./utils/read-limited.ts";
 
 // wrangler が Durable Object のクラスを探すのは、入口のモジュールの export。
 export { GeocodeGate, SignInGate };
@@ -155,6 +156,12 @@ async function signInLimited(
     { status: 429, headers },
   );
 }
+
+/**
+ * /mcp の本文の上限（#429）。tool の呼び出しは 1 KiB 未満、`initialize` も数 KiB で、正規のホストの本文には
+ * 十分な余裕がある。上限が無いと、全部を読んでから JSON にするので、大きな本文をそのまま抱える。
+ */
+const MCP_BODY_MAX = 64 * 1024;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -314,8 +321,21 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
    * から呼ばれた `find-nearby-iekei-ramen` が現在地を見失う（実測: /whereami が
    * Saitama を返す状況で origin が null になった）。GET / DELETE は本文が
    * 空なので読まない。
+   *
+   * **読むのは上限（MCP_BODY_MAX）まで**（#429）。`Content-Length` は信用せず、読みながら数える。
+   * 超えたら元の本文は読まずに 413 で断る（JSON にもしない）。
    */
-  const raw = request.method === "POST" ? await request.clone().text() : null;
+  const raw =
+    request.method === "POST" ? await readLimited(request.clone().body, MCP_BODY_MAX) : null;
+  if (request.method === "POST" && raw === null)
+    return Response.json(
+      {
+        jsonrpc: "2.0",
+        error: { code: -32600, message: `本文が大きすぎます（${MCP_BODY_MAX / 1024} KiB まで）` },
+        id: null,
+      },
+      { status: 413, headers: CORS_HEADERS },
+    );
   // 401 にも CORS を付ける。付けないとブラウザが応答ごと捨て、クライアントには
   // 「通信に失敗した」としか見えない（サインインが始まらない）。
   if (!visitor && raw !== null && needsSignIn(raw)) return signInChallenge(origin, CORS_HEADERS);
