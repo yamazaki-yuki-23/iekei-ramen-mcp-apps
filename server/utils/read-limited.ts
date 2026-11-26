@@ -18,9 +18,12 @@ export async function readLimited(
     if (done) break;
     size += value.byteLength;
     if (size > max) {
-      // 上限を越えた本文はその場で読み取りを止める。
-      // eslint-disable-next-line no-await-in-loop
-      await reader.cancel();
+      /*
+       * 上限を越えた本文はその場で読み取りを止める。**止め終わるのは待たない**（Codex の指摘）。
+       * 複製（`request.clone()`）の片側を止めると、Node の実装はもう片側が読み終わるまで終わらず、
+       * 元の側を読まずに 413 を返したい手元のサーバーが止まったままになる（workerd では止まらない）。
+       */
+      void reader.cancel().catch(() => {});
       return null;
     }
     chunks.push(value);
