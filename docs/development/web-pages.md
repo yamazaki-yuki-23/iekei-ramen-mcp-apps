@@ -38,7 +38,7 @@ React と `/match/` のインラインのスタイルと、Cloudflare Web Analyt
 重ねる守りとして、静的ページには `X-Content-Type-Options: nosniff`・`Referrer-Policy: strict-origin-when-cross-origin`・
 `Permissions-Policy` も付ける（#428）。`Permissions-Policy` は、使う機能（位置情報・カメラ・
 コピー `clipboard-write`）だけを自分の origin に許し、ほかは閉じる。共有（`web-share`）は書かない（既定で自分の origin に
-許され、デスクトップの Chrome は名前を知らずに警告を出す）。**ブラウザの機能を新しく使うときは、ここを開ける**
+許されるので同じ）。**ブラウザの機能を新しく使うときは、ここを開ける**
 （閉じたままだと黙って使えない。`e2e/csp.spec.ts` が許す・閉じるを見張る）。Worker が返す応答（`/mcp`・`/health`・
 `/whereami`・`/.well-known/*`・`/reports` など）には `_headers` が届かないので、`server/worker.ts` が
 `X-Content-Type-Options: nosniff` と HSTS（`max-age=31536000`、`includeSubDomains`・`preload` なし）を付ける。
