@@ -18,7 +18,7 @@
  */
 import { rename, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
-import { toShop } from "./classify.ts";
+import { hasTown, toShop } from "./classify.ts";
 import type { OsmElement } from "./classify.ts";
 import type { Judgement } from "./judgments.ts";
 import { readJson } from "./read-json.ts";
@@ -176,7 +176,8 @@ async function main() {
     const id = `${el.osmType}/${el.osmId}`;
     const shop = toShop(el, judged[id]);
     if (!shop) continue;
-    if (shop.city && shop.address) continue;
+    // 町名の無い住所（「1398-1」）も引く。data:build が町名に置き換える（#441）。
+    if (shop.city && hasTown(shop.address)) continue;
     if (!needsFetch(areas[id], el.lat, el.lon)) continue;
     targets.push({
       id,
