@@ -20,7 +20,7 @@ const recordOf = new Map<string, VerifiedRecord>(
     .filter((record) => record.status === "open")
     .map((record) => [recordShopId(record), record]),
 );
-const { files, redirects, counts } = seoPages(shops, recordOf, records);
+const { files, redirects, counts, home } = seoPages(shops, recordOf, records);
 const legal = legalPages({
   privacy: await readFile(new URL("../../docs/legal/privacy-policy.md", import.meta.url), "utf8"),
   terms: await readFile(new URL("../../docs/legal/terms.md", import.meta.url), "utf8"),
@@ -38,6 +38,18 @@ await copyFile(
   new URL("../../src/styles/global.css", import.meta.url),
   new URL("seo-tokens.css", output),
 );
+
+/*
+ * トップ（index.html）の下の静的なリンク 3 つを、検索で読める本文に差し替える（#435）。
+ * 中身は seo-pages.ts の homeSection（軒数・都道府県・系列・その月の開店と閉店）。アプリの画面の後ろに置くので、
+ * 1 画面目と動きは変わらない。
+ */
+const topFile = new URL("index.html", output);
+const top = await readFile(topFile, "utf8");
+const topNav = /<nav class="seo-navigation"[\s\S]*?<\/nav>/;
+if (!topNav.test(top))
+  throw new Error("index.html の下のリンク（nav.seo-navigation）が見つかりません");
+await writeFile(topFile, top.replace(topNav, home));
 
 /*
  * 「チャットで使う方法」（/connect、#196）も、ほかの静的なページと同じヘッダーと下のタブバーにする。

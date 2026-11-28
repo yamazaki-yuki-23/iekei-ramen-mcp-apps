@@ -27,14 +27,61 @@ main {
 }
 
 /*
- * 画面の下のリンク（index.html の nav）。都道府県ページ用の 40rem・中央寄せのままだと、
- * 左揃えの本文の下でここだけ中央に寄って視線が飛んだ。本文と同じ幅・左揃えにする。
+ * 画面の下の、検索で読める本文（#435。index.html の nav をビルドで差し替える）。
+ * アプリの本文と同じ幅・左揃え。中の部品（チップ・開店閉店の一覧・但し書き）は /seo.css の形をそのまま使う。
+ * /seo.css の一覧の初期化は .seo-page の中だけなので、ここで同じにする。
  */
-nav.seo-navigation {
+.seo-home {
   max-width: 72rem;
   margin-inline: auto;
-  padding: 0 calc(var(--space-4) + var(--safe-area-right, 0px)) var(--space-8)
+  padding: var(--space-6) calc(var(--space-4) + var(--safe-area-right, 0px)) var(--space-8)
     calc(var(--space-4) + var(--safe-area-left, 0px));
+  border-top: var(--border-width-regular) solid var(--color-border);
+}
+
+.seo-home ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* /seo.css のリンクの色は .seo-page の中だけなので、ここで同じ色にする（開店・閉店の店名）。 */
+.seo-home a {
+  color: var(--color-accent-strong);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+/* 段の先頭の見出しだけ上の余白を消す。月の開店・閉店の見出しは、上の「系列」の見出しと同じ余白（#442）。 */
+.seo-home > .seo-section:first-child {
+  margin-top: 0;
+}
+
+.seo-home-sub {
+  margin: var(--space-6) 0 var(--space-3);
+  font-size: var(--font-heading-sm-size);
+}
+
+.seo-home .seo-home-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.seo-home-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-min-size);
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-note);
+  text-underline-offset: 3px;
+}
+
+.seo-home a:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px var(--color-focus-edge);
 }
 
 /*
