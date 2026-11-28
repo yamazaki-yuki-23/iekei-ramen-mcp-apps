@@ -761,6 +761,12 @@
   }
 }
 
+/* 推定の位置のときだけ、見出しのすぐ下に出す「今いる場所で出す」（#440）。3 枚の前に置くので、上下は詰める。 */
+.decideLocate {
+  align-self: flex-start;
+  margin: var(--space-1) 0 var(--space-2);
+}
+
 .decideHead {
   display: flex;
   align-items: baseline;

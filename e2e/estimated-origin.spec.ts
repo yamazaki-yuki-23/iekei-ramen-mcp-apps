@@ -107,7 +107,7 @@ test("位置情報を拒否したときは、今までどおり推定の位置�
   await expect(decideTitle(page)).toContainText("さいたま市");
 });
 
-test("見出しの横の「現在地で出し直す」から、端末の位置の 3 軒に変わる（#364）", async ({
+test("推定の位置のときは見出しのすぐ下の「今いる場所で出す」から、端末の位置の 3 軒に変わる（#364・#440）", async ({
   page,
 }) => {
   await openTop(page);
@@ -116,7 +116,11 @@ test("見出しの横の「現在地で出し直す」から、端末の位置�
     .locator("ul > li > button[data-shop-id]")
     .first()
     .getAttribute("data-shop-id");
-  const again = page.getByRole("button", { name: "現在地で出し直す" });
+  const again = page.getByRole("button", { name: "今いる場所で出す" });
+  // 1 枚目の食券より上にあり、推定の間は 3 枚の下の「現在地で出し直す」は出さない（同じボタンを 2 つ置かない）。
+  const card = page.locator("ul > li > button[data-shop-id]").first();
+  expect((await again.boundingBox())!.y).toBeLessThan((await card.boundingBox())!.y);
+  await expect(page.getByRole("button", { name: "現在地で出し直す" })).toHaveCount(0);
   // キーボードで押す（焦点を戻すのはキーボードで押したときだけ。#156）。
   await again.focus();
   await page.keyboard.press("Enter");
@@ -125,8 +129,9 @@ test("見出しの横の「現在地で出し直す」から、端末の位置�
     "data-shop-id",
     before ?? "",
   );
-  // 出し直した後も同じボタンが残り、焦点が戻る。
-  await expect(again).toBeFocused();
+  // 端末の位置になったので、見出しの下のボタンは消え、3 枚の下の「現在地で出し直す」に焦点が移る。
+  await expect(again).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "現在地で出し直す" })).toBeFocused();
 });
 
 test("家系マッチも、推定の場所から端末の位置で出し直せる（#364）", async ({ page }) => {
@@ -286,7 +291,7 @@ test("「現在地で出し直す」の位置を待つ間に券売機の条件�
     });
   });
   await openTop(page);
-  await page.getByRole("button", { name: "現在地で出し直す" }).click();
+  await page.getByRole("button", { name: "今いる場所で出す" }).click();
   const rich = page.getByRole("button", { name: "直系・濃厚", exact: true });
   await rich.click();
   await page.evaluate(() =>
