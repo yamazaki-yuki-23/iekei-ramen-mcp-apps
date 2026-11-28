@@ -943,6 +943,49 @@ const section = (html: string, heading: string) =>
       ?.split('<h2 class="seo-section">')[0] ?? "",
   );
 
+describe("トップの下の、検索で読める本文（#435）", () => {
+  const record = {
+    name: "試験家 新店",
+    prefecture: "神奈川県",
+    address: "西区1-1",
+    basis: "chain",
+    chain: "町田商店",
+    status: "open",
+    opened: "2026-11-02",
+    checked: "2026-11-04",
+    source: "chain-list",
+  };
+  const today = new Date("2026-11-05T00:00:00Z");
+
+  it("軒数・都道府県のリンク・その月の開店と閉店・但し書きをデータから作る", () => {
+    const { home } = seoPages(shops, new Map(), [record], today);
+    expect(home).toContain("家系ラーメン 2 軒を、地域と系列から探す");
+    expect(home).toContain('href="/area/kanagawa/">神奈川県<span>2 軒</span>');
+    // 「今月」と書かず、ビルドした月を書く（次のデプロイまでに古くならない）。
+    expect(home).toContain('<h2 class="seo-section">2026年11月の開店・閉店</h2>');
+    expect(home).toContain("試験家 新店");
+    expect(home).toContain('href="/new/"');
+    expect(home).toContain("家系かどうかは地図の記載と既知のブランドからの推定");
+    expect(home).toContain("距離は直線距離です。");
+    // 系列の記録が無ければ、系列の段は出さない。
+    expect(home).not.toContain(">系列</h3>");
+  });
+
+  it("系列があれば系列のリンク、その月に開店・閉店が無ければ「まだありません」", () => {
+    const { home } = seoPages(
+      [shop, { ...shop, id: "node/9", name: "試験家 2" }],
+      new Map([
+        ["node/123", chainRecord("町田商店")],
+        ["node/9", chainRecord("町田商店")],
+      ]),
+      [],
+      today,
+    );
+    expect(home).toContain('href="/chain/machida-shoten/">町田商店<span>2 軒</span>');
+    expect(home).toContain("この月は、まだありません。");
+  });
+});
+
 describe("公式で確かめた開店・閉店のページ（#345）", () => {
   const opened = {
     name: "試験家 新店",
