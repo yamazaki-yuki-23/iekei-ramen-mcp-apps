@@ -255,9 +255,13 @@ export function knownFacts(tags: OsmTags): KnownFacts {
  */
 export function buildAddress(tags: OsmTags) {
   const city = tags["addr:city"] || undefined;
-  const area = [tags["addr:suburb"], tags["addr:quarter"], tags["addr:neighbourhood"]]
-    .filter(Boolean)
-    .join("");
+  // 町名の欄が無い店は addr:place を見る（「扇町」。#441）。
+  const area =
+    [tags["addr:suburb"], tags["addr:quarter"], tags["addr:neighbourhood"]]
+      .filter(Boolean)
+      .join("") ||
+    tags["addr:place"] ||
+    "";
   const block = tags["addr:block_number"];
   const house = tags["addr:housenumber"];
   const repeated = block?.includes("-") && house?.startsWith(block);
@@ -270,6 +274,12 @@ export function buildAddress(tags: OsmTags) {
 
   return { city, address: trimmed || undefined };
 }
+
+/**
+ * 住所が町名から始まるか。番地や丁目から始まる住所（「1398-1」「4丁目1-5」）は、場所が分からない（#441）。
+ * 町名が市区町村の欄に入っている店（「酒田市上安町」）もあるので、市区町村をそろえた後に見る。
+ */
+export const hasTown = (address: string | undefined) => !!address && !/^[\d０-９]/.test(address);
 
 /**
  * OSM 要素 1 件を Shop に変換する。家系でなければ null。

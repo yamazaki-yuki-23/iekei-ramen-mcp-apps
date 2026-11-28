@@ -23,6 +23,7 @@ import {
   withVerifiedVerdict,
 } from "./verified-shops.ts";
 import {
+  hasTown,
   nearbyPairs,
   pairFingerprint,
   resolveDuplicates,
@@ -203,11 +204,22 @@ const added = candidates.filter((shop) => !skipped.has(shop.id));
 const municipalities = (await readJson(
   new URL("../../data/municipalities.json", import.meta.url),
 )) as Municipalities;
+/*
+ * **町名の無い住所（「横浜市 1398-1」）は、座標から引いた町名だけにする**（#441）。番地だけでは場所が分からない。
+ * OSM の番地と、座標から引いた町名は混ぜない（境の近くでは隣の町を返し、「成瀬四丁目5-8-52」のように食い違う）。
+ * 町名が引けていなければ、住所を出さずに市区町村までにする。
+ */
+const withTown = (shop: Shop): Shop => {
+  if (!shop.address || hasTown(shop.address)) return shop;
+  const { address: _, ...rest } = shop;
+  const town = areas[shop.id]?.area;
+  return town ? { ...rest, address: town } : rest;
+};
 const unknownCity: Shop[] = [];
 const named = [...corrected, ...added].map((shop) => {
   const fixed = withOfficialCity(municipalities, shop);
   if (!fixed) unknownCity.push(shop);
-  return fixed ?? shop;
+  return withTown(fixed ?? shop);
 });
 if (unknownCity.length > 0) {
   for (const shop of unknownCity)

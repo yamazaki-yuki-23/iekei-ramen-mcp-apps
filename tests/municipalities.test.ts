@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { hasTown } from "../scripts/data/classify.ts";
 import { officialCity, withOfficialCity } from "../scripts/data/municipalities.ts";
 
 const municipalities = JSON.parse(
   readFileSync(new URL("../data/municipalities.json", import.meta.url), "utf8"),
 );
-const shops: { id: string; prefecture: string; city?: string }[] = JSON.parse(
+const shops: { id: string; prefecture: string; city?: string; address?: string }[] = JSON.parse(
   readFileSync(new URL("../data/shops.json", import.meta.url), "utf8"),
 );
 const shop = { id: "node/1", name: "試験家", lat: 35, lon: 139 };
@@ -45,5 +46,10 @@ describe("市区町村の名前を総務省の一覧にそろえる（#349）", 
       (s) => s.city && officialCity(municipalities, s.prefecture, s.city)?.city !== s.city,
     );
     expect(off.map((s) => `${s.prefecture}${s.city} ${s.id}`)).toEqual([]);
+  });
+
+  it("今の shops.json に、町名の無い番地だけの住所（「横浜市 1398-1」）は無い（#441）", () => {
+    const bare = shops.filter((s) => s.address && !hasTown(s.address));
+    expect(bare.map((s) => `${s.city} ${s.address} ${s.id}`)).toEqual([]);
   });
 });

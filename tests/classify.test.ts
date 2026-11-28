@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import shops from "../data/shops.json";
 import {
   buildAddress,
+  hasTown,
   knownFacts,
   resolveDuplicates,
   tagsFingerprint,
@@ -293,6 +294,26 @@ describe("buildAddress", () => {
 
   it("住所タグが無ければ undefined を返す", () => {
     expect(buildAddress(tags({}))).toEqual({ city: undefined, address: undefined });
+  });
+
+  it("番地や丁目から始まる住所は町名が無いと見る（#441）", () => {
+    expect(hasTown("1398-1")).toBe(false);
+    expect(hasTown("４丁目1-5")).toBe(false);
+    expect(hasTown("戸塚町")).toBe(true);
+    expect(hasTown(undefined)).toBe(false);
+  });
+
+  it("町名の欄が無ければ addr:place を町名に使う（#441）", () => {
+    expect(
+      buildAddress(
+        tags({
+          "addr:city": "海老名市",
+          "addr:place": "扇町",
+          "addr:block_number": "5",
+          "addr:housenumber": "1",
+        }),
+      ),
+    ).toEqual({ city: "海老名市", address: "扇町5-1" });
   });
 
   /*
