@@ -57,6 +57,23 @@ describe("knownFacts — 対応表で分かること", () => {
     expect(decide(answers(), f).verdict).toBe("confirmed");
   });
 
+  it("横濱家は外し、「横濱家系ラーメン〜」は外さない（#439）", () => {
+    expect(decide(answers(), knownFacts(tags({ name: "横濱家" }))).verdict).toBeNull();
+    expect(knownFacts(tags({ name: "横濱家系ラーメン 神山" })).notIekei).toBeUndefined();
+  });
+
+  it("公式で確かめた系列（#437）は家系にし、味は推測しない", () => {
+    for (const name of ["ラーメン壱七家", "神道家"]) {
+      expect(decide(answers(), knownFacts(tags({ name })))).toMatchObject({
+        verdict: "confirmed",
+        taste: "unknown",
+      });
+    }
+    expect(knownFacts(tags({ name: "一角家関内店" })).taste).toBe("chain");
+    // ありふれた屋号は対応表に入れない（横浜駅西口の中華・カレーの「大和家」。#444 のレビュー）
+    expect(knownFacts(tags({ name: "大和家" })).iekeiBrand).toBeUndefined();
+  });
+
   it("対応表に無ければ何も返さない", () => {
     const f = knownFacts(tags({ name: "ありがた家" }));
     expect(f.iekeiBrand).toBeUndefined();

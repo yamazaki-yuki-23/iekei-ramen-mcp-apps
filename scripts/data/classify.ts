@@ -66,9 +66,16 @@ export const KNOWN_BRANDS: Record<string, TasteKey> = {
   町田商店: "chain",
   町田家: "chain",
   壱角家: "chain",
+  // 壱角家の別の書き方（OSM の「一角家関内店」）。#437
+  一角家: "chain",
   せい家: "chain",
   武蔵家: "chain",
   春樹: "chain",
+  // 公式で系列と確かめた（#437）。味の傾向は確かめていないので情報なし。
+  // 大和家は入れない。ありふれた屋号で、横浜駅西口の中華・カレーの「大和家」まで拾う（#444 のレビュー）。
+  // 公式で確かめた大和家は、確かめた記録（verified.json）で家系になる。
+  壱七家: "unknown",
+  神道家: "unknown",
 };
 
 /**
@@ -89,7 +96,21 @@ export const EXCLUDE = [
   "日高屋",
   "ばんから",
   "来来亭",
+  // 公式が家系と名乗らない（オーナーの判断、2026-11-14・11-28。#439）。「横濱家系ラーメン〜」は別の店。
+  "横濱家",
 ];
+
+/**
+ * 除外の語を含むか。**直後に「系」が続くものは数えない。** 「横濱家系ラーメン 神山」は
+ * 横濱家ではなく、家系を名乗る別の店（#439）。
+ */
+const findExcluded = (text: string) =>
+  EXCLUDE.find((x) =>
+    text
+      .split(x)
+      .slice(1)
+      .some((rest) => !rest.startsWith("系")),
+  );
 
 /** 名前を持つ要素だけを返す。判定も重複除去もここが母集団。 */
 export function namedElements(raw: OsmElement[]) {
@@ -210,14 +231,14 @@ export function knownFacts(tags: OsmTags): KnownFacts {
   // 「杉田家住宅」は「杉田家」を含むが文化財で、飲食店ですらない。
   // 逆に brand / operator 側だけが除外に当たる場合は、タグの誤りのほうを疑う
   // （魂心家に brand=幸楽苑 が付いている実例がある）。
-  const notIekeiInName = EXCLUDE.find((x) => name.includes(x));
+  const notIekeiInName = findExcluded(name);
   if (notIekeiInName) return { notIekei: notIekeiInName };
 
   const iekeiBrand = matchBrand(haystack);
   return {
     iekeiBrand,
     taste: iekeiBrand ? KNOWN_BRANDS[iekeiBrand] : undefined,
-    notIekei: EXCLUDE.find((x) => haystack.includes(x)),
+    notIekei: findExcluded(haystack),
   };
 }
 

@@ -68,5 +68,12 @@
     "reason": "壱角家 野田山崎店（野田家）は 2026-11-23 に閉店。公式の店名と住所で verified.json に記録（#421）",
     "source": "壱角家の公式の店舗一覧の閉店の告知（https://gardengroup.co.jp/brand/ichikakuya/）",
     "date": "2026-11-25"
+  },
+  {
+    "action": "exclude",
+    "id": "node/13704134089",
+    "reason": "「一角家関内店」は壱角家 関内店と同じ店。対応表に「一角家」を足して OSM の店が載るようになったので、公式の店名と住所で記録済みの店（verified.json）を残し、訪問記録の ID を変えない（#439）",
+    "source": "壱角家の公式の店舗一覧（https://gardengroup.co.jp/brand/ichikakuya/）",
+    "date": "2026-11-28"
   }
 ]
