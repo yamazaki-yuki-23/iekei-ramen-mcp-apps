@@ -218,3 +218,19 @@ export function maybeSameShop(
   const generic = existing.name.replace(/横浜|家系|ラーメン|らーめん|\s/g, "") === "";
   return (sameChain && unlisted.has(existing.id)) || generic;
 }
+
+/**
+ * **公式で家系と確かめた今の店（`open`・`unlisted`）は「家系」にする**（#437・#439）。確かめた事実が
+ * モデルの推定に勝つ（対応表の事実が勝つ `decide()` と同じ考え）。`unlisted` は系列の公式の一覧に
+ * 無いだけで、家系と確かめたことは変わらない。
+ */
+export function withVerifiedVerdict(shops: Shop[], records: VerifiedRecord[]) {
+  const ids = new Set(
+    records.filter((r) => r.id && ["open", "unlisted"].includes(r.status)).map((r) => r.id),
+  );
+  return shops.map((shop) =>
+    ids.has(shop.id) && shop.confidence !== "confirmed"
+      ? { ...shop, confidence: "confirmed" as const }
+      : shop,
+  );
+}

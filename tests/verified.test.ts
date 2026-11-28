@@ -6,6 +6,7 @@ import { ALL_PREFECTURES } from "../src/utils/prefectures";
 type Record = { [key: string]: unknown };
 const records = verified as Record[];
 const shopIds = new Set(shops.map((s) => s.id));
+const confidenceOf = new Map(shops.map((s) => [s.id, s.confidence]));
 const OSM_ID = /^(?:node|way|relation)\/\d+$/;
 const text = (v: unknown) => typeof v === "string" && v.trim().length > 0;
 
@@ -36,6 +37,8 @@ describe("確かめた記録（data/verified.json）", () => {
     if ("id" in r) {
       // 今のデータの店。店名・座標は OSM 側にあるので写さない（ODbL の集合データベースとして分けておく）。
       expect(shopIds.has(r.id as string)).toBe(true);
+      // 公式で家系と確かめた店は「家系」（#439）。モデルの推定のまま「未判定」で noindex にしない。
+      if (r.status !== "closed") expect(confidenceOf.get(r.id as string)).toBe("confirmed");
       for (const k of ["name", "prefecture", "address", "osmId", "lat", "lon"])
         expect(r).not.toHaveProperty(k);
     } else {
@@ -43,7 +46,11 @@ describe("確かめた記録（data/verified.json）", () => {
       expect(text(r.name)).toBe(true);
       expect(ALL_PREFECTURES).toContain(r.prefecture);
       expect(text(r.address)).toBe(true);
-      if ("osmId" in r) expect(r.osmId).toMatch(OSM_ID);
+      if ("osmId" in r) {
+        expect(r.osmId).toMatch(OSM_ID);
+        // 判定や対応表が変わって OSM の店が載るようになったら、id の形に直す。残すと 1 店が 2 回載る（#439）。
+        expect(shopIds.has(r.osmId as string)).toBe(false);
+      }
     }
   });
 

@@ -16,7 +16,12 @@ import { findAmbiguous } from "./labels.ts";
 import { readJson } from "./read-json.ts";
 import { applyCorrections } from "./corrections.ts";
 import { withOfficialCity } from "./municipalities.ts";
-import { maybeSameShop, nearbyShops, verifiedShops } from "./verified-shops.ts";
+import {
+  maybeSameShop,
+  nearbyShops,
+  verifiedShops,
+  withVerifiedVerdict,
+} from "./verified-shops.ts";
 import {
   nearbyPairs,
   pairFingerprint,
@@ -162,15 +167,14 @@ for (const el of raw) {
 // 確度の高い順、その中は都道府県・店名順。
 const ORDER = { confirmed: 0, likely: 1, candidate: 2 };
 const corrections = JSON.parse(await fs.readFile(path.join(DIR, "corrections.json"), "utf-8"));
-const corrected = applyCorrections(shops, corrections);
 /*
- * 系列の公式の一覧で確かめた、今のデータに無い店（data/verified.json）。座標は
- * data:geocode が公式の住所から引いたもの（data/verified-geo.json）で、番地の精度で
- * 引けた店だけを足す。
+ * 確かめた記録（data/verified.json）。公式で家系と確かめた今の店は「家系」にし、今のデータに無い店は
+ * data:geocode が公式の住所から引いた座標（data/verified-geo.json）で、番地の精度で引けた店だけを足す。
  */
 const verified = (await readJson(
   new URL("../../data/verified.json", import.meta.url),
 )) as VerifiedRecord[];
+const corrected = withVerifiedVerdict(applyCorrections(shops, corrections), verified);
 const candidates = verifiedShops(
   verified,
   (await readJson(new URL("../../data/verified-geo.json", import.meta.url), {

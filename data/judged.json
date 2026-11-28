@@ -2689,9 +2689,9 @@
  },
  "node/4030834589": {
   "tagsFingerprint": "8de2e4d2e7c7",
-  "verdict": "candidate",
+  "verdict": "confirmed",
   "taste": "unknown",
-  "why": "判定材料なし（屋号が〜家）",
+  "why": "既知ブランド 壱七家",
   "raw": {
    "is_ramen_shop": 0.96,
    "name_declares_iekei": 0.06,
@@ -7085,9 +7085,9 @@
  },
  "way/248944814": {
   "tagsFingerprint": "29cfd9ee4769",
-  "verdict": "likely",
+  "verdict": null,
   "taste": "unknown",
-  "why": "家系の確率 0.75",
+  "why": "家系ではない既知の店 横濱家",
   "raw": {
    "is_ramen_shop": 0.94,
    "name_declares_iekei": 0.09,
@@ -16465,9 +16465,9 @@
  },
  "way/1070833719": {
   "tagsFingerprint": "aabb8021414c",
-  "verdict": "candidate",
+  "verdict": "confirmed",
   "taste": "unknown",
-  "why": "判定材料なし（屋号が〜家）",
+  "why": "既知ブランド 神道家",
   "raw": {
    "is_ramen_shop": 0.91,
    "name_declares_iekei": 0.05,
@@ -16549,9 +16549,9 @@
  },
  "node/1154508957": {
   "tagsFingerprint": "5c59732d07c3",
-  "verdict": "likely",
+  "verdict": null,
   "taste": "unknown",
-  "why": "家系の確率 0.79",
+  "why": "家系ではない既知の店 横濱家",
   "raw": {
    "is_ramen_shop": 0.94,
    "name_declares_iekei": 0.09,
@@ -17249,9 +17249,9 @@
  },
  "node/3076386582": {
   "tagsFingerprint": "4956ada99e91",
-  "verdict": "likely",
+  "verdict": null,
   "taste": "unknown",
-  "why": "家系の確率 0.74",
+  "why": "家系ではない既知の店 横濱家",
   "raw": {
    "is_ramen_shop": 0.84,
    "name_declares_iekei": 0.09,
@@ -17725,9 +17725,9 @@
  },
  "node/4132277617": {
   "tagsFingerprint": "19db76fc9ad1",
-  "verdict": "likely",
+  "verdict": null,
   "taste": "unknown",
-  "why": "家系の確率 0.74",
+  "why": "家系ではない既知の店 横濱家",
   "raw": {
    "is_ramen_shop": 0.92,
    "name_declares_iekei": 0.1,
@@ -18733,9 +18733,9 @@
  },
  "node/6109021551": {
   "tagsFingerprint": "bfea7e94f2cc",
-  "verdict": "candidate",
+  "verdict": "confirmed",
   "taste": "unknown",
-  "why": "判定材料なし（屋号が〜家）",
+  "why": "既知ブランド 壱七家",
   "raw": {
    "is_ramen_shop": 0.93,
    "name_declares_iekei": 0.07,
@@ -19769,9 +19769,9 @@
  },
  "node/13704134089": {
   "tagsFingerprint": "22cc6949227b",
-  "verdict": null,
-  "taste": "unknown",
-  "why": "家系 0.41 / 不明 0.51",
+  "verdict": "confirmed",
+  "taste": "chain",
+  "why": "既知ブランド 一角家",
   "raw": {
    "is_ramen_shop": 0.94,
    "name_declares_iekei": 0.09,

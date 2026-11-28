@@ -25,7 +25,7 @@ for (const theme of ["light", "dark"] as const) {
   test(`${theme} の画面でも但し書きと参考値の説明を表示する`, async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 1000 });
     await page.emulateMedia({ colorScheme: theme });
-    const app = await callTool(page, "decide-iekei-ramen", { keyword: "横濱家" });
+    const app = await callTool(page, "decide-iekei-ramen", { keyword: "町田市" });
     await waitForApp(app);
     // 判定の段階は画面に書かない（#144。モデルにだけ渡す）。長い根拠の文も出さない（#152）。
     await expect(app.getByText(/家系の可能性/)).toHaveCount(0);
@@ -55,11 +55,11 @@ for (const theme of ["light", "dark"] as const) {
 test("キーワード付きで開いた「迷ったら」は、発券してもキーワードを外さない（#144）", async ({
   page,
 }) => {
-  const app = await callTool(page, "decide-iekei-ramen", { keyword: "横濱家" });
+  const app = await callTool(page, "decide-iekei-ramen", { keyword: "町田市" });
   await waitForApp(app);
   await expect(app.getByRole("button", { name: "このキーワードを外す" })).toBeVisible();
   await app.getByRole("button", { name: /^この条件で 3 軒を出す/ }).click();
   await expect(app.locator("main")).toHaveAttribute("data-pending-calls", "0");
-  await expect(app.getByText("キーワード「横濱家」")).toBeVisible();
+  await expect(app.getByText("キーワード「町田市」")).toBeVisible();
   await expect(app.getByRole("button", { name: "このキーワードを外す" })).toBeVisible();
 });
