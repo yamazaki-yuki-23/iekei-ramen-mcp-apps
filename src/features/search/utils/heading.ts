@@ -1,8 +1,9 @@
 import type { PresentationProps } from "../SearchApp";
-import { originLabel } from "../../../utils/geo";
+import { isEstimated, originLabel } from "../../../utils/geo";
 import { scopeLabel } from "../../../utils/scope";
 import { basisLabel } from "../../../utils/shortlist";
-import type { AppPayload, DecideInfo, SearchMode } from "../../../types";
+import { TASTES } from "../../../utils/labels";
+import type { AppPayload, DecideInfo, Origin, SearchMode } from "../../../types";
 
 /** 結果が揃う前の見出し。前のモードの件数や条件を名乗らないための逃げ先。 */
 const HEADING_BY_MODE: Record<SearchMode, string> = {
@@ -39,7 +40,12 @@ export function buildHeading(mode: SearchMode, payload: AppPayload, ready: boole
     // 共有の URL から開いた（#344）。どこの 3 軒かは URL が持たないので「全国」と名乗らない。
     if (payload.decide?.basis === "shared") return `シェアされた ${payload.shops.length} 軒`;
     const from = payload.query.origin ? originLabel(payload.query.origin) : where;
-    return `迷ったらこの ${payload.shops.length} 軒（${from}）`;
+    // 味で絞ったときは、何で絞ったかを見出しに出す（#440）。絞らなかったときは今までどおり「迷ったら」。
+    const taste =
+      payload.query.taste && payload.query.taste !== "unknown" ? payload.query.taste : undefined;
+    return taste
+      ? `${TASTES[taste].label}の ${payload.shops.length} 軒（${from}）`
+      : `迷ったらこの ${payload.shops.length} 軒（${from}）`;
   }
   return `${where}の家系ラーメン`;
 }
@@ -83,9 +89,15 @@ export function pageHead(
   mode: SearchMode,
   heading: string,
   count: string | null,
+  /** 結果の基準地点。推定（「〇〇付近」）なら見出しのすぐ下に「今いる場所で出す」を出す（#440）。 */
+  origin?: Origin,
 ) {
   return Hero && mode === "decide"
-    ? { h1: SITE_NAME, count: null, decideTitle: { heading, tag: count } }
+    ? {
+        h1: SITE_NAME,
+        count: null,
+        decideTitle: { heading, tag: count, estimated: isEstimated(origin) },
+      }
     : { h1: heading, count, decideTitle: undefined };
 }
 

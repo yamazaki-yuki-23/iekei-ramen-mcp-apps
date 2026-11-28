@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { DecideInfo } from "../../../types";
-import { formatCount } from "./heading";
+import type { AppPayload, DecideInfo } from "../../../types";
+import { buildHeading, formatCount } from "./heading";
 
 const decide: DecideInfo = {
   round: 0,
@@ -33,5 +33,29 @@ describe("formatCount（軒数の言い方、#369）", () => {
     const label = formatCount("decide", 651, 3, decide);
     expect(label).not.toContain("651");
     expect(label).not.toMatch(/軒中/);
+  });
+});
+
+/** 「迷ったら」の 3 軒の結果（#440 の試験用）。 */
+const decidePayload = (taste?: "creamy" | "unknown") =>
+  ({
+    shops: [{}, {}, {}],
+    total: 3,
+    query: { taste, origin: { lat: 35, lon: 139, label: "現在地", source: "precise" } },
+    prefectures: [],
+  }) as unknown as AppPayload;
+
+describe("buildHeading の「迷ったら」（#440）", () => {
+  it("味で絞ったときは、見出しに条件を出す", () => {
+    expect(buildHeading("decide", decidePayload("creamy"), true)).toBe(
+      "クリーミーの 3 軒（現在地）",
+    );
+  });
+
+  it("絞らなかったとき（味は未判定も含む）は、今までどおり「迷ったら」", () => {
+    expect(buildHeading("decide", decidePayload(), true)).toBe("迷ったらこの 3 軒（現在地）");
+    expect(buildHeading("decide", decidePayload("unknown"), true)).toBe(
+      "迷ったらこの 3 軒（現在地）",
+    );
   });
 });

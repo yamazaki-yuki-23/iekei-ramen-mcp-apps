@@ -24,21 +24,54 @@ const EMPTY_WITH_KEYWORD =
 const ASK_HINT = "気になる店は押して選んでから、チャットで聞いてください。";
 
 /** 食券の列の見出しと札。Web では 3 枚の下の「現在地で出し直す」（#364）も持つ。 */
-export type DecideTitle = { heading: string; tag: string | null; onLocate?: () => void };
+export type DecideTitle = {
+  heading: string;
+  tag: string | null;
+  onLocate?: () => void;
+  /** 基準地点が推定（「〇〇付近」）か（#440）。 */
+  estimated?: boolean;
+};
 
 /**
  * 食券の列の見出し。並べた根拠（近い順など）を札で横に添える。下に「近い順に 1〜3 軒目」の
  * 行が出るときは、同じことを 2 度言うので札を出さない（#301）。
  */
-function DecideHead({ title, showTag }: { title?: DecideTitle; showTag: boolean }) {
+function DecideHead({
+  title,
+  showTag,
+  busy,
+}: {
+  title?: DecideTitle;
+  showTag: boolean;
+  busy?: boolean;
+}) {
   if (!title) return null;
   return (
-    <div className={styles.decideHead}>
-      <h2 className={styles.decideTitle} data-announce>
-        {title.heading}
-      </h2>
-      {showTag && title.tag && <span className={styles.count}>{title.tag}</span>}
-    </div>
+    <>
+      <div className={styles.decideHead}>
+        <h2 className={styles.decideTitle} data-announce>
+          {title.heading}
+        </h2>
+        {showTag && title.tag && <span className={styles.count}>{title.tag}</span>}
+      </div>
+      {/*
+       * 「〇〇付近」は接続元からの推定（#364）。初めて開いた人には本当の近くへの口が 1 画面目に無かった（#438）ので、
+       * 推定のときだけ見出しのすぐ下に置く。初めての人がいちばん押すべきボタンなので、主の塗りのボタンにする
+       * （オーナー判断、#440）。位置情報は押したときだけ求める。
+       */}
+      {title.estimated && title.onLocate && (
+        <button
+          type="button"
+          className={`${styles.button} ${styles.decideLocate}`}
+          // 押すと端末の位置になり、このボタンは 3 枚の下の「現在地で出し直す」に替わる。焦点もそちらへ（#156）。
+          data-focus-key="decide-locate"
+          onClick={title.onLocate}
+          disabled={busy}
+        >
+          今いる場所で出す
+        </button>
+      )}
+    </>
   );
 }
 
@@ -210,7 +243,7 @@ export function DecidePanel({
        * 並べた根拠の長い文（「352 軒を…に並べた、1〜3 軒目です。」）は画面に出さない（#152）。
        * 見出し（どこから）・札（近い順など）・「近い順に 1〜3 軒目」で足りる。文はモデルへ渡す。
        */}
-      <DecideHead title={title} showTag={!hasRoundLine(info)} />
+      <DecideHead title={title} showTag={!hasRoundLine(info)} busy={busy} />
       {!title && info && (
         <p className={styles.decideBasis}>{`${basisLabel(info)}に並べています。`}</p>
       )}
@@ -246,10 +279,11 @@ export function DecidePanel({
          * 3 枚のすぐ下から端末の位置で出し直せるようにする。位置情報は押したときだけ求める。
          * 見出しの横に置くと 1 行増え、スマホ幅の最初の画面に 3 枚が入らなかった（#204・#279）。
          */}
-        {title?.onLocate && (
+        {title?.onLocate && !title.estimated && (
           <button
             type="button"
             className={styles.buttonSecondary}
+            data-focus-key="decide-locate"
             onClick={title.onLocate}
             disabled={busy}
           >

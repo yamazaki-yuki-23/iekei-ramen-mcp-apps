@@ -304,7 +304,7 @@ export function SearchAppInner({
     />
   );
   const placed = placeControls(Hero, mode, controls);
-  const head = pageHead(Hero, mode, heading, count);
+  const head = pageHead(Hero, mode, heading, count, payload.query.origin);
   const locate = (fresh: () => boolean) =>
     issueWith(undefined, activeKeyword, runDecide, reserveResult)("near", form, fresh);
   const results = (
