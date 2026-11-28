@@ -52,7 +52,8 @@ main {
   overflow-wrap: anywhere;
 }
 
-.seo-home .seo-section {
+/* 段の先頭の見出しだけ上の余白を消す。月の開店・閉店の見出しは、上の「系列」の見出しと同じ余白（#442）。 */
+.seo-home > .seo-section:first-child {
   margin-top: 0;
 }
 

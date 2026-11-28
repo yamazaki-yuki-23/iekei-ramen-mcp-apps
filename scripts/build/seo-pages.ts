@@ -513,6 +513,7 @@ const newsMonth = (inMonth: NewsEntry[], heading: string) => {
  * トップ（index.html）の下に置く、検索で読める本文（#435）。トップは開いてから画面を描く作りで、
  * 最初の HTML の本文が 38 文字（リンク 3 つ）しか無かった。中身は /area/ と /new/ と同じ源から作り、手で書かない。
  * 画面のいちばん下（アプリの後）に置くので、1 画面目（現在地から近い 3 軒）と動きは変わらない。
+ * 但し書き（推定・参考値）はここに置かない。トップではアプリの 3 軒のすぐ下に 1 回出ている（#152 の「1 回」を守る）。
  * 開店・閉店は、ビルドした月を「2026年11月」のように書く（「今月」と書くと、次のデプロイまでに古くなる）。
  */
 function homeSection({
@@ -536,7 +537,7 @@ function homeSection({
   const news = inMonth.length
     ? `${newsSection("開いた店", of("opened"))}${newsSection("開店を確かめた店", of("found"))}${newsSection("閉店を確かめた店", of("closed"))}`
     : '<p class="seo-note">この月は、まだありません。</p>';
-  return `<section class="seo-home" aria-labelledby="home-title"><h2 class="seo-section" id="home-title">家系ラーメン ${count} 軒を、地域と系列から探す</h2><p class="seo-lead">今いる場所から近い家系ラーメンを 3 軒まで出し、地図と一覧で探せます。距離は直線距離です。${listLead}</p><h3 class="seo-home-sub">都道府県</h3>${prefLinks}${chainChips ? `<h3 class="seo-home-sub">系列</h3>${chainChips}` : ""}<h2 class="seo-section">${monthLabel(month)}の開店・閉店</h2>${news}<ul class="seo-home-links"><li><a href="/new/">公式で確かめた開店・閉店をもっと見る</a></li><li><a href="/area/">都道府県から家系ラーメンを探す</a></li><li><a href="/guide/">家系ラーメンの頼み方（お好み・卓上・ライス）</a></li><li><a href="/connect">チャットで使う方法</a></li></ul><p class="seo-caveat">${note}</p></section>`;
+  return `<section class="seo-home" aria-labelledby="home-title"><h2 class="seo-section" id="home-title">家系ラーメン ${count} 軒を、地域と系列から探す</h2><p class="seo-lead">今いる場所から近い家系ラーメンを 3 軒まで出し、地図と一覧で探せます。距離は直線距離です。${listLead}</p><h3 class="seo-home-sub">都道府県</h3>${prefLinks}${chainChips ? `<h3 class="seo-home-sub">系列</h3>${chainChips}` : ""}<h2 class="seo-section">${monthLabel(month)}の開店・閉店</h2>${news}<ul class="seo-home-links"><li><a href="/new/">公式で確かめた開店・閉店をもっと見る</a></li><li><a href="/area/">都道府県から家系ラーメンを探す</a></li><li><a href="/guide/">家系ラーメンの頼み方（お好み・卓上・ライス）</a></li><li><a href="/connect">チャットで使う方法</a></li></ul></section>`;
 }
 
 /** /new/ と、過ぎた月のページ（path → HTML）。 */

@@ -965,7 +965,9 @@ describe("トップの下の、検索で読める本文（#435）", () => {
     expect(home).toContain('<h2 class="seo-section">2026年11月の開店・閉店</h2>');
     expect(home).toContain("試験家 新店");
     expect(home).toContain('href="/new/"');
-    expect(home).toContain("家系かどうかは地図の記載と既知のブランドからの推定");
+    // 但し書きはアプリの 3 軒の下に 1 回出るので、ここには重ねない（#152）。報告の案内は冒頭の文にある。
+    expect(home).not.toContain("家系かどうかは地図の記載と既知のブランドからの推定");
+    expect(home).toContain("違う店を見つけたら、店のページから教えてください。");
     expect(home).toContain("距離は直線距離です。");
     // 系列の記録が無ければ、系列の段は出さない。
     expect(home).not.toContain(">系列</h3>");
